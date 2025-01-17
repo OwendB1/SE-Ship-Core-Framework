@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net48</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>6</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="protobuf-net" Version="3.2.45" />
+      <PackageReference Include="SpaceEngineers.ScriptingReferences" Version="1.3.0" />
+    </ItemGroup>
+
+</Project>

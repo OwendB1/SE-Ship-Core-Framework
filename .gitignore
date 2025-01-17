@@ -367,3 +367,5 @@ FodyWeavers.xsd
 /publish.bat
 /publish-development.bat
 /src/Data/Scripts/RedVsBlueClassSystem/Temp.cs
+
+.idea

@@ -1,13 +1,11 @@
 ﻿using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
-using System.Collections.Generic;
-using System.Linq;
 using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.Game.ObjectBuilders.Definitions;
 using VRage.Utils;
 
-namespace ShipClassSystem
+namespace ShipCoreFramework
 {
     public static class CubeGridModifiers
     {

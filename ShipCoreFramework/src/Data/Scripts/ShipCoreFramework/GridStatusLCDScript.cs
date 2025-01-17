@@ -1,16 +1,13 @@
-﻿using Sandbox.Game.Entities;
+﻿using System.Globalization;
+using Sandbox.Game.Entities;
 using Sandbox.Game.GameSystems.TextSurfaceScripts;
 using Sandbox.ModAPI;
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
 using VRage.Game.GUI.TextPanel;
 using VRageMath;
 using IngameCubeBlock = VRage.Game.ModAPI.Ingame.IMyCubeBlock;
 using IngameIMyEntity = VRage.Game.ModAPI.Ingame.IMyEntity;
 
-namespace ShipClassSystem
+namespace ShipCoreFramework
 {
     [MyTextSurfaceScript("GridStatusLCDScript", "Grid class status")]
     internal class GridStatusLCDScript : MyTSSCommon

@@ -1,7 +1,6 @@
-﻿using System;
-using Sandbox.ModAPI;
+﻿using Sandbox.ModAPI;
 
-namespace ShipClassSystem
+namespace ShipCoreFramework
 {
     public static class Constants
     {

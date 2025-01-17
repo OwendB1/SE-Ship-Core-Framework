@@ -1,4 +1,4 @@
-﻿namespace ShipClassSystem
+﻿namespace ShipCoreFramework
 {
     public static class Settings
     {

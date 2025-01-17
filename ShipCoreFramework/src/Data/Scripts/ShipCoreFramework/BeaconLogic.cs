@@ -4,10 +4,9 @@ using VRage.Game.Components;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
 
-namespace ShipClassSystem
+namespace ShipCoreFramework
 {
-    [MyEntityComponentDescriptor(typeof(MyObjectBuilder_Beacon), false, "SmallBlockBeacon", "LargeBlockBeacon",
-        "SmallBlockBeaconReskin", "LargeBlockBeaconReskin")]
+    [MyEntityComponentDescriptor(typeof(MyObjectBuilder_Beacon), false)]
     public class BeaconLogic : MyGameLogicComponent
     {
         private IMyBeacon _beacon;

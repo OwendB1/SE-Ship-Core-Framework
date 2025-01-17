@@ -1,13 +1,11 @@
 ﻿using Sandbox.Definitions;
 using Sandbox.ModAPI;
-using System.Collections.Generic;
-using System.Linq;
 using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 
-namespace ShipClassSystem
+namespace ShipCoreFramework
 {
     [MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation)]
     public class ModSessionManager : MySessionComponentBase

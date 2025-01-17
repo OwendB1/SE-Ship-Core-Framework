@@ -1,9 +1,7 @@
 ﻿using ProtoBuf;
 using Sandbox.ModAPI;
-using System;
-using System.Collections.Generic;
 
-namespace ShipClassSystem
+namespace ShipCoreFramework
 {
     [ProtoContract]
     public class ModConfig

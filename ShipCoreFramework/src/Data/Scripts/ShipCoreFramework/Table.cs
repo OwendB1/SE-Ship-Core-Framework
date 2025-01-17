@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using VRage.Game.GUI.TextPanel;
+﻿using VRage.Game.GUI.TextPanel;
 using VRageMath;
 
-namespace ShipClassSystem
+namespace ShipCoreFramework
 {
     public class Table
     {

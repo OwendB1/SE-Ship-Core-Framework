@@ -1,10 +1,8 @@
 ﻿using ProtoBuf;
 using Sandbox.ModAPI;
-using System;
-using VRage.Game;
 using VRage.Game.ModAPI;
 
-namespace ShipClassSystem
+namespace ShipCoreFramework
 {
     internal class Comms
     {

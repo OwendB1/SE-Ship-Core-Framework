@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-namespace ShipClassSystem
+﻿namespace ShipCoreFramework
 {
     internal static class DefaultGridClassConfig
     {
