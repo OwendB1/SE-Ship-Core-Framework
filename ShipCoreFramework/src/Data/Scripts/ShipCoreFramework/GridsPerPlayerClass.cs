@@ -5,7 +5,7 @@
         private static ModConfig Config => ModSessionManager.Config;
         private static readonly Dictionary<long, Dictionary<long, List<long>>> PerPlayer = new Dictionary<long, Dictionary<long, List<long>>>();
 
-        public static bool WillGridBeWithinPlayerLimits(CubeGridLogic gridLogic, long newClassId)
+        public static bool WillGridBeWithinPlayerLimits(ShipCoreLogic gridLogic, long newClassId)
         {
             if (!IsApplicableGrid(gridLogic)) return true;
 
@@ -19,7 +19,7 @@
 
             if (PerPlayer.ContainsKey(playerId) && PerPlayer[playerId].ContainsKey(newClassId))
             {
-                var numAllowedGrids = Config.GetShipCoreBySubType(newClassId).MaxPerPlayer;
+                var numAllowedGrids = Config.GetShipCoreBySubtype(newClassId).MaxPerPlayer;
                 if (numAllowedGrids < 0) return true;
                 var idx = PerPlayer[playerId][newClassId].Count + 1;
                 return idx <= numAllowedGrids;
@@ -32,7 +32,7 @@
             return true;
         }
 
-        public static void AddCubeGrid(CubeGridLogic gridLogic)
+        public static void AddCubeGrid(ShipCoreLogic gridLogic)
         {
             if (!IsApplicableGrid(gridLogic)) return;
             var playerId = gridLogic.MajorityOwningPlayerId;
@@ -60,7 +60,7 @@
                 perGridClass[gridClassId].Add(gridLogic.Grid.EntityId);
         }
 
-        public static void RemoveCubeGrid(CubeGridLogic gridLogic)
+        public static void RemoveCubeGrid(ShipCoreLogic gridLogic)
         {
             if (!IsApplicableGrid(gridLogic)) return;
             var playerId = gridLogic.MajorityOwningPlayerId;
@@ -77,7 +77,7 @@
                 gridsEntry.Value.Clear();
         }
 
-        public static bool IsApplicableGrid(CubeGridLogic gridLogic)
+        public static bool IsApplicableGrid(ShipCoreLogic gridLogic)
         {
             if (!Config.IncludeAiFactions && gridLogic.OwningFaction != null &&
                 gridLogic.OwningFaction.IsEveryoneNpc()) return false;

@@ -21,7 +21,7 @@ namespace ShipCoreFramework
         private static readonly int
             ScrollPauseUpdates = 15; //how many updates to say paused at the start and end when scrolling
 
-        private CubeGridLogic GridLogic => _terminalBlock?.GetMainGridLogic();
+        private ShipCoreLogic GridLogic => _terminalBlock?.GetMainGridLogic();
         private MyCubeGrid Grid => _terminalBlock?.CubeGrid as MyCubeGrid;
         private ShipCore ShipCore => GridLogic.ShipCore;
 

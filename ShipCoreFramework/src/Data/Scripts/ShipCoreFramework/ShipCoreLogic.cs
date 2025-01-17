@@ -7,12 +7,10 @@ using VRageMath;
 
 namespace ShipCoreFramework
 {
-    public class CubeGridLogic
+    public class ShipCoreLogic
     {
         public readonly Dictionary<BlockLimit, List<KeyValuePair<IMyCubeBlock, double>>> BlocksPerLimit = new Dictionary<BlockLimit, List<KeyValuePair<IMyCubeBlock, double>>>();
         public readonly HashSet<MyCubeBlock> Blocks = new HashSet<MyCubeBlock>();
-
-        private static Dictionary<long, CubeGridLogic> CubeGridLogics => ModSessionManager.CubeGridLogics;
 
         private long _gridClassId;
         public IMyCubeGrid Grid;
@@ -27,112 +25,21 @@ namespace ShipCoreFramework
 
         public ModConfig Config => ModSessionManager.Config;
 
-        public long GridClassId
-        {
-            get { return _gridClassId; }
-            set
-            {
-                var gridClass = Config.GetShipCoreBySubType(value);
-
-                var withinFactionLimit = GridsPerFactionClassManager.WillGridBeWithinFactionLimits(this, value);
-                var withinPlayerLimit = GridsPerPlayerClassManager.WillGridBeWithinPlayerLimits(this, value);
-
-                var hasMinimumPlayerCount = true;
-                if (gridClass.MinPlayers > 0)
-                {
-                    if (OwningFaction == null)
-                    {
-                        hasMinimumPlayerCount = gridClass.MinPlayers <= 1;
-                    }
-                    else
-                    {
-                        hasMinimumPlayerCount = gridClass.MinPlayers <= OwningFaction.Members.Count;
-                    }
-                }
-                
-                Utils.Log($"Within Faction limit: { withinFactionLimit } | Within Player limit: { withinPlayerLimit }");
-                if (!withinFactionLimit)
-                {
-                    Utils.ShowNotification("Grid is not within allowed limit assigned to the faction!", Grid);
-                    return;
-                }
-                if (!withinPlayerLimit)
-                {
-                    Utils.ShowNotification("Grid is not within allowed limit assigned to the player!", Grid);
-                    return;
-                }
-                if (!hasMinimumPlayerCount)
-                {
-                    Utils.ShowNotification($"GridClass min: {gridClass.MinPlayers} Faction count: {OwningFaction.Members.Count}", Grid);
-                    Utils.ShowNotification("Faction does not have enough players to use this class!", Grid);
-                    return;
-                }
-                
-                var maxBlocks = gridClass.MaxBlocks;
-                var maxPCU = gridClass.MaxPCU;
-                var maxMass = gridClass.MaxMass;
-
-                List<IMyCubeGrid> subgrids;
-                var main = Utils.GetMainCubeGrid(Grid, out subgrids);
-                var concreteGrid = main as MyCubeGrid;
-                if (concreteGrid == null) return;
-                var actualBlocks = concreteGrid.BlocksCount;
-                var actualPCU = concreteGrid.BlocksPCU;
-                var actualMass = concreteGrid.Mass;
-
-                if (gridClass.LargeGridStatic && gridClass.LargeGridMobile == false && main.IsStatic == false)
-                {
-                    Utils.ShowNotification($"Can not set grid to class {gridClass.SimpleName}, grid is supposed to be static!", Grid);
-                    return;
-                }
-
-                foreach (var concreteSubgrid in subgrids.OfType<MyCubeGrid>())
-                {
-                    actualBlocks += concreteSubgrid.BlocksCount;
-                    actualPCU += concreteSubgrid.BlocksPCU;
-                    actualMass += concreteSubgrid.Mass;
-                }
-
-                if (maxBlocks > 1 && actualBlocks > maxBlocks)
-                {
-                    Utils.ShowNotification($"Can not set grid to class {gridClass.SimpleName}, grid is {actualBlocks - maxBlocks} blocks over the limit!", Grid);
-                    return;
-                }
-                if (maxPCU > 1 && actualPCU > maxPCU)
-                {
-                    Utils.ShowNotification($"Can not set grid to class {gridClass.SimpleName}, grid is {actualPCU - maxPCU} PCU over the limit!", Grid);
-                    return;
-                }
-                if (maxMass > 1 && actualMass > maxMass)
-                {
-                    Utils.ShowNotification($"Can not set grid to class {gridClass.SimpleName}, grid is {actualMass - maxMass} KG over the limit!", Grid);
-                    return;
-                }
-
-                if (!Config.IsValidGridClassId(value))
-                    throw new Exception($"CubeGridLogic:: set GridClassId: invalid grid class id {value}");
-
-                Utils.Log($"CubeGridLogic::GridClassId setting grid class to {value}", 1);
-                _gridClassId = value;
-                GridClassHasChanged();
-            }
-        }
-
-        public ShipCore ShipCore => Config.GetShipCoreBySubType(GridClassId);
+        public ShipCore ShipCore => Config.GetShipCoreBySubtype(GridClassId);
         public GridModifiers Modifiers => ShipCore.Modifiers;
         public GridDefenseModifiers DefenseModifiers = new GridDefenseModifiers();
 
         public void Initialize(IMyCubeGrid grid)
         {
             Grid = grid;
-            if (ModSessionManager.CubeGridLogics.ContainsKey(Grid.EntityId) && 
+            if (ModSessionManager.ShipCoreLogics.ContainsKey(Grid.EntityId) && 
                 _gridClassId == DefaultGridClassConfig.DefaultShipCoreDefinition.Id) return;
             
             List<IMyCubeGrid> subs;
             var main = Utils.GetMainCubeGrid(Grid, out subs);
             if (main.EntityId != Grid.EntityId)
             {
-                var logic = new CubeGridLogic();
+                var logic = new ShipCoreLogic();
                 logic.Initialize(main);
                 return;
             }
@@ -142,6 +49,7 @@ namespace ShipCoreFramework
             Grid.OnIsStaticChanged += OnIsStaticChanged;
             Grid.OnBlockAdded += OnBlockAdded;
             Grid.OnBlockRemoved += OnBlockRemoved;
+            Grid.OnBlockIntegrityChanged
             Grid.OnGridMerge += OnGridMerge;
             Grid.SpeedChanged += OnSpeedChanged;
             Grid.GridPresenceTierChanged += EnforceNoFlyZones;
@@ -161,7 +69,7 @@ namespace ShipCoreFramework
                 long id;
                 var gridClassId = long.TryParse(value, out id) ? id : 0;
 
-                var gridClass = Config.GetShipCoreBySubType(gridClassId);
+                var gridClass = Config.GetShipCoreBySubtype(gridClassId);
                 if (gridClass.MinPlayers > 0)
                 {
                     if (OwningFaction == null && gridClass.MinPlayers > 1)
@@ -343,40 +251,6 @@ namespace ShipCoreFramework
             if (ShipCore.LargeGridStatic && !ShipCore.LargeGridMobile && !isStatic) grid.IsStatic = true;
             if (!ShipCore.LargeGridStatic && isStatic) grid.IsStatic = false;
         }
-        private void GridClassHasChanged()
-        {
-            try
-            {
-                GridsPerFactionClassManager.Reset();
-                foreach (var gridLogic in CubeGridLogics) GridsPerFactionClassManager.AddCubeGrid(gridLogic.Value);
-                GridsPerPlayerClassManager.Reset();
-                foreach (var gridLogic in CubeGridLogics) GridsPerPlayerClassManager.AddCubeGrid(gridLogic.Value);
-                Grid.Storage[Constants.GridClassStorageGUID] = GridClassId.ToString();
-
-                BlocksPerLimit.Clear();
-                foreach (var blockLimit in ShipCore.BlockLimits)
-                {
-                    var blockVals = new List<KeyValuePair<IMyCubeBlock, double>>();
-                    foreach (var blockType in blockLimit.BlockTypes)
-                    {
-                        var countingBlocks = Blocks
-                            .Where(b => Utils.GetBlockTypeId(b) == blockType.TypeId &&
-                                        Utils.GetBlockSubtypeId(b) == blockType.SubtypeId);
-                        blockVals.AddRange(countingBlocks.Select(bl => new KeyValuePair<IMyCubeBlock, double>(bl, blockType.CountWeight)));
-                    }
-                    BlocksPerLimit[blockLimit] = blockVals;
-                }
-                EnforceBlockPunishment();
-                ApplyModifiers();
-            }
-            catch (Exception e)
-            {
-                Utils.Log("CubeGridLogic::OnGridClassChanged: Unable to set Class Because:", 3);
-                Utils.LogException(e);
-                return;
-            }
-            Utils.Log($"CubeGridLogic::OnGridClassChanged: new grid class id = {GridClassId}", 2);
-        }
 
         private void OnBlockAdded(IMySlimBlock obj)
         {
@@ -445,7 +319,7 @@ namespace ShipCoreFramework
             var concreteGrid = Grid as MyCubeGrid;
             if (concreteGrid?.BlocksCount < ShipCore.MinBlocks)
             {
-                GridClassId = 0;
+                
             }
             Blocks.Remove(obj.FatBlock as MyCubeBlock);
             ApplyModifiers();

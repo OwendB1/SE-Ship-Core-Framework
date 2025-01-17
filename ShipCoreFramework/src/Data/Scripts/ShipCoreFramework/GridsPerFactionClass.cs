@@ -5,7 +5,7 @@
         private static ModConfig Config => ModSessionManager.Config;
         private static readonly Dictionary<long, Dictionary<long, List<long>>> PerFaction = new Dictionary<long, Dictionary<long, List<long>>>();
 
-        public static bool WillGridBeWithinFactionLimits(CubeGridLogic gridLogic, long newClassId)
+        public static bool WillGridBeWithinFactionLimits(ShipCoreLogic gridLogic, long newClassId)
         {
             if (!IsApplicableGrid(gridLogic)) return true;
             var factionId = gridLogic.OwningFaction?.FactionId ?? -1;
@@ -16,7 +16,7 @@
             }
             if (PerFaction.ContainsKey(factionId) && PerFaction[factionId].ContainsKey(newClassId))
             {
-                var numAllowedGrids = Config.GetShipCoreBySubType(newClassId).MaxPerFaction;
+                var numAllowedGrids = Config.GetShipCoreBySubtype(newClassId).MaxPerFaction;
                 if (numAllowedGrids < 0) return true;
                 var idx = PerFaction[factionId][newClassId].Count + 1;
                 return idx <= numAllowedGrids;
@@ -25,7 +25,7 @@
             return true;
         }
 
-        public static void AddCubeGrid(CubeGridLogic gridLogic)
+        public static void AddCubeGrid(ShipCoreLogic gridLogic)
         {
             if (!IsApplicableGrid(gridLogic)) return;
             var factionId = gridLogic.OwningFaction?.FactionId ?? -1;
@@ -51,7 +51,7 @@
                 perGridClass[gridClassId].Add(gridLogic.Grid.EntityId);
         }
 
-        public static void RemoveCubeGrid(CubeGridLogic gridLogic)
+        public static void RemoveCubeGrid(ShipCoreLogic gridLogic)
         {
             if (!IsApplicableGrid(gridLogic)) return;
             var factionId = gridLogic.OwningFaction?.FactionId ?? -1;
@@ -68,7 +68,7 @@
                 gridsEntry.Value.Clear();
         }
 
-        public static bool IsApplicableGrid(CubeGridLogic gridLogic)
+        public static bool IsApplicableGrid(ShipCoreLogic gridLogic)
         {
             if (!Config.IncludeAiFactions && gridLogic.OwningFaction != null &&
                 gridLogic.OwningFaction.IsEveryoneNpc()) return false;

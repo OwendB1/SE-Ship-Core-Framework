@@ -13,7 +13,7 @@ namespace ShipCoreFramework
     public class RemoteControlInfo : MyGameLogicComponent
     {
         private IMyRemoteControl _remote;
-        private CubeGridLogic GridLogic => _remote?.GetMainGridLogic();
+        private ShipCoreLogic GridLogic => _remote?.GetMainGridLogic();
 
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {

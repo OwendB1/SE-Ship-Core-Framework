@@ -10,59 +10,25 @@ namespace ShipCoreFramework
     [MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation)]
     public class ModSessionManager : MySessionComponentBase
     {
-        public static ModConfig Config;
-        public static Dictionary<long, CubeGridLogic> CubeGridLogics = new Dictionary<long, CubeGridLogic>();
+        public static readonly ModConfig Config = new ModConfig();
+        public static Dictionary<long, ShipCoreLogic> ShipCoreLogics = new Dictionary<long, ShipCoreLogic>();
         public readonly Queue<IMyCubeGrid> ToBeInitialized = new Queue<IMyCubeGrid>();
-        internal static Comms Comms;
-
+        
         public override void LoadData()
         {
-            Comms = new Comms(Settings.COMMS_MESSAGE_ID);
-            if (Constants.IsServer)
-            {
-                var config = ModConfig.LoadConfig() ?? DefaultGridClassConfig.DefaultModConfig;
-                LoadConfig(config);
-                ModConfig.SaveConfig(Config, Constants.ConfigFilename);
-            }
-            else
-            {
-                Comms.RequestConfig();
-            }
-
-            //Utils.Log("Mod Path: "+ModPath);
+            Config.LoadConfig();
+            
             MyAPIGateway.Entities.OnEntityAdd += EntityAdded;
             MyAPIGateway.Entities.OnEntityRemove += EntityRemoved;
             MyAPIGateway.Session.OnSessionReady += HookDamageHandler;
             MyAPIGateway.Session.Factions.FactionStateChanged += FactionStateChanged;
         }
 
-        public static void LoadConfig(ModConfig config)
-        {
-            Config = config;
-            Config.UpdateGridClassesDictionary();
-            MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed = Config.MaxPossibleSpeedMetersPerSecond;
-            MyDefinitionManager.Static.EnvironmentDefinition.SmallShipMaxSpeed = Config.MaxPossibleSpeedMetersPerSecond;
-            var speedDifferential = Config.MaxPossibleSpeedMetersPerSecond - 100.0f;
-            var ammoDefinitions = new List<string> { "Missile","LargeCalibreShell","MediumCalibreShell","LargeCaliber","AutocannonShell","LargeRailgunSlug","SmallRailgunSlug","SmallCaliber","PistolCaliber" };
-            foreach(var ammoId in ammoDefinitions)
-            {
-                var ammoDefinition = MyDefinitionManager.Static.GetAmmoDefinition(new MyDefinitionId(typeof(MyObjectBuilder_AmmoDefinition), ammoId));
-                if (ammoDefinition != null)
-                {
-                    ammoDefinition.DesiredSpeed += speedDifferential;
-                }
-                else
-                {
-                    Utils.Log($"AmmoType: {ammoId} was not sucessfully adjusted to match maxspeed");
-                }
-            }
-        }
-
         private void FactionStateChanged(MyFactionStateChange action, long fromFactionId, long toFactionId, long factionId, long playerId)
         {
             if (action != MyFactionStateChange.FactionMemberKick && action != MyFactionStateChange.FactionMemberLeave) return;
             Utils.Log($"FactionStateChanged: {action} from {fromFactionId} to {toFactionId} for faction {factionId} and player {playerId}");
-            var factionGridLogics = CubeGridLogics.Where(x => x.Value.OwningFaction?.FactionId == factionId).ToList();
+            var factionGridLogics = ShipCoreLogics.Where(x => x.Value.OwningFaction?.FactionId == factionId).ToList();
             foreach (var gridLogic in factionGridLogics.Where(gridLogic => gridLogic.Value.OwningFaction.Members.Count < gridLogic.Value.ShipCore.MinPlayers))
             {
                 gridLogic.Value.GridClassId = DefaultGridClassConfig.DefaultShipCoreDefinition.Id;
@@ -71,8 +37,6 @@ namespace ShipCoreFramework
 
         protected override void UnloadData()
         {
-            if (Constants.IsServer)
-                ModConfig.SaveConfig(Config, Constants.ConfigFilename);
             MyAPIGateway.Entities.OnEntityAdd -= EntityAdded;
             MyAPIGateway.Session.OnSessionReady -= HookDamageHandler;
             var speedDifferential = Config.MaxPossibleSpeedMetersPerSecond-100.0f;
@@ -84,16 +48,11 @@ namespace ShipCoreFramework
                     if (ammoDefinition != null){ammoDefinition.DesiredSpeed -= speedDifferential;}else{Utils.Log($"AmmoType: {ammoId} was not sucessfully adjusted to match maxspeed");}
                 }catch{Utils.Log($"Vanilla AmmoType {ammoId} is missing.");}
             }
-            //foreach (var logic in CubeGridLogics)
-            //{
-            //    logic.Value.GridMarkedForClose();
-            //}
+
             ToBeInitialized.Clear();
-            CubeGridLogics.Clear();
+            ShipCoreLogics.Clear();
             GridsPerFactionClassManager.Reset();
             GridsPerPlayerClassManager.Reset();
-            Comms.Discard();
-            //Instance = null;
         }
 
         private void EntityAdded(IMyEntity ent)
@@ -108,10 +67,10 @@ namespace ShipCoreFramework
         {
             var grid = ent as IMyCubeGrid;
             if (grid == null) return;
-            if (!CubeGridLogics.ContainsKey(grid.EntityId)) return;
+            if (!ShipCoreLogics.ContainsKey(grid.EntityId)) return;
             try
             {
-                CubeGridLogics[grid.EntityId].RemoveGridLogic();
+                ShipCoreLogics[grid.EntityId].RemoveGridLogic();
             }
             catch
             {
@@ -133,7 +92,7 @@ namespace ShipCoreFramework
             var target = ToBeInitialized.Dequeue();
             if (target.Physics == null) return;
 
-            var logic = new CubeGridLogic();
+            var logic = new ShipCoreLogic();
             logic.Initialize(target);
         }
     }

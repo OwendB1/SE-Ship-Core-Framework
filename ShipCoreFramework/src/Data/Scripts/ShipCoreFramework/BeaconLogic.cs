@@ -10,7 +10,7 @@ namespace ShipCoreFramework
     public class BeaconLogic : MyGameLogicComponent
     {
         private IMyBeacon _beacon;
-        private CubeGridLogic GridLogic => _beacon?.GetMainGridLogic();
+        private ShipCoreLogic GridLogic => _beacon?.GetMainGridLogic();
 
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {

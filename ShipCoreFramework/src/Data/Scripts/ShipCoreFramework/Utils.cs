@@ -66,23 +66,23 @@ namespace ShipCoreFramework
             return Convert.ToString(block.BlockDefinition.Id.SubtypeId);
         }
 
-        public static CubeGridLogic GetMainGridLogic(this IMyCubeGrid grid)
+        public static ShipCoreLogic GetMainGridLogic(this IMyCubeGrid grid)
         {
             List<IMyCubeGrid> subgrids;
             var main = GetMainCubeGrid(grid, out subgrids);
 
-            CubeGridLogic logic;
-            ModSessionManager.CubeGridLogics.TryGetValue(main.EntityId, out logic);
+            ShipCoreLogic logic;
+            ModSessionManager.ShipCoreLogics.TryGetValue(main.EntityId, out logic);
             return logic;
         }
 
-        public static CubeGridLogic GetMainGridLogic(this IMyTerminalBlock block)
+        public static ShipCoreLogic GetMainGridLogic(this IMyTerminalBlock block)
         {
             List<IMyCubeGrid> subgrids;
             var main = GetMainCubeGrid(block.CubeGrid, out subgrids);
 
-            CubeGridLogic logic;
-            ModSessionManager.CubeGridLogics.TryGetValue(main.EntityId, out logic);
+            ShipCoreLogic logic;
+            ModSessionManager.ShipCoreLogics.TryGetValue(main.EntityId, out logic);
             return logic;
         }
 
