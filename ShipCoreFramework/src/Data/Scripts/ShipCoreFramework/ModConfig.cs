@@ -198,16 +198,19 @@ namespace ShipCoreFramework
     public class BlockLimit
     {
         [ProtoMember(1)] 
-        public string Name;
+        public string Name = string.Empty;
 
         [ProtoMember(2)] 
-        public BlockType[] BlockTypes;
+        public BlockType[] BlockTypes = Array.Empty<BlockType>();
 
         [ProtoMember(3)] 
-        public float MaxCount;
+        public float MaxCount = 0;
 
         [ProtoMember(4)] 
-        public bool TurnedOffByNoFlyZone;
+        public bool TurnedOffByNoFlyZone = false;
+        
+        [ProtoMember(5)] 
+        public PunishmentType PunishmentType = PunishmentType.ShutOff;
     }
 
 
@@ -254,5 +257,14 @@ namespace ShipCoreFramework
         public float Duration = 0f;
         [ProtoMember(8)]
         public float Cooldown = 0f;
+    }
+
+    [ProtoContract]
+    public enum PunishmentType
+    {
+        ShutOff,
+        Damage,
+        Delete,
+        Explode
     }
 }
