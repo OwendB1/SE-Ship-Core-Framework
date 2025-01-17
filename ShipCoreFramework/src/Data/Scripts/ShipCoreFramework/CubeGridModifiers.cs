@@ -103,12 +103,12 @@ namespace ShipCoreFramework
             var myGrid = myBlock.CubeGrid;
             var myGridLogic = myGrid.GetMainGridLogic();
             if (myGridLogic == null) return;
-            if (damageInfo.Type == MyDamageType.Bullet) { damageInfo.Amount *= myGridLogic.DamageModifiers.Bullet; }
-            if (damageInfo.Type == MyDamageType.Rocket) { damageInfo.Amount *= myGridLogic.DamageModifiers.Rocket; }
-            if (damageInfo.Type == MyDamageType.Explosion) { damageInfo.Amount *= myGridLogic.DamageModifiers.Explosion; }
-            if (damageInfo.Type == MyDamageType.Environment) { damageInfo.Amount *= myGridLogic.DamageModifiers.Environment; }
-            if (damageInfo.Type == MyStringHash.GetOrCompute("Energy")) { damageInfo.Amount *= myGridLogic.DamageModifiers.Energy; }
-            if (damageInfo.Type == MyStringHash.GetOrCompute("Kinetic")) { damageInfo.Amount *= myGridLogic.DamageModifiers.Kinetic; }
+            if (damageInfo.Type == MyDamageType.Bullet) { damageInfo.Amount *= myGridLogic.DefenseModifiers.Bullet; }
+            if (damageInfo.Type == MyDamageType.Rocket) { damageInfo.Amount *= myGridLogic.DefenseModifiers.Rocket; }
+            if (damageInfo.Type == MyDamageType.Explosion) { damageInfo.Amount *= myGridLogic.DefenseModifiers.Explosion; }
+            if (damageInfo.Type == MyDamageType.Environment) { damageInfo.Amount *= myGridLogic.DefenseModifiers.Environment; }
+            if (damageInfo.Type == MyStringHash.GetOrCompute("Energy")) { damageInfo.Amount *= myGridLogic.DefenseModifiers.Energy; }
+            if (damageInfo.Type == MyStringHash.GetOrCompute("Kinetic")) { damageInfo.Amount *= myGridLogic.DefenseModifiers.Kinetic; }
         }
     }
 }

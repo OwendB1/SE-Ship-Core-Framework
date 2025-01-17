@@ -56,14 +56,14 @@ namespace ShipCoreFramework
 
         public void UpdateBeacon()
         {
-            var gridClass =GridLogic?.GridClass; //<this was returning null, either because Beacon = null, or GetGridLogic isn't working
+            var gridClass =GridLogic?.ShipCore; //<this was returning null, either because Beacon = null, or GetGridLogic isn't working
 
             if (gridClass == null) return;
 
             if (!gridClass.ForceBroadCast) return;
             _beacon.Enabled = true;
             _beacon.Radius = gridClass.ForceBroadCastRange;
-            if(!_beacon.HudText.Contains(gridClass.Name)){_beacon.HudText = $"{_beacon.CubeGrid.DisplayName} : {gridClass.Name}";}
+            if(!_beacon.HudText.Contains(gridClass.SimpleName)){_beacon.HudText = $"{_beacon.CubeGrid.DisplayName} : {gridClass.SimpleName}";}
 
             /*if(primaryOwnerId != -1)
             {

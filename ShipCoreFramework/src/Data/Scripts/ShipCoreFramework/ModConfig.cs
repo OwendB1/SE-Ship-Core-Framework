@@ -6,42 +6,23 @@ namespace ShipCoreFramework
     [ProtoContract]
     public class ModConfig
     {
-        private readonly Dictionary<long, GridClass> _gridClassesById = new Dictionary<long, GridClass>();
+        private readonly Dictionary<string, ShipCore> _shipCoresBySubtypeId = new Dictionary<string, ShipCore>();
         [ProtoMember(1)] public bool DebugMode;
         [ProtoMember(2)] public List<Zones> NoFlyZones;
         [ProtoMember(3)] public string[] IgnoreFactionTags;
         [ProtoMember(4)] public bool IncludeAiFactions;
         [ProtoMember(5)] public float MaxPossibleSpeedMetersPerSecond;
-        [ProtoMember(6)] public GridClass DefaultGridClass;
-        [ProtoMember(7)] public GridClass[] GridClasses;
+        [ProtoMember(6)] public ShipCore DefaultNoCore;
+        [ProtoMember(7)] public ShipCore[] ShipCores;
 
-        public GridClass GetGridClassById(long gridClassId)
+        public ShipCore GetShipCoreBySubType(string gridClassId)
         {
-            GridClass id;
-            if (_gridClassesById.TryGetValue(gridClassId, out id)) return id;
+            ShipCore id;
+            if (_shipCoresBySubtypeId.TryGetValue(gridClassId, out id)) return id;
 
             Utils.Log($"Unknown grid class {gridClassId}, using default grid class");
 
-            return DefaultGridClass;
-        }
-
-        public bool IsValidGridClassId(long gridClassId)
-        {
-            return _gridClassesById.ContainsKey(gridClassId);
-        }
-
-        public void UpdateGridClassesDictionary()
-        {
-            _gridClassesById.Clear();
-
-            if (DefaultGridClass != null)
-                _gridClassesById[0] = DefaultGridClass;
-            else
-                _gridClassesById[0] = DefaultGridClassConfig.DefaultGridClassDefinition;
-
-            if (GridClasses == null) return;
-            foreach (var gridClass in GridClasses)
-                _gridClassesById[gridClass.Id] = gridClass;
+            return DefaultNoCore;
         }
 
         public static ModConfig LoadConfig()
@@ -96,12 +77,12 @@ namespace ShipCoreFramework
 
 		}
     [ProtoContract]
-    public class GridClass
+    public class ShipCore
     {
         [ProtoMember(1)]
-        public int Id = 0;
+        public string SubtypeId = string.Empty;
         [ProtoMember(2)]
-        public string Name = string.Empty;
+        public string SimpleName = string.Empty;
         [ProtoMember(3)]
         public bool ForceBroadCast = false;
         [ProtoMember(4)]
@@ -129,8 +110,18 @@ namespace ShipCoreFramework
         [ProtoMember(15)]
         public GridModifiers Modifiers = new GridModifiers();
         [ProtoMember(16)]
-        public GridDamageModifiers DamageModifiers = new GridDamageModifiers();
+        public GridDefenseModifiers PassiveDefenseModifiers = new GridDefenseModifiers();
         [ProtoMember(17)]
+        public bool SpeedBoostEnabled = false;
+        [ProtoMember(18)]
+        public bool EnableActiveDefenseModifiers = false;
+        [ProtoMember(19)]
+        public GridDefenseModifiers ActiveDefenseModifiers = new GridDefenseModifiers();
+        [ProtoMember(20)] 
+        public bool EnableReloadModifier = false;
+        [ProtoMember(21)] 
+        public float ReloadModifier = 1f;
+        [ProtoMember(22)]
         public BlockLimit[] BlockLimits = Array.Empty<BlockLimit>();
     }
 
@@ -156,12 +147,12 @@ namespace ShipCoreFramework
         [ProtoMember(9)]
         public float ThrusterForce = 1;
         [ProtoMember(10)]
-        public float MaxSpeed = 80.0f;
-        [ProtoMember(11)]
-        public float MaxBoost = 1.2f;
-        [ProtoMember(12)]
-        public float BoostDuration = 10f; 
+        public float MaxSpeed = 100.0f;
         [ProtoMember(13)]
+        public float MaxBoost = 1.2f;
+        [ProtoMember(14)]
+        public float BoostDuration = 10f; 
+        [ProtoMember(15)]
         public float BoostCoolDown = 60f; 
 
         public override string ToString()
@@ -245,7 +236,7 @@ namespace ShipCoreFramework
     }
 
     [ProtoContract]
-    public class GridDamageModifiers
+    public class GridDefenseModifiers
     {
         [ProtoMember(1)]
         public float Bullet = 1f;
@@ -259,5 +250,9 @@ namespace ShipCoreFramework
         public float Energy = 1f;
         [ProtoMember(6)]
         public float Kinetic = 1f;
+        [ProtoMember(7)]
+        public float Duration = 0f;
+        [ProtoMember(8)]
+        public float Cooldown = 0f;
     }
 }

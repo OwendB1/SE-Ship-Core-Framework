@@ -117,7 +117,7 @@ namespace ShipCoreFramework
             try
             {
                 var config = MyAPIGateway.Utilities.SerializeFromBinary<ModConfig>(data);
-                if (config.GridClasses.Length < 1) return;
+                if (config.ShipCores.Length < 1) return;
                 ModSessionManager.LoadConfig(config);
                 ModConfig.SaveConfig(config, "REMOTE" + Constants.ConfigFilename);
             }

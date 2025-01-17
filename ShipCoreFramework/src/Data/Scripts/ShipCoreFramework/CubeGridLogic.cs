@@ -32,7 +32,7 @@ namespace ShipCoreFramework
             get { return _gridClassId; }
             set
             {
-                var gridClass = Config.GetGridClassById(value);
+                var gridClass = Config.GetShipCoreBySubType(value);
 
                 var withinFactionLimit = GridsPerFactionClassManager.WillGridBeWithinFactionLimits(this, value);
                 var withinPlayerLimit = GridsPerPlayerClassManager.WillGridBeWithinPlayerLimits(this, value);
@@ -82,7 +82,7 @@ namespace ShipCoreFramework
 
                 if (gridClass.LargeGridStatic && gridClass.LargeGridMobile == false && main.IsStatic == false)
                 {
-                    Utils.ShowNotification($"Can not set grid to class {gridClass.Name}, grid is supposed to be static!", Grid);
+                    Utils.ShowNotification($"Can not set grid to class {gridClass.SimpleName}, grid is supposed to be static!", Grid);
                     return;
                 }
 
@@ -95,17 +95,17 @@ namespace ShipCoreFramework
 
                 if (maxBlocks > 1 && actualBlocks > maxBlocks)
                 {
-                    Utils.ShowNotification($"Can not set grid to class {gridClass.Name}, grid is {actualBlocks - maxBlocks} blocks over the limit!", Grid);
+                    Utils.ShowNotification($"Can not set grid to class {gridClass.SimpleName}, grid is {actualBlocks - maxBlocks} blocks over the limit!", Grid);
                     return;
                 }
                 if (maxPCU > 1 && actualPCU > maxPCU)
                 {
-                    Utils.ShowNotification($"Can not set grid to class {gridClass.Name}, grid is {actualPCU - maxPCU} PCU over the limit!", Grid);
+                    Utils.ShowNotification($"Can not set grid to class {gridClass.SimpleName}, grid is {actualPCU - maxPCU} PCU over the limit!", Grid);
                     return;
                 }
                 if (maxMass > 1 && actualMass > maxMass)
                 {
-                    Utils.ShowNotification($"Can not set grid to class {gridClass.Name}, grid is {actualMass - maxMass} KG over the limit!", Grid);
+                    Utils.ShowNotification($"Can not set grid to class {gridClass.SimpleName}, grid is {actualMass - maxMass} KG over the limit!", Grid);
                     return;
                 }
 
@@ -118,15 +118,15 @@ namespace ShipCoreFramework
             }
         }
 
-        public GridClass GridClass => Config.GetGridClassById(GridClassId);
-        public GridModifiers Modifiers => GridClass.Modifiers;
-        public GridDamageModifiers DamageModifiers = new GridDamageModifiers();
+        public ShipCore ShipCore => Config.GetShipCoreBySubType(GridClassId);
+        public GridModifiers Modifiers => ShipCore.Modifiers;
+        public GridDefenseModifiers DefenseModifiers = new GridDefenseModifiers();
 
         public void Initialize(IMyCubeGrid grid)
         {
             Grid = grid;
             if (ModSessionManager.CubeGridLogics.ContainsKey(Grid.EntityId) && 
-                _gridClassId == DefaultGridClassConfig.DefaultGridClassDefinition.Id) return;
+                _gridClassId == DefaultGridClassConfig.DefaultShipCoreDefinition.Id) return;
             
             List<IMyCubeGrid> subs;
             var main = Utils.GetMainCubeGrid(Grid, out subs);
@@ -161,7 +161,7 @@ namespace ShipCoreFramework
                 long id;
                 var gridClassId = long.TryParse(value, out id) ? id : 0;
 
-                var gridClass = Config.GetGridClassById(gridClassId);
+                var gridClass = Config.GetShipCoreBySubType(gridClassId);
                 if (gridClass.MinPlayers > 0)
                 {
                     if (OwningFaction == null && gridClass.MinPlayers > 1)
@@ -179,8 +179,8 @@ namespace ShipCoreFramework
             else
             {
                 Utils.Log("[CubeGridLogic] Assigning Default Class, grid did not contain a class assignment");
-                _gridClassId = DefaultGridClassConfig.DefaultGridClassDefinition.Id;
-                Grid.Storage[Constants.GridClassStorageGUID] = DefaultGridClassConfig.DefaultGridClassDefinition.Id.ToString();
+                _gridClassId = DefaultGridClassConfig.DefaultShipCoreDefinition.Id;
+                Grid.Storage[Constants.GridClassStorageGUID] = DefaultGridClassConfig.DefaultShipCoreDefinition.Id.ToString();
             }
             //Speeds
             if (Grid.Storage.TryGetValue(Constants.ConfigurableSpeedGUID, out value))
@@ -193,9 +193,9 @@ namespace ShipCoreFramework
             }
             else
             {
-                BoostDuration = DefaultGridClassConfig.DefaultGridClassDefinition.Modifiers.BoostDuration;
-                BoostCoolDown = DefaultGridClassConfig.DefaultGridClassDefinition.Modifiers.BoostCoolDown;     
-                Grid.Storage[Constants.ConfigurableSpeedGUID] = (new List<float>{DefaultGridClassConfig.DefaultGridClassDefinition.Modifiers.BoostDuration,DefaultGridClassConfig.DefaultGridClassDefinition.Modifiers.BoostCoolDown}).ToString();
+                BoostDuration = DefaultGridClassConfig.DefaultShipCoreDefinition.Modifiers.BoostDuration;
+                BoostCoolDown = DefaultGridClassConfig.DefaultShipCoreDefinition.Modifiers.BoostCoolDown;     
+                Grid.Storage[Constants.ConfigurableSpeedGUID] = (new List<float>{DefaultGridClassConfig.DefaultShipCoreDefinition.Modifiers.BoostDuration,DefaultGridClassConfig.DefaultShipCoreDefinition.Modifiers.BoostCoolDown}).ToString();
             }
 
             if (!AddGridLogic()) return;
@@ -214,7 +214,7 @@ namespace ShipCoreFramework
                 Blocks.UnionWith(subgrid.GetFatBlocks<MyCubeBlock>().Where(b => b.IsPreview == false));
             }
 
-            foreach (var blockLimit in GridClass.BlockLimits)
+            foreach (var blockLimit in ShipCore.BlockLimits)
             {
                 var blockVals = new List<KeyValuePair<IMyCubeBlock, double>>();
                 foreach (var blockType in blockLimit.BlockTypes)
@@ -268,7 +268,7 @@ namespace ShipCoreFramework
             if (func == null) return;
             if (HasFunctioningBeaconIfNeeded() == false)
             {
-                DamageModifiers = DefaultGridClassConfig.DefaultGridDamageModifiers2X;
+                DefenseModifiers = DefaultGridClassConfig.DefaultGridDefenseModifiers2X;
                 foreach (var block in Blocks)
                     CubeGridModifiers.ApplyModifiers(block, DefaultGridClassConfig.DefaultGridModifiers);
             }
@@ -312,7 +312,7 @@ namespace ShipCoreFramework
 
         private void ApplyModifiers(GridModifiers modifiers = null)
         {
-            DamageModifiers = GridClass.DamageModifiers;
+            DefenseModifiers = ShipCore.DamageModifiers;
             foreach (var block in from block in Blocks let terminalBlock = block as IMyTerminalBlock where terminalBlock != null select block)
             {
                 CubeGridModifiers.ApplyModifiers(block, modifiers ?? Modifiers);
@@ -340,8 +340,8 @@ namespace ShipCoreFramework
         //Event handlers
         private void OnIsStaticChanged(IMyCubeGrid grid, bool isStatic)
         {
-            if (GridClass.LargeGridStatic && !GridClass.LargeGridMobile && !isStatic) grid.IsStatic = true;
-            if (!GridClass.LargeGridStatic && isStatic) grid.IsStatic = false;
+            if (ShipCore.LargeGridStatic && !ShipCore.LargeGridMobile && !isStatic) grid.IsStatic = true;
+            if (!ShipCore.LargeGridStatic && isStatic) grid.IsStatic = false;
         }
         private void GridClassHasChanged()
         {
@@ -354,7 +354,7 @@ namespace ShipCoreFramework
                 Grid.Storage[Constants.GridClassStorageGUID] = GridClassId.ToString();
 
                 BlocksPerLimit.Clear();
-                foreach (var blockLimit in GridClass.BlockLimits)
+                foreach (var blockLimit in ShipCore.BlockLimits)
                 {
                     var blockVals = new List<KeyValuePair<IMyCubeBlock, double>>();
                     foreach (var blockType in blockLimit.BlockTypes)
@@ -382,7 +382,7 @@ namespace ShipCoreFramework
         {
             Utils.Log($"{Utils.GetBlockTypeId(obj)} | {Utils.GetBlockSubtypeId(obj)}");
             var concreteGrid = Grid as MyCubeGrid;
-            if (concreteGrid?.BlocksCount > GridClass.MaxBlocks)
+            if (concreteGrid?.BlocksCount > ShipCore.MaxBlocks)
             {
                 Grid.RemoveBlock(obj);
                 return;
@@ -425,13 +425,13 @@ namespace ShipCoreFramework
         {
             if (obj.FatBlock != null && HasFunctioningBeaconIfNeeded() == false)
             {
-                DamageModifiers = DefaultGridClassConfig.DefaultGridDamageModifiers2X;
+                DefenseModifiers = DefaultGridClassConfig.DefaultGridDefenseModifiers2X;
                 foreach (var block in Blocks)
                 {
                     CubeGridModifiers.ApplyModifiers(block, DefaultGridClassConfig.DefaultGridModifiers);
                 }
             }
-            else DamageModifiers = GridClass.DamageModifiers;
+            else DefenseModifiers = ShipCore.DamageModifiers;
 
             var relevantLimits = GetRelevantLimits(obj);
             foreach (var limit in relevantLimits)
@@ -443,7 +443,7 @@ namespace ShipCoreFramework
             }
 
             var concreteGrid = Grid as MyCubeGrid;
-            if (concreteGrid?.BlocksCount < GridClass.MinBlocks)
+            if (concreteGrid?.BlocksCount < ShipCore.MinBlocks)
             {
                 GridClassId = 0;
             }
@@ -464,7 +464,7 @@ namespace ShipCoreFramework
         public void EnforceSpeedLimit(IMyCubeGrid obj)
         {
             var gridLogic = obj.GetMainGridLogic();
-            var gridClass = gridLogic?.GridClass;
+            var gridClass = gridLogic?.ShipCore;
             if (gridClass == null) return;
             if(gridLogic?.BoostDuration == null || gridLogic?.BoostCoolDown == null)
             {
@@ -473,7 +473,7 @@ namespace ShipCoreFramework
                 {
                     float boostVar;
                     var shipSpeedData = float.TryParse(value, out boostVar) ? new List<float> { boostVar } : 
-                        new List<float> { gridClass.Modifiers?.BoostDuration ?? Config.DefaultGridClass.Modifiers.BoostDuration*60.0f, 0 };
+                        new List<float> { gridClass.Modifiers?.BoostDuration ?? Config.DefaultNoCore.Modifiers.BoostDuration*60.0f, 0 };
                     gridLogic.BoostDuration = shipSpeedData[0];
                     gridLogic.BoostCoolDown = shipSpeedData[1];
                 }
@@ -484,8 +484,8 @@ namespace ShipCoreFramework
                 gridLogic.BoostDuration = gridClass.Modifiers.BoostDuration * 60.0f;
             }
 
-            var limitedSpeed = gridClass.Modifiers?.MaxSpeed ?? Config.DefaultGridClass.Modifiers.MaxSpeed;
-            var boostSpeed = gridClass.Modifiers?.MaxBoost ?? Config.DefaultGridClass.Modifiers.MaxBoost;
+            var limitedSpeed = gridClass.Modifiers?.MaxSpeed ?? Config.DefaultNoCore.Modifiers.MaxSpeed;
+            var boostSpeed = gridClass.Modifiers?.MaxBoost ?? Config.DefaultNoCore.Modifiers.MaxBoost;
 
             var myGrid = obj;
             var velocity = myGrid.Physics.LinearVelocity;
@@ -530,7 +530,7 @@ namespace ShipCoreFramework
         {
             if(Config.NoFlyZones == null || Config.NoFlyZones?.Count == 0) return;
             var gridLogic = obj.GetMainGridLogic();
-            var gridClassId = gridLogic?.GridClass?.Id ?? 0;
+            var gridClassId = gridLogic?.ShipCore?.Id ?? 0;
             foreach (var block in from zone in Config.NoFlyZones 
                      let range = Vector3D.Distance(obj.WorldMatrix.Translation,new Vector3D(zone.X, zone.Y, zone.Z)) 
                      where range < zone.Radius 
@@ -540,7 +540,7 @@ namespace ShipCoreFramework
                      from block in blocksOnGrid 
                      where block != null 
                      where block.Enabled
-                     where GridClass.BlockLimits.Any(limit => limit.TurnedOffByNoFlyZone && limit.BlockTypes.Any(type => 
+                     where ShipCore.BlockLimits.Any(limit => limit.TurnedOffByNoFlyZone && limit.BlockTypes.Any(type => 
                                                                   type.TypeId == Utils.GetBlockTypeId(block) && 
                                                                   type.SubtypeId == Utils.GetBlockSubtypeId(block)))
                      select block)
@@ -587,7 +587,7 @@ namespace ShipCoreFramework
             }
             else
             {
-                foreach (var limit in GridClass.BlockLimits)
+                foreach (var limit in ShipCore.BlockLimits)
                 {
                     if (!BlocksPerLimit.ContainsKey(limit)) return;
                     var limitBlocks = BlocksPerLimit[limit];
@@ -618,12 +618,12 @@ namespace ShipCoreFramework
 
         private bool HasFunctioningBeaconIfNeeded()
         {
-            return GridClass.ForceBroadCast == false || Blocks.OfType<IMyFunctionalBlock>().Any(block => block is IMyBeacon && block.Enabled);
+            return ShipCore.ForceBroadCast == false || Blocks.OfType<IMyFunctionalBlock>().Any(block => block is IMyBeacon && block.Enabled);
         }
 
         private IEnumerable<BlockLimit> GetRelevantLimits(IMySlimBlock block)
         {
-            return GridClass.BlockLimits.Where(limit => limit.BlockTypes
+            return ShipCore.BlockLimits.Where(limit => limit.BlockTypes
                 .Any(type => type.TypeId == Utils.GetBlockTypeId(block) && type.SubtypeId == Utils.GetBlockSubtypeId(block)));
         }
 

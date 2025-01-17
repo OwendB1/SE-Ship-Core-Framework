@@ -65,12 +65,12 @@ namespace ShipCoreFramework
             var gridLogic = block.GetMainGridLogic();
             if (gridLogic == null) return;
 
-            var gridClass = gridLogic.GridClass;
+            var gridClass = gridLogic.ShipCore;
             var concreteGrid = _cockpit.CubeGrid as MyCubeGrid;
             if (gridClass == null || concreteGrid == null) return;
 
             var infoBuilder = new StringBuilder();
-            infoBuilder.Append($"\nClass: {gridClass.Name} \n\n");
+            infoBuilder.Append($"\nClass: {gridClass.SimpleName} \n\n");
 
             FormatRangeCheckResult("Blocks", infoBuilder, gridClass.MinBlocks, gridClass.MaxBlocks, concreteGrid.BlocksCount);
             FormatMaxCheckResult("Mass", infoBuilder, gridClass.MaxMass, concreteGrid.Mass);

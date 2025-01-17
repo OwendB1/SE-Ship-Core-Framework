@@ -209,7 +209,7 @@
             BoostCoolDown=60f,
         };
 
-        public static GridDamageModifiers DefaultGridDamageModifiers2X = new GridDamageModifiers
+        public static GridDefenseModifiers DefaultGridDefenseModifiers2X = new GridDefenseModifiers
         {
             Explosion = 2f,
             Environment = 2f,
@@ -219,10 +219,10 @@
             Rocket = 2f,
         };
 
-        public static GridClass DefaultGridClassDefinition = new GridClass
+        public static ShipCore DefaultShipCoreDefinition = new ShipCore
         {
             Id = 0,
-            Name = "Derelict",
+            SimpleName = "Derelict",
             MaxBlocks = 10000,
             MaxPCU = 25000,
             SmallGrid = true,
@@ -255,13 +255,13 @@
 
         public static ModConfig DefaultModConfig = new ModConfig
         {
-            DefaultGridClass = DefaultGridClassDefinition,
+            DefaultNoCore = DefaultShipCoreDefinition,
             DebugMode = false,
             NoFlyZones = new List<Zones>{new Zones{AllowedClassesById=new List<long>{301,302,303},Radius=1000.0f},},
             IgnoreFactionTags = new[]{"SPRT"},
             IncludeAiFactions = false,
             MaxPossibleSpeedMetersPerSecond = 120.0f,
-            GridClasses = new[]
+            ShipCores = new[]
             /*
             Key:
             #_## : GridType_ID
@@ -272,10 +272,10 @@
             4_## : Universal
             */
             {
-                new GridClass //Outpost
+                new ShipCore //Outpost
                 {
                     Id = 101,
-                    Name = "Outpost",
+                    SimpleName = "Outpost",
                     SmallGrid = false,
                     LargeGridMobile = false,
                     LargeGridStatic = true,
@@ -335,10 +335,10 @@
                         }
                     }
                 },
-                new GridClass //Station
+                new ShipCore //Station
                 {
                     Id = 102,
-                    Name = "Station",
+                    SimpleName = "Station",
                     SmallGrid = false,
                     LargeGridMobile = false,
                     LargeGridStatic = true,
@@ -415,10 +415,10 @@
                         }
                     }
                 },
-                new GridClass //Utility
+                new ShipCore //Utility
                 {
                     Id =401,
-                    Name = "Utility",
+                    SimpleName = "Utility",
                     SmallGrid = true,
                     LargeGridMobile = true,
                     LargeGridStatic = true,
@@ -441,7 +441,7 @@
                         PowerProducersOutput = 2,
                         MaxSpeed=60.0f,
                     },
-                    DamageModifiers = new GridDamageModifiers
+                    DamageModifiers = new GridDefenseModifiers
                     {
                         Bullet = 1.0f,
                         Energy = 1.0f,
@@ -475,10 +475,10 @@
                         },
                     }
                 },
-                new GridClass //Corvette
+                new ShipCore //Corvette
                 {
                     Id =201,
-                    Name = "Corvette",
+                    SimpleName = "Corvette",
                     SmallGrid = false,
                     LargeGridMobile = true,
                     LargeGridStatic = true,
@@ -504,7 +504,7 @@
                         BoostDuration = 10f,
                         BoostCoolDown = 60f,
                     },
-                    DamageModifiers = new GridDamageModifiers
+                    DamageModifiers = new GridDefenseModifiers
                     {
                         Bullet = 0.5f,
                         Energy = 0.7f,
@@ -552,10 +552,10 @@
                         },
                     }
                 },     
-                new GridClass //Cruiser
+                new ShipCore //Cruiser
                 {
                     Id =202,
-                    Name = "Cruiser",
+                    SimpleName = "Cruiser",
                     SmallGrid = false,
                     LargeGridMobile = true,
                     LargeGridStatic = true,
@@ -581,7 +581,7 @@
                         BoostDuration=10f,
                         BoostCoolDown=60f,
                     },
-                    DamageModifiers = new GridDamageModifiers
+                    DamageModifiers = new GridDefenseModifiers
                     {
                         Bullet = 1.0f,
                         Energy = 0.5f,
@@ -629,10 +629,10 @@
                         },
                     }
                 },
-                new GridClass //Destroyer
+                new ShipCore //Destroyer
                 {
                     Id =203,
-                    Name = "Destroyer",
+                    SimpleName = "Destroyer",
                     SmallGrid = false,
                     LargeGridMobile = true,
                     LargeGridStatic = true,
@@ -658,7 +658,7 @@
                         BoostDuration=10f,
                         BoostCoolDown=120f,
                     },
-                    DamageModifiers = new GridDamageModifiers
+                    DamageModifiers = new GridDefenseModifiers
                     {
                         Bullet = 3.0f,
                         Energy = 2.0f,
@@ -701,10 +701,10 @@
                         },
                     }
                 },  
-                new GridClass //Battleship
+                new ShipCore //Battleship
                 {
                     Id = 204,
-                    Name = "Battleship",
+                    SimpleName = "Battleship",
                     SmallGrid = false,
                     LargeGridMobile = true,
                     LargeGridStatic = true,
@@ -731,7 +731,7 @@
                         BoostCoolDown=60f,
                         
                     },
-                    DamageModifiers = new GridDamageModifiers
+                    DamageModifiers = new GridDefenseModifiers
                     {
                         Bullet = 0.8f,
                         Energy = 0.7f,
@@ -767,10 +767,10 @@
                         },
                     }
                 },  
-                new GridClass //FlagShip
+                new ShipCore //FlagShip
                 {
                     Id =205,
-                    Name = "FlagShip",
+                    SimpleName = "FlagShip",
                     SmallGrid = false,
                     LargeGridMobile = true,
                     LargeGridStatic = true,
@@ -796,7 +796,7 @@
                         BoostDuration=10f,
                         BoostCoolDown=300f,
                     },
-                    DamageModifiers = new GridDamageModifiers
+                    DamageModifiers = new GridDefenseModifiers
                     {
                         Bullet = 0.5f,
                         Energy = 0.6f,
@@ -837,10 +837,10 @@
                         }
                     }
                 },
-                new GridClass //Interceptor
+                new ShipCore //Interceptor
                 {
                     Id =301,
-                    Name = "Interceptor",
+                    SimpleName = "Interceptor",
                     SmallGrid = true,
                     LargeGridMobile = false,
                     LargeGridStatic = false,
@@ -864,7 +864,7 @@
                         MaxSpeed=120.0f,
                         MaxBoost=1f,
                     },
-                    DamageModifiers = new GridDamageModifiers
+                    DamageModifiers = new GridDefenseModifiers
                     {
                         Bullet = 0.7f,
                         Energy = 0.5f,
@@ -912,10 +912,10 @@
                         },
                     }
                 },
-                new GridClass //Fighter
+                new ShipCore //Fighter
                 {
                     Id =302,
-                    Name = "Fighter",
+                    SimpleName = "Fighter",
                     SmallGrid = true,
                     LargeGridMobile = false,
                     LargeGridStatic = false,
@@ -941,7 +941,7 @@
                         BoostDuration = 5f,
                         BoostCoolDown = 60f,
                     },
-                    DamageModifiers = new GridDamageModifiers
+                    DamageModifiers = new GridDefenseModifiers
                     {
                         Bullet = 0.5f,
                         Energy = 0.5f,
@@ -992,10 +992,10 @@
                         },
                     }
                 },
-                new GridClass //Gunship
+                new ShipCore //Gunship
                 {
                     Id = 303,
-                    Name = "Gunship",
+                    SimpleName = "Gunship",
                     SmallGrid = true,
                     LargeGridMobile = false,
                     LargeGridStatic = false,
@@ -1021,7 +1021,7 @@
                         BoostDuration = 15f,
                         BoostCoolDown = 30f,
                     },
-                    DamageModifiers = new GridDamageModifiers
+                    DamageModifiers = new GridDefenseModifiers
                     {
                         Bullet = 0.3f,
                         Energy = 0.2f,

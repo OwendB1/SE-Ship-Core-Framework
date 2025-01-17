@@ -16,7 +16,7 @@
             }
             if (PerFaction.ContainsKey(factionId) && PerFaction[factionId].ContainsKey(newClassId))
             {
-                var numAllowedGrids = Config.GetGridClassById(newClassId).MaxPerFaction;
+                var numAllowedGrids = Config.GetShipCoreBySubType(newClassId).MaxPerFaction;
                 if (numAllowedGrids < 0) return true;
                 var idx = PerFaction[factionId][newClassId].Count + 1;
                 return idx <= numAllowedGrids;
@@ -81,7 +81,7 @@
         {
             var set = new Dictionary<long, List<long>>();
 
-            foreach (var gridClass in Config.GridClasses) set[gridClass.Id] = new List<long>();
+            foreach (var gridClass in Config.ShipCores) set[gridClass.Id] = new List<long>();
 
             return set;
         }

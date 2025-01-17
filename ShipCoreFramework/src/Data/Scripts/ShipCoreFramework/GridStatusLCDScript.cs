@@ -23,7 +23,7 @@ namespace ShipCoreFramework
 
         private CubeGridLogic GridLogic => _terminalBlock?.GetMainGridLogic();
         private MyCubeGrid Grid => _terminalBlock?.CubeGrid as MyCubeGrid;
-        private GridClass GridClass => GridLogic.GridClass;
+        private ShipCore ShipCore => GridLogic.ShipCore;
 
         private readonly Table _headerTable = new Table
         {
@@ -136,7 +136,7 @@ namespace ShipCoreFramework
             {
                 new Cell("Class:"),
                 new Cell(""),
-                new Cell(GridClass.Name)
+                new Cell(ShipCore.SimpleName)
             });
 
             _headerTable.RenderToSprites(spritesToRender, screenTopLeft + padding, screenInnerWidth, new Vector2(15, 0),
@@ -144,15 +144,15 @@ namespace ShipCoreFramework
 
             //Render the results checklist
 
-            if (GridClass.MaxBlocks > 1 || GridClass.MinBlocks > 1)
+            if (ShipCore.MaxBlocks > 1 || ShipCore.MinBlocks > 1)
             {
-                var passed = (GridClass.MaxBlocks < 1 || Grid.BlocksCount <= GridClass.MaxBlocks) &&
-                             (GridClass.MinBlocks < 1 || Grid.BlocksCount <= GridClass.MinBlocks);
-                var target = GridClass.MaxBlocks > 1 && GridClass.MinBlocks > 1
-                    ? $"{GridClass.MinBlocks} - {GridClass.MaxBlocks}"
-                    : GridClass.MaxBlocks > 1
-                        ? $"<= {GridClass.MaxBlocks}"
-                        : $">= {GridClass.MinBlocks}";
+                var passed = (ShipCore.MaxBlocks < 1 || Grid.BlocksCount <= ShipCore.MaxBlocks) &&
+                             (ShipCore.MinBlocks < 1 || Grid.BlocksCount <= ShipCore.MinBlocks);
+                var target = ShipCore.MaxBlocks > 1 && ShipCore.MinBlocks > 1
+                    ? $"{ShipCore.MinBlocks} - {ShipCore.MaxBlocks}"
+                    : ShipCore.MaxBlocks > 1
+                        ? $"<= {ShipCore.MaxBlocks}"
+                        : $">= {ShipCore.MinBlocks}";
 
                 _gridResultsTable.Rows.Add(new Row
                 {
@@ -164,29 +164,29 @@ namespace ShipCoreFramework
                 });
             }
 
-            if (GridClass.MaxMass > 1)
+            if (ShipCore.MaxMass > 1)
                 _gridResultsTable.Rows.Add(new Row
                 {
                     new Cell("Mass: "),
                     new Cell(Grid.Mass.ToString(CultureInfo.InvariantCulture)),
                     new Cell("/"),
-                    new Cell(GridClass.MaxMass.ToString(CultureInfo.InvariantCulture), 
-                        Grid.Mass <= GridClass.MaxMass ? successColor : failColor),
-                    Grid.Mass <= GridClass.MaxMass ? new Cell() : new Cell("X", failColor)
+                    new Cell(ShipCore.MaxMass.ToString(CultureInfo.InvariantCulture), 
+                        Grid.Mass <= ShipCore.MaxMass ? successColor : failColor),
+                    Grid.Mass <= ShipCore.MaxMass ? new Cell() : new Cell("X", failColor)
                 });
 
-            if (GridClass.MaxPCU > 1)
+            if (ShipCore.MaxPCU > 1)
                 _gridResultsTable.Rows.Add(new Row
                 {
                     new Cell("PCU: "),
                     new Cell(Grid.BlocksPCU.ToString()),
                     new Cell("/"),
-                    new Cell(GridClass.MaxPCU.ToString(),
-                        Grid.BlocksPCU <= GridClass.MaxPCU ? successColor : failColor),
-                    Grid.BlocksPCU <= GridClass.MaxPCU ? new Cell() : new Cell("X", failColor)
+                    new Cell(ShipCore.MaxPCU.ToString(),
+                        Grid.BlocksPCU <= ShipCore.MaxPCU ? successColor : failColor),
+                    Grid.BlocksPCU <= ShipCore.MaxPCU ? new Cell() : new Cell("X", failColor)
                 });
 
-            if (GridClass.BlockLimits != null)
+            if (ShipCore.BlockLimits != null)
                 foreach (var blockLimit in GridLogic.BlocksPerLimit)
                 {
                     var countWeight = blockLimit.Value.Sum(l => l.Value);

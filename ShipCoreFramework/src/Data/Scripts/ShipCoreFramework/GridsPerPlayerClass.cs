@@ -19,7 +19,7 @@
 
             if (PerPlayer.ContainsKey(playerId) && PerPlayer[playerId].ContainsKey(newClassId))
             {
-                var numAllowedGrids = Config.GetGridClassById(newClassId).MaxPerPlayer;
+                var numAllowedGrids = Config.GetShipCoreBySubType(newClassId).MaxPerPlayer;
                 if (numAllowedGrids < 0) return true;
                 var idx = PerPlayer[playerId][newClassId].Count + 1;
                 return idx <= numAllowedGrids;
@@ -90,7 +90,7 @@
         {
             var set = new Dictionary<long, List<long>>();
 
-            foreach (var gridClass in Config.GridClasses) set[gridClass.Id] = new List<long>();
+            foreach (var gridClass in Config.ShipCores) set[gridClass.Id] = new List<long>();
 
             return set;
         }

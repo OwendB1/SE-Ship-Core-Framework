@@ -63,9 +63,9 @@ namespace ShipCoreFramework
             if (action != MyFactionStateChange.FactionMemberKick && action != MyFactionStateChange.FactionMemberLeave) return;
             Utils.Log($"FactionStateChanged: {action} from {fromFactionId} to {toFactionId} for faction {factionId} and player {playerId}");
             var factionGridLogics = CubeGridLogics.Where(x => x.Value.OwningFaction?.FactionId == factionId).ToList();
-            foreach (var gridLogic in factionGridLogics.Where(gridLogic => gridLogic.Value.OwningFaction.Members.Count < gridLogic.Value.GridClass.MinPlayers))
+            foreach (var gridLogic in factionGridLogics.Where(gridLogic => gridLogic.Value.OwningFaction.Members.Count < gridLogic.Value.ShipCore.MinPlayers))
             {
-                gridLogic.Value.GridClassId = DefaultGridClassConfig.DefaultGridClassDefinition.Id;
+                gridLogic.Value.GridClassId = DefaultGridClassConfig.DefaultShipCoreDefinition.Id;
             }
         }
 
