@@ -24,6 +24,14 @@ namespace ShipCoreFramework
             }
         }
 
+        public static List<BlockType> GetBlockTypes(this BlockLimit blockLimit)
+        {
+            var relevantBlockGroups =  ModSessionManager.Config.BlockGroups.Where(group => blockLimit.BlockGroups.Contains(group.Name)).ToList();
+            var blockTypes = new List<BlockType>();
+            relevantBlockGroups.ForEach(gr => blockTypes.AddRange(gr.BlockTypes));
+            return blockTypes;
+        }
+
         public static void Log(string msg, int logPriority = 0)
         {
             if (logPriority >= Settings.LOG_LEVEL) MyLog.Default.WriteLine($"[Ship Classes]: {msg}");

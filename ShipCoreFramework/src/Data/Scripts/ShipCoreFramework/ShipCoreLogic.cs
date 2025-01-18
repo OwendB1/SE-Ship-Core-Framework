@@ -1,18 +1,22 @@
 ﻿using Sandbox.Game.Entities;
-using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI;
 using VRage.Game;
+using VRage.Game.Components;
 using VRage.Game.ModAPI;
-using VRageMath;
+using VRage.ModAPI;
+using VRage.ObjectBuilders;
 
 namespace ShipCoreFramework
 {
-    public class ShipCoreLogic
+    [MyEntityComponentDescriptor(typeof(MyObjectBuilder_CubeGrid), false)]
+    public class ShipCoreLogic : MyGameLogicComponent
     {
         public readonly Dictionary<BlockLimit, List<KeyValuePair<IMyCubeBlock, double>>> BlocksPerLimit = new Dictionary<BlockLimit, List<KeyValuePair<IMyCubeBlock, double>>>();
         public readonly HashSet<MyCubeBlock> Blocks = new HashSet<MyCubeBlock>();
 
-        private long _gridClassId;
+        public bool IsDisabled = false;
+        private string _shipCoreType = string.Empty;
+        
         public IMyCubeGrid Grid;
 
         public bool EnableBoost;
@@ -24,36 +28,43 @@ namespace ShipCoreFramework
         public long MajorityOwningPlayerId => GetMajorityOwner();
 
         public ModConfig Config => ModSessionManager.Config;
-
-        public ShipCore ShipCore => Config.GetShipCoreBySubtype(GridClassId);
+        
+        public ShipCore ShipCore => Config.GetShipCoreBySubtype(_shipCoreType);
         public GridModifiers Modifiers => ShipCore.Modifiers;
         public GridDefenseModifiers DefenseModifiers = new GridDefenseModifiers();
 
-        public void Initialize(IMyCubeGrid grid)
+        public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {
-            Grid = grid;
-            if (ModSessionManager.ShipCoreLogics.ContainsKey(Grid.EntityId) && 
-                _gridClassId == DefaultGridClassConfig.DefaultShipCoreDefinition.Id) return;
+            base.Init(objectBuilder);
+            
+            Grid = (IMyCubeGrid)Entity;
+            if (ModSessionManager.ShipCoreLogics.ContainsKey(Grid.EntityId)) return;
             
             List<IMyCubeGrid> subs;
             var main = Utils.GetMainCubeGrid(Grid, out subs);
-            if (main.EntityId != Grid.EntityId)
-            {
-                var logic = new ShipCoreLogic();
-                logic.Initialize(main);
-                return;
-            }
+            if (main.EntityId != Grid.EntityId) return;
+            
+            NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
+            Grid.OnPhysicsChanged += InitOnPhysicsChanged;
+        }
 
+        public override void UpdateOnceBeforeFrame()
+        {
+            base.UpdateOnceBeforeFrame();
+            
+            SpeedEnforcement.EnforceSpeedLimit(this);
+            
+        }
+
+        private void InitOnPhysicsChanged(IMyEntity obj)
+        {
             //Init event handlers
             Grid.OnBlockOwnershipChanged += OnBlockOwnershipChanged;
             Grid.OnIsStaticChanged += OnIsStaticChanged;
             Grid.OnBlockAdded += OnBlockAdded;
             Grid.OnBlockRemoved += OnBlockRemoved;
-            Grid.OnBlockIntegrityChanged
+            Grid.OnBlockIntegrityChanged += OnBlockIntegrityChanged;
             Grid.OnGridMerge += OnGridMerge;
-            Grid.SpeedChanged += OnSpeedChanged;
-            Grid.GridPresenceTierChanged += EnforceNoFlyZones;
-            //Grid.OnMaxThrustChanged += OnSpeedChanged;
 
             if (OwningFaction != null)
             {
@@ -62,49 +73,9 @@ namespace ShipCoreFramework
             }
             Blocks.UnionWith(Grid.GetFatBlocks<MyCubeBlock>().Where(b => b.IsPreview == false));
 
-            if (Grid.Storage == null) Grid.Storage = new MyModStorageComponent();
-            string value;
-            if (Grid.Storage.TryGetValue(Constants.GridClassStorageGUID, out value))
-            {
-                long id;
-                var gridClassId = long.TryParse(value, out id) ? id : 0;
-
-                var gridClass = Config.GetShipCoreBySubtype(gridClassId);
-                if (gridClass.MinPlayers > 0)
-                {
-                    if (OwningFaction == null && gridClass.MinPlayers > 1)
-                    {
-                        gridClassId = 0;
-                    }
-                    else if (gridClass.MinPlayers > OwningFaction.Members.Count)
-                    {
-                        gridClassId = 0;
-                    }
-                }
-                Utils.Log($"[CubeGridLogic] Assigning GridClassId = {gridClassId}");
-                _gridClassId = gridClassId;
-            }
-            else
-            {
-                Utils.Log("[CubeGridLogic] Assigning Default Class, grid did not contain a class assignment");
-                _gridClassId = DefaultGridClassConfig.DefaultShipCoreDefinition.Id;
-                Grid.Storage[Constants.GridClassStorageGUID] = DefaultGridClassConfig.DefaultShipCoreDefinition.Id.ToString();
-            }
-            //Speeds
-            if (Grid.Storage.TryGetValue(Constants.ConfigurableSpeedGUID, out value))
-            {
-                float boostVar;
-                var shipSpeedData = float.TryParse(value, out boostVar) ? new List<float> { boostVar } : new List<float> { 0, 0 };
-                Utils.Log("[CubeGridLogic] Assigning VelocityData");
-                BoostDuration=shipSpeedData[0];
-                BoostCoolDown=shipSpeedData[0];
-            }
-            else
-            {
+            
                 BoostDuration = DefaultGridClassConfig.DefaultShipCoreDefinition.Modifiers.BoostDuration;
                 BoostCoolDown = DefaultGridClassConfig.DefaultShipCoreDefinition.Modifiers.BoostCoolDown;     
-                Grid.Storage[Constants.ConfigurableSpeedGUID] = (new List<float>{DefaultGridClassConfig.DefaultShipCoreDefinition.Modifiers.BoostDuration,DefaultGridClassConfig.DefaultShipCoreDefinition.Modifiers.BoostCoolDown}).ToString();
-            }
 
             if (!AddGridLogic()) return;
 
@@ -116,8 +87,6 @@ namespace ShipCoreFramework
                 subgrid.OnIsStaticChanged += OnIsStaticChanged;
                 subgrid.OnBlockAdded += OnBlockAdded;
                 subgrid.OnBlockRemoved += OnBlockRemoved;
-                subgrid.SpeedChanged += OnSpeedChanged;
-                subgrid.GridPresenceTierChanged += EnforceNoFlyZones;
 
                 Blocks.UnionWith(subgrid.GetFatBlocks<MyCubeBlock>().Where(b => b.IsPreview == false));
             }
@@ -125,7 +94,7 @@ namespace ShipCoreFramework
             foreach (var blockLimit in ShipCore.BlockLimits)
             {
                 var blockVals = new List<KeyValuePair<IMyCubeBlock, double>>();
-                foreach (var blockType in blockLimit.BlockTypes)
+                foreach (var blockType in blockLimit.GetBlockTypes())
                 {
                     var countingBlocks = Blocks
                         .Where(b => Utils.GetBlockTypeId(b) == blockType.TypeId &&
@@ -143,6 +112,12 @@ namespace ShipCoreFramework
 
             EnforceBlockPunishment();
             ApplyModifiers();
+            
+        }
+
+        private void OnBlockIntegrityChanged(IMySlimBlock obj)
+        {
+            throw new NotImplementedException();
         }
 
         private bool AddGridLogic()
@@ -151,13 +126,13 @@ namespace ShipCoreFramework
             {
                 if (this == null) throw new Exception("gridLogic cannot be null");
                 if (Grid == null) throw new Exception("gridLogic.Grid cannot be null");
-                if (CubeGridLogics == null) throw new Exception("CubeGridLogics cannot be null");
+                if (ModSessionManager.ShipCoreLogics == null) throw new Exception("CubeGridLogics cannot be null");
 
                 Utils.Log($"Adding Logic: {Grid.EntityId} | {Grid.CustomName}");
 
                 GridsPerFactionClassManager.AddCubeGrid(this);
                 GridsPerPlayerClassManager.AddCubeGrid(this);
-                CubeGridLogics[Grid.EntityId] = this;
+                ModSessionManager.ShipCoreLogics[Grid.EntityId] = this;
 
                 var concreteGrid = Grid as MyCubeGrid;
                 return concreteGrid != null;
@@ -189,35 +164,6 @@ namespace ShipCoreFramework
             ApplyModifiers();
         }
 
-        public void RemoveGridLogic()
-        {
-            try
-            {
-                // called when entity is about to be removed for whatever reason (block destroyed, entity deleted, grid despawn because of sync range, etc)
-                MyAPIGateway.Session.Factions.FactionStateChanged -= FactionsOnFactionStateChanged;
-                foreach (var funcBlock in Blocks.OfType<IMyFunctionalBlock>())
-                {
-                    funcBlock.EnabledChanged -= FuncBlockOnEnabledChanged;
-                    funcBlock.OnUpgradeValuesChanged -= OnUpgradeValuesChanged;
-                }
-                Grid.OnBlockOwnershipChanged -= OnBlockOwnershipChanged;
-                Grid.OnIsStaticChanged -= OnIsStaticChanged;
-                Grid.OnBlockAdded -= OnBlockAdded;
-                Grid.OnBlockRemoved -= OnBlockRemoved;
-                Grid.OnGridMerge -= OnGridMerge;
-                Grid.SpeedChanged -= OnSpeedChanged;
-                Grid.GridPresenceTierChanged -= EnforceNoFlyZones;
-
-                CubeGridLogics.Remove(Grid.EntityId);
-                GridsPerFactionClassManager.RemoveCubeGrid(this);
-                GridsPerPlayerClassManager.RemoveCubeGrid(this);
-            }
-            catch (Exception e)
-            {
-                Utils.Log(e.ToString());
-            }
-        }
-
         private void ApplyModifiers(GridModifiers modifiers = null)
         {
             DefenseModifiers = ShipCore.DamageModifiers;
@@ -227,20 +173,19 @@ namespace ShipCoreFramework
             }
         }
 
+        //TODO: fix grid merging and subgridding event registration
         private static void OnGridMerge(IMyCubeGrid main, IMyCubeGrid sub)
         {
-            if (!CubeGridLogics.ContainsKey(sub.EntityId) ||
-                !CubeGridLogics.ContainsKey(main.EntityId)) return;
+            if (!ModSessionManager.ShipCoreLogics.ContainsKey(sub.EntityId) ||
+                !ModSessionManager.ShipCoreLogics.ContainsKey(main.EntityId)) return;
 
-            CubeGridLogics[sub.EntityId].RemoveGridLogic();
-            var mainLogic = CubeGridLogics[main.EntityId];
+            ModSessionManager.ShipCoreLogics[sub.EntityId].RemoveGridLogic();
+            var mainLogic = ModSessionManager.ShipCoreLogics[main.EntityId];
 
             sub.OnBlockOwnershipChanged += mainLogic.OnBlockOwnershipChanged;
             sub.OnIsStaticChanged += mainLogic.OnIsStaticChanged;
             sub.OnBlockAdded += mainLogic.OnBlockAdded;
             sub.OnBlockRemoved += mainLogic.OnBlockRemoved;
-            sub.SpeedChanged += mainLogic.OnSpeedChanged;
-            sub.GridPresenceTierChanged += mainLogic.EnforceNoFlyZones;
             mainLogic.Blocks.Clear();
             mainLogic.Blocks.UnionWith(mainLogic.Grid.GetFatBlocks<MyCubeBlock>().Where(b => b.IsPreview == false));
         }
@@ -268,7 +213,7 @@ namespace ShipCoreFramework
                 if (!BlocksPerLimit.ContainsKey(limit)) continue;
                 var limitBlocks = BlocksPerLimit[limit];
                 var countWeight = limitBlocks.Sum(b => b.Value);
-                var countForSpecificBlock = limit.BlockTypes.First(l =>
+                var countForSpecificBlock = limit.GetBlockTypes().First(l =>
                     l.TypeId == Utils.GetBlockTypeId(obj) && l.SubtypeId == Utils.GetBlockSubtypeId(obj)).CountWeight;
 
                 Utils.Log($"{countWeight} | {countForSpecificBlock} | {limit.MaxCount}");
@@ -329,101 +274,7 @@ namespace ShipCoreFramework
         {
             EnforceBlockPunishment();
         }
-
-        private void OnSpeedChanged(IMyCubeGrid obj)
-        {
-            EnforceNoFlyZones(obj);
-        }
-
-        public void EnforceSpeedLimit(IMyCubeGrid obj)
-        {
-            var gridLogic = obj.GetMainGridLogic();
-            var gridClass = gridLogic?.ShipCore;
-            if (gridClass == null) return;
-            if(gridLogic?.BoostDuration == null || gridLogic?.BoostCoolDown == null)
-            {
-                string value;
-                if (Grid.Storage.TryGetValue(Constants.ConfigurableSpeedGUID, out value))
-                {
-                    float boostVar;
-                    var shipSpeedData = float.TryParse(value, out boostVar) ? new List<float> { boostVar } : 
-                        new List<float> { gridClass.Modifiers?.BoostDuration ?? Config.DefaultNoCore.Modifiers.BoostDuration*60.0f, 0 };
-                    gridLogic.BoostDuration = shipSpeedData[0];
-                    gridLogic.BoostCoolDown = shipSpeedData[1];
-                }
-            }
-
-            if (gridLogic.BoostDuration == 0 && gridLogic.BoostCoolDown == 0)
-            {
-                gridLogic.BoostDuration = gridClass.Modifiers.BoostDuration * 60.0f;
-            }
-
-            var limitedSpeed = gridClass.Modifiers?.MaxSpeed ?? Config.DefaultNoCore.Modifiers.MaxSpeed;
-            var boostSpeed = gridClass.Modifiers?.MaxBoost ?? Config.DefaultNoCore.Modifiers.MaxBoost;
-
-            var myGrid = obj;
-            var velocity = myGrid.Physics.LinearVelocity;
-            // If cooldown is active, decrement it
-            if (gridLogic.BoostCoolDown > 0)
-            {
-                gridLogic.BoostCoolDown -= 1.0f;
-                if (gridLogic.BoostCoolDown <= 0)
-                {
-                    // Reset boost duration when cooldown ends
-                    gridLogic.BoostDuration = gridClass.Modifiers.BoostDuration * 60.0f;
-                }
-            }
-            // Check if boost is enabled and cooldown is inactive
-            if (gridLogic.EnableBoost && (gridLogic.BoostDuration>0f))
-            {
-                limitedSpeed *= boostSpeed;
-                gridLogic.BoostDuration -= 1.0f;
-                // If boost duration is depleted, start cooldown
-                if (gridLogic.BoostDuration <= 0f)
-                {
-                    gridLogic.BoostCoolDown = gridClass.Modifiers.BoostCoolDown * 60.0f;
-                    gridLogic.EnableBoost = false;
-                    Utils.ShowNotification("Booster Disengaged!",myGrid,600);
-                }
-            }
-
-            // Store the current boost status
-            Grid.Storage[Constants.ConfigurableSpeedGUID] = new List<float> {gridLogic.BoostDuration, gridLogic.BoostCoolDown}.ToString();
-
-            // Ensure the velocity does not exceed the limited speed
-            if (velocity.LengthSquared() > limitedSpeed * limitedSpeed)
-            {
-                velocity = Vector3.Normalize(velocity) * limitedSpeed;
-            }
-            // Apply the calculated velocity
-            myGrid.Physics.SetSpeeds(velocity, myGrid.Physics.AngularVelocity);
-            //Utils.Log($"Cooldown: {gridLogic.BoostCoolDown}\nDuration: {gridLogic.BoostDuration}");
-        }
-
-        private void EnforceNoFlyZones(IMyCubeGrid obj)
-        {
-            if(Config.NoFlyZones == null || Config.NoFlyZones?.Count == 0) return;
-            var gridLogic = obj.GetMainGridLogic();
-            var gridClassId = gridLogic?.ShipCore?.Id ?? 0;
-            foreach (var block in from zone in Config.NoFlyZones 
-                     let range = Vector3D.Distance(obj.WorldMatrix.Translation,new Vector3D(zone.X, zone.Y, zone.Z)) 
-                     where range < zone.Radius 
-                     where !zone.AllowedClassesById.Contains(gridClassId) 
-                     select obj into myGrid 
-                     select myGrid.GetFatBlocks<IMyFunctionalBlock>() into blocksOnGrid 
-                     from block in blocksOnGrid 
-                     where block != null 
-                     where block.Enabled
-                     where ShipCore.BlockLimits.Any(limit => limit.TurnedOffByNoFlyZone && limit.BlockTypes.Any(type => 
-                                                                  type.TypeId == Utils.GetBlockTypeId(block) && 
-                                                                  type.SubtypeId == Utils.GetBlockSubtypeId(block)))
-                     select block)
-            {
-                block.Enabled = false;
-            }
-
-        }
-
+        
         private void FactionsOnFactionStateChanged(MyFactionStateChange action, long fromFactionId, long toFactionId, long playerId, long senderId)
         {
             if ((action != MyFactionStateChange.FactionMemberAcceptJoin &&
@@ -497,7 +348,7 @@ namespace ShipCoreFramework
 
         private IEnumerable<BlockLimit> GetRelevantLimits(IMySlimBlock block)
         {
-            return ShipCore.BlockLimits.Where(limit => limit.BlockTypes
+            return ShipCore.BlockLimits.Where(limit => limit.GetBlockTypes()
                 .Any(type => type.TypeId == Utils.GetBlockTypeId(block) && type.SubtypeId == Utils.GetBlockSubtypeId(block)));
         }
 

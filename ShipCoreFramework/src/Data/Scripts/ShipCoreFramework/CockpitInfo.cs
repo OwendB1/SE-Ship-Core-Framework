@@ -1,7 +1,7 @@
 ﻿using System.Text;
-using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -9,7 +9,7 @@ using VRage.ObjectBuilders;
 
 namespace ShipCoreFramework
 {
-    [MyEntityComponentDescriptor(typeof(MyObjectBuilder_Cockpit), false)]
+    [MyEntityComponentDescriptor(typeof(MyObjectBuilder_CubeGrid), false)]
     public class CockpitInfo : MyGameLogicComponent
     {
         private IMyCockpit _cockpit;

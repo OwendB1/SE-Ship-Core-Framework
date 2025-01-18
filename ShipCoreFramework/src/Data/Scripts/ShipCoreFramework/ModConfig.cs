@@ -1,5 +1,6 @@
 ﻿using ProtoBuf;
 using Sandbox.ModAPI;
+using VRageMath;
 
 namespace ShipCoreFramework
 {
@@ -37,7 +38,7 @@ namespace ShipCoreFramework
             if (shipCore == null) Utils.Log($"Unknown core {coreSubtypeId}, using default core");
             return shipCore ?? DefaultNoCore;
         }
-
+        
         public void SaveConfig()
         {
             try
@@ -157,19 +158,16 @@ namespace ShipCoreFramework
     [ProtoContract]
 	public class Zones {
         [ProtoMember(1)]
-		public int Id {get; set;}
-        [ProtoMember(2)]
-		public double X {get; set;}
+		public int Id;
+        [ProtoMember(2)] 
+        public Vector3D Position;
         [ProtoMember(3)]
-		public double Y {get; set;}
+        public double Radius;
         [ProtoMember(4)]
-		public double Z {get; set;}
-        [ProtoMember(5)]
-		public double Radius{get; set;}
-        [ProtoMember(6)]
-        public List<long> AllowedClassesById = new List<long>();
+        public List<string> AllowedCoresSubtype = new List<string>();
 
-		}
+    }
+    
     [ProtoContract]
     public class ShipCore
     {
@@ -295,7 +293,7 @@ namespace ShipCoreFramework
         public string Name = string.Empty;
 
         [ProtoMember(2)] 
-        public BlockGroups[] BlockTypes = Array.Empty<BlockGroups>();
+        public string[] BlockGroups = Array.Empty<string>();
 
         [ProtoMember(3)] 
         public float MaxCount = 0;
