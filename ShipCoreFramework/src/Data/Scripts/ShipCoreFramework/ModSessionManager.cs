@@ -47,6 +47,8 @@ namespace ShipCoreFramework
             ShipCoreLogics.Clear();
             GridsPerFactionClassManager.Reset();
             GridsPerPlayerClassManager.Reset();
+            
+            Config.SaveConfig();
         }
         
 

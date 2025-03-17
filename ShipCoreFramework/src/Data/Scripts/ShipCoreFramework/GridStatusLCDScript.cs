@@ -136,7 +136,7 @@ namespace ShipCoreFramework
             {
                 new Cell("Class:"),
                 new Cell(""),
-                new Cell(ShipCore.SimpleName)
+                new Cell(ShipCore.UniqueName)
             });
 
             _headerTable.RenderToSprites(spritesToRender, screenTopLeft + padding, screenInnerWidth, new Vector2(15, 0),

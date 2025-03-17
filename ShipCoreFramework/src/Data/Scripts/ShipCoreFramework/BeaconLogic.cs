@@ -63,7 +63,7 @@ namespace ShipCoreFramework
             if (!gridClass.ForceBroadCast) return;
             _beacon.Enabled = true;
             _beacon.Radius = gridClass.ForceBroadCastRange;
-            if(!_beacon.HudText.Contains(gridClass.SimpleName)){_beacon.HudText = $"{_beacon.CubeGrid.DisplayName} : {gridClass.SimpleName}";}
+            if(!_beacon.HudText.Contains(gridClass.UniqueName)){_beacon.HudText = $"{_beacon.CubeGrid.DisplayName} : {gridClass.UniqueName}";}
 
             /*if(primaryOwnerId != -1)
             {

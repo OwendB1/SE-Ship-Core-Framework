@@ -8,29 +8,21 @@ namespace ShipCoreFramework
     public class ModConfig
     {
         [ProtoMember(1)] public bool DebugMode;
-        [ProtoMember(2)] public List<Zones> NoFlyZones;
-        [ProtoMember(3)] public List<string> IgnoreFactionTags;
-        [ProtoMember(4)] public bool IncludeAiFactions;
-        [ProtoMember(5)] public float MaxPossibleSpeedMetersPerSecond;
-        [ProtoMember(6)] public List<string> ShipCoreFilenames = new List<string> { "ShipCoreConfig_XXX_Core.xml" };
+        [ProtoMember(2)] public float MaxPossibleSpeedMetersPerSecond;
+        [ProtoMember(3)] public bool IncludeAiFactions;
+        [ProtoMember(4)] public List<string> IgnoreFactionTags;
+        [ProtoMember(5)] public List<Zones> NoFlyZones;
+        [ProtoMember(6)] public string NoCoreSimpleName = "";
         
-        [ProtoIgnore] 
-        public List<BlockGroups> BlockGroups = new List<BlockGroups>();
+        [ProtoIgnore] public readonly List<BlockGroups> BlockGroups = new List<BlockGroups>();
+        [ProtoIgnore] public readonly List<ShipCore> ShipCores = new List<ShipCore>();
+        [ProtoIgnore] private readonly List<ShipCore> _noCoreConfigs = new List<ShipCore>();
+        [ProtoIgnore] public ShipCore DefaultNoCore;
         
-        [ProtoIgnore] 
-        public ShipCore DefaultNoCore;
-        
-        [ProtoIgnore] 
-        public List<ShipCore> ShipCores;
-        
-        [ProtoIgnore]
-        private const string GlobalConfigFileName = "ShipCoreConfig_World.xml";
-        
-        [ProtoIgnore]
-        private const string BlockGroupsFileName = "ShipCoreConfig_Groups.xml";
-        
-        [ProtoIgnore]
-        private const string DefaultNoCoreFileName = "ShipCoreConfig_No_Core.xml";
+        [ProtoIgnore] private const string GlobalConfigFileName = "ShipCoreConfig_World.xml";
+        [ProtoIgnore] private const string CoreManifestFileName = "ShipCoreConfig_Manifest.xml";   
+        [ProtoIgnore] private const string BlockGroupsFileName = "ShipCoreConfig_Groups.xml";
+        [ProtoIgnore] private const string DefaultNoCoreFileName = "ShipCoreConfig_No_Core.xml";
         
         public ShipCore GetShipCoreBySubtype(string coreSubtypeId)
         {
@@ -54,12 +46,6 @@ namespace ShipCoreFramework
                 var defaultNoCoreWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage(DefaultNoCoreFileName, typeof(ShipCore));
                 defaultNoCoreWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this));
                 defaultNoCoreWriter.Close();
-
-                foreach (var shipCoreWriter in ShipCoreFilenames.Select(shipCoreFileName => MyAPIGateway.Utilities.WriteFileInWorldStorage(shipCoreFileName, typeof(ShipCore))))
-                {
-                    shipCoreWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this));
-                    shipCoreWriter.Close();
-                }
             }
             catch (Exception e)
             {
@@ -69,88 +55,128 @@ namespace ShipCoreFramework
 
         public ModConfig LoadConfig()
         {
+            var globalSettings = new ModConfig();
             try
             {
-                var firstRead = true;
-                ModConfig globalSettings = null;
-                foreach (var mod in MyAPIGateway.Session.Mods)
+                //Get World Settings
+                if(MyAPIGateway.Utilities.FileExistsInWorldStorage(GlobalConfigFileName,typeof(ModConfig)))
                 {
-                    if (mod.PublishedFileId == 76561198074076521)
-                    {
-
-                        return null;
-                    }
-
-                    if (!MyAPIGateway.Utilities.FileExistsInModLocation(GlobalConfigFileName, mod) ||
-                        !MyAPIGateway.Utilities.FileExistsInModLocation(BlockGroupsFileName, mod) ||
-                        !MyAPIGateway.Utilities.FileExistsInModLocation(DefaultNoCoreFileName, mod)) continue;
-                    
-                    var shipCoreFilenames = new List<string>();
-                    using (var reader = MyAPIGateway.Utilities.ReadFileInModLocation(GlobalConfigFileName, mod))
+                    using (var reader = MyAPIGateway.Utilities.ReadFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig)))
                     {
                         var text = reader.ReadToEnd();
                         var newGlobalSettings = MyAPIGateway.Utilities.SerializeFromXML<ModConfig>(text);
-
-                        if (firstRead)
-                        {
-                            globalSettings = newGlobalSettings;
-                            firstRead = false;
-                        }
-                        else
-                        {
-                            globalSettings.NoFlyZones.AddRange(newGlobalSettings.NoFlyZones);
-                            globalSettings.IgnoreFactionTags.AddRange(newGlobalSettings.IgnoreFactionTags);
-                        }
-                            
                         if (newGlobalSettings == null)
-                            throw new Exception($"Failed to load global settings from Mod: {mod.FriendlyName}");
-                            
-                        if(newGlobalSettings.ShipCoreFilenames == null || newGlobalSettings.ShipCoreFilenames.Count == 0) 
-                            throw new Exception($"Mod: {mod.FriendlyName} contains no Ship Core filenames");
-                        shipCoreFilenames.AddRange(newGlobalSettings.ShipCoreFilenames);
+                            throw new Exception($"Failed to load world config.");
+                        globalSettings=newGlobalSettings;
                     }
-
-                    using (var reader = MyAPIGateway.Utilities.ReadFileInModLocation(BlockGroupsFileName, mod))
+                }
+                else
+                {
+                    //Write Global Settings using predefined values
+                    var globalConfigWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig));
+                    globalConfigWriter.Write(MyAPIGateway.Utilities.SerializeToXML(globalSettings));
+                    globalConfigWriter.Close();
+                }
+                
+                //Run Though Mods
+                foreach (var mod in MyAPIGateway.Session.Mods)
+                {
+                    //Add Custom BlockGroups
+                    if(MyAPIGateway.Utilities.FileExistsInModLocation(BlockGroupsFileName, mod))
                     {
-                        var text = reader.ReadToEnd();
-                        var newBlockGroups = MyAPIGateway.Utilities.SerializeFromXML<BlockGroups[]>(text);
-                            
-                        if (newBlockGroups == null)
-                            throw new Exception($"Failed to load block groups from Mod: {mod.FriendlyName}");
-                        BlockGroups.AddRange(newBlockGroups);
-                    }
-
-                    foreach (var shipCoreFilename in shipCoreFilenames)
-                    {
-                        using (var reader = MyAPIGateway.Utilities.ReadFileInModLocation(shipCoreFilename, mod))
+                        using (var reader = MyAPIGateway.Utilities.ReadFileInModLocation(BlockGroupsFileName, mod))
                         {
                             var text = reader.ReadToEnd();
-                            var newShipCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(text);
-                            
-                            if(newShipCore == null)
-                                throw new Exception($"Failed to load ship core from file {shipCoreFilename} in Mod: {mod.FriendlyName}");
-                            
-                            ShipCores.Add(newShipCore);
+                            var newBlockGroups = MyAPIGateway.Utilities.SerializeFromXML<BlockGroups[]>(text);
+                                
+                            if (newBlockGroups == null)
+                                throw new Exception($"Failed to load block groups from Mod: {mod.FriendlyName}");
+                            globalSettings.BlockGroups.AddRange(newBlockGroups);
                         }
                     }
                     
-                    if (firstRead == false) continue;
-                    using (var reader = MyAPIGateway.Utilities.ReadFileInModLocation(DefaultNoCoreFileName, mod))
+                    //Add default Core to list
+                    if(MyAPIGateway.Utilities.FileExistsInModLocation(DefaultNoCoreFileName, mod))
+                    {
+                        using (var reader = MyAPIGateway.Utilities.ReadFileInModLocation(DefaultNoCoreFileName, mod))
+                        {
+                            var text = reader.ReadToEnd();
+                            var newNoCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(text);
+                            
+                            if (newNoCore == null)
+                                throw new Exception($"Failed to load no-core from Mod: {mod.FriendlyName}");
+                            _noCoreConfigs.Add(newNoCore);
+                        }
+                    }
+
+                    if (!MyAPIGateway.Utilities.FileExistsInModLocation(CoreManifestFileName, mod)) continue;
+                    
+                    //Check the Core Manifest to get all cores in the mod
+                    using (var reader = MyAPIGateway.Utilities.ReadFileInModLocation(CoreManifestFileName, mod))
                     {
                         var text = reader.ReadToEnd();
-                        var newNoCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(text);
+                        var coreManifest = MyAPIGateway.Utilities.SerializeFromXML<CoreManifest>(text);
+                        if (coreManifest == null)
+                            throw new Exception($"Failed to Load Classes from Mod: {mod.FriendlyName}");
                         
-                        if (newNoCore == null)
-                            throw new Exception($"Failed to load no-core from Mod: {mod.FriendlyName}");
-                        DefaultNoCore = newNoCore;
+                        //Go get ship cores
+                        foreach (var shipCoreFilename in coreManifest.ShipCoreFilenames)
+                        {
+                            using (var textReader = MyAPIGateway.Utilities.ReadFileInModLocation(shipCoreFilename, mod))
+                            {
+                                var modText = textReader.ReadToEnd();
+                                var newShipCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(modText);
+                                
+                                if(newShipCore == null)
+                                    throw new Exception($"Failed to load ship core from file {shipCoreFilename} in Mod: {mod.FriendlyName}");
+                                
+                                globalSettings.ShipCores.Add(newShipCore);
+                            }
+                        }
                     }
                 }
-                return globalSettings;
+
+                ThrowErrorIfDuplicates(_noCoreConfigs, core => core.UniqueName);
+                ThrowErrorIfDuplicates(ShipCores, core => core.UniqueName);
+                ThrowErrorIfDuplicates(BlockGroups, groups => groups.Name);
+
+                if (_noCoreConfigs.Count == 0)
+                {
+                    Utils.Log($"Could not find any no-core configs, setting no-core config to use pre-generated internal one!!", 1);
+                    DefaultNoCore = DefaultNoCoreConfig.ShipCore;
+                }
+                else
+                {
+                    var chosenNoCore = _noCoreConfigs.FirstOrDefault(core => core.UniqueName == NoCoreSimpleName);
+                    if (chosenNoCore != null)
+                    {
+                        DefaultNoCore = chosenNoCore;
+                    } else
+                    {
+                        var exceptionMessage =
+                            $"No no-core config found for simple name: \"{NoCoreSimpleName}\", please make sure to define the preferred no core! The following cores can be chosen: \n\n";
+                        exceptionMessage = _noCoreConfigs.Aggregate(exceptionMessage, (current, noCore) => current + $"- {noCore.UniqueName}\n");
+                        throw new Exception(exceptionMessage);
+                    }
+                }
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
-                throw;
+                //Set Defaults
+            }
+            return globalSettings;
+        }
+        
+        private static void ThrowErrorIfDuplicates<T, TKey>(List<T> list, Func<T, TKey> selector)
+        {
+            var dupeList = list.GroupBy(selector)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+            
+            if (dupeList.Any())
+            {
+                throw new Exception($"Found duplicates f0r {selector.Method.Name}: {string.Join("\n- ", dupeList)}");
             }
         }
     }
@@ -169,12 +195,18 @@ namespace ShipCoreFramework
     }
     
     [ProtoContract]
+    public class CoreManifest
+    {
+        [ProtoMember(1)] public List<string> ShipCoreFilenames;
+    }
+    
+    [ProtoContract]
     public class ShipCore
     {
         [ProtoMember(1)]
         public string SubtypeId = string.Empty;
         [ProtoMember(2)]
-        public string SimpleName = string.Empty;
+        public string UniqueName = string.Empty;
         [ProtoMember(3)]
         public bool ForceBroadCast = false;
         [ProtoMember(4)]
@@ -216,7 +248,7 @@ namespace ShipCoreFramework
         [ProtoMember(22)]
         public BlockLimit[] BlockLimits = Array.Empty<BlockLimit>();
     }
-
+    
     [ProtoContract]
     public class GridModifiers
     {
@@ -246,11 +278,19 @@ namespace ShipCoreFramework
         public float BoostDuration = 10f; 
         [ProtoMember(15)]
         public float BoostCoolDown = 60f; 
-
+        
         public override string ToString()
         {
             return
-                $"<GridModifiers ThrusterForce={ThrusterForce} ThrusterEfficiency={ThrusterEfficiency} GyroForce={GyroForce} GyroEfficiency={GyroEfficiency} RefineEfficiency={RefineEfficiency} RefineSpeed={RefineSpeed} AssemblerSpeed={AssemblerSpeed} PowerProducersOutput={PowerProducersOutput} DrillHarvestMutiplier={DrillHarvestMultiplier} />";
+                $"<GridModifiers ThrusterForce={ThrusterForce} " +
+                $"ThrusterEfficiency={ThrusterEfficiency} " +
+                $"GyroForce={GyroForce} " +
+                $"GyroEfficiency={GyroEfficiency} " +
+                $"RefineEfficiency={RefineEfficiency} " +
+                $"RefineSpeed={RefineSpeed} " +
+                $"AssemblerSpeed={AssemblerSpeed} " +
+                $"PowerProducersOutput={PowerProducersOutput} " +
+                $"DrillHarvestMultiplier={DrillHarvestMultiplier} />";
         }
 
         public List<ModifierNameValue> GetModifierValues()

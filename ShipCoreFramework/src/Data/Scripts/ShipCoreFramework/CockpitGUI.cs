@@ -142,21 +142,21 @@ namespace ShipCoreFramework
         {
             list.AddRange(from gridLimit in ModSessionManager.Config.ShipCores
                           where gridLimit.LargeGridStatic
-                          select new MyTerminalControlComboBoxItem { Key = gridLimit.Id, Value = MyStringId.GetOrCompute(gridLimit.SimpleName) });
+                          select new MyTerminalControlComboBoxItem { Key = gridLimit.Id, Value = MyStringId.GetOrCompute(gridLimit.UniqueName) });
         }
 
         private static void SetComboboxContentLargeGridMobile(List<MyTerminalControlComboBoxItem> list)
         {
             list.AddRange(from gridLimit in ModSessionManager.Config.ShipCores
                           where gridLimit.LargeGridMobile
-                          select new MyTerminalControlComboBoxItem { Key = gridLimit.Id, Value = MyStringId.GetOrCompute(gridLimit.SimpleName) });
+                          select new MyTerminalControlComboBoxItem { Key = gridLimit.Id, Value = MyStringId.GetOrCompute(gridLimit.UniqueName) });
         }
 
         private static void SetComboboxContentSmall(List<MyTerminalControlComboBoxItem> list)
         {
             list.AddRange(from gridLimit in ModSessionManager.Config.ShipCores
                           where gridLimit.SmallGrid
-                          select new MyTerminalControlComboBoxItem { Key = gridLimit.Id, Value = MyStringId.GetOrCompute(gridLimit.SimpleName) });
+                          select new MyTerminalControlComboBoxItem { Key = gridLimit.Id, Value = MyStringId.GetOrCompute(gridLimit.UniqueName) });
         }
 
         private static long GetGridClass(IMyTerminalBlock block)
