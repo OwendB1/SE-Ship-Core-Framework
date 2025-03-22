@@ -10,7 +10,7 @@ namespace ShipCoreFramework
     public class BeaconLogic : MyGameLogicComponent
     {
         private IMyBeacon _beacon;
-        private ShipCoreLogic GridLogic => _beacon?.GetMainGridLogic();
+        //private ShipCoreLogic GridLogic => _beacon?.GetMainGridLogic();
 
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {
@@ -56,7 +56,8 @@ namespace ShipCoreFramework
 
         public void UpdateBeacon()
         {
-            var gridClass =GridLogic?.ShipCore; //<this was returning null, either because Beacon = null, or GetGridLogic isn't working
+            /*
+            var gridClass =null; //GridLogic?.ShipCore; //<this was returning null, either because Beacon = null, or GetGridLogic isn't working
 
             if (gridClass == null) return;
 
@@ -64,7 +65,7 @@ namespace ShipCoreFramework
             _beacon.Enabled = true;
             _beacon.Radius = gridClass.ForceBroadCastRange;
             if(!_beacon.HudText.Contains(gridClass.UniqueName)){_beacon.HudText = $"{_beacon.CubeGrid.DisplayName} : {gridClass.UniqueName}";}
-
+            */
             /*if(primaryOwnerId != -1)
             {
                 Beacon.own

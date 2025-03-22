@@ -1,6 +1,29 @@
 ﻿using ProtoBuf;
+// System
+using System;
+using System.Text;
+using System.Collections.Generic;
+using System.Linq;
+using System.Globalization;
+// Sandbox
+using Sandbox.Common.ObjectBuilders;
+using Sandbox.Game.EntityComponents;
+using Sandbox.Game.Components;
+using Sandbox.Game.Entities;
+using Sandbox.ModAPI.Interfaces.Terminal;
 using Sandbox.ModAPI;
+using Sandbox.Definitions;
+// VRage
+using VRage.Game;
+using VRage.Game.Components;
+using VRage.Game.ModAPI;
+using VRage.Game.Entity;
+using VRage.ModAPI;
+using VRage.ObjectBuilders;
+using VRage.Utils;
 using VRageMath;
+using VRage.Game.ModAPI.Network;
+using VRage.Sync;
 
 namespace ShipCoreFramework
 {
@@ -14,7 +37,7 @@ namespace ShipCoreFramework
         [ProtoMember(5)] public List<Zones> NoFlyZones;
         [ProtoMember(6)] public string NoCoreSimpleName = "";
         
-        [ProtoIgnore] public readonly List<BlockGroups> BlockGroups = new List<BlockGroups>();
+        [ProtoIgnore] public readonly List<BlockGroup> BlockGroups = new List<BlockGroup>();
         [ProtoIgnore] public readonly List<ShipCore> ShipCores = new List<ShipCore>();
         [ProtoIgnore] private readonly List<ShipCore> _noCoreConfigs = new List<ShipCore>();
         [ProtoIgnore] public ShipCore DefaultNoCore;
@@ -27,7 +50,7 @@ namespace ShipCoreFramework
         public ShipCore GetShipCoreBySubtype(string coreSubtypeId)
         {
             var shipCore = ShipCores.FirstOrDefault(core => core.SubtypeId == coreSubtypeId);
-            if (shipCore == null) Utils.Log($"Unknown core {coreSubtypeId}, using default core");
+            if (shipCore == null){}// Utils.Log($"Unknown core {coreSubtypeId}, using default core");
             return shipCore ?? DefaultNoCore;
         }
         
@@ -49,7 +72,7 @@ namespace ShipCoreFramework
             }
             catch (Exception e)
             {
-                Utils.Log($"Failed to save configs, reason {e.Message}", 3);
+                //Utils.Log($"Failed to save configs, reason {e.Message}", 3);
             }
         }
 
@@ -142,7 +165,7 @@ namespace ShipCoreFramework
 
                 if (_noCoreConfigs.Count == 0)
                 {
-                    Utils.Log($"Could not find any no-core configs, setting no-core config to use pre-generated internal one!!", 1);
+                    //Utils.Log($"Could not find any no-core configs, setting no-core config to use pre-generated internal one!!", 1);
                     DefaultNoCore = DefaultNoCoreConfig.ShipCore;
                 }
                 else
@@ -346,7 +369,7 @@ namespace ShipCoreFramework
     }
 
     [ProtoContract]
-    public class BlockGroups
+    public class BlockGroup
     {
         [ProtoMember(1)]
         public string Name = string.Empty;
@@ -365,10 +388,6 @@ namespace ShipCoreFramework
 
         [ProtoMember(3)] 
         public float CountWeight;
-
-        public BlockType()
-        {
-        }
 
         public BlockType(string typeId, string subtypeId = "", float countWeight = 1)
         {
