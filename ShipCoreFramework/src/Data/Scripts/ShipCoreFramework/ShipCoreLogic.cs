@@ -148,8 +148,8 @@ namespace ShipCoreFramework
 
                 Utils.Log($"Adding Logic: {Grid.EntityId} | {Grid.CustomName}");
 
-                GridsPerFactionClassManager.AddCubeGrid(this);
-                GridsPerPlayerClassManager.AddCubeGrid(this);
+                //GridsPerFactionClassManager.AddCubeGrid(this);
+                //GridsPerPlayerClassManager.AddCubeGrid(this);
                 ModSessionManager.ShipCoreLogics[Grid.EntityId] = this;
 
                 var concreteGrid = Grid as MyCubeGrid;
@@ -184,7 +184,7 @@ namespace ShipCoreFramework
 
         private void ApplyModifiers(GridModifiers modifiers = null)
         {
-            DefenseModifiers = ShipCore.DamageModifiers;
+            DefenseModifiers = ShipCore.PassiveDefenseModifiers;
             foreach (var block in from block in Blocks let terminalBlock = block as IMyTerminalBlock where terminalBlock != null select block)
             {
                 CubeGridModifiers.ApplyModifiers(block, modifiers ?? Modifiers);
@@ -268,7 +268,7 @@ namespace ShipCoreFramework
                     CubeGridModifiers.ApplyModifiers(block, DefaultGridClassConfig.DefaultGridModifiers);
                 }
             }
-            else DefenseModifiers = ShipCore.DamageModifiers;
+            else DefenseModifiers = ShipCore.PassiveDefenseModifiers;
 
             var relevantLimits = GetRelevantLimits(obj);
             foreach (var limit in relevantLimits)
@@ -292,15 +292,15 @@ namespace ShipCoreFramework
         {
             EnforceBlockPunishment();
         }
-        
+        /*
         private void FactionsOnFactionStateChanged(MyFactionStateChange action, long fromFactionId, long toFactionId, long playerId, long senderId)
         {
             if ((action != MyFactionStateChange.FactionMemberAcceptJoin &&
                  action != MyFactionStateChange.FactionMemberLeave &&
                  action != MyFactionStateChange.FactionMemberKick) || Grid.BigOwners[0] != playerId) return;
-            if (!GridsPerFactionClassManager.WillGridBeWithinFactionLimits(this, GridClassId)) GridClassId = 0;
+            if (!GridsPerFactionClassManager.WillGridBeWithinFactionLimits(this, _shipCoreType)) _shipCoreType = 0;
         }
-
+        */
         private void EnforceBlockPunishment(IMyCubeBlock block = null)
         {
             if (block != null)

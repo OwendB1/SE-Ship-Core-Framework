@@ -62,7 +62,7 @@ namespace ShipCoreFramework
                 globalConfigWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this));
                 globalConfigWriter.Close();
                 
-                var blockGroupsWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage(BlockGroupsFileName, typeof(BlockGroups[]));
+                var blockGroupsWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage(BlockGroupsFileName, typeof(BlockGroup[]));
                 blockGroupsWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this));
                 blockGroupsWriter.Close();
                 
@@ -366,6 +366,9 @@ namespace ShipCoreFramework
         
         [ProtoMember(5)] 
         public PunishmentType PunishmentType = PunishmentType.ShutOff;
+
+        [ProtoMember(6)] 
+        public DirectionType DirectionType = DirectionType.Any;
     }
 
     [ProtoContract]
@@ -425,5 +428,17 @@ namespace ShipCoreFramework
         Damage,
         Delete,
         Explode
+    }
+
+    [ProtoContract]
+    public enum DirectionType
+    {
+        Forward,
+        Backward,
+        Up,
+        Down,
+        Left,
+        Right,
+        Any,
     }
 }
