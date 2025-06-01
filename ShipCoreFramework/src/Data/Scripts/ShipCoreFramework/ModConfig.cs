@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+﻿using System.Xml.Serialization;
 // System
 using System;
 using System.Text;
@@ -27,25 +27,25 @@ using VRage.Sync;
 
 namespace ShipCoreFramework
 {
-    [ProtoContract]
+    [XmlRoot("ModConfig")]
     public class ModConfig
     {
-        [ProtoMember(1)] public bool DebugMode;
-        [ProtoMember(2)] public float MaxPossibleSpeedMetersPerSecond;
-        [ProtoMember(3)] public bool IncludeAiFactions;
-        [ProtoMember(4)] public List<string> IgnoreFactionTags;
-        [ProtoMember(5)] public List<Zones> NoFlyZones;
-        [ProtoMember(6)] public string NoCoreSimpleName = "";
+        [XmlElement("DebugMode")] public bool DebugMode = true;
+        [XmlElement("MaxPossibleSpeedMetersPerSecond")] public float MaxPossibleSpeedMetersPerSecond = 300;
+        [XmlElement("IncludeAiFactions")] public bool IncludeAiFactions = false;
+        [XmlElement("IgnoreFactionTags")] public List<string> IgnoreFactionTags = new List<string>();
+        [XmlElement("NoFlyZones")] public List<Zones> NoFlyZones= new List<Zones>();
+
+        [XmlIgnoreAttribute]public string NoCoreSimpleName = "NoCoreGrids";
+        [XmlIgnoreAttribute]public readonly List<BlockGroup> BlockGroups = new List<BlockGroup>();
+        [XmlIgnoreAttribute]public readonly List<ShipCore> ShipCores = new List<ShipCore>();
+        [XmlIgnoreAttribute]private readonly List<ShipCore> _noCoreConfigs = new List<ShipCore>();
+        [XmlIgnoreAttribute]public ShipCore DefaultNoCore = new ShipCore();
         
-        [ProtoIgnore] public readonly List<BlockGroup> BlockGroups = new List<BlockGroup>();
-        [ProtoIgnore] public readonly List<ShipCore> ShipCores = new List<ShipCore>();
-        [ProtoIgnore] private readonly List<ShipCore> _noCoreConfigs = new List<ShipCore>();
-        [ProtoIgnore] public ShipCore DefaultNoCore;
-        
-        [ProtoIgnore] private const string GlobalConfigFileName = "ShipCoreConfig_World.xml";
-        [ProtoIgnore] private const string CoreManifestFileName = "ShipCoreConfig_Manifest.xml";   
-        [ProtoIgnore] private const string BlockGroupsFileName = "ShipCoreConfig_Groups.xml";
-        [ProtoIgnore] private const string DefaultNoCoreFileName = "ShipCoreConfig_No_Core.xml";
+        [XmlIgnoreAttribute]private const string GlobalConfigFileName = "ShipCoreConfig_World.xml";
+        [XmlIgnoreAttribute]private const string CoreManifestFileName = "ShipCoreConfig_Manifest.xml";   
+        [XmlIgnoreAttribute]private const string BlockGroupsFileName = "ShipCoreConfig_Groups.xml";
+        [XmlIgnoreAttribute]private const string DefaultNoCoreFileName = "ShipCoreConfig_No_Core.xml";
         
         public ShipCore GetShipCoreBySubtype(string coreSubtypeId)
         {
@@ -53,7 +53,6 @@ namespace ShipCoreFramework
             if (shipCore == null){}// Utils.Log($"Unknown core {coreSubtypeId}, using default core");
             return shipCore ?? DefaultNoCore;
         }
-        
         public void SaveConfig()
         {
             try
@@ -61,18 +60,25 @@ namespace ShipCoreFramework
                 var globalConfigWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig));
                 globalConfigWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this));
                 globalConfigWriter.Close();
+                MyAPIGateway.Utilities.ShowMessage("Save Config:", $"Saved {GlobalConfigFileName}");
                 
                 var blockGroupsWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage(BlockGroupsFileName, typeof(BlockGroup[]));
-                blockGroupsWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this));
+                blockGroupsWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this.BlockGroups));
                 blockGroupsWriter.Close();
-                
+                MyAPIGateway.Utilities.ShowMessage("Save Config:", $"Saved {BlockGroupsFileName}");
+
                 var defaultNoCoreWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage(DefaultNoCoreFileName, typeof(ShipCore));
-                defaultNoCoreWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this));
+                defaultNoCoreWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this.DefaultNoCore));
                 defaultNoCoreWriter.Close();
+                MyAPIGateway.Utilities.ShowMessage("Save Config:", $"Saved {DefaultNoCoreFileName}");
             }
             catch (Exception e)
             {
                 //Utils.Log($"Failed to save configs, reason {e.Message}", 3);
+                MyAPIGateway.Utilities.ShowMessage("Save Error:", $"{e}");
+                var globalConfigWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage("Error.txt", typeof(ModConfig));
+                globalConfigWriter.Write(e);
+                globalConfigWriter.Close();
             }
         }
 
@@ -110,7 +116,7 @@ namespace ShipCoreFramework
                         using (var reader = MyAPIGateway.Utilities.ReadFileInModLocation(BlockGroupsFileName, mod))
                         {
                             var text = reader.ReadToEnd();
-                            var newBlockGroups = MyAPIGateway.Utilities.SerializeFromXML<BlockGroups[]>(text);
+                            var newBlockGroups = MyAPIGateway.Utilities.SerializeFromXML<List<BlockGroup>>(text);
                                 
                             if (newBlockGroups == null)
                                 throw new Exception($"Failed to load block groups from Mod: {mod.FriendlyName}");
@@ -185,7 +191,7 @@ namespace ShipCoreFramework
             }
             catch (Exception e)
             {
-                //Set Defaults
+                MyAPIGateway.Utilities.ShowMessage("Load Error:", $"{e.Message}");
             }
             return globalSettings;
         }
@@ -204,102 +210,102 @@ namespace ShipCoreFramework
         }
     }
     
-    [ProtoContract]
+    [XmlRoot("Zones")]
 	public class Zones {
-        [ProtoMember(1)]
+        [XmlElement("ID")]
 		public int Id;
-        [ProtoMember(2)] 
+        [XmlElement("Position")]
         public Vector3D Position;
-        [ProtoMember(3)]
+        [XmlElement("Radius")]
         public double Radius;
-        [ProtoMember(4)]
+        [XmlElement("AllowedCoresSubtype")]
         public List<string> AllowedCoresSubtype = new List<string>();
 
     }
     
-    [ProtoContract]
+    [XmlRoot("CoreManifest")]
     public class CoreManifest
     {
-        [ProtoMember(1)] public List<string> ShipCoreFilenames;
+        [XmlElement("ShipCoreFilenames")] public List<string> ShipCoreFilenames;
     }
     
-    [ProtoContract]
+    [XmlRoot("ShipCore")]
     public class ShipCore
     {
-        [ProtoMember(1)]
+        [XmlElement("SubtypeId")]
         public string SubtypeId = string.Empty;
-        [ProtoMember(2)]
+        [XmlElement("UniqueName")]
         public string UniqueName = string.Empty;
-        [ProtoMember(3)]
+        [XmlElement("ForceBroadCast")]
         public bool ForceBroadCast = false;
-        [ProtoMember(4)]
+        [XmlElement("ForceBroadCastRange")]
         public float ForceBroadCastRange = 0;
-        [ProtoMember(5)]
+        [XmlElement("LargeGridStatic")]
         public bool LargeGridStatic = false;
-        [ProtoMember(6)]
+        [XmlElement("LargeGridMobile")]
         public bool LargeGridMobile = false;
-        [ProtoMember(7)]
+        [XmlElement("SmallGrid")]
         public bool SmallGrid = false;
-        [ProtoMember(8)]
+        [XmlElement("MaxBlocks")]
         public int MaxBlocks = -1;
-        [ProtoMember(9)]
+        [XmlElement("MaxMass")]
         public float MaxMass = -1;
-        [ProtoMember(10)]
+        [XmlElement("MaxPCU")]
         public int MaxPCU = -1;
-        [ProtoMember(11)]
+        [XmlElement("MaxPerFaction")]
         public int MaxPerFaction = -1;
-        [ProtoMember(12)]
+        [XmlElement("MaxPerPlayer")]
         public int MaxPerPlayer = -1;
-        [ProtoMember(13)]
+        [XmlElement("MinBlocks")]
         public int MinBlocks = -1;
-        [ProtoMember(14)]
+        [XmlElement("MinPlayers")]
         public int MinPlayers = -1;
-        [ProtoMember(15)]
+        [XmlElement("Modifiers")]
         public GridModifiers Modifiers = new GridModifiers();
-        [ProtoMember(16)]
+        [XmlElement("PassiveDefenseModifiers")]
         public GridDefenseModifiers PassiveDefenseModifiers = new GridDefenseModifiers();
-        [ProtoMember(17)]
+        [XmlElement("SpeedBoostEnabled")]
         public bool SpeedBoostEnabled = false;
-        [ProtoMember(18)]
+        [XmlElement("EnableActiveDefenseModifiers")]
         public bool EnableActiveDefenseModifiers = false;
-        [ProtoMember(19)]
+        [XmlElement("ActiveDefenseModifiers")]
         public GridDefenseModifiers ActiveDefenseModifiers = new GridDefenseModifiers();
-        [ProtoMember(20)] 
+        [XmlElement("EnableReloadModifier")]
         public bool EnableReloadModifier = false;
-        [ProtoMember(21)] 
+        [XmlElement("ReloadModifier")]
         public float ReloadModifier = 1f;
-        [ProtoMember(22)]
+        [XmlElement("BlockLimits")]
         public BlockLimit[] BlockLimits = Array.Empty<BlockLimit>();
     }
     
-    [ProtoContract]
+    [XmlRoot("GridModifiers")]
     public class GridModifiers
     {
-        [ProtoMember(1)]
+        [XmlElement("AssemblerSpeed")]
         public float AssemblerSpeed = 1;
-        [ProtoMember(2)]
+        [XmlElement("DrillHarvestMultiplier")]
         public float DrillHarvestMultiplier = 1;
-        [ProtoMember(3)]
+        [XmlElement("GyroEfficiency")]
         public float GyroEfficiency = 1;
-        [ProtoMember(4)]
+        [XmlElement("GyroForce")]
         public float GyroForce = 1;
-        [ProtoMember(5)]
+        [XmlElement("PowerProducersOutput")]
         public float PowerProducersOutput = 1;
-        [ProtoMember(6)]
+        [XmlElement("RefineEfficiency")]
         public float RefineEfficiency = 1;
-        [ProtoMember(7)]
+        [XmlElement("RefineSpeed")]
         public float RefineSpeed = 1;
-        [ProtoMember(8)]
+        [XmlElement("ThrusterEfficiency")]
         public float ThrusterEfficiency = 1;
-        [ProtoMember(9)]
+        [XmlElement("ThrusterForce")]
         public float ThrusterForce = 1;
-        [ProtoMember(10)]
+        [XmlElement("MaxSpeed")]
         public float MaxSpeed = 100.0f;
-        [ProtoMember(13)]
+        [XmlElement("MaxBoost")]
         public float MaxBoost = 1.2f;
-        [ProtoMember(14)]
+        [XmlElement("BoostDuration")]
         public float BoostDuration = 10f; 
-        [ProtoMember(15)]
+        [XmlElement("BoostCoolDown")]
         public float BoostCoolDown = 60f; 
         
         public override string ToString()
@@ -349,49 +355,54 @@ namespace ShipCoreFramework
         }
     }
 
-    [ProtoContract]
+    [XmlRoot("BlockLimit")]
     public class BlockLimit
     {
-        [ProtoMember(1)] 
+        [XmlElement("Name")]
         public string Name = string.Empty;
 
-        [ProtoMember(2)] 
+        [XmlElement("BlockGroups")]
         public string[] BlockGroups = Array.Empty<string>();
 
-        [ProtoMember(3)] 
+        [XmlElement("MaxCount")]
         public float MaxCount = 0;
 
-        [ProtoMember(4)] 
+        [XmlElement("TurnedOffByNoFlyZone")]
         public bool TurnedOffByNoFlyZone = false;
         
-        [ProtoMember(5)] 
+        [XmlElement("PunishmentType")]
         public PunishmentType PunishmentType = PunishmentType.ShutOff;
 
-        [ProtoMember(6)] 
+        [XmlElement("DirectionType")]
         public DirectionType DirectionType = DirectionType.Any;
     }
 
-    [ProtoContract]
+    [XmlRoot("BlockGroup")]
     public class BlockGroup
     {
-        [ProtoMember(1)]
+        [XmlElement("Name")]
         public string Name = string.Empty;
-        [ProtoMember(2)]
+        [XmlElement("BlockTypes")]
         public List<BlockType> BlockTypes = new List<BlockType>();
     }
     
-    [ProtoContract]
+    [XmlRoot("BlockType")]
     public class BlockType
     {
-        [ProtoMember(1)] 
+        [XmlElement("TypeId")]
         public string TypeId;
 
-        [ProtoMember(2)] 
+        [XmlElement("SubtypeId")]
         public string SubtypeId;
 
-        [ProtoMember(3)] 
+        [XmlElement("CountWeight")]
         public float CountWeight;
-
+        public BlockType()
+        {
+            TypeId = string.Empty;
+            SubtypeId = string.Empty;
+            CountWeight = 1;
+        }
         public BlockType(string typeId, string subtypeId = "", float countWeight = 1)
         {
             TypeId = typeId;
@@ -400,28 +411,28 @@ namespace ShipCoreFramework
         }
     }
 
-    [ProtoContract]
+    [XmlRoot("GridDefenseModifiers")]
     public class GridDefenseModifiers
     {
-        [ProtoMember(1)]
+        [XmlElement("Bullet")]
         public float Bullet = 1f;
-        [ProtoMember(2)]
+        [XmlElement("Rocket")]
         public float Rocket = 1f;
-        [ProtoMember(3)]
+        [XmlElement("Explosion")]
         public float Explosion = 1f;
-        [ProtoMember(4)]
+        [XmlElement("Environment")]
         public float Environment = 1f;
-        [ProtoMember(5)]
+        [XmlElement("Energy")]
         public float Energy = 1f;
-        [ProtoMember(6)]
+        [XmlElement("Kinetic")]
         public float Kinetic = 1f;
-        [ProtoMember(7)]
+        [XmlElement("Duration")]
         public float Duration = 0f;
-        [ProtoMember(8)]
+        [XmlElement("Cooldown")]
         public float Cooldown = 0f;
     }
 
-    [ProtoContract]
+    [XmlRoot("PunishmentType")]
     public enum PunishmentType
     {
         ShutOff,
@@ -430,7 +441,7 @@ namespace ShipCoreFramework
         Explode
     }
 
-    [ProtoContract]
+    [XmlRoot("DirectionType")]
     public enum DirectionType
     {
         Forward,

@@ -9,5 +9,7 @@
 
         public static readonly int
             CLIENT_OUTPUT_LOG_LEVEL = 3; //messages with logPriority >= this will get output to clients
+
+        public static readonly ushort COMMS_MESSAGE_ID = 53642;
     }
 }

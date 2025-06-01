@@ -135,7 +135,7 @@ namespace ShipCoreFramework
 
         private void OnBlockIntegrityChanged(IMySlimBlock obj)
         {
-            throw new NotImplementedException();
+            //throw new NotImplementedException(); Owen, that's forbiden :(
         }
 
         private bool AddGridLogic()
@@ -197,7 +197,7 @@ namespace ShipCoreFramework
             if (!ModSessionManager.ShipCoreLogics.ContainsKey(sub.EntityId) ||
                 !ModSessionManager.ShipCoreLogics.ContainsKey(main.EntityId)) return;
 
-            ModSessionManager.ShipCoreLogics[sub.EntityId].RemoveGridLogic();
+            //ModSessionManager.ShipCoreLogics[sub.EntityId].RemoveGridLogic(); RemoveGridLogic not here? not sure what happen any way
             var mainLogic = ModSessionManager.ShipCoreLogics[main.EntityId];
 
             sub.OnBlockOwnershipChanged += mainLogic.OnBlockOwnershipChanged;

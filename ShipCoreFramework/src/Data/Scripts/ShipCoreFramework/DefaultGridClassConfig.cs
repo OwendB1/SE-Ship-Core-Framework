@@ -291,7 +291,7 @@ namespace ShipCoreFramework
             DefaultNoCore = DefaultNoCore,
             DebugMode = false,
             //NoFlyZones = new List<Zones>{new Zones{AllowedClassesById=new List<long>{301,302,303},Radius=1000.0f},},
-            IgnoreFactionTags = new[]{"SPRT"},
+            IgnoreFactionTags = new List<string>{"SPRT"},
             IncludeAiFactions = false,
             MaxPossibleSpeedMetersPerSecond = 120.0f,
             /*
