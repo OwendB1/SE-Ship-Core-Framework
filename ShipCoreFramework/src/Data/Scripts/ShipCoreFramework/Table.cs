@@ -30,15 +30,17 @@ namespace ShipCoreFramework
                 {
                     var row = Rows[rowNum];
                     var cell = row[colNum];
-                    
+
                     if (cell.IsEmpty) continue;
                     columnContentWidths[colNum] = Math.Max(columnContentWidths[colNum],
                         TextUtils.GetTextWidth(cell.Value, scale));
                     rowHeights[rowNum] = Math.Max(rowHeights[rowNum], TextUtils.GetTextHeight(cell.Value, scale));
                 }
+
                 minWidthRequired += columnContentWidths[colNum] + (colNum > 0 ? cellGap.X : 0);
                 columnWidths[colNum] = columnContentWidths[colNum];
             }
+
             //distribute free space
             if (minWidthRequired < width && totalFreeSpaceWeight > 0)
             {
@@ -90,6 +92,7 @@ namespace ShipCoreFramework
                 rowTopLeft += new Vector2(0, rowTotalHeight);
                 tableHeight += rowTotalHeight;
             }
+
             positionAfter = topLeft + new Vector2(0, tableHeight);
         }
     }

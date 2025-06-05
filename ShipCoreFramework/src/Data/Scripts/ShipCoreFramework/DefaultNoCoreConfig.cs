@@ -13,13 +13,13 @@ namespace ShipCoreFramework
             Modifiers = new GridModifiers(), // Use default modifiers
             PassiveDefenseModifiers = new GridDefenseModifiers(),
             ActiveDefenseModifiers = new GridDefenseModifiers(),
-            BlockLimits = new []
-            { 
+            BlockLimits = new[]
+            {
                 new BlockLimit
                 {
                     Name = "SAMPLE-LIMIT",
-                    BlockGroups = new []{ "TEST-GROUP" }
-                } 
+                    BlockGroups = new[] { "TEST-GROUP" }
+                }
             }
         };
     }

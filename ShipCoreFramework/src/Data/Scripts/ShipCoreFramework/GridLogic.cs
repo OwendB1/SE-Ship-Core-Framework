@@ -1,81 +1,74 @@
-﻿// System
-using System;
-using System.Text;
-using System.Collections.Generic;
-using System.Linq;
-using System.Globalization;
-// Sandbox
-using Sandbox.Common.ObjectBuilders;
-using Sandbox.Game.EntityComponents;
-using Sandbox.Game.Components;
-using Sandbox.Game.Entities;
-using Sandbox.ModAPI.Interfaces.Terminal;
+﻿using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
-using Sandbox.Definitions;
-// VRage
 using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
-using VRage.Game.Entity;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
-using VRage.Utils;
-using VRageMath;
-using VRage.Game.ModAPI.Network;
-using VRage.Sync;
 
 namespace ShipCoreFramework
 {
     [MyEntityComponentDescriptor(typeof(MyObjectBuilder_CubeGrid), false)]
-    public class ShipCoreLogic : MyGameLogicComponent
+    public class GridLogic : MyGameLogicComponent
     {
-        public readonly Dictionary<BlockLimit, List<KeyValuePair<IMyCubeBlock, double>>> BlocksPerLimit = new Dictionary<BlockLimit, List<KeyValuePair<IMyCubeBlock, double>>>();
         public readonly HashSet<MyCubeBlock> Blocks = new HashSet<MyCubeBlock>();
 
-        public bool IsDisabled = false;
-        private string _shipCoreType = string.Empty;
-        
-        public IMyCubeGrid Grid;
+        public readonly Dictionary<BlockLimit, List<KeyValuePair<IMyCubeBlock, double>>> BlocksPerLimit =
+            new Dictionary<BlockLimit, List<KeyValuePair<IMyCubeBlock, double>>>();
+
+        public float BoostCoolDown;
+        public float BoostDuration;
+        public GridDefenseModifiers DefenseModifiers = new GridDefenseModifiers();
 
         public bool EnableBoost;
-        public float BoostDuration;
-        public float BoostCoolDown;
+
+        public IMyCubeGrid Grid;
+
+        public bool IsActive = false;
+        public bool IsMainGrid = false;
+        public string ShipCoreType = string.Empty;
 
         public IMyFaction OwningFaction => Grid.GetOwningFaction();
 
         public long MajorityOwningPlayerId => GetMajorityOwner();
 
         public ModConfig Config => ModSessionManager.Config;
-        
-        public ShipCore ShipCore => Config.GetShipCoreBySubtype(_shipCoreType);
+
+        public ShipCore ShipCore => Config.GetShipCoreBySubtype(ShipCoreType);
         public GridModifiers Modifiers => ShipCore.Modifiers;
-        public GridDefenseModifiers DefenseModifiers = new GridDefenseModifiers();
 
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {
             base.Init(objectBuilder);
-            
+
             Grid = (IMyCubeGrid)Entity;
-            if (ModSessionManager.ShipCoreLogics.ContainsKey(Grid.EntityId)) return;
-            
+
             List<IMyCubeGrid> subs;
             var main = Utils.GetMainCubeGrid(Grid, out subs);
-            if (main.EntityId != Grid.EntityId) return;
-            
+            if (main.EntityId == Grid.EntityId) IsMainGrid = true;
+
             NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
             Grid.OnPhysicsChanged += InitOnPhysicsChanged;
+        }
+
+        public void Activate(string shipCoreType)
+        {
+            ShipCoreType = shipCoreType;
+            IsActive = true;
         }
 
         public override void UpdateOnceBeforeFrame()
         {
             base.UpdateOnceBeforeFrame();
-            
+            if (!IsMainGrid || !IsActive) return;
             SpeedEnforcement.EnforceSpeedLimit(this);
-            
         }
 
         private void InitOnPhysicsChanged(IMyEntity obj)
         {
+            var grid = obj as IMyCubeGrid;
+            Utils.Log($"PhysicsChanged: change triggered. Initialising logic for {grid.CustomName} (entity id: {grid.EntityId})!");
+            
             //Init event handlers
             Grid.OnBlockOwnershipChanged += OnBlockOwnershipChanged;
             Grid.OnIsStaticChanged += OnIsStaticChanged;
@@ -89,11 +82,11 @@ namespace ShipCoreFramework
                 if (!Config.IncludeAiFactions && OwningFaction.IsEveryoneNpc()) return;
                 if (Config.IgnoreFactionTags.Contains(OwningFaction.Tag)) return;
             }
-            Blocks.UnionWith(Grid.GetFatBlocks<MyCubeBlock>().Where(b => b.IsPreview == false));
 
+            Blocks.UnionWith(Grid.GetFatBlocks<MyCubeBlock>().Where(b => b.IsPreview == false));
             
-                BoostDuration = DefaultGridClassConfig.DefaultNoCore.Modifiers.BoostDuration;
-                BoostCoolDown = DefaultGridClassConfig.DefaultNoCore.Modifiers.BoostCoolDown;     
+            BoostDuration = DefaultGridClassConfig.DefaultNoCore.Modifiers.BoostDuration;
+            BoostCoolDown = DefaultGridClassConfig.DefaultNoCore.Modifiers.BoostCoolDown;
 
             if (!AddGridLogic()) return;
 
@@ -117,8 +110,10 @@ namespace ShipCoreFramework
                     var countingBlocks = Blocks
                         .Where(b => Utils.GetBlockTypeId(b) == blockType.TypeId &&
                                     Utils.GetBlockSubtypeId(b) == blockType.SubtypeId);
-                    blockVals.AddRange(countingBlocks.Select(bl => new KeyValuePair<IMyCubeBlock, double>(bl, blockType.CountWeight)));
+                    blockVals.AddRange(countingBlocks.Select(bl =>
+                        new KeyValuePair<IMyCubeBlock, double>(bl, blockType.CountWeight)));
                 }
+
                 BlocksPerLimit[blockLimit] = blockVals;
             }
 
@@ -130,7 +125,6 @@ namespace ShipCoreFramework
 
             EnforceBlockPunishment();
             ApplyModifiers();
-            
         }
 
         private void OnBlockIntegrityChanged(IMySlimBlock obj)
@@ -144,14 +138,12 @@ namespace ShipCoreFramework
             {
                 if (this == null) throw new Exception("gridLogic cannot be null");
                 if (Grid == null) throw new Exception("gridLogic.Grid cannot be null");
-                if (ModSessionManager.ShipCoreLogics == null) throw new Exception("CubeGridLogics cannot be null");
 
                 Utils.Log($"Adding Logic: {Grid.EntityId} | {Grid.CustomName}");
 
-                //GridsPerFactionClassManager.AddCubeGrid(this);
-                //GridsPerPlayerClassManager.AddCubeGrid(this);
-                ModSessionManager.ShipCoreLogics[Grid.EntityId] = this;
-
+                GridsPerFactionClassManager.AddCubeGrid(this);
+                GridsPerPlayerClassManager.AddCubeGrid(this);
+                
                 var concreteGrid = Grid as MyCubeGrid;
                 return concreteGrid != null;
             }
@@ -173,6 +165,7 @@ namespace ShipCoreFramework
                 foreach (var block in Blocks)
                     CubeGridModifiers.ApplyModifiers(block, DefaultGridClassConfig.DefaultGridModifiers);
             }
+
             if (func.Enabled)
                 EnforceBlockPunishment(func);
         }
@@ -185,27 +178,35 @@ namespace ShipCoreFramework
         private void ApplyModifiers(GridModifiers modifiers = null)
         {
             DefenseModifiers = ShipCore.PassiveDefenseModifiers;
-            foreach (var block in from block in Blocks let terminalBlock = block as IMyTerminalBlock where terminalBlock != null select block)
-            {
-                CubeGridModifiers.ApplyModifiers(block, modifiers ?? Modifiers);
-            }
+            foreach (var block in from block in Blocks
+                     let terminalBlock = block as IMyTerminalBlock
+                     where terminalBlock != null
+                     select block) CubeGridModifiers.ApplyModifiers(block, modifiers ?? Modifiers);
         }
 
         //TODO: fix grid merging and subgridding event registration
         private static void OnGridMerge(IMyCubeGrid main, IMyCubeGrid sub)
         {
-            if (!ModSessionManager.ShipCoreLogics.ContainsKey(sub.EntityId) ||
-                !ModSessionManager.ShipCoreLogics.ContainsKey(main.EntityId)) return;
-
-            //ModSessionManager.ShipCoreLogics[sub.EntityId].RemoveGridLogic(); RemoveGridLogic not here? not sure what happen any way
-            var mainLogic = ModSessionManager.ShipCoreLogics[main.EntityId];
-
-            sub.OnBlockOwnershipChanged += mainLogic.OnBlockOwnershipChanged;
-            sub.OnIsStaticChanged += mainLogic.OnIsStaticChanged;
-            sub.OnBlockAdded += mainLogic.OnBlockAdded;
-            sub.OnBlockRemoved += mainLogic.OnBlockRemoved;
-            mainLogic.Blocks.Clear();
-            mainLogic.Blocks.UnionWith(mainLogic.Grid.GetFatBlocks<MyCubeBlock>().Where(b => b.IsPreview == false));
+            var mainLogic = main.GetMainGridLogic();
+            if (mainLogic.Grid.EntityId == main.EntityId) // this check makes sure that the blocks and events are always added to the biggest grid instead of the rotor order
+            {
+                sub.OnBlockOwnershipChanged += mainLogic.OnBlockOwnershipChanged;
+                sub.OnIsStaticChanged += mainLogic.OnIsStaticChanged;
+                sub.OnBlockAdded += mainLogic.OnBlockAdded;
+                sub.OnBlockRemoved += mainLogic.OnBlockRemoved;
+                var fatBlocks = sub.GetFatBlocks<MyCubeBlock>().Where(b => b.IsPreview == false);
+                mainLogic.Blocks.UnionWith(fatBlocks);
+            }
+            else
+            {
+                main.OnBlockOwnershipChanged += mainLogic.OnBlockOwnershipChanged;
+                main.OnIsStaticChanged += mainLogic.OnIsStaticChanged;
+                main.OnBlockAdded += mainLogic.OnBlockAdded;
+                main.OnBlockRemoved += mainLogic.OnBlockRemoved;
+                var fatBlocks = main.GetFatBlocks<MyCubeBlock>().Where(b => b.IsPreview == false);
+                mainLogic.Blocks.UnionWith(fatBlocks);
+            }
+            
         }
 
         //Event handlers
@@ -241,12 +242,10 @@ namespace ShipCoreFramework
                     Grid.RemoveBlock(obj);
                     List<IMyCubeGrid> subs;
                     Utils.GetMainCubeGrid(Grid, out subs);
-                    foreach (var subgrid in subs)
-                    {
-                        subgrid.RemoveBlock(obj);
-                    }
+                    foreach (var subgrid in subs) subgrid.RemoveBlock(obj);
                     return;
                 }
+
                 BlocksPerLimit[limit].Add(new KeyValuePair<IMyCubeBlock, double>(obj.FatBlock, countForSpecificBlock));
             }
 
@@ -264,11 +263,12 @@ namespace ShipCoreFramework
             {
                 DefenseModifiers = DefaultGridClassConfig.DefaultGridDefenseModifiers2X;
                 foreach (var block in Blocks)
-                {
                     CubeGridModifiers.ApplyModifiers(block, DefaultGridClassConfig.DefaultGridModifiers);
-                }
             }
-            else DefenseModifiers = ShipCore.PassiveDefenseModifiers;
+            else
+            {
+                DefenseModifiers = ShipCore.PassiveDefenseModifiers;
+            }
 
             var relevantLimits = GetRelevantLimits(obj);
             foreach (var limit in relevantLimits)
@@ -282,8 +282,8 @@ namespace ShipCoreFramework
             var concreteGrid = Grid as MyCubeGrid;
             if (concreteGrid?.BlocksCount < ShipCore.MinBlocks)
             {
-                
             }
+
             Blocks.Remove(obj.FatBlock as MyCubeBlock);
             ApplyModifiers();
         }
@@ -292,6 +292,7 @@ namespace ShipCoreFramework
         {
             EnforceBlockPunishment();
         }
+
         /*
         private void FactionsOnFactionStateChanged(MyFactionStateChange action, long fromFactionId, long toFactionId, long playerId, long senderId)
         {
@@ -313,17 +314,17 @@ namespace ShipCoreFramework
                     Utils.Log($"Block check: {limit.Name} | {countWeight} | {limit.MaxCount}");
                     if (countWeight <= limit.MaxCount) continue;
                     var func = block as IMyFunctionalBlock;
-                    if (func != null) func.Enabled = false;
+                    if (func != null)
+                    {
+                        func.Enabled = false;
+                    }
                     else
                     {
                         var slim = block.SlimBlock;
                         var targetIntegrity = slim.MaxIntegrity * 0.2;
                         var damageRequired = slim.Integrity - targetIntegrity;
 
-                        if (damageRequired < 0)
-                        {
-                            damageRequired = 0;
-                        }
+                        if (damageRequired < 0) damageRequired = 0;
                         slim.DoDamage((float)damageRequired, MyDamageType.Bullet, true);
                     }
                 }
@@ -340,34 +341,35 @@ namespace ShipCoreFramework
                         countWeight += limitBlock.Value;
                         if (countWeight <= limit.MaxCount) continue;
                         var func = limitBlock.Key as IMyFunctionalBlock;
-                        if (func != null) func.Enabled = false;
+                        if (func != null)
+                        {
+                            func.Enabled = false;
+                        }
                         else
                         {
                             var slim = limitBlock.Key.SlimBlock;
                             var targetIntegrity = slim.MaxIntegrity * 0.2;
                             var damageRequired = slim.Integrity - targetIntegrity;
 
-                            if (damageRequired < 0)
-                            {
-                                damageRequired = 0;
-                            }
+                            if (damageRequired < 0) damageRequired = 0;
                             slim.DoDamage((float)damageRequired, MyDamageType.Bullet, true);
                         }
                     }
                 }
             }
-            
         }
 
         private bool HasFunctioningBeaconIfNeeded()
         {
-            return ShipCore.ForceBroadCast == false || Blocks.OfType<IMyFunctionalBlock>().Any(block => block is IMyBeacon && block.Enabled);
+            return ShipCore.ForceBroadCast == false ||
+                   Blocks.OfType<IMyFunctionalBlock>().Any(block => block is IMyBeacon && block.Enabled);
         }
 
         private IEnumerable<BlockLimit> GetRelevantLimits(IMySlimBlock block)
         {
             return ShipCore.BlockLimits.Where(limit => limit.GetBlockTypes()
-                .Any(type => type.TypeId == Utils.GetBlockTypeId(block) && type.SubtypeId == Utils.GetBlockSubtypeId(block)));
+                .Any(type =>
+                    type.TypeId == Utils.GetBlockTypeId(block) && type.SubtypeId == Utils.GetBlockSubtypeId(block)));
         }
 
         private long GetMajorityOwner()

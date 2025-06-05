@@ -12,26 +12,17 @@ namespace ShipCoreFramework
     [MyTextSurfaceScript("GridStatusLCDScript", "Grid class status")]
     internal class GridStatusLCDScript : MyTSSCommon
     {
-        public override ScriptUpdate NeedsUpdate => ScriptUpdate.Update10; // frequency that Run() is called.
-        private readonly IMyTerminalBlock _terminalBlock;
-        private int _scrollTime;
-
         private static readonly float ScrollSpeed = 3; //pixels per update
 
         private static readonly int
             ScrollPauseUpdates = 15; //how many updates to say paused at the start and end when scrolling
 
-        private ShipCoreLogic GridLogic => _terminalBlock?.GetMainGridLogic();
-        private MyCubeGrid Grid => _terminalBlock?.CubeGrid as MyCubeGrid;
-        private ShipCore ShipCore => GridLogic.ShipCore;
-
-        private readonly Table _headerTable = new Table
+        private readonly Table _appliedModifiersTable = new Table
         {
             Columns = new List<Column>
             {
-                new Column { Name = "Label" },
-                new Column { Name = "Name" },
-                new Column { Name = "Success" }
+                new Column { Name = "ModifierName" },
+                new Column { Name = "Value" }
             }
         };
 
@@ -47,25 +38,36 @@ namespace ShipCoreFramework
             }
         };
 
-        private readonly Table _appliedModifiersTable = new Table
+        private readonly Table _headerTable = new Table
         {
             Columns = new List<Column>
             {
-                new Column { Name = "ModifierName" },
-                new Column { Name = "Value" }
+                new Column { Name = "Label" },
+                new Column { Name = "Name" },
+                new Column { Name = "Success" }
             }
         };
+
+        private readonly IMyTerminalBlock _terminalBlock;
+        private int _scrollTime;
 
         public GridStatusLCDScript(IMyTextSurface surface, IngameCubeBlock block, Vector2 size) : base(surface, block,
             size)
         {
-            _terminalBlock = (IMyTerminalBlock)block; // internal stored m_block is the ingame interface which has no events, so can't unhook later on, therefore this field is required.
+            _terminalBlock =
+                (IMyTerminalBlock)block; // internal stored m_block is the ingame interface which has no events, so can't unhook later on, therefore this field is required.
             _terminalBlock.OnMarkForClose +=
                 BlockMarkedForClose; // required if you're gonna make use of Dispose() as it won't get called when block is removed or grid is cut/unloaded.
 
             // Called when script is created.
             // This class is instanced per LCD that uses it, which means the same block can have multiple instances of this script aswell (e.g. a cockpit with all its screens set to use this script).
         }
+
+        public override ScriptUpdate NeedsUpdate => ScriptUpdate.Update10; // frequency that Run() is called.
+
+        private GridLogic GridLogic => _terminalBlock?.GetMainGridLogic();
+        private MyCubeGrid Grid => _terminalBlock?.CubeGrid as MyCubeGrid;
+        private ShipCore ShipCore => GridLogic.ShipCore;
 
         public override void Dispose()
         {
@@ -170,7 +172,7 @@ namespace ShipCoreFramework
                     new Cell("Mass: "),
                     new Cell(Grid.Mass.ToString(CultureInfo.InvariantCulture)),
                     new Cell("/"),
-                    new Cell(ShipCore.MaxMass.ToString(CultureInfo.InvariantCulture), 
+                    new Cell(ShipCore.MaxMass.ToString(CultureInfo.InvariantCulture),
                         Grid.Mass <= ShipCore.MaxMass ? successColor : failColor),
                     Grid.Mass <= ShipCore.MaxMass ? new Cell() : new Cell("X", failColor)
                 });
@@ -207,10 +209,11 @@ namespace ShipCoreFramework
                 out currentPosition, bodyScale);
 
             //Applied modifiers
-            spritesToRender.Add(CreateLine("Applied modifiers", currentPosition + new Vector2(0, 5), out currentPosition));
+            spritesToRender.Add(CreateLine("Applied modifiers", currentPosition + new Vector2(0, 5),
+                out currentPosition));
 
             _appliedModifiersTable.Clear();
-            
+
             var appliedModifiersTableTopLeft = currentPosition + new Vector2(0, 5);
 
             foreach (var modifierValue in GridLogic.Modifiers.GetModifierValues())
@@ -230,6 +233,7 @@ namespace ShipCoreFramework
                 if (scrollPosition.Y != 0) sprite.Position = sprite.Position - scrollPosition;
                 frame.Add(sprite);
             }
+
             frame.Dispose(); // send sprites to the screen
         }
 
@@ -260,7 +264,6 @@ namespace ShipCoreFramework
             if (_scrollTime > fullScrollCycleTime) _scrollTime = 0;
 
             return scrollPosition;
-
         }
 
         private MySprite CreateLine(string text, Vector2 position, out Vector2 positionAfter, float scale = 1)

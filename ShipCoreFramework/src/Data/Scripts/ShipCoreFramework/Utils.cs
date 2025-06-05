@@ -1,34 +1,19 @@
 ﻿// System
-using System;
-using System.Text;
-using System.Collections.Generic;
-using System.Linq;
-using System.Globalization;
-// Sandbox
-using Sandbox.Common.ObjectBuilders;
-using Sandbox.Game.EntityComponents;
-using Sandbox.Game.Components;
+
 using Sandbox.Game.Entities;
-using Sandbox.ModAPI.Interfaces.Terminal;
 using Sandbox.ModAPI;
-using Sandbox.Definitions;
-// VRage
 using VRage.Game;
-using VRage.Game.Components;
 using VRage.Game.ModAPI;
-using VRage.Game.Entity;
-using VRage.ModAPI;
-using VRage.ObjectBuilders;
 using VRage.Utils;
-using VRageMath;
-using VRage.Game.ModAPI.Network;
-using VRage.Sync;
+// Sandbox
+// VRage
 
 namespace ShipCoreFramework
 {
     public static class Utils
     {
-        public static void ShowNotification(string msg, IMyCubeGrid grid, int disappearTime = 10000, string font = MyFontEnum.Red)
+        public static void ShowNotification(string msg, IMyCubeGrid grid, int disappearTime = 10000,
+            string font = MyFontEnum.Red)
         {
             if (Constants.IsClient)
             {
@@ -46,7 +31,8 @@ namespace ShipCoreFramework
 
         public static List<BlockType> GetBlockTypes(this BlockLimit blockLimit)
         {
-            var relevantBlockGroups =  ModSessionManager.Config.BlockGroups.Where(group => blockLimit.BlockGroups.Contains(group.Name)).ToList();
+            var relevantBlockGroups = ModSessionManager.Config.BlockGroups
+                .Where(group => blockLimit.BlockGroups.Contains(group.Name)).ToList();
             var blockTypes = new List<BlockType>();
             relevantBlockGroups.ForEach(gr => blockTypes.AddRange(gr.BlockTypes));
             return blockTypes;
@@ -60,18 +46,15 @@ namespace ShipCoreFramework
                 MyAPIGateway.Utilities.ShowMessage($"[Ship Classes={logPriority}]: ", msg);
 
             if (ModSessionManager.Config != null && ModSessionManager.Config.DebugMode)
-            {
                 MyAPIGateway.Utilities.ShowMessage($"[Ship Classes={logPriority}]: ", msg);
-            }
         }
 
         public static void LogException(Exception e)
         {
             Log($"Exception message = {e.Message}, Stack trace:\n{e.StackTrace}", 3);
             if (ModSessionManager.Config != null && ModSessionManager.Config.DebugMode)
-            {
-                MyAPIGateway.Utilities.ShowMessage("[Ship Classes] Exception:", $"{e.Message}\nStack trace:\n{e.StackTrace}");
-            }
+                MyAPIGateway.Utilities.ShowMessage("[Ship Classes] Exception:",
+                    $"{e.Message}\nStack trace:\n{e.StackTrace}");
         }
 
         public static string GetBlockTypeId(IMyCubeBlock block)
@@ -94,31 +77,25 @@ namespace ShipCoreFramework
             return Convert.ToString(block.BlockDefinition.Id.SubtypeId);
         }
 
-        public static ShipCoreLogic GetMainGridLogic(this IMyCubeGrid grid)
+        public static GridLogic GetMainGridLogic(this IMyCubeGrid grid)
         {
             List<IMyCubeGrid> subgrids;
             var main = GetMainCubeGrid(grid, out subgrids);
-
-            ShipCoreLogic logic;
-            ModSessionManager.ShipCoreLogics.TryGetValue(main.EntityId, out logic);
-            return logic;
+            return main?.GameLogic.GetAs<GridLogic>();
         }
 
-        public static ShipCoreLogic GetMainGridLogic(this IMyTerminalBlock block)
+        public static GridLogic GetMainGridLogic(this IMyTerminalBlock block)
         {
             List<IMyCubeGrid> subgrids;
             var main = GetMainCubeGrid(block.CubeGrid, out subgrids);
-
-            ShipCoreLogic logic;
-            ModSessionManager.ShipCoreLogics.TryGetValue(main.EntityId, out logic);
-            return logic;
+            return main?.GameLogic.GetAs<GridLogic>();
         }
 
-        public static IMyCubeGrid GetMainCubeGrid(IMyCubeGrid grid, out List<IMyCubeGrid> subgrids)
+        public static IMyCubeGrid GetMainCubeGrid(this IMyCubeGrid grid, out List<IMyCubeGrid> subgrids)
         {
             var group = grid.GetGridGroup(GridLinkTypeEnum.Mechanical);
             var grids = new List<IMyCubeGrid>();
-            
+
             group?.GetGrids(grids);
             grids = grids.Where(g => g?.Physics != null).ToList();
             if (!grids.Any())
@@ -167,15 +144,17 @@ namespace ShipCoreFramework
             var ownersPerFaction = new Dictionary<IMyFaction, int>();
 
             //Find the faction with the most owners
-            foreach (var ownerFaction in grid.BigOwners.Select(owner => MyAPIGateway.Session.Factions.TryGetPlayerFaction(owner)).Where(ownerFaction => ownerFaction != null))
-            {
+            foreach (var ownerFaction in grid.BigOwners
+                         .Select(owner => MyAPIGateway.Session.Factions.TryGetPlayerFaction(owner))
+                         .Where(ownerFaction => ownerFaction != null))
                 if (!ownersPerFaction.ContainsKey(ownerFaction))
                     ownersPerFaction[ownerFaction] = 1;
                 else
                     ownersPerFaction[ownerFaction]++;
-            }
 
-            return ownersPerFaction.Count == 0 ? null :
+            return ownersPerFaction.Count == 0
+                ? null
+                :
                 //new select the faction with the most owners
                 ownersPerFaction.MaxBy(kvp => kvp.Value).Key;
         }

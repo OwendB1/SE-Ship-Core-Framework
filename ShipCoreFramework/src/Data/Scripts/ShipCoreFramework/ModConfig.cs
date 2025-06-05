@@ -1,74 +1,66 @@
-﻿using System.Xml.Serialization;
-// System
-using System;
-using System.Text;
-using System.Collections.Generic;
-using System.Linq;
-using System.Globalization;
-// Sandbox
-using Sandbox.Common.ObjectBuilders;
-using Sandbox.Game.EntityComponents;
-using Sandbox.Game.Components;
-using Sandbox.Game.Entities;
-using Sandbox.ModAPI.Interfaces.Terminal;
+using System.Xml.Serialization;
 using Sandbox.ModAPI;
-using Sandbox.Definitions;
-// VRage
-using VRage.Game;
-using VRage.Game.Components;
-using VRage.Game.ModAPI;
-using VRage.Game.Entity;
-using VRage.ModAPI;
-using VRage.ObjectBuilders;
-using VRage.Utils;
 using VRageMath;
-using VRage.Game.ModAPI.Network;
-using VRage.Sync;
 
 namespace ShipCoreFramework
 {
     [XmlRoot("ModConfig")]
     public class ModConfig
     {
+        [XmlIgnoreAttribute] private const string GlobalConfigFileName = "ShipCoreConfig_World.xml";
+        [XmlIgnoreAttribute] private const string CoreManifestFileName = "ShipCoreConfig_Manifest.xml";
+        [XmlIgnoreAttribute] private const string BlockGroupsFileName = "ShipCoreConfig_Groups.xml";
+        [XmlIgnoreAttribute] private const string DefaultNoCoreFileName = "ShipCoreConfig_No_Core.xml";
+        [XmlIgnoreAttribute] private readonly List<ShipCore> _noCoreConfigs = new List<ShipCore>();
+        [XmlIgnoreAttribute] public readonly List<BlockGroup> BlockGroups = new List<BlockGroup>();
+        [XmlIgnoreAttribute] public readonly List<ShipCore> ShipCores = new List<ShipCore>();
         [XmlElement("DebugMode")] public bool DebugMode = true;
-        [XmlElement("MaxPossibleSpeedMetersPerSecond")] public float MaxPossibleSpeedMetersPerSecond = 300;
-        [XmlElement("IncludeAiFactions")] public bool IncludeAiFactions = false;
-        [XmlElement("IgnoreFactionTags")] public List<string> IgnoreFactionTags = new List<string>();
-        [XmlElement("NoFlyZones")] public List<Zones> NoFlyZones= new List<Zones>();
+        [XmlIgnoreAttribute] public ShipCore DefaultNoCore = new ShipCore();
 
-        [XmlIgnoreAttribute]public string NoCoreSimpleName = "NoCoreGrids";
-        [XmlIgnoreAttribute]public readonly List<BlockGroup> BlockGroups = new List<BlockGroup>();
-        [XmlIgnoreAttribute]public readonly List<ShipCore> ShipCores = new List<ShipCore>();
-        [XmlIgnoreAttribute]private readonly List<ShipCore> _noCoreConfigs = new List<ShipCore>();
-        [XmlIgnoreAttribute]public ShipCore DefaultNoCore = new ShipCore();
-        
-        [XmlIgnoreAttribute]private const string GlobalConfigFileName = "ShipCoreConfig_World.xml";
-        [XmlIgnoreAttribute]private const string CoreManifestFileName = "ShipCoreConfig_Manifest.xml";   
-        [XmlIgnoreAttribute]private const string BlockGroupsFileName = "ShipCoreConfig_Groups.xml";
-        [XmlIgnoreAttribute]private const string DefaultNoCoreFileName = "ShipCoreConfig_No_Core.xml";
-        
-        public ShipCore GetShipCoreBySubtype(string coreSubtypeId)
+        [XmlElement("MaxPossibleSpeedMetersPerSecond")]
+        public float MaxPossibleSpeedMetersPerSecond = 300;
+
+        [XmlElement("IncludeAiFactions")] public bool IncludeAiFactions;
+        [XmlElement("IgnoreFactionTags")] public List<string> IgnoreFactionTags = new List<string>();
+
+
+        [XmlIgnoreAttribute] public string NoCoreSimpleName = "NoCoreGrids";
+        [XmlElement("NoFlyZones")] public List<Zones> NoFlyZones = new List<Zones>();
+
+        public ShipCore GetShipCoreBySubtype(string coreTypeName)
         {
-            var shipCore = ShipCores.FirstOrDefault(core => core.SubtypeId == coreSubtypeId);
-            if (shipCore == null){}// Utils.Log($"Unknown core {coreSubtypeId}, using default core");
+            var shipCore = ShipCores.FirstOrDefault(core => core.UniqueName == coreTypeName);
+            if (shipCore == null)
+            {
+            } // Utils.Log($"Unknown core {coreSubtypeId}, using default core");
+
             return shipCore ?? DefaultNoCore;
         }
+
+        public bool IsValidCoreType(string coreTypeName)
+        {
+            return ShipCores.Any(core => core.UniqueName == coreTypeName);
+        }
+
         public void SaveConfig()
         {
             try
             {
-                var globalConfigWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig));
+                var globalConfigWriter =
+                    MyAPIGateway.Utilities.WriteFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig));
                 globalConfigWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this));
                 globalConfigWriter.Close();
                 MyAPIGateway.Utilities.ShowMessage("Save Config:", $"Saved {GlobalConfigFileName}");
-                
-                var blockGroupsWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage(BlockGroupsFileName, typeof(BlockGroup[]));
-                blockGroupsWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this.BlockGroups));
+
+                var blockGroupsWriter =
+                    MyAPIGateway.Utilities.WriteFileInWorldStorage(BlockGroupsFileName, typeof(BlockGroup[]));
+                blockGroupsWriter.Write(MyAPIGateway.Utilities.SerializeToXML(BlockGroups));
                 blockGroupsWriter.Close();
                 MyAPIGateway.Utilities.ShowMessage("Save Config:", $"Saved {BlockGroupsFileName}");
 
-                var defaultNoCoreWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage(DefaultNoCoreFileName, typeof(ShipCore));
-                defaultNoCoreWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this.DefaultNoCore));
+                var defaultNoCoreWriter =
+                    MyAPIGateway.Utilities.WriteFileInWorldStorage(DefaultNoCoreFileName, typeof(ShipCore));
+                defaultNoCoreWriter.Write(MyAPIGateway.Utilities.SerializeToXML(DefaultNoCore));
                 defaultNoCoreWriter.Close();
                 MyAPIGateway.Utilities.ShowMessage("Save Config:", $"Saved {DefaultNoCoreFileName}");
             }
@@ -88,58 +80,56 @@ namespace ShipCoreFramework
             try
             {
                 //Get World Settings
-                if(MyAPIGateway.Utilities.FileExistsInWorldStorage(GlobalConfigFileName,typeof(ModConfig)))
+                if (MyAPIGateway.Utilities.FileExistsInWorldStorage(GlobalConfigFileName, typeof(ModConfig)))
                 {
-                    using (var reader = MyAPIGateway.Utilities.ReadFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig)))
+                    using (var reader =
+                           MyAPIGateway.Utilities.ReadFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig)))
                     {
                         var text = reader.ReadToEnd();
                         var newGlobalSettings = MyAPIGateway.Utilities.SerializeFromXML<ModConfig>(text);
                         if (newGlobalSettings == null)
-                            throw new Exception($"Failed to load world config.");
-                        globalSettings=newGlobalSettings;
+                            throw new Exception("Failed to load world config.");
+                        globalSettings = newGlobalSettings;
                     }
                 }
                 else
                 {
                     //Write Global Settings using predefined values
-                    var globalConfigWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig));
+                    var globalConfigWriter =
+                        MyAPIGateway.Utilities.WriteFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig));
                     globalConfigWriter.Write(MyAPIGateway.Utilities.SerializeToXML(globalSettings));
                     globalConfigWriter.Close();
                 }
-                
+
                 //Run Though Mods
                 foreach (var mod in MyAPIGateway.Session.Mods)
                 {
                     //Add Custom BlockGroups
-                    if(MyAPIGateway.Utilities.FileExistsInModLocation(BlockGroupsFileName, mod))
-                    {
+                    if (MyAPIGateway.Utilities.FileExistsInModLocation(BlockGroupsFileName, mod))
                         using (var reader = MyAPIGateway.Utilities.ReadFileInModLocation(BlockGroupsFileName, mod))
                         {
                             var text = reader.ReadToEnd();
                             var newBlockGroups = MyAPIGateway.Utilities.SerializeFromXML<List<BlockGroup>>(text);
-                                
+
                             if (newBlockGroups == null)
                                 throw new Exception($"Failed to load block groups from Mod: {mod.FriendlyName}");
                             globalSettings.BlockGroups.AddRange(newBlockGroups);
                         }
-                    }
-                    
+
                     //Add default Core to list
-                    if(MyAPIGateway.Utilities.FileExistsInModLocation(DefaultNoCoreFileName, mod))
-                    {
+                    if (MyAPIGateway.Utilities.FileExistsInModLocation(DefaultNoCoreFileName, mod))
                         using (var reader = MyAPIGateway.Utilities.ReadFileInModLocation(DefaultNoCoreFileName, mod))
                         {
                             var text = reader.ReadToEnd();
                             var newNoCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(text);
-                            
+
                             if (newNoCore == null)
                                 throw new Exception($"Failed to load no-core from Mod: {mod.FriendlyName}");
                             _noCoreConfigs.Add(newNoCore);
                         }
-                    }
 
                     if (!MyAPIGateway.Utilities.FileExistsInModLocation(CoreManifestFileName, mod)) continue;
-                    
+
                     //Check the Core Manifest to get all cores in the mod
                     using (var reader = MyAPIGateway.Utilities.ReadFileInModLocation(CoreManifestFileName, mod))
                     {
@@ -147,21 +137,20 @@ namespace ShipCoreFramework
                         var coreManifest = MyAPIGateway.Utilities.SerializeFromXML<CoreManifest>(text);
                         if (coreManifest == null)
                             throw new Exception($"Failed to Load Classes from Mod: {mod.FriendlyName}");
-                        
+
                         //Go get ship cores
                         foreach (var shipCoreFilename in coreManifest.ShipCoreFilenames)
-                        {
                             using (var textReader = MyAPIGateway.Utilities.ReadFileInModLocation(shipCoreFilename, mod))
                             {
                                 var modText = textReader.ReadToEnd();
                                 var newShipCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(modText);
-                                
-                                if(newShipCore == null)
-                                    throw new Exception($"Failed to load ship core from file {shipCoreFilename} in Mod: {mod.FriendlyName}");
-                                
+
+                                if (newShipCore == null)
+                                    throw new Exception(
+                                        $"Failed to load ship core from file {shipCoreFilename} in Mod: {mod.FriendlyName}");
+
                                 globalSettings.ShipCores.Add(newShipCore);
                             }
-                        }
                     }
                 }
 
@@ -180,11 +169,13 @@ namespace ShipCoreFramework
                     if (chosenNoCore != null)
                     {
                         DefaultNoCore = chosenNoCore;
-                    } else
+                    }
+                    else
                     {
                         var exceptionMessage =
                             $"No no-core config found for simple name: \"{NoCoreSimpleName}\", please make sure to define the preferred no core! The following cores can be chosen: \n\n";
-                        exceptionMessage = _noCoreConfigs.Aggregate(exceptionMessage, (current, noCore) => current + $"- {noCore.UniqueName}\n");
+                        exceptionMessage = _noCoreConfigs.Aggregate(exceptionMessage,
+                            (current, noCore) => current + $"- {noCore.UniqueName}\n");
                         throw new Exception(exceptionMessage);
                     }
                 }
@@ -358,51 +349,44 @@ namespace ShipCoreFramework
     [XmlRoot("BlockLimit")]
     public class BlockLimit
     {
-        [XmlElement("Name")]
-        public string Name = string.Empty;
+        [XmlElement("Name")] public string Name = string.Empty;
 
-        [XmlElement("BlockGroups")]
-        public string[] BlockGroups = Array.Empty<string>();
+        [XmlElement("BlockGroups")] public string[] BlockGroups = Array.Empty<string>();
 
-        [XmlElement("MaxCount")]
-        public float MaxCount = 0;
+        [XmlElement("MaxCount")] public float MaxCount;
 
-        [XmlElement("TurnedOffByNoFlyZone")]
-        public bool TurnedOffByNoFlyZone = false;
-        
-        [XmlElement("PunishmentType")]
-        public PunishmentType PunishmentType = PunishmentType.ShutOff;
+        [XmlElement("TurnedOffByNoFlyZone")] public bool TurnedOffByNoFlyZone;
 
-        [XmlElement("DirectionType")]
-        public DirectionType DirectionType = DirectionType.Any;
+        [XmlElement("PunishmentType")] public PunishmentType PunishmentType = PunishmentType.ShutOff;
+
+        [XmlElement("DirectionType")] public DirectionType DirectionType = DirectionType.Any;
     }
 
     [XmlRoot("BlockGroup")]
     public class BlockGroup
     {
-        [XmlElement("Name")]
-        public string Name = string.Empty;
-        [XmlElement("BlockTypes")]
-        public List<BlockType> BlockTypes = new List<BlockType>();
+        [XmlElement("Name")] public string Name = string.Empty;
+
+        [XmlElement("BlockTypes")] public List<BlockType> BlockTypes = new List<BlockType>();
     }
-    
+
     [XmlRoot("BlockType")]
     public class BlockType
     {
-        [XmlElement("TypeId")]
-        public string TypeId;
+        [XmlElement("TypeId")] public string TypeId;
 
-        [XmlElement("SubtypeId")]
-        public string SubtypeId;
+        [XmlElement("SubtypeId")] public string SubtypeId;
 
-        [XmlElement("CountWeight")]
-        public float CountWeight;
+        [XmlElement("CountWeight")] public float CountWeight;
+
+
         public BlockType()
         {
             TypeId = string.Empty;
             SubtypeId = string.Empty;
             CountWeight = 1;
         }
+
         public BlockType(string typeId, string subtypeId = "", float countWeight = 1)
         {
             TypeId = typeId;
@@ -414,22 +398,21 @@ namespace ShipCoreFramework
     [XmlRoot("GridDefenseModifiers")]
     public class GridDefenseModifiers
     {
-        [XmlElement("Bullet")]
-        public float Bullet = 1f;
-        [XmlElement("Rocket")]
-        public float Rocket = 1f;
-        [XmlElement("Explosion")]
-        public float Explosion = 1f;
-        [XmlElement("Environment")]
-        public float Environment = 1f;
-        [XmlElement("Energy")]
-        public float Energy = 1f;
-        [XmlElement("Kinetic")]
-        public float Kinetic = 1f;
-        [XmlElement("Duration")]
-        public float Duration = 0f;
-        [XmlElement("Cooldown")]
-        public float Cooldown = 0f;
+        [XmlElement("Bullet")] public float Bullet = 1f;
+
+        [XmlElement("Energy")] public float Energy = 1f;
+
+        [XmlElement("Kinetic")] public float Kinetic = 1f;
+
+        [XmlElement("Duration")] public float Duration;
+
+        [XmlElement("Cooldown")] public float Cooldown;
+
+        [XmlElement("Rocket")] public float Rocket = 1f;
+
+        [XmlElement("Explosion")] public float Explosion = 1f;
+
+        [XmlElement("Environment")] public float Environment = 1f;
     }
 
     [XmlRoot("PunishmentType")]
@@ -450,6 +433,6 @@ namespace ShipCoreFramework
         Down,
         Left,
         Right,
-        Any,
+        Any
     }
 }

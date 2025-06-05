@@ -1,28 +1,13 @@
 ﻿// System
-using System;
-using System.Text;
-using System.Collections.Generic;
-using System.Linq;
-using System.Globalization;
-// Sandbox
-using Sandbox.Common.ObjectBuilders;
-using Sandbox.Game.EntityComponents;
-using Sandbox.Game.Components;
+
 using Sandbox.Game.Entities;
-using Sandbox.ModAPI.Interfaces.Terminal;
 using Sandbox.ModAPI;
-using Sandbox.Definitions;
-// VRage
 using VRage.Game;
-using VRage.Game.Components;
 using VRage.Game.ModAPI;
-using VRage.Game.Entity;
-using VRage.ModAPI;
-using VRage.ObjectBuilders;
+using VRage.Game.ObjectBuilders.Definitions;
 using VRage.Utils;
-using VRageMath;
-using VRage.Game.ModAPI.Network;
-using VRage.Sync;
+// Sandbox
+// VRage
 
 namespace ShipCoreFramework
 {
@@ -50,14 +35,16 @@ namespace ShipCoreFramework
                 var rawRefinery = block as MyCubeBlock;
                 if (rawRefinery?.CurrentAttachedUpgradeModules != null)
                 {
-                    var productivity = refinery.UpgradeValues["Productivity"] > 0 ? 2f * modifiers.RefineSpeed : modifiers.RefineSpeed;
+                    var productivity = refinery.UpgradeValues["Productivity"] > 0
+                        ? 2f * modifiers.RefineSpeed
+                        : modifiers.RefineSpeed;
                     var effectiveness = 1f * modifiers.RefineEfficiency;
-                    foreach (var blockModule in rawRefinery.CurrentAttachedUpgradeModules.Select(module => module.Value.Block))
+                    foreach (var blockModule in rawRefinery.CurrentAttachedUpgradeModules.Select(module =>
+                                 module.Value.Block))
                     {
-                        List<VRage.Game.ObjectBuilders.Definitions.MyUpgradeModuleInfo> upgrades;
+                        List<MyUpgradeModuleInfo> upgrades;
                         blockModule.GetUpgradeList(out upgrades);
                         foreach (var upgrade in upgrades)
-                        {
                             switch (upgrade.UpgradeType)
                             {
                                 case "Productivity":
@@ -67,14 +54,16 @@ namespace ShipCoreFramework
                                     effectiveness += upgrade.Modifier * modifiers.RefineEfficiency;
                                     break;
                             }
-                        }
                     }
+
                     refinery.UpgradeValues["Productivity"] = productivity;
                     refinery.UpgradeValues["Effectiveness"] = effectiveness;
                 }
                 else
                 {
-                    refinery.UpgradeValues["Productivity"] = refinery.UpgradeValues["Productivity"] > 0 ? 2f * modifiers.RefineSpeed : modifiers.RefineSpeed;
+                    refinery.UpgradeValues["Productivity"] = refinery.UpgradeValues["Productivity"] > 0
+                        ? 2f * modifiers.RefineSpeed
+                        : modifiers.RefineSpeed;
                     refinery.UpgradeValues["Effectiveness"] = modifiers.RefineEfficiency;
                 }
             }
@@ -87,13 +76,15 @@ namespace ShipCoreFramework
                 if (rawAssembler?.CurrentAttachedUpgradeModules != null)
                 {
                     var productivity = 1f * modifiers.AssemblerSpeed;
-                    foreach (var blockModule in rawAssembler.CurrentAttachedUpgradeModules.Select(module => module.Value.Block))
+                    foreach (var blockModule in rawAssembler.CurrentAttachedUpgradeModules.Select(module =>
+                                 module.Value.Block))
                     {
-                        List<VRage.Game.ObjectBuilders.Definitions.MyUpgradeModuleInfo> upgrades;
+                        List<MyUpgradeModuleInfo> upgrades;
                         blockModule.GetUpgradeList(out upgrades);
                         if (blockModule.BlockDefinition.SubtypeId == "LargeProductivityModule")
                             productivity += upgrades[0].Modifier * modifiers.AssemblerSpeed;
                     }
+
                     assembler.UpgradeValues["Productivity"] = productivity;
                 }
                 else
@@ -103,16 +94,10 @@ namespace ShipCoreFramework
             }
 
             var reactor = block as IMyReactor;
-            if (reactor != null)
-            {
-                reactor.PowerOutputMultiplier = modifiers.PowerProducersOutput;
-            }
+            if (reactor != null) reactor.PowerOutputMultiplier = modifiers.PowerProducersOutput;
 
             var drill = block as IMyShipDrill;
-            if (drill != null)
-            {
-                drill.DrillHarvestMultiplier = modifiers.DrillHarvestMultiplier;
-            }
+            if (drill != null) drill.DrillHarvestMultiplier = modifiers.DrillHarvestMultiplier;
         }
 
         public static void GridClassDamageHandler(object target, ref MyDamageInformation damageInfo)
@@ -122,12 +107,15 @@ namespace ShipCoreFramework
             var myGrid = myBlock.CubeGrid;
             var myGridLogic = myGrid.GetMainGridLogic();
             if (myGridLogic == null) return;
-            if (damageInfo.Type == MyDamageType.Bullet) { damageInfo.Amount *= myGridLogic.DefenseModifiers.Bullet; }
-            if (damageInfo.Type == MyDamageType.Rocket) { damageInfo.Amount *= myGridLogic.DefenseModifiers.Rocket; }
-            if (damageInfo.Type == MyDamageType.Explosion) { damageInfo.Amount *= myGridLogic.DefenseModifiers.Explosion; }
-            if (damageInfo.Type == MyDamageType.Environment) { damageInfo.Amount *= myGridLogic.DefenseModifiers.Environment; }
-            if (damageInfo.Type == MyStringHash.GetOrCompute("Energy")) { damageInfo.Amount *= myGridLogic.DefenseModifiers.Energy; }
-            if (damageInfo.Type == MyStringHash.GetOrCompute("Kinetic")) { damageInfo.Amount *= myGridLogic.DefenseModifiers.Kinetic; }
+            if (damageInfo.Type == MyDamageType.Bullet) damageInfo.Amount *= myGridLogic.DefenseModifiers.Bullet;
+            if (damageInfo.Type == MyDamageType.Rocket) damageInfo.Amount *= myGridLogic.DefenseModifiers.Rocket;
+            if (damageInfo.Type == MyDamageType.Explosion) damageInfo.Amount *= myGridLogic.DefenseModifiers.Explosion;
+            if (damageInfo.Type == MyDamageType.Environment)
+                damageInfo.Amount *= myGridLogic.DefenseModifiers.Environment;
+            if (damageInfo.Type == MyStringHash.GetOrCompute("Energy"))
+                damageInfo.Amount *= myGridLogic.DefenseModifiers.Energy;
+            if (damageInfo.Type == MyStringHash.GetOrCompute("Kinetic"))
+                damageInfo.Amount *= myGridLogic.DefenseModifiers.Kinetic;
         }
     }
 }

@@ -1,37 +1,15 @@
 ﻿// System
-using System;
-using System.Text;
-using System.Collections.Generic;
-using System.Linq;
-using System.Globalization;
+
 // Sandbox
-using Sandbox.Common.ObjectBuilders;
-using Sandbox.Game.EntityComponents;
-using Sandbox.Game.Components;
-using Sandbox.Game.Entities;
-using Sandbox.ModAPI.Interfaces.Terminal;
-using Sandbox.ModAPI;
-using Sandbox.Definitions;
 // VRage
-using VRage.Game;
-using VRage.Game.Components;
-using VRage.Game.ModAPI;
-using VRage.Game.Entity;
-using VRage.ModAPI;
-using VRage.ObjectBuilders;
-using VRage.Utils;
-using VRageMath;
-using VRage.Game.ModAPI.Network;
-using VRage.Sync;
 
 namespace ShipCoreFramework
 {
     internal static class DefaultGridClassConfig
     {
-        
         private static readonly BlockGroup VanillaSmallGridFixedWeapons = new BlockGroup
         {
-            Name="VanillaSmallGridFixedWeapons",
+            Name = "VanillaSmallGridFixedWeapons",
             BlockTypes =
             {
                 new BlockType("SmallGatlingGun"),
@@ -41,9 +19,10 @@ namespace ShipCoreFramework
                 new BlockType("SmallMissileLauncher", "SmallMissileLauncherWarfare2"),
                 new BlockType("SmallMissileLauncherReload", "SmallMissileLauncherReload"),
                 new BlockType("SmallMissileLauncherReload", "SmallBlockMediumCalibreGun"),
-                new BlockType("SmallMissileLauncherReload", "SmallRailgun"),   
-            },
+                new BlockType("SmallMissileLauncherReload", "SmallRailgun")
+            }
         };
+
         /*
         //vanilla small grid turrets
         private static readonly BlockType[] VanillaSmallGridTurretWeapons =
@@ -189,7 +168,7 @@ namespace ShipCoreFramework
         private static readonly BlockType[] VanillaPDC =
         {
             new BlockType("InteriorTurret",  "LargeInteriorTurret")
-        };     
+        };
         // Concatenated block types
         private static readonly BlockType[] StaticWeaponry = Utils.ConcatArrays(VanillaSmallGridFixedWeapons, VanillaLargeGridFixedWeapons);
         private static readonly BlockType[] Turrets = Utils.ConcatArrays(VanillaLargeGridTurretWeapons, VanillaSmallGridTurretWeapons);
@@ -223,7 +202,7 @@ namespace ShipCoreFramework
 
         private static readonly BlockLimit NoGyroLimit = new BlockLimit
             { Name = "Gyro", MaxCount = 1, BlockTypes = Gyros };
-            
+
         */
         public static GridModifiers DefaultGridModifiers = new GridModifiers
         {
@@ -237,9 +216,9 @@ namespace ShipCoreFramework
             RefineEfficiency = 1,
             RefineSpeed = 1,
             MaxSpeed = 30.0f,
-            MaxBoost=1.2f,
-            BoostDuration=10f,
-            BoostCoolDown=60f,
+            MaxBoost = 1.2f,
+            BoostDuration = 10f,
+            BoostCoolDown = 60f
         };
 
         public static GridDefenseModifiers DefaultGridDefenseModifiers2X = new GridDefenseModifiers
@@ -249,7 +228,7 @@ namespace ShipCoreFramework
             Energy = 2f,
             Kinetic = 2f,
             Bullet = 2f,
-            Rocket = 2f,
+            Rocket = 2f
         };
 
         public static ShipCore DefaultNoCore = new ShipCore
@@ -262,7 +241,7 @@ namespace ShipCoreFramework
             LargeGridStatic = true,
             ForceBroadCast = false,
             ForceBroadCastRange = 2000,
-            Modifiers = DefaultGridModifiers,
+            Modifiers = DefaultGridModifiers
             /*
             BlockLimits = new []
             {
@@ -291,9 +270,9 @@ namespace ShipCoreFramework
             DefaultNoCore = DefaultNoCore,
             DebugMode = false,
             //NoFlyZones = new List<Zones>{new Zones{AllowedClassesById=new List<long>{301,302,303},Radius=1000.0f},},
-            IgnoreFactionTags = new List<string>{"SPRT"},
+            IgnoreFactionTags = new List<string> { "SPRT" },
             IncludeAiFactions = false,
-            MaxPossibleSpeedMetersPerSecond = 120.0f,
+            MaxPossibleSpeedMetersPerSecond = 120.0f
             /*
             ShipCores = new[]
             {
@@ -478,7 +457,7 @@ namespace ShipCoreFramework
                     BlockLimits = new[]
                     {
                         NoWeaponsLimit,
-                        SingleSafeZoneLimit,               
+                        SingleSafeZoneLimit,
                         new BlockLimit
                         {
                             Name = "Production",
@@ -576,7 +555,7 @@ namespace ShipCoreFramework
                             BlockTypes = VanillaArtillery
                         },
                     }
-                },     
+                },
                 new ShipCore //Cruiser
                 {
                     Id =202,
@@ -725,7 +704,7 @@ namespace ShipCoreFramework
                             TurnedOffByNoFlyZone = true
                         },
                     }
-                },  
+                },
                 new ShipCore //Battleship
                 {
                     Id = 204,
@@ -754,7 +733,7 @@ namespace ShipCoreFramework
                         MaxBoost=1.2f,
                         BoostDuration=5f,
                         BoostCoolDown=60f,
-                        
+
                     },
                     DamageModifiers = new GridDefenseModifiers
                     {
@@ -791,7 +770,7 @@ namespace ShipCoreFramework
                             BlockTypes = VanillaRailguns
                         },
                     }
-                },  
+                },
                 new ShipCore //FlagShip
                 {
                     Id =205,
