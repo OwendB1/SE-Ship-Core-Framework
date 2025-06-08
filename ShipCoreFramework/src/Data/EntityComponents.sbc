@@ -3,7 +3,7 @@
     <EntityComponent xsi:type="MyObjectBuilder_ModStorageComponentDefinition">
       <Id>
         <TypeId>ModStorageComponent</TypeId>
-        <SubtypeId>ShipClassId</SubtypeId>
+        <SubtypeId>CoreState</SubtypeId>
       </Id>
       <RegisteredStorageGuids>
         <guid>a8807ad4-524d-441a-a89a-0671fbfb1dd3</guid>

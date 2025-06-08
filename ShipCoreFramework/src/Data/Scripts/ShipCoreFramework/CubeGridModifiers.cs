@@ -1,13 +1,9 @@
-﻿// System
-
-using Sandbox.Game.Entities;
+﻿using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.Game.ObjectBuilders.Definitions;
 using VRage.Utils;
-// Sandbox
-// VRage
 
 namespace ShipCoreFramework
 {

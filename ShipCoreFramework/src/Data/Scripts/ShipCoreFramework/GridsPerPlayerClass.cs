@@ -1,9 +1,4 @@
-﻿// System
-
-// Sandbox
-// VRage
-
-namespace ShipCoreFramework
+﻿namespace ShipCoreFramework
 {
     public static class GridsPerPlayerClassManager
     {
@@ -26,7 +21,7 @@ namespace ShipCoreFramework
 
             if (PerPlayer.ContainsKey(playerId) && PerPlayer[playerId].ContainsKey(newCoreType))
             {
-                var numAllowedGrids = Config.GetShipCoreBySubtype(newCoreType).MaxPerPlayer;
+                var numAllowedGrids = Config.GetShipCoreByTypeId(newCoreType).MaxPerPlayer;
                 if (numAllowedGrids < 0) return true;
                 var idx = PerPlayer[playerId][newCoreType].Count + 1;
                 return idx <= numAllowedGrids;
@@ -43,7 +38,7 @@ namespace ShipCoreFramework
         {
             if (!IsApplicableGrid(gridLogic)) return;
             var playerId = gridLogic.MajorityOwningPlayerId;
-            var coreType = gridLogic.ShipCoreType;
+            var coreType = gridLogic.ShipCoreTypeId;
             Dictionary<string, List<long>> perGridClass;
             if (!PerPlayer.ContainsKey(playerId))
             {
@@ -71,7 +66,7 @@ namespace ShipCoreFramework
         {
             if (!IsApplicableGrid(gridLogic)) return;
             var playerId = gridLogic.MajorityOwningPlayerId;
-            var coreType = gridLogic.ShipCoreType;
+            var coreType = gridLogic.ShipCoreTypeId;
             if (!PerPlayer.ContainsKey(playerId)) return;
             var perGridClass = PerPlayer[playerId];
             if (!perGridClass.ContainsKey(coreType)) return;

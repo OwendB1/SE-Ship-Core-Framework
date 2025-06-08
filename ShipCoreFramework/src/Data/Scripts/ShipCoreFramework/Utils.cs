@@ -1,32 +1,24 @@
-﻿// System
-
-using Sandbox.Game.Entities;
+﻿using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.Utils;
-// Sandbox
-// VRage
 
 namespace ShipCoreFramework
 {
     public static class Utils
     {
-        public static void ShowNotification(string msg, IMyCubeGrid grid, int disappearTime = 10000,
+        public static void ShowNotification(string msg, int disappearTime = 10000, bool isCombatLog = false,
             string font = MyFontEnum.Red)
         {
-            if (Constants.IsClient)
-            {
-                MyAPIGateway.Utilities.ShowMessage("[Ship Classes]: ", msg);
-                MyAPIGateway.Utilities.ShowNotification(msg, disappearTime, font);
-            }
-            else if (Constants.IsServer)
-            {
-                //foreach (var recipientId in grid.GetGridRecipientIds())
-                //{
-                //    ModSessionManager.Comms.SendLogToClient(msg, recipientId);
-                //}
-            }
+            if (isCombatLog && ModSessionManager.Config.CombatLogging == false) return;
+            MyAPIGateway.Utilities.ShowMessage("[Ship Cores]: ", msg);
+            MyAPIGateway.Utilities.ShowNotification(msg, disappearTime, font);
+        }
+        
+        public static void ShowMessage(string msg, bool showToolTip = false)
+        {
+            MyAPIGateway.Utilities.ShowMessage(showToolTip ? "[Ship Cores]: " : "", msg);
         }
 
         public static List<BlockType> GetBlockTypes(this BlockLimit blockLimit)
@@ -40,10 +32,10 @@ namespace ShipCoreFramework
 
         public static void Log(string msg, int logPriority = 0)
         {
-            if (logPriority >= Settings.LOG_LEVEL) MyLog.Default.WriteLine($"[Ship Classes]: {msg}");
+            if (logPriority >= Settings.LOG_LEVEL) MyLog.Default.WriteLine($"[Ship Cores]: {msg}");
 
             if (logPriority >= Settings.CLIENT_OUTPUT_LOG_LEVEL)
-                MyAPIGateway.Utilities.ShowMessage($"[Ship Classes={logPriority}]: ", msg);
+                MyAPIGateway.Utilities.ShowMessage($"[Ship Cores={logPriority}]: ", msg);
 
             if (ModSessionManager.Config != null && ModSessionManager.Config.DebugMode)
                 MyAPIGateway.Utilities.ShowMessage($"[Ship Classes={logPriority}]: ", msg);
@@ -53,7 +45,7 @@ namespace ShipCoreFramework
         {
             Log($"Exception message = {e.Message}, Stack trace:\n{e.StackTrace}", 3);
             if (ModSessionManager.Config != null && ModSessionManager.Config.DebugMode)
-                MyAPIGateway.Utilities.ShowMessage("[Ship Classes] Exception:",
+                MyAPIGateway.Utilities.ShowMessage("[Ship Cores] Exception:",
                     $"{e.Message}\nStack trace:\n{e.StackTrace}");
         }
 

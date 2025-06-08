@@ -1,9 +1,4 @@
-﻿// System
-
-// Sandbox
-// VRage
-
-namespace ShipCoreFramework
+﻿namespace ShipCoreFramework
 {
     internal static class DefaultGridClassConfig
     {

@@ -1,8 +1,4 @@
-﻿// System
-
-using VRageMath;
-// Sandbox
-// VRage
+﻿using VRageMath;
 
 namespace ShipCoreFramework
 {
@@ -59,7 +55,7 @@ namespace ShipCoreFramework
                 {
                     gridLogic.BoostCoolDown = gridClass.Modifiers.BoostCoolDown * 60.0f;
                     gridLogic.EnableBoost = false;
-                    Utils.ShowNotification("Booster Disengaged!", myGrid, 600);
+                    Utils.ShowNotification("Booster Disengaged!", 1000);
                 }
             }
 

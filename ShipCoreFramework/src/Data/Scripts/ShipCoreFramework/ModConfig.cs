@@ -11,10 +11,11 @@ namespace ShipCoreFramework
         [XmlIgnoreAttribute] private const string CoreManifestFileName = "ShipCoreConfig_Manifest.xml";
         [XmlIgnoreAttribute] private const string BlockGroupsFileName = "ShipCoreConfig_Groups.xml";
         [XmlIgnoreAttribute] private const string DefaultNoCoreFileName = "ShipCoreConfig_No_Core.xml";
-        [XmlIgnoreAttribute] private readonly List<ShipCore> _noCoreConfigs = new List<ShipCore>();
+        [XmlIgnoreAttribute] public readonly List<ShipCore> NoCoreConfigs = new List<ShipCore>();
         [XmlIgnoreAttribute] public readonly List<BlockGroup> BlockGroups = new List<BlockGroup>();
         [XmlIgnoreAttribute] public readonly List<ShipCore> ShipCores = new List<ShipCore>();
         [XmlElement("DebugMode")] public bool DebugMode = true;
+        [XmlElement("CombatLogging")] public bool CombatLogging = true;
         [XmlIgnoreAttribute] public ShipCore DefaultNoCore = new ShipCore();
 
         [XmlElement("MaxPossibleSpeedMetersPerSecond")]
@@ -27,9 +28,10 @@ namespace ShipCoreFramework
         [XmlIgnoreAttribute] public string NoCoreSimpleName = "NoCoreGrids";
         [XmlElement("NoFlyZones")] public List<Zones> NoFlyZones = new List<Zones>();
 
-        public ShipCore GetShipCoreBySubtype(string coreTypeName)
+        public ShipCore GetShipCoreByTypeId(string coreTypeId)
         {
-            var shipCore = ShipCores.FirstOrDefault(core => core.UniqueName == coreTypeName);
+            if (coreTypeId == string.Empty) return DefaultNoCore;
+            var shipCore = ShipCores.FirstOrDefault(core => core.SubtypeId == coreTypeId);
             if (shipCore == null)
             {
             } // Utils.Log($"Unknown core {coreSubtypeId}, using default core");
@@ -125,7 +127,7 @@ namespace ShipCoreFramework
 
                             if (newNoCore == null)
                                 throw new Exception($"Failed to load no-core from Mod: {mod.FriendlyName}");
-                            _noCoreConfigs.Add(newNoCore);
+                            NoCoreConfigs.Add(newNoCore);
                         }
 
                     if (!MyAPIGateway.Utilities.FileExistsInModLocation(CoreManifestFileName, mod)) continue;
@@ -154,18 +156,18 @@ namespace ShipCoreFramework
                     }
                 }
 
-                ThrowErrorIfDuplicates(_noCoreConfigs, core => core.UniqueName);
+                ThrowErrorIfDuplicates(NoCoreConfigs, core => core.UniqueName);
                 ThrowErrorIfDuplicates(ShipCores, core => core.UniqueName);
                 ThrowErrorIfDuplicates(BlockGroups, groups => groups.Name);
 
-                if (_noCoreConfigs.Count == 0)
+                if (NoCoreConfigs.Count == 0)
                 {
                     //Utils.Log($"Could not find any no-core configs, setting no-core config to use pre-generated internal one!!", 1);
                     DefaultNoCore = DefaultNoCoreConfig.ShipCore;
                 }
                 else
                 {
-                    var chosenNoCore = _noCoreConfigs.FirstOrDefault(core => core.UniqueName == NoCoreSimpleName);
+                    var chosenNoCore = NoCoreConfigs.FirstOrDefault(core => core.UniqueName == NoCoreSimpleName);
                     if (chosenNoCore != null)
                     {
                         DefaultNoCore = chosenNoCore;
@@ -174,7 +176,7 @@ namespace ShipCoreFramework
                     {
                         var exceptionMessage =
                             $"No no-core config found for simple name: \"{NoCoreSimpleName}\", please make sure to define the preferred no core! The following cores can be chosen: \n\n";
-                        exceptionMessage = _noCoreConfigs.Aggregate(exceptionMessage,
+                        exceptionMessage = NoCoreConfigs.Aggregate(exceptionMessage,
                             (current, noCore) => current + $"- {noCore.UniqueName}\n");
                         throw new Exception(exceptionMessage);
                     }

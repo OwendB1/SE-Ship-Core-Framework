@@ -14,6 +14,7 @@ namespace ShipCoreFramework
 
         public override void LoadData()
         {
+            MyAPIGateway.Utilities.MessageEntered += Commands.OnChatCommand;
             Config = Config.LoadConfig();
             Config.SaveConfig();
             MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed = Config.MaxPossibleSpeedMetersPerSecond;

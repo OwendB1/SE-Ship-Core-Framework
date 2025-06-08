@@ -1,9 +1,4 @@
-﻿// System
-
-// Sandbox
-// VRage
-
-namespace ShipCoreFramework
+﻿namespace ShipCoreFramework
 {
     public static class GridsPerFactionClassManager
     {
@@ -24,7 +19,7 @@ namespace ShipCoreFramework
 
             if (PerFaction.ContainsKey(factionId) && PerFaction[factionId].ContainsKey(newCoreType))
             {
-                var numAllowedGrids = Config.GetShipCoreBySubtype(newCoreType).MaxPerFaction;
+                var numAllowedGrids = Config.GetShipCoreByTypeId(newCoreType).MaxPerFaction;
                 if (numAllowedGrids < 0) return true;
                 var idx = PerFaction[factionId][newCoreType].Count + 1;
                 return idx <= numAllowedGrids;
@@ -40,7 +35,7 @@ namespace ShipCoreFramework
         {
             if (!IsApplicableGrid(gridLogic)) return;
             var factionId = gridLogic.OwningFaction?.FactionId ?? -1;
-            var coreType = gridLogic.ShipCoreType;
+            var coreType = gridLogic.ShipCoreTypeId;
             Dictionary<string, List<long>> perGridClass;
             if (!PerFaction.ContainsKey(factionId))
             {
@@ -68,7 +63,7 @@ namespace ShipCoreFramework
         {
             if (!IsApplicableGrid(gridLogic)) return;
             var factionId = gridLogic.OwningFaction?.FactionId ?? -1;
-            var gridClassId = gridLogic.ShipCoreType;
+            var gridClassId = gridLogic.ShipCoreTypeId;
             if (!PerFaction.ContainsKey(factionId)) return;
             var perGridClass = PerFaction[factionId];
             if (!perGridClass.ContainsKey(gridClassId)) return;
