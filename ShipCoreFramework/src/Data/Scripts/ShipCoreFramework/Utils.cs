@@ -39,9 +39,9 @@ namespace ShipCoreFramework
 
         public static void Log(string msg, int logPriority = 0)
         {
-            if (logPriority >= Settings.LOG_LEVEL) MyLog.Default.WriteLine($"[Ship Cores]: {msg}");
+            if (logPriority >= ModSessionManager.Config.LogLevel) MyLog.Default.WriteLine($"[Ship Cores]: {msg}");
 
-            if (logPriority >= Settings.CLIENT_OUTPUT_LOG_LEVEL)
+            if (logPriority >= ModSessionManager.Config.ClientOutputLogLevel)
                 MyAPIGateway.Utilities.ShowMessage($"[Ship Cores={logPriority}]: ", msg);
 
             if (ModSessionManager.Config != null && ModSessionManager.Config.DebugMode)

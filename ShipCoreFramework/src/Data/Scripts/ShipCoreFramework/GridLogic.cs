@@ -141,6 +141,7 @@ namespace ShipCoreFramework
             if (grid?.Physics == null) return;
             Utils.Log($"PhysicsChanged: change triggered. Initialising logic for {grid.CustomName} (entity id: {grid.EntityId})!");
             
+            Grid.OnPhysicsChanged -= InitOnPhysicsChanged;
             NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
             
             List<IMyCubeGrid> subs;

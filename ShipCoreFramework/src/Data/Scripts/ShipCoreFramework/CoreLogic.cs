@@ -38,6 +38,7 @@ namespace ShipCoreFramework
             if (_coreBlock?.Physics == null) return;
             _subtypeId = _coreBlock.BlockDefinition.SubtypeId;
             
+            _coreBlock.OnPhysicsChanged -= InitOnPhysicsChanged;
             if (CheckIfCoreOfOtherTypeExists())
             {
                 _coreBlock.Close();

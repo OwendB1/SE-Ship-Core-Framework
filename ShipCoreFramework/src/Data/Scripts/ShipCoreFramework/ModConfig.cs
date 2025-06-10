@@ -21,8 +21,10 @@ namespace ShipCoreFramework
         [XmlIgnoreAttribute] public readonly List<ShipCore> NoCoreConfigs = new List<ShipCore>();
         [XmlIgnoreAttribute] public readonly List<BlockGroup> BlockGroups = new List<BlockGroup>();
         [XmlIgnoreAttribute] public readonly List<ShipCore> ShipCores = new List<ShipCore>();
-        [XmlElement("DebugMode")] public bool DebugMode = true;
+        [XmlElement("DebugMode")] public bool DebugMode = false;
         [XmlElement("CombatLogging")] public bool CombatLogging = true;
+        [XmlElement("LOG_LEVEL")]public  int LogLevel = 0; //messages with logPriority >= this will get logged, less than will be ignored
+        [XmlElement("CLIENT_OUTPUT_LOG_LEVEL")]public  int ClientOutputLogLevel = 3; //messages with logPriority >= this will get output to clients
         [XmlIgnoreAttribute] public ShipCore DefaultNoCore = DefaultNoCoreConfig.ShipCore;
 
         [XmlElement("MaxPossibleSpeedMetersPerSecond")]
