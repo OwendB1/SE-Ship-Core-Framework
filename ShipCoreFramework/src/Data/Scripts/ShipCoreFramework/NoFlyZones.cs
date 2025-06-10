@@ -1,4 +1,8 @@
-﻿using VRageMath;
+﻿#region
+
+using VRageMath;
+
+#endregion
 
 namespace ShipCoreFramework
 {

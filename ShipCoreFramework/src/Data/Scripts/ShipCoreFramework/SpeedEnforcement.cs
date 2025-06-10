@@ -1,4 +1,9 @@
-﻿using VRageMath;
+﻿#region
+
+using System.Collections.Generic;
+using VRageMath;
+
+#endregion
 
 namespace ShipCoreFramework
 {

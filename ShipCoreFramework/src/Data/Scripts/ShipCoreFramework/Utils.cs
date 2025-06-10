@@ -1,8 +1,15 @@
-﻿using Sandbox.Game.Entities;
+﻿#region
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.Utils;
+
+#endregion
 
 namespace ShipCoreFramework
 {
@@ -24,7 +31,7 @@ namespace ShipCoreFramework
         public static List<BlockType> GetBlockTypes(this BlockLimit blockLimit)
         {
             var relevantBlockGroups = ModSessionManager.Config.BlockGroups
-                .Where(group => blockLimit.BlockGroups.Contains(group.Name)).ToList();
+                .Where(group => Enumerable.Contains(blockLimit.BlockGroups, group.Name)).ToList();
             var blockTypes = new List<BlockType>();
             relevantBlockGroups.ForEach(gr => blockTypes.AddRange(gr.BlockTypes));
             return blockTypes;

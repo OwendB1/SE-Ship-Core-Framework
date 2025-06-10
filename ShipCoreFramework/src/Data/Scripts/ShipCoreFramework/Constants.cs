@@ -1,8 +1,9 @@
-﻿// System
+﻿#region
 
+using System;
 using Sandbox.ModAPI;
-// Sandbox
-// VRage
+
+#endregion
 
 namespace ShipCoreFramework
 {

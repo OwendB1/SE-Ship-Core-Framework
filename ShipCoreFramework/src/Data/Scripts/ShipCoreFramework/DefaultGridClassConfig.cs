@@ -1,4 +1,10 @@
-﻿namespace ShipCoreFramework
+﻿#region
+
+using System.Collections.Generic;
+
+#endregion
+
+namespace ShipCoreFramework
 {
     internal static class DefaultGridClassConfig
     {

@@ -1,10 +1,17 @@
-﻿using Sandbox.Game.Entities;
+﻿#region
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
+
+#endregion
 
 namespace ShipCoreFramework
 {
@@ -15,8 +22,7 @@ namespace ShipCoreFramework
         private static ModConfig Config => ModSessionManager.Config;
         private bool _isMainGrid = false;
         
-        public readonly Dictionary<BlockLimit, List<KeyValuePair<IMyCubeBlock, double>>> BlocksPerLimit =
-            new Dictionary<BlockLimit, List<KeyValuePair<IMyCubeBlock, double>>>();
+        public readonly Dictionary<BlockLimit, List<KeyValuePair<IMyCubeBlock, double>>> BlocksPerLimit = new Dictionary<BlockLimit, List<KeyValuePair<IMyCubeBlock, double>>>();
 
         public float BoostCoolDown;
         public float BoostDuration;

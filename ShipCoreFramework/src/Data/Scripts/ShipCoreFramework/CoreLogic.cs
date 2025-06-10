@@ -1,3 +1,7 @@
+#region
+
+using System.Collections.Generic;
+using System.Linq;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI;
@@ -11,6 +15,8 @@ using VRage.Network;
 using VRage.ObjectBuilders;
 using VRage.Sync;
 using VRage.Utils;
+
+#endregion
 
 namespace ShipCoreFramework
 {

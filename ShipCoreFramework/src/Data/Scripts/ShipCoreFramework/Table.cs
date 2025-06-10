@@ -1,5 +1,11 @@
-﻿using VRage.Game.GUI.TextPanel;
+﻿#region
+
+using System;
+using System.Collections.Generic;
+using VRage.Game.GUI.TextPanel;
 using VRageMath;
+
+#endregion
 
 namespace ShipCoreFramework
 {

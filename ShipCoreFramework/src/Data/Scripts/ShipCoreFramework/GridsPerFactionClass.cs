@@ -1,4 +1,11 @@
-﻿namespace ShipCoreFramework
+﻿#region
+
+using System.Collections.Generic;
+using System.Linq;
+
+#endregion
+
+namespace ShipCoreFramework
 {
     public static class GridsPerFactionClassManager
     {
