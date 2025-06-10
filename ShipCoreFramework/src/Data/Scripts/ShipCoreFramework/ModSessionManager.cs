@@ -65,7 +65,7 @@ namespace ShipCoreFramework
             
             foreach (var gridLogic in factionGridLogics.Where(gridLogic =>
                          gridLogic.OwningFaction.Members.Count < gridLogic.ShipCore.MinPlayers))
-                gridLogic.ActivateNoCore = false;
+                gridLogic.ActiveNoCore = false;
         }
 
         protected override void UnloadData()

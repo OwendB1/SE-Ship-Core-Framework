@@ -2,7 +2,6 @@
 
 using System.Collections.Generic;
 using System.Linq;
-using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces.Terminal;
@@ -30,14 +29,18 @@ namespace ShipCoreFramework
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {
             base.Init(objectBuilder);
-            _coreBlock = Entity as IMyTerminalBlock;
-            
-            if (_coreBlock == null) return;
+            _coreBlock = (IMyTerminalBlock)Entity;
+            _coreBlock.OnPhysicsChanged += InitOnPhysicsChanged;
+        }
+
+        private void InitOnPhysicsChanged(IMyEntity obj)
+        {
+            if (_coreBlock?.Physics == null) return;
             _subtypeId = _coreBlock.BlockDefinition.SubtypeId;
             
             if (CheckIfCoreOfOtherTypeExists())
             {
-                _coreBlock.Delete();
+                _coreBlock.Close();
                 return;
             }
             
@@ -200,32 +203,29 @@ namespace ShipCoreFramework
 
         public override void Close()
         {
-            base.Close();
-            
-            Utils.Log("1");
             if (_coreBlock?.CubeGrid == null) return;
 
             var grid = _coreBlock.CubeGrid;
             var gridLogic = grid.GameLogic?.GetAs<GridLogic>();
             if (gridLogic == null) return;
-            Utils.Log("2");
+            
             // If this core is NOT the main core, nothing to reassign
             if (!_syncIsMainCore)
             {
                 Utils.ShowNotification($"A backup core of grid {grid.CustomName} was destroyed!",0, true);
                 return;
             }
-            Utils.Log("3");
+            
             // Try to find another core of the same type on the grid
             var slimBlocks = new List<IMySlimBlock>();
             grid.GetBlocks(slimBlocks, b => b.FatBlock is IMyTerminalBlock);
-            Utils.Log("4");
+
             var newMainCore = (
                 from terminal in slimBlocks.Select(slim => slim.FatBlock as IMyTerminalBlock) 
                 where terminal != _coreBlock 
                 select terminal.GameLogic?.GetAs<CoreLogic>())
                 .FirstOrDefault(otherLogic => otherLogic._subtypeId == _subtypeId);
-            Utils.Log("5");
+
             if (newMainCore != null)
             {
                 newMainCore._syncIsMainCore.Value = true;
@@ -237,8 +237,10 @@ namespace ShipCoreFramework
             {
                 // No other core of this type found — deactivate the grid
                 Utils.ShowNotification($"All cores destroyed! {grid.CustomName} has become inactive!",5000, true);
-                gridLogic.ActivateNoCore = false;
+                gridLogic.ActiveNoCore = false;
             }
+            
+            base.Close();
         }
         
         private bool IsOnlyCoreOfThisTypeOnGrid()

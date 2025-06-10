@@ -42,14 +42,14 @@ namespace ShipCoreFramework
 
         public IMyCubeGrid Grid;
 
-        public bool ActivateNoCore;
-        public string ShipCoreTypeId = string.Empty;
+        public bool ActiveNoCore = true;
+        private string _shipCoreTypeId = string.Empty;
 
         public IMyFaction OwningFaction => Grid.GetOwningFaction();
 
         public long MajorityOwningPlayerId => GetMajorityOwner();
 
-        public ShipCore ShipCore => Config.GetShipCoreByTypeId(ActivateNoCore ? string.Empty : ShipCoreTypeId);
+        public ShipCore ShipCore => Config.GetShipCoreByTypeId(ActiveNoCore ? string.Empty : _shipCoreTypeId);
 
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {
@@ -60,9 +60,9 @@ namespace ShipCoreFramework
 
         public void Activate(string shipCoreTypeId, bool force = false)
         {
-            if (ActivateNoCore && !force) return;
-            ShipCoreTypeId = shipCoreTypeId;
-            ActivateNoCore = true;
+            if (!ActiveNoCore && !force) return;
+            _shipCoreTypeId = shipCoreTypeId;
+            ActiveNoCore = false;
             _isDisabled = false;
         }
 
@@ -93,7 +93,7 @@ namespace ShipCoreFramework
         public override void UpdateBeforeSimulation()
         {
             base.UpdateBeforeSimulation();
-            if (!_isMainGrid || !ActivateNoCore) return;
+            if (!_isMainGrid || !ActiveNoCore) return;
             
             RunBoostTimerTick();
             RunActiveDefenseTimerTick();
@@ -225,15 +225,21 @@ namespace ShipCoreFramework
         {
             if (_isDisabled) return;
             EnforceBlockPunishment();
-            if ((!Config.IncludeAiFactions && OwningFaction.IsEveryoneNpc()) || Config.IgnoreFactionTags.Contains(OwningFaction.Tag))
-            {
-                _isDisabled = true;
-                return;
-            }
 
-            if (!_once) return;
-            GridsPerFactionClassManager.AddCubeGrid(this);
-            GridsPerPlayerClassManager.AddCubeGrid(this);
+            if (OwningFaction != null)
+            {
+                if ((!Config.IncludeAiFactions && OwningFaction.IsEveryoneNpc()) || Config.IgnoreFactionTags.Contains(OwningFaction.Tag))
+                {
+                    _isDisabled = true;
+                    return;
+                }
+                if(_once)
+                {
+                    GridsPerPlayerClassManager.AddCubeGrid(this);
+                    GridsPerFactionClassManager.AddCubeGrid(this);
+                }
+            }
+            else if(_once) GridsPerPlayerClassManager.AddCubeGrid(this);
             _once = false;
         }
         
@@ -419,9 +425,9 @@ namespace ShipCoreFramework
 
         public override void Close()
         {
-            base.Close();
             GridsPerFactionClassManager.RemoveCubeGrid(this);
             GridsPerPlayerClassManager.RemoveCubeGrid(this);
+            base.Close();
         }
     }
 }

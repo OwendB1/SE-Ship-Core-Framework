@@ -42,7 +42,7 @@ namespace ShipCoreFramework
         {
             if (!IsApplicableGrid(gridLogic)) return;
             var factionId = gridLogic.OwningFaction?.FactionId ?? -1;
-            var coreType = gridLogic.ShipCoreTypeId;
+            var coreType = gridLogic.ShipCore.SubtypeId;
             Dictionary<string, List<long>> perGridClass;
             if (!PerFaction.ContainsKey(factionId))
             {
@@ -57,7 +57,7 @@ namespace ShipCoreFramework
             if (!perGridClass.ContainsKey(coreType))
             {
                 Utils.Log(
-                    $"GridsPerFactionClass::AddCubeGrid: Missing list for grid class {coreType} in faction {factionId}",
+                    $"GridsPerFactionClass::AddCubeGrid: Missing list for core type {coreType} in faction {factionId}",
                     1);
                 perGridClass[coreType] = new List<long>();
             }
@@ -70,7 +70,7 @@ namespace ShipCoreFramework
         {
             if (!IsApplicableGrid(gridLogic)) return;
             var factionId = gridLogic.OwningFaction?.FactionId ?? -1;
-            var gridClassId = gridLogic.ShipCoreTypeId;
+            var gridClassId = gridLogic.ShipCore.SubtypeId;
             if (!PerFaction.ContainsKey(factionId)) return;
             var perGridClass = PerFaction[factionId];
             if (!perGridClass.ContainsKey(gridClassId)) return;

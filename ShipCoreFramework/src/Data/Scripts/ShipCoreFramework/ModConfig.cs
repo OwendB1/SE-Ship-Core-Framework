@@ -23,7 +23,7 @@ namespace ShipCoreFramework
         [XmlIgnoreAttribute] public readonly List<ShipCore> ShipCores = new List<ShipCore>();
         [XmlElement("DebugMode")] public bool DebugMode = true;
         [XmlElement("CombatLogging")] public bool CombatLogging = true;
-        [XmlIgnoreAttribute] public ShipCore DefaultNoCore = new ShipCore();
+        [XmlIgnoreAttribute] public ShipCore DefaultNoCore = DefaultNoCoreConfig.ShipCore;
 
         [XmlElement("MaxPossibleSpeedMetersPerSecond")]
         public float MaxPossibleSpeedMetersPerSecond = 300;

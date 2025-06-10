@@ -6,6 +6,7 @@ namespace ShipCoreFramework
         public static readonly ShipCore ShipCore = new ShipCore
         {
             UniqueName = "DEFAULT-NO-CORE-ALL-GRID-TYPES",
+            SubtypeId = "NO-CORE",
             LargeGridStatic = true,
             LargeGridMobile = true,
             SmallGrid = true,

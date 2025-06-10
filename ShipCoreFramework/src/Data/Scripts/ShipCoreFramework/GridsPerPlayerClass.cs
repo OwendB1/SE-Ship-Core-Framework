@@ -45,7 +45,7 @@ namespace ShipCoreFramework
         {
             if (!IsApplicableGrid(gridLogic)) return;
             var playerId = gridLogic.MajorityOwningPlayerId;
-            var coreType = gridLogic.ShipCoreTypeId;
+            var coreType = gridLogic.ShipCore.SubtypeId;
             Dictionary<string, List<long>> perGridClass;
             if (!PerPlayer.ContainsKey(playerId))
             {
@@ -60,7 +60,7 @@ namespace ShipCoreFramework
             if (!perGridClass.ContainsKey(coreType))
             {
                 Utils.Log(
-                    $"GridsPerPlayerClass::AddCubeGrid: Missing list for grid class {coreType} for player {playerId}",
+                    $"GridsPerPlayerClass::AddCubeGrid: Missing list for core type {coreType} for player {playerId}",
                     2);
                 perGridClass[coreType] = new List<long>();
             }
@@ -73,7 +73,7 @@ namespace ShipCoreFramework
         {
             if (!IsApplicableGrid(gridLogic)) return;
             var playerId = gridLogic.MajorityOwningPlayerId;
-            var coreType = gridLogic.ShipCoreTypeId;
+            var coreType = gridLogic.ShipCore.SubtypeId;
             if (!PerPlayer.ContainsKey(playerId)) return;
             var perGridClass = PerPlayer[playerId];
             if (!perGridClass.ContainsKey(coreType)) return;
