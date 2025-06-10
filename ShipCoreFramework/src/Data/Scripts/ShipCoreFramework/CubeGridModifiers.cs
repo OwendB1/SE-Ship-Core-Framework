@@ -109,15 +109,24 @@ namespace ShipCoreFramework
             var myGrid = myBlock.CubeGrid;
             var myGridLogic = myGrid.GetMainGridLogic();
             if (myGridLogic == null) return;
-            if (damageInfo.Type == MyDamageType.Bullet) damageInfo.Amount *= myGridLogic.DefenseModifiers.Bullet;
-            if (damageInfo.Type == MyDamageType.Rocket) damageInfo.Amount *= myGridLogic.DefenseModifiers.Rocket;
-            if (damageInfo.Type == MyDamageType.Explosion) damageInfo.Amount *= myGridLogic.DefenseModifiers.Explosion;
-            if (damageInfo.Type == MyDamageType.Environment)
-                damageInfo.Amount *= myGridLogic.DefenseModifiers.Environment;
-            if (damageInfo.Type == MyStringHash.GetOrCompute("Energy"))
-                damageInfo.Amount *= myGridLogic.DefenseModifiers.Energy;
-            if (damageInfo.Type == MyStringHash.GetOrCompute("Kinetic"))
-                damageInfo.Amount *= myGridLogic.DefenseModifiers.Kinetic;
+            if (myGridLogic.ActiveDefenseEnabled)
+            {
+                if (damageInfo.Type == MyDamageType.Bullet) damageInfo.Amount *= myGridLogic.ShipCore.ActiveDefenseModifiers.Bullet;
+                if (damageInfo.Type == MyDamageType.Rocket) damageInfo.Amount *= myGridLogic.ShipCore.ActiveDefenseModifiers.Rocket;
+                if (damageInfo.Type == MyDamageType.Explosion) damageInfo.Amount *= myGridLogic.ShipCore.ActiveDefenseModifiers.Explosion;
+                if (damageInfo.Type == MyDamageType.Environment) damageInfo.Amount *= myGridLogic.ShipCore.ActiveDefenseModifiers.Environment;
+                if (damageInfo.Type == MyStringHash.GetOrCompute("Energy")) damageInfo.Amount *= myGridLogic.ShipCore.ActiveDefenseModifiers.Energy;
+                if (damageInfo.Type == MyStringHash.GetOrCompute("Kinetic")) damageInfo.Amount *= myGridLogic.ShipCore.ActiveDefenseModifiers.Kinetic;
+            }
+            else
+            {
+                if (damageInfo.Type == MyDamageType.Bullet) damageInfo.Amount *= myGridLogic.ShipCore.PassiveDefenseModifiers.Bullet;
+                if (damageInfo.Type == MyDamageType.Rocket) damageInfo.Amount *= myGridLogic.ShipCore.PassiveDefenseModifiers.Rocket;
+                if (damageInfo.Type == MyDamageType.Explosion) damageInfo.Amount *= myGridLogic.ShipCore.PassiveDefenseModifiers.Explosion;
+                if (damageInfo.Type == MyDamageType.Environment) damageInfo.Amount *= myGridLogic.ShipCore.PassiveDefenseModifiers.Environment;
+                if (damageInfo.Type == MyStringHash.GetOrCompute("Energy")) damageInfo.Amount *= myGridLogic.ShipCore.PassiveDefenseModifiers.Energy;
+                if (damageInfo.Type == MyStringHash.GetOrCompute("Kinetic")) damageInfo.Amount *= myGridLogic.ShipCore.PassiveDefenseModifiers.Kinetic;
+            }
         }
     }
 }

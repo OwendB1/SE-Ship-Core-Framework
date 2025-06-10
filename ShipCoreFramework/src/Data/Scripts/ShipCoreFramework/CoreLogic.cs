@@ -59,7 +59,6 @@ namespace ShipCoreFramework
             _coreBlock.CubeGrid.OnGridMerge += OnGridMerge;
             
             NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
-            ActivationCheck(_coreBlock.CubeGrid.EntityId);
             
             if (!ModSessionManager.Config.ShipCores.Any(shipClass => _subtypeId.Contains(shipClass.UniqueName))) return;
             
@@ -107,8 +106,14 @@ namespace ShipCoreFramework
 
         private bool CheckIfCoreOfOtherTypeExists()
         {
-            var fatTerminals = _coreBlock.CubeGrid.GetFatBlocks<MyTerminalBlock>();
-            return fatTerminals.Select(fatTerminal => fatTerminal.GameLogic.GetAs<CoreLogic>()).Any(otherCoreLogic => otherCoreLogic._subtypeId != _subtypeId);
+            var fatTerminals = _coreBlock.CubeGrid.GetFatBlocks<IMyTerminalBlock>();
+            foreach (var fatTerminal in fatTerminals)
+            {
+                var otherCoreLogic = fatTerminal.GameLogic.GetAs<CoreLogic>();
+                if(otherCoreLogic == null) continue;
+                if (otherCoreLogic._subtypeId != _subtypeId) return true;
+            }
+            return false;
         }
 
         private void OnGridMerge(IMyCubeGrid arg1, IMyCubeGrid arg2)
@@ -116,12 +121,6 @@ namespace ShipCoreFramework
             List<IMyCubeGrid> ignored;
             var actualMainGrid = arg1.GetMainCubeGrid(out ignored);
             if (_coreBlock.CubeGrid.EntityId != actualMainGrid.EntityId) _coreBlock.Delete();
-        }
-
-        private void ActivationCheck(long entityId)
-        {
-            var gridLogic = _coreBlock.CubeGrid.GameLogic.GetAs<GridLogic>();
-            
         }
 
         public override void UpdateOnceBeforeFrame()
@@ -201,29 +200,32 @@ namespace ShipCoreFramework
 
         public override void Close()
         {
+            base.Close();
+            
+            Utils.Log("1");
             if (_coreBlock?.CubeGrid == null) return;
 
             var grid = _coreBlock.CubeGrid;
             var gridLogic = grid.GameLogic?.GetAs<GridLogic>();
             if (gridLogic == null) return;
-
+            Utils.Log("2");
             // If this core is NOT the main core, nothing to reassign
             if (!_syncIsMainCore)
             {
                 Utils.ShowNotification($"A backup core of grid {grid.CustomName} was destroyed!",0, true);
                 return;
             }
-
+            Utils.Log("3");
             // Try to find another core of the same type on the grid
             var slimBlocks = new List<IMySlimBlock>();
             grid.GetBlocks(slimBlocks, b => b.FatBlock is IMyTerminalBlock);
-
+            Utils.Log("4");
             var newMainCore = (
                 from terminal in slimBlocks.Select(slim => slim.FatBlock as IMyTerminalBlock) 
                 where terminal != _coreBlock 
                 select terminal.GameLogic?.GetAs<CoreLogic>())
                 .FirstOrDefault(otherLogic => otherLogic._subtypeId == _subtypeId);
-
+            Utils.Log("5");
             if (newMainCore != null)
             {
                 newMainCore._syncIsMainCore.Value = true;
@@ -235,19 +237,14 @@ namespace ShipCoreFramework
             {
                 // No other core of this type found — deactivate the grid
                 Utils.ShowNotification($"All cores destroyed! {grid.CustomName} has become inactive!",5000, true);
-                gridLogic.IsActive = false;
+                gridLogic.ActivateNoCore = false;
             }
         }
         
         private bool IsOnlyCoreOfThisTypeOnGrid()
         {
-            var slimBlocks = new List<IMySlimBlock>();
-            _coreBlock.CubeGrid.GetBlocks(slimBlocks, b => b.FatBlock is IMyTerminalBlock);
-
-            return (from block in slimBlocks.Select(slim => slim.FatBlock as IMyTerminalBlock) 
-                where block != _coreBlock 
-                select block.GameLogic?.GetAs<CoreLogic>())
-                .All(logic => logic._subtypeId != _coreBlock.BlockDefinition.SubtypeId);
+            var fatTerminals = _coreBlock.CubeGrid.GetFatBlocks<IMyTerminalBlock>();
+            return fatTerminals.All(fatTerminal => fatTerminal.BlockDefinition.SubtypeId != _subtypeId);
         }
 
         private void SaveCoreState()

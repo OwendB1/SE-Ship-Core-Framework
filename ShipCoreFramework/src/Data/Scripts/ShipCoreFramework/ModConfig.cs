@@ -39,10 +39,6 @@ namespace ShipCoreFramework
         {
             if (coreTypeId == string.Empty) return DefaultNoCore;
             var shipCore = ShipCores.FirstOrDefault(core => core.SubtypeId == coreTypeId);
-            if (shipCore == null)
-            {
-            } // Utils.Log($"Unknown core {coreSubtypeId}, using default core");
-
             return shipCore ?? DefaultNoCore;
         }
 

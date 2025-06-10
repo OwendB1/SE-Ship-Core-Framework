@@ -16,7 +16,7 @@ namespace ShipCoreFramework
             {
                 var distance = Vector3D.DistanceSquared(zone.Position, gridLogic.Grid.GetPosition());
                 if (distance <= zone.Radius * zone.Radius &&
-                    zone.AllowedCoresSubtype.Contains(gridLogic.ShipCore.UniqueName)) gridLogic.IsActive = false;
+                    zone.AllowedCoresSubtype.Contains(gridLogic.ShipCore.UniqueName)) gridLogic.ActivateNoCore = false;
                 //TODO: write logic for turning off blocks according to block limits
             }
         }

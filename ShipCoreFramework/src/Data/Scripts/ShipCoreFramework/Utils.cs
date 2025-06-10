@@ -141,21 +141,14 @@ namespace ShipCoreFramework
             }
 
             var ownersPerFaction = new Dictionary<IMyFaction, int>();
-
-            //Find the faction with the most owners
-            foreach (var ownerFaction in grid.BigOwners
-                         .Select(owner => MyAPIGateway.Session.Factions.TryGetPlayerFaction(owner))
+            foreach (var ownerFaction in grid.BigOwners.Select(owner => MyAPIGateway.Session.Factions.TryGetPlayerFaction(owner))
                          .Where(ownerFaction => ownerFaction != null))
-                if (!ownersPerFaction.ContainsKey(ownerFaction))
-                    ownersPerFaction[ownerFaction] = 1;
-                else
-                    ownersPerFaction[ownerFaction]++;
-
-            return ownersPerFaction.Count == 0
-                ? null
-                :
-                //new select the faction with the most owners
-                ownersPerFaction.MaxBy(kvp => kvp.Value).Key;
+            {
+                 if (!ownersPerFaction.ContainsKey(ownerFaction)) ownersPerFaction[ownerFaction] = 1;
+                else ownersPerFaction[ownerFaction]++;
+            }
+            
+            return ownersPerFaction.Count == 0 ? null : ownersPerFaction.MaxBy(kvp => kvp.Value).Key;
         }
 
         public static long GetGridOwner(IMyCubeGrid grid)
