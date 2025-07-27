@@ -1,0 +1,84 @@
+<?xml version="1.0" ?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<CubeBlocks>
+        <Definition xsi:type="MyObjectBuilder_RefineryDefinition">
+			<Id>
+				<TypeId>Refinery</TypeId>
+				<SubtypeId>Example_Core</SubtypeId>
+			</Id>
+			<DisplayName>Example Grid Core</DisplayName>
+			<Description>AHHHHH!</Description>
+			<Icon>Textures\LargeGridCore.dds</Icon>
+			<CubeSize>Large</CubeSize>
+			<BlockTopology>TriangleMesh</BlockTopology>
+			<Size x="1" y="1" z="1"/>
+			<ModelOffset x="0" y="0" z="0"/>
+			<Model>Models\GridCore_Center.mwm</Model>
+			<Components>
+				<Component Subtype="SteelPlate" Count="10"/>
+			</Components>
+			<CriticalComponent Subtype="SteelPlate" Index="0"/>
+			<MountPoints>
+				<MountPoint Side="Front" StartX="0.21" StartY="0.00" EndX="0.79" EndY="1.00"/>
+				<MountPoint Side="Back" StartX="0.21" StartY="0.00" EndX="0.79" EndY="1.00"/>
+				<MountPoint Side="Left" StartX="0.21" StartY="0.00" EndX="0.79" EndY="1.00"/>
+				<MountPoint Side="Right" StartX="0.21" StartY="0.00" EndX="0.79" EndY="1.00"/>
+				<MountPoint Side="Top" StartX="0.20" StartY="0.00" EndX="0.80" EndY="1.00"/>
+				<MountPoint Side="Top" StartX="0.00" StartY="0.20" EndX="1.00" EndY="0.80"/>
+				<MountPoint Side="Top" StartX="0.10" StartY="0.10" EndX="0.90" EndY="0.90"/>
+				<MountPoint Side="Bottom" StartX="0.20" StartY="0.00" EndX="0.80" EndY="1.00"/>
+				<MountPoint Side="Bottom" StartX="0.00" StartY="0.20" EndX="1.00" EndY="0.80"/>
+				<MountPoint Side="Bottom" StartX="0.10" StartY="0.10" EndX="0.90" EndY="0.90"/>
+			</MountPoints>
+			<BuildProgressModels>
+				<Model BuildPercentUpperBound="0.33" File="Models\GridCore_Center_BS1.mwm"/>
+				<Model BuildPercentUpperBound="0.67" File="Models\GridCore_Center_BS2.mwm"/>
+				<Model BuildPercentUpperBound="1.00" File="Models\GridCore_Center_BS3.mwm"/>
+			</BuildProgressModels>
+            <ScreenAreas>
+                <ScreenArea Name="CockpitScreen_01" DisplayName="Screen1" TextureResolution="512" ScreenWidth="5" ScreenHeight="3" />
+				<ScreenArea Name="CockpitScreen_03" DisplayName="Keyboard1" TextureResolution="512" ScreenWidth="5" ScreenHeight="3" />
+				<ScreenArea Name="CockpitScreen_02" DisplayName="Screen2" TextureResolution="512" ScreenWidth="5" ScreenHeight="3" />
+				<ScreenArea Name="CockpitScreen_04" DisplayName="Keayboad2" TextureResolution="512" ScreenWidth="5" ScreenHeight="3" /> 
+            </ScreenAreas>
+			<BlockPairName>GridCore_Center</BlockPairName>
+			<MirroringX>MinusHalfY</MirroringX>
+			<MirroringY>ZHalfY</MirroringY>
+			<MirroringZ>HalfY</MirroringZ>
+            <EdgeType>Light</EdgeType>
+            <BuildTimeSeconds>90</BuildTimeSeconds>
+            <ResourceSinkGroup>Factory</ResourceSinkGroup>
+            <InventoryMaxVolume>7.5</InventoryMaxVolume>
+            <InventorySize>
+                <X>2.5</X>
+                <Y>2.5</Y>
+                <Z>2.5</Z>
+            </InventorySize>
+
+            <InventoryFillFactorMin>0.3</InventoryFillFactorMin>
+            <InventoryFillFactorMax>0.6</InventoryFillFactorMax>
+
+            <StandbyPowerConsumption>0.001</StandbyPowerConsumption>
+            <OperationalPowerConsumption>0.56</OperationalPowerConsumption>
+            <BlueprintClasses>
+                <Class>Ingots</Class>
+            </BlueprintClasses>
+            <RefineSpeed>1.3</RefineSpeed>
+            <MaterialEfficiency>1.0</MaterialEfficiency>
+            <OreAmountPerPullRequest>2000</OreAmountPerPullRequest>
+            <DamageEffectName>Damage_HeavyMech_Damaged</DamageEffectName>
+            <DamagedSound>ParticleHeavyMech</DamagedSound>
+            <PrimarySound>BlockRafinery</PrimarySound>
+            <ActionSound>BlockRafineryProcess</ActionSound>
+            <EmissiveColorPreset>Default</EmissiveColorPreset>
+            <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
+            <DestroySound>WepSmallWarheadExpl</DestroySound>
+            <PCU>90</PCU>
+            <TieredUpdateTimes>
+                <unsignedInt>60</unsignedInt>
+                <unsignedInt>120</unsignedInt>
+                <unsignedInt>240</unsignedInt>
+            </TieredUpdateTimes>
+		</Definition>
+	</CubeBlocks>
+</Definitions>

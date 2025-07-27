@@ -5,7 +5,7 @@ using System.Linq;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game;
-using VRage.Game.Components;
+using VRage.Game.Components; 
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
@@ -94,7 +94,6 @@ namespace ShipCoreFramework
         {
             base.UpdateBeforeSimulation();
             if (!_isMainGrid || !ActiveNoCore) return;
-            
             RunBoostTimerTick();
             RunActiveDefenseTimerTick();
             

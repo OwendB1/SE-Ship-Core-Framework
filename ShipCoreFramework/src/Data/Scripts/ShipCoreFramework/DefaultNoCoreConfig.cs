@@ -14,13 +14,17 @@ namespace ShipCoreFramework
             Modifiers = new GridModifiers(), // Use default modifiers
             PassiveDefenseModifiers = new GridDefenseModifiers(),
             ActiveDefenseModifiers = new GridDefenseModifiers(),
-            BlockLimits = new[]
+            BlockLimits = new BlockLimit[]
             {
                 new BlockLimit
                 {
-                    Name = "SAMPLE-LIMIT",
-                    BlockGroups = new[] { "TEST-GROUP" }
-                }
+                    Name = "Example: Weapons",
+                    BlockGroups = new string[]{"Weaponry",},
+                    MaxCount = 10f,
+                    TurnedOffByNoFlyZone = true,
+                    PunishmentType = PunishmentType.Delete,
+                    DirectionType = DirectionType.Any,
+                },
             }
         };
     }

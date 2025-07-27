@@ -21,7 +21,7 @@ namespace ShipCoreFramework
         [XmlIgnoreAttribute] public readonly List<ShipCore> NoCoreConfigs = new List<ShipCore>();
         [XmlIgnoreAttribute] public readonly List<BlockGroup> BlockGroups = new List<BlockGroup>();
         [XmlIgnoreAttribute] public readonly List<ShipCore> ShipCores = new List<ShipCore>();
-        [XmlElement("DebugMode")] public bool DebugMode = false;
+        [XmlElement("DebugMode")] public bool DebugMode = true;
         [XmlElement("CombatLogging")] public bool CombatLogging = true;
         [XmlElement("LOG_LEVEL")]public  int LogLevel = 0; //messages with logPriority >= this will get logged, less than will be ignored
         [XmlElement("CLIENT_OUTPUT_LOG_LEVEL")]public  int ClientOutputLogLevel = 3; //messages with logPriority >= this will get output to clients
@@ -59,15 +59,15 @@ namespace ShipCoreFramework
                 globalConfigWriter.Close();
                 MyAPIGateway.Utilities.ShowMessage("Save Config:", $"Saved {GlobalConfigFileName}");
 
-                var blockGroupsWriter =
+                var blockGroupsWriter = 
                     MyAPIGateway.Utilities.WriteFileInWorldStorage(BlockGroupsFileName, typeof(BlockGroup[]));
-                blockGroupsWriter.Write(MyAPIGateway.Utilities.SerializeToXML(BlockGroups));
+                blockGroupsWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this.BlockGroups));
                 blockGroupsWriter.Close();
                 MyAPIGateway.Utilities.ShowMessage("Save Config:", $"Saved {BlockGroupsFileName}");
 
                 var defaultNoCoreWriter =
                     MyAPIGateway.Utilities.WriteFileInWorldStorage(DefaultNoCoreFileName, typeof(ShipCore));
-                defaultNoCoreWriter.Write(MyAPIGateway.Utilities.SerializeToXML(DefaultNoCore));
+                defaultNoCoreWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this.DefaultNoCore));
                 defaultNoCoreWriter.Close();
                 MyAPIGateway.Utilities.ShowMessage("Save Config:", $"Saved {DefaultNoCoreFileName}");
             }
@@ -121,6 +121,8 @@ namespace ShipCoreFramework
                             if (newBlockGroups == null)
                                 throw new Exception($"Failed to load block groups from Mod: {mod.FriendlyName}");
                             globalSettings.BlockGroups.AddRange(newBlockGroups);
+                            MyAPIGateway.Utilities.ShowMessage("Load Config:", $"Loaded Groups From: {mod.FriendlyName}");
+                            
                         }
 
                     //Add default Core to list
@@ -132,7 +134,8 @@ namespace ShipCoreFramework
 
                             if (newNoCore == null)
                                 throw new Exception($"Failed to load no-core from Mod: {mod.FriendlyName}");
-                            NoCoreConfigs.Add(newNoCore);
+                            globalSettings.NoCoreConfigs.Add(newNoCore);
+                            MyAPIGateway.Utilities.ShowMessage("Load Config:", $"Loaded No-Core Config From: {mod.FriendlyName}");
                         }
 
                     if (!MyAPIGateway.Utilities.FileExistsInModLocation(CoreManifestFileName, mod)) continue;
@@ -157,6 +160,7 @@ namespace ShipCoreFramework
                                         $"Failed to load ship core from file {shipCoreFilename} in Mod: {mod.FriendlyName}");
 
                                 globalSettings.ShipCores.Add(newShipCore);
+                                MyAPIGateway.Utilities.ShowMessage("Load Config:", $"Loaded Core {newShipCore.UniqueName} From: {mod.FriendlyName}");
                             }
                     }
                 }
@@ -164,11 +168,99 @@ namespace ShipCoreFramework
                 ThrowErrorIfDuplicates(NoCoreConfigs, core => core.UniqueName);
                 ThrowErrorIfDuplicates(ShipCores, core => core.UniqueName);
                 ThrowErrorIfDuplicates(BlockGroups, groups => groups.Name);
-
-                if (NoCoreConfigs.Count == 0)
+                MyAPIGateway.Utilities.ShowMessage("Save Config:", $"NoCoreConfigs.Count = {globalSettings.NoCoreConfigs.Count}");
+                if (globalSettings.NoCoreConfigs.Count == 0)
                 {
                     //Utils.Log($"Could not find any no-core configs, setting no-core config to use pre-generated internal one!!", 1);
-                    DefaultNoCore = DefaultNoCoreConfig.ShipCore;
+                    globalSettings.DefaultNoCore = DefaultNoCoreConfig.ShipCore;
+                }
+                MyAPIGateway.Utilities.ShowMessage("Save Config:", $"BlockGroups.Count = {globalSettings.BlockGroups.Count}");
+                if(globalSettings.BlockGroups.Count == 0)
+                {
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.VanillaSmallGridFixedWeapons);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.VanillaSmallGridTurretWeapons);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.VanillaLargeGridFixedWeapons);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.VanillaLargeGridTurretWeapons);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.Drills);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.Welders);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.Grinders);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.SafeZone);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.ProgrammableBlocks);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.Assemblers);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.Refineries);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.LargeHydrogenTanks);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.SmallHydrogenTanks);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.SmallCargoContainers);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.MediumCargoContainers);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.LargeCargoContainers);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.Gyros);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.Collectors);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.ConveyorJunctions);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.VanillaRailguns);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.VanillaArtillery);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.VanillaBrawl);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.VanillaPDC);
+                }
+
+                MyAPIGateway.Utilities.ShowMessage("Save Config:", $"ShipCores.Count = {globalSettings.ShipCores.Count}");
+                if(globalSettings.ShipCores.Count==0)
+                {
+                    globalSettings.ShipCores.Add(new ShipCore
+                        {
+                            UniqueName = "Example Grid Class",
+                            SubtypeId = "Example_Core",
+                            LargeGridStatic = true,
+                            LargeGridMobile = true,
+                            SmallGrid = true,
+                            MaxBlocks = 50000,
+                            Modifiers = new GridModifiers{
+                                ThrusterForce = 1.5f,
+                                ThrusterEfficiency = 1.5f,
+                                GyroForce = 1.5f,
+                                GyroEfficiency = 1.5f,
+                                RefineEfficiency = 1.5f,
+                                RefineSpeed = 1.5f,
+                                AssemblerSpeed = 1.5f,
+                                PowerProducersOutput = 1.5f,
+                                DrillHarvestMultiplier = 1.5f,
+                                MaxSpeed = 200f,
+                            },
+                            PassiveDefenseModifiers = new GridDefenseModifiers
+                            {
+                                Bullet = 0.9f,
+                                Energy = 0.9f,
+                                Kinetic = 0.9f,
+                                Duration = 0.9f,
+                                Cooldown = 0.9f,
+                                Rocket = 0.9f,
+                                Explosion = 0.9f,
+                                Environment = 0.9f,
+                            },
+                            ActiveDefenseModifiers = new GridDefenseModifiers
+                            {
+                                Bullet = 0.9f,
+                                Energy = 0.9f,
+                                Kinetic = 0.9f,
+                                Duration = 0.9f,
+                                Cooldown = 0.9f,
+                                Rocket = 0.9f,
+                                Explosion = 0.9f,
+                                Environment = 0.9f,
+                            },
+                            BlockLimits = new BlockLimit[]
+                            {
+                                new BlockLimit
+                                {
+                                    Name = "Example: Weapons",
+                                    BlockGroups = new string[]{"Weaponry",},
+                                    MaxCount = 10f,
+                                    TurnedOffByNoFlyZone = true,
+                                    PunishmentType = PunishmentType.Delete,
+                                    DirectionType = DirectionType.Any,
+                                },
+                            }
+                        }
+                    );
                 }
                 else
                 {
