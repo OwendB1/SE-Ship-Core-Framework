@@ -31,6 +31,7 @@ namespace ShipCoreFramework
             base.Init(objectBuilder);
             Utils.Log("CORE: log-1");
             _coreBlock = (IMyTerminalBlock)Entity;
+            if (ModSessionManager.Config.ShipCores.All(core => core.SubtypeId != _coreBlock.BlockDefinition.SubtypeId)) return;
             _coreBlock.CubeGrid.OnPhysicsChanged += InitOnPhysicsChanged;
         }
 
