@@ -1,9 +1,9 @@
 <?xml version="1.0" ?>
 <Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
 	<CubeBlocks>
-		<Definition>
+		<Definition xsi:type="MyObjectBuilder_CubeBlockDefinition">
 			<Id>
-				<TypeId>CubeBlock</TypeId>
+				<TypeId>CoreBlock</TypeId>
 				<SubtypeId>GridCore_SG</SubtypeId>
 			</Id>
 			<DisplayName>{LOC:DisplayName_GridCore_SG}</DisplayName>

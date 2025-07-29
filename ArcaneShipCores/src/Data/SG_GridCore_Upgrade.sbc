@@ -1,9 +1,9 @@
 <?xml version="1.0" ?>
 <Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
 	<CubeBlocks>
-		<Definition>
+		<Definition xsi:type="MyObjectBuilder_UpgradeModuleDefinition">
 			<Id>
-				<TypeId>CubeBlock</TypeId>
+				<TypeId>UpgradeModule</TypeId>
 				<SubtypeId>SG_GridCore_Upgrade</SubtypeId>
 			</Id>
 			<DisplayName>{LOC:DisplayName_SG_GridCore_Upgrade}</DisplayName>

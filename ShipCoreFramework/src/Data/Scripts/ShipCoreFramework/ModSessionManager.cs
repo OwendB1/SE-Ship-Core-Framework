@@ -22,7 +22,7 @@ namespace ShipCoreFramework
         {
             MyAPIGateway.Utilities.MessageEntered += Commands.OnChatCommand;
             Config = Config.LoadConfig();
-            Config.SaveConfig();
+            Config.SaveConfig(true);
             MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed = Config.MaxPossibleSpeedMetersPerSecond;
             MyDefinitionManager.Static.EnvironmentDefinition.SmallShipMaxSpeed = Config.MaxPossibleSpeedMetersPerSecond;
             var speedDifferential = Config.MaxPossibleSpeedMetersPerSecond - 100.0f;

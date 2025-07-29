@@ -49,7 +49,7 @@ namespace ShipCoreFramework
             return ShipCores.Any(core => core.UniqueName == coreTypeName);
         }
 
-        public void SaveConfig()
+        public void SaveConfig(bool showInChat = false)
         {
             try
             {
@@ -57,24 +57,24 @@ namespace ShipCoreFramework
                     MyAPIGateway.Utilities.WriteFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig));
                 globalConfigWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this));
                 globalConfigWriter.Close();
-                MyAPIGateway.Utilities.ShowMessage("Save Config:", $"Saved {GlobalConfigFileName}");
+                Utils.Log($"Save Config: Saved {GlobalConfigFileName}", showInChat ? 3 : 0);
 
                 var blockGroupsWriter = 
                     MyAPIGateway.Utilities.WriteFileInWorldStorage(BlockGroupsFileName, typeof(BlockGroup[]));
                 blockGroupsWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this.BlockGroups));
                 blockGroupsWriter.Close();
-                MyAPIGateway.Utilities.ShowMessage("Save Config:", $"Saved {BlockGroupsFileName}");
+                Utils.Log($"Save Config: Saved {BlockGroupsFileName}", showInChat ? 3 : 0);
 
                 var defaultNoCoreWriter =
                     MyAPIGateway.Utilities.WriteFileInWorldStorage(DefaultNoCoreFileName, typeof(ShipCore));
                 defaultNoCoreWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this.DefaultNoCore));
                 defaultNoCoreWriter.Close();
-                MyAPIGateway.Utilities.ShowMessage("Save Config:", $"Saved {DefaultNoCoreFileName}");
+                Utils.Log($"Save Config: Saved {DefaultNoCoreFileName}", showInChat ? 3 : 0);
             }
             catch (Exception e)
             {
                 //Utils.Log($"Failed to save configs, reason {e.Message}", 3);
-                MyAPIGateway.Utilities.ShowMessage("Save Error:", $"{e}");
+                Utils.Log($"Save Error: {e}");
                 var globalConfigWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage("Error.txt", typeof(ModConfig));
                 globalConfigWriter.Write(e);
                 globalConfigWriter.Close();

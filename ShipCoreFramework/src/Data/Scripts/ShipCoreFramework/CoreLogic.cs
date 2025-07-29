@@ -24,35 +24,39 @@ namespace ShipCoreFramework
     {
         private string _subtypeId;
         private IMyTerminalBlock _coreBlock;
-        private MySync<bool, SyncDirection.BothWays> _syncIsMainCore;
+        private MySync<bool, SyncDirection.BothWays> _syncIsMainCore = null;
         
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {
             base.Init(objectBuilder);
+            Utils.Log("CORE: log-1");
             _coreBlock = (IMyTerminalBlock)Entity;
-            _coreBlock.OnPhysicsChanged += InitOnPhysicsChanged;
+            _coreBlock.CubeGrid.OnPhysicsChanged += InitOnPhysicsChanged;
         }
 
         private void InitOnPhysicsChanged(IMyEntity obj)
         {
-            if (_coreBlock?.Physics == null) return;
+            Utils.Log("CORE: log0");
+            if (_coreBlock.CubeGrid?.Physics == null) return;
             _subtypeId = _coreBlock.BlockDefinition.SubtypeId;
+            Utils.Log("CORE: log1");
             
             _coreBlock.OnPhysicsChanged -= InitOnPhysicsChanged;
             if (CheckIfCoreOfOtherTypeExists())
             {
+                Utils.Log("CORE: log2");
                 _coreBlock.Close();
                 return;
             }
-            
-            if (_coreBlock == null) return;
-
+            Utils.Log("CORE: log3");
             if (_coreBlock.Storage != null && _coreBlock.Storage.ContainsKey(Constants.CoreStateStorageGUID))
             {
                 _syncIsMainCore.Value = _coreBlock.Storage[Constants.CoreStateStorageGUID] == "1";
             }
-            
-            if (!_syncIsMainCore && IsOnlyCoreOfThisTypeOnGrid())
+
+            var onlyCore = IsOnlyCoreOfThisTypeOnGrid();
+            Utils.Log($"CORE: log4 {_syncIsMainCore} & {_syncIsMainCore.Value} & {onlyCore}");
+            if (!_syncIsMainCore && onlyCore)
             {
                 _syncIsMainCore.Value = true;
                 _coreBlock.CubeGrid.GetMainGridLogic().Activate(_subtypeId);

@@ -45,7 +45,7 @@ namespace ShipCoreFramework
                 MyAPIGateway.Utilities.ShowMessage($"[Ship Cores={logPriority}]: ", msg);
 
             if (ModSessionManager.Config != null && ModSessionManager.Config.DebugMode)
-                MyAPIGateway.Utilities.ShowMessage($"[Ship Classes={logPriority}]: ", msg);
+                MyAPIGateway.Utilities.ShowMessage($"[Ship Cores={logPriority}]: ", msg);
         }
 
         public static void LogException(Exception e)

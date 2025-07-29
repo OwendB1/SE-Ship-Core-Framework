@@ -9,7 +9,7 @@
             <DisplayName>ShipCores</DisplayName>
             <SearchBlocks>true</SearchBlocks>
             <ItemIds>
-                <string>Refinery/Example_Core</string>
+                <string>CoreBlock/Example_Core</string>
             </ItemIds>
         </Category>
     </CategoryClasses>

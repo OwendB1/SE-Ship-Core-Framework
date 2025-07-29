@@ -60,6 +60,7 @@ namespace ShipCoreFramework
 
         public void Activate(string shipCoreTypeId, bool force = false)
         {
+            Utils.Log($"Activate: Activating logic for {Grid.CustomName} (entity id: {Grid.EntityId})!");
             if (!ActiveNoCore && !force) return;
             _shipCoreTypeId = shipCoreTypeId;
             ActiveNoCore = false;
