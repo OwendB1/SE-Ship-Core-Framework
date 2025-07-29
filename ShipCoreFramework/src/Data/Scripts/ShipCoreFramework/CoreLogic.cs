@@ -29,7 +29,6 @@ namespace ShipCoreFramework
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {
             base.Init(objectBuilder);
-            Utils.Log("CORE: log-1");
             _coreBlock = (IMyTerminalBlock)Entity;
             if (ModSessionManager.Config.ShipCores.All(core => core.SubtypeId != _coreBlock.BlockDefinition.SubtypeId)) return;
             _coreBlock.CubeGrid.OnPhysicsChanged += InitOnPhysicsChanged;
@@ -37,19 +36,17 @@ namespace ShipCoreFramework
 
         private void InitOnPhysicsChanged(IMyEntity obj)
         {
-            Utils.Log("CORE: log0");
             if (_coreBlock.CubeGrid?.Physics == null) return;
             _subtypeId = _coreBlock.BlockDefinition.SubtypeId;
-            Utils.Log("CORE: log1");
             
             _coreBlock.OnPhysicsChanged -= InitOnPhysicsChanged;
             if (CheckIfCoreOfOtherTypeExists())
             {
-                Utils.Log("CORE: log2");
                 _coreBlock.Close();
+                Utils.Log("CORE: You are not allowed to have multiple core types on 1 grid.", 3);
                 return;
             }
-            Utils.Log("CORE: log3");
+
             if (_coreBlock.Storage != null && _coreBlock.Storage.ContainsKey(Constants.CoreStateStorageGUID))
             {
                 _syncIsMainCore.Value = _coreBlock.Storage[Constants.CoreStateStorageGUID] == "1";
@@ -57,11 +54,15 @@ namespace ShipCoreFramework
 
             var onlyCore = IsOnlyCoreOfThisTypeOnGrid();
             Utils.Log($"CORE: log4 {_syncIsMainCore} & {_syncIsMainCore.Value} & {onlyCore}");
-            if (!_syncIsMainCore && onlyCore)
+            if (!_syncIsMainCore.Value && onlyCore)
             {
                 _syncIsMainCore.Value = true;
-                _coreBlock.CubeGrid.GetMainGridLogic().Activate(_subtypeId);
                 SaveCoreState();
+            }
+
+            if (_syncIsMainCore.Value)
+            {
+                _coreBlock.CubeGrid.GetMainGridLogic().Activate(_subtypeId);
             }
             
             // Grab MyThruster
