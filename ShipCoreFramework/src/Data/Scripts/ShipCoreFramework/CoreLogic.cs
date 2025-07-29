@@ -217,7 +217,7 @@ namespace ShipCoreFramework
             // If this core is NOT the main core, nothing to reassign
             if (!_syncIsMainCore)
             {
-                Utils.ShowNotification($"A backup core of grid {grid.CustomName} was destroyed!",0, true);
+                Utils.ShowNotification($"A backup core of grid {grid.CustomName} was destroyed!",10000, true);
                 return;
             }
             
@@ -236,7 +236,7 @@ namespace ShipCoreFramework
                 newMainCore._syncIsMainCore.Value = true;
                 newMainCore.SaveCoreState();
                 newMainCore._coreBlock.RefreshCustomInfo();
-                Utils.ShowNotification($"{grid.CustomName}'s main core destroyed! Successfully switched to backup core.",0, true);
+                Utils.ShowNotification($"{grid.CustomName}'s main core destroyed! Successfully switched to backup core.",10000, true);
             }
             else
             {
