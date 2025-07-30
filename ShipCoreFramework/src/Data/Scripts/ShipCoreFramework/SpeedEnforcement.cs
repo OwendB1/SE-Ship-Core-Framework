@@ -10,6 +10,8 @@ namespace ShipCoreFramework
     {
         public static void EnforceSpeedLimit(GridLogic gridLogic)
         {
+
+            //So I need to fix the modifiers.
             if (gridLogic?.Grid == null || gridLogic.ShipCore == null) return;
             
             var maxSpeed = gridLogic.ShipCore.Modifiers.MaxSpeed;

@@ -1,5 +1,5 @@
 #region
-
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.EntityComponents;
@@ -36,41 +36,37 @@ namespace ShipCoreFramework
 
         private void InitOnPhysicsChanged(IMyEntity obj)
         {
+
+            if (ModSessionManager.Config.ShipCores.All(core => core.SubtypeId != _coreBlock.BlockDefinition.SubtypeId)) return;
             if (_coreBlock.CubeGrid?.Physics == null) return;
             _subtypeId = _coreBlock.BlockDefinition.SubtypeId;
             
-            _coreBlock.OnPhysicsChanged -= InitOnPhysicsChanged;
+            _coreBlock.OnPhysicsChanged -= InitOnPhysicsChanged;//This line does not seem to do shit 
             if (CheckIfCoreOfOtherTypeExists())
             {
                 _coreBlock.Close();
-                Utils.Log("CORE: You are not allowed to have multiple core types on 1 grid.", 3);
                 return;
             }
-
             if (_coreBlock.Storage != null && _coreBlock.Storage.ContainsKey(Constants.CoreStateStorageGUID))
             {
                 _syncIsMainCore.Value = _coreBlock.Storage[Constants.CoreStateStorageGUID] == "1";
             }
-
+            ///No log fours?
             var onlyCore = IsOnlyCoreOfThisTypeOnGrid();
-            Utils.Log($"CORE: log4 {_syncIsMainCore} & {_syncIsMainCore.Value} & {onlyCore}");
-            if (!_syncIsMainCore.Value && onlyCore)
+            if (!_syncIsMainCore && onlyCore)
             {
                 _syncIsMainCore.Value = true;
+                _coreBlock.CubeGrid.GetMainGridLogic().Activate(_subtypeId);
                 SaveCoreState();
             }
-
-            if (_syncIsMainCore.Value)
-            {
-                _coreBlock.CubeGrid.GetMainGridLogic().Activate(_subtypeId);
-            }
             
-            // Grab MyThruster
+            
             _coreBlock.CubeGrid.OnGridMerge += OnGridMerge;
             
             NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
             
-            if (!ModSessionManager.Config.ShipCores.Any(shipClass => _subtypeId.Contains(shipClass.UniqueName))) return;
+            //Redundant due to init check
+            //if (!ModSessionManager.Config.ShipCores.Any(shipClass => _subtypeId.Contains(shipClass.UniqueName))) return;
             
             NeedsUpdate = MyEntityUpdateEnum.EACH_FRAME;
             _coreBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged;
@@ -116,6 +112,8 @@ namespace ShipCoreFramework
 
         private bool CheckIfCoreOfOtherTypeExists()
         {
+            //None of this works, see if EVERY IMYTERMINAL CAN BE A CORELOGIC then , you have a problem
+            try{
             var fatTerminals = _coreBlock.CubeGrid.GetFatBlocks<IMyTerminalBlock>();
             foreach (var fatTerminal in fatTerminals)
             {
@@ -124,6 +122,12 @@ namespace ShipCoreFramework
                 if (otherCoreLogic._subtypeId != _subtypeId) return true;
             }
             return false;
+            }
+            catch (Exception e)
+            {
+                MyAPIGateway.Utilities.ShowMessage("ShipCores:", "Error CheckIfCoreOfOtherTypeExists" + e);
+                return false;
+            }
         }
 
         private void OnGridMerge(IMyCubeGrid arg1, IMyCubeGrid arg2)
@@ -137,6 +141,7 @@ namespace ShipCoreFramework
         {
             base.UpdateOnceBeforeFrame();
             if (MyAPIGateway.TerminalControls == null) return;
+            //Think this can be done in init/ after init just once
             MyAPIGateway.TerminalControls.CustomControlGetter += CustomControlGetter;
         }
 
@@ -219,6 +224,7 @@ namespace ShipCoreFramework
             // If this core is NOT the main core, nothing to reassign
             if (!_syncIsMainCore)
             {
+                //Anoying
                 Utils.ShowNotification($"A backup core of grid {grid.CustomName} was destroyed!",10000, true);
                 return;
             }
@@ -253,7 +259,12 @@ namespace ShipCoreFramework
         private bool IsOnlyCoreOfThisTypeOnGrid()
         {
             var fatTerminals = _coreBlock.CubeGrid.GetFatBlocks<IMyTerminalBlock>();
-            return fatTerminals.All(fatTerminal => fatTerminal.BlockDefinition.SubtypeId != _subtypeId);
+            //Bruh, so this list will include the block itself therefor will always be true therfore false
+            //return fatTerminals.All(fatTerminal => fatTerminal.BlockDefinition.SubtypeId != _subtypeId);
+
+            //Solution for Only one may exist :)
+            return fatTerminals.Count(fatTerminal => fatTerminal.BlockDefinition.SubtypeId == _subtypeId) == 1;
+            
         }
 
         private void SaveCoreState()
