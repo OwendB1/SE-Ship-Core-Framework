@@ -174,13 +174,16 @@ namespace ShipCoreFramework
             foreach (var blockLimit in ShipCore.BlockLimits)
             {
                 var blockVals = new List<KeyValuePair<IMyCubeBlock, double>>();
-                foreach (var blockType in blockLimit.GetBlockTypes())
+                foreach (var blockGroup in blockLimit.BlockGroups)
                 {
-                    var countingBlocks = _blocks
-                        .Where(b => Utils.GetBlockTypeId(b) == blockType.TypeId &&
-                                    Utils.GetBlockSubtypeId(b) == blockType.SubtypeId);
-                    blockVals.AddRange(countingBlocks.Select(bl =>
-                        new KeyValuePair<IMyCubeBlock, double>(bl, blockType.CountWeight)));
+                    foreach (var blockType in blockGroup.BlockTypes)
+                    {
+                        var countingBlocks = _blocks
+                            .Where(b => Utils.GetBlockTypeId(b) == blockType.TypeId &&
+                                        Utils.GetBlockSubtypeId(b) == blockType.SubtypeId);
+                        blockVals.AddRange(countingBlocks.Select(bl =>
+                            new KeyValuePair<IMyCubeBlock, double>(bl, blockType.CountWeight)));
+                    }
                 }
 
                 BlocksPerLimit[blockLimit] = blockVals;
@@ -253,37 +256,50 @@ namespace ShipCoreFramework
             if (!ShipCore.LargeGridStatic && isStatic) grid.IsStatic = false;
         }
 
-        private void OnBlockAdded(IMySlimBlock obj)
+        private void OnBlockAdded(IMySlimBlock obj) //This is working now.
         {
             try{
                 if (_isDisabled) return;
                 Utils.Log($"{Utils.GetBlockTypeId(obj)} | {Utils.GetBlockSubtypeId(obj)}");
-                MyAPIGateway.Utilities.ShowMessage("ShipCores:",$"{Utils.GetBlockTypeId(obj)} | {Utils.GetBlockSubtypeId(obj)}");
                 var concreteGrid = Grid as MyCubeGrid;
-                MyAPIGateway.Utilities.ShowMessage("ShipCores:", $"{Utils.GetBlockSubtypeId(obj)} Violates MaxBlocks: {concreteGrid?.BlocksCount > ShipCore.MaxBlocks}"); //Convert me to log?
-                if (concreteGrid?.BlocksCount > ShipCore.MaxBlocks)
+                 //MaxBlocks
+                if ((concreteGrid?.BlocksCount >= ShipCore.MaxBlocks )&& ShipCore.MaxBlocks!=-1)
                 {
+                    MyAPIGateway.Utilities.ShowMessage("ShipCores:", $"{Utils.GetBlockSubtypeId(obj)} Violates MaxBlocks: {concreteGrid?.BlocksCount > ShipCore.MaxBlocks}");
                     Grid.RemoveBlock(obj);
                     return;
                 }
-                //Missing Max PCU
-                //Missing Max Mass
-
-                //var is
-                var relevantLimits = GetRelevantLimits(obj);
-                
-                foreach (var limit in relevantLimits)
+                //Missing MaxPCU
+                if ((concreteGrid?.BlocksPCU >= ShipCore.MaxPCU )&& ShipCore.MaxPCU!=-1)
                 {
-                    if (!BlocksPerLimit.ContainsKey(limit)) continue;
+                    MyAPIGateway.Utilities.ShowMessage("ShipCores:", $"{Utils.GetBlockSubtypeId(obj)} Violates MaxPCU: {concreteGrid?.BlocksCount > ShipCore.MaxPCU}");
+                    Grid.RemoveBlock(obj);
+                    return;
+                }
+                // MaxMass, Not sure if this is dry or wet mass... testing required
+               if ((concreteGrid?.Mass >= ShipCore.MaxMass )&& ShipCore.MaxMass!=-1)
+                {
+                    MyAPIGateway.Utilities.ShowMessage("ShipCores:", $"{Utils.GetBlockSubtypeId(obj)} Violates MaxMass: {concreteGrid?.BlocksCount > ShipCore.MaxMass}");
+                    Grid.RemoveBlock(obj);
+                    return;
+                }        
+                foreach(BlockLimit limit in ShipCore.BlockLimits)
+                {
+                    bool match = limit.BlockGroups
+                        .SelectMany(g => g.BlockTypes)
+                        .Any(b => b.TypeId == Utils.GetBlockTypeId(obj) && b.SubtypeId == Utils.GetBlockSubtypeId(obj));
+
+                    if(!match){continue;}
+                    if (!BlocksPerLimit.ContainsKey(limit)) InitOnPhysicsChanged(concreteGrid);//Weird Fix I know but it does have to be fixed there are grids that just don't seem to under go a physics change
                     var limitBlocks = BlocksPerLimit[limit];
                     var countWeight = limitBlocks.Sum(b => b.Value);
-                    var countForSpecificBlock = limit.GetBlockTypes().First(l =>
-                        l.TypeId == Utils.GetBlockTypeId(obj) && l.SubtypeId == Utils.GetBlockSubtypeId(obj)).CountWeight;
+                    //I'll fix it later
+                    var countForSpecificBlock = limit.BlockGroups.SelectMany(g => g.BlockTypes).FirstOrDefault(b => b.TypeId == Utils.GetBlockTypeId(obj) && b.SubtypeId == Utils.GetBlockSubtypeId(obj)).CountWeight;
 
                     Utils.Log($"{countWeight} | {countForSpecificBlock} | {limit.MaxCount}");
-
                     if (countWeight + countForSpecificBlock > limit.MaxCount)
                     {
+                        MyAPIGateway.Utilities.ShowMessage("LimitStatus",$"Removing Bad block");
                         Grid.RemoveBlock(obj);
                         List<IMyCubeGrid> subs;
                         Grid.GetMainCubeGrid(out subs);
@@ -308,7 +324,7 @@ namespace ShipCoreFramework
 
         }
 
-        private void OnBlockRemoved(IMySlimBlock obj)
+        private void OnBlockRemoved(IMySlimBlock obj)//This works, IDK how I feel about min grid
         {
             try{
                 if (_isDisabled) return;
@@ -317,8 +333,7 @@ namespace ShipCoreFramework
                     foreach (var block in _blocks) CubeGridModifiers.ApplyModifiers(block, ShipCore.Modifiers);
                 }
                 
-                var relevantLimits = GetRelevantLimits(obj);
-                foreach (var limit in relevantLimits)
+                foreach (var limit in ShipCore.BlockLimits)
                 {
                     if (!BlocksPerLimit.ContainsKey(limit)) return;
                     var index = BlocksPerLimit[limit].FindIndex(b => b.Key == obj.FatBlock);
@@ -329,6 +344,7 @@ namespace ShipCoreFramework
                 var concreteGrid = Grid as MyCubeGrid;
                 if (concreteGrid?.BlocksCount < ShipCore.MinBlocks)
                 {
+                    //Damage x2?, honestly I still want to just remove MinBlocks
                 }
 
                 _blocks.Remove(obj.FatBlock as MyCubeBlock);
@@ -336,11 +352,11 @@ namespace ShipCoreFramework
             }
             catch (Exception e)
             {
-                MyAPIGateway.Utilities.ShowMessage("ShipCores:", "Error OnBlockAdded" + e);
+                MyAPIGateway.Utilities.ShowMessage("ShipCores:", "Error OnBlockRemoved" + e);
             }
         }
         
-        private void OnBlockIntegrityChanged(IMySlimBlock obj)
+        private void OnBlockIntegrityChanged(IMySlimBlock obj) // What's this for?
         {
             if (_isDisabled) return;
             //throw new NotImplementedException(); Owen, that's forbidden :(
@@ -370,12 +386,12 @@ namespace ShipCoreFramework
             }
         }
         
-        private void EnforceBlockPunishment(IMyCubeBlock block = null)
+        private void EnforceBlockPunishment(IMyCubeBlock block = null)//this probably needs more attention
         {
             if (block != null)
             {
-                var relevantLimits = GetRelevantLimits(block.SlimBlock);
-                foreach (var limit in relevantLimits)
+            
+                foreach (var limit in ShipCore.BlockLimits)
                 {
                     var limitBlocks = BlocksPerLimit[limit];
                     var countWeight = limitBlocks.Sum(l => l.Value);
@@ -436,9 +452,42 @@ namespace ShipCoreFramework
         private IEnumerable<BlockLimit> GetRelevantLimits(IMySlimBlock block)
         {
             //Something is incredibly wrong with this line
-            return ShipCore.BlockLimits.Where(limit => limit.GetBlockTypes()
-                .Any(type =>
-                    type.TypeId == Utils.GetBlockTypeId(block) && type.SubtypeId == Utils.GetBlockSubtypeId(block)));
+            //return ShipCore.BlockLimits.Where(limit => limit.GetBlockTypes().Any(type =>type.TypeId == Utils.GetBlockTypeId(block) && type.SubtypeId == Utils.GetBlockSubtypeId(block)));
+            string blockTypeId = Utils.GetBlockTypeId(block);
+            string blockSubtypeId = Utils.GetBlockSubtypeId(block);
+
+            List<BlockLimit> matchingLimits = new List<BlockLimit>();
+            foreach (BlockLimit limit in ShipCore.BlockLimits)
+            {
+                foreach (var group in ModSessionManager.Config.BlockGroups)
+                {
+                    if(group.Name==limit.Name)
+                    {
+                        matchingLimits.Add(limit);
+                    }
+                        
+                }
+                /*
+                var blockTypes = limit.GetBlockTypes();//Always fucking zero
+                bool matches = false;
+                MyAPIGateway.Utilities.ShowMessage("Number of BlockTypes:",$"{blockTypes.Count()}");
+                foreach (var type in blockTypes)
+                {
+                    MyAPIGateway.Utilities.ShowMessage("Match:",$"{type.TypeId} | {blockTypeId}");
+                    MyAPIGateway.Utilities.ShowMessage("Match:",$"{type.SubtypeId} | {blockSubtypeId}");
+                    if (type.TypeId == blockTypeId && type.SubtypeId == blockSubtypeId)
+                    {
+                        matches = true;
+                        break;
+                    }
+                }
+                if (matches)
+                {
+                    matchingLimits.Add(limit);
+                }
+                */
+            }
+            return matchingLimits;
         }
 
         private long GetMajorityOwner()

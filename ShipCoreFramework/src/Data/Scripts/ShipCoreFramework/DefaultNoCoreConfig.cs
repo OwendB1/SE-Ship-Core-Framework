@@ -18,8 +18,8 @@ namespace ShipCoreFramework
             {
                 new BlockLimit
                 {
-                    Name = "Example: Weapons",
-                    BlockGroups = new string[]{"Weaponry",},
+                    Name = "Example: Drills",
+                    BlockGroupsShortHand = new string[]{"Drills",},
                     MaxCount = 10f,
                     TurnedOffByNoFlyZone = true,
                     PunishmentType = PunishmentType.Delete,

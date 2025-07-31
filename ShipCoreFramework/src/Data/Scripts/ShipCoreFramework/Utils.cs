@@ -28,14 +28,13 @@ namespace ShipCoreFramework
             MyAPIGateway.Utilities.ShowMessage(showToolTip ? "[Ship Cores]: " : "", msg);
         }
 
-        public static List<BlockType> GetBlockTypes(this BlockLimit blockLimit)
+        /*public static List<BlockType> GetBlockTypes(this BlockLimit blockLimit) //No Longer needed
         {
-            var relevantBlockGroups = ModSessionManager.Config.BlockGroups
-                .Where(group => Enumerable.Contains(blockLimit.BlockGroups, group.Name)).ToList();
+            var relevantBlockGroups = ModSessionManager.Config.BlockGroups.Where(group => Enumerable.Contains(blockLimit.BlockGroups, group.Name)).ToList();
             var blockTypes = new List<BlockType>();
             relevantBlockGroups.ForEach(gr => blockTypes.AddRange(gr.BlockTypes));
             return blockTypes;
-        }
+        }*/
 
         public static void Log(string msg, int logPriority = 0)
         {

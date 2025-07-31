@@ -155,10 +155,7 @@ namespace ShipCoreFramework
                                 var modText = textReader.ReadToEnd();
                                 var newShipCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(modText);
 
-                                if (newShipCore == null)
-                                    throw new Exception(
-                                        $"Failed to load ship core from file {shipCoreFilename} in Mod: {mod.FriendlyName}");
-
+                                if (newShipCore == null){throw new Exception($"Failed to load ship core from file {shipCoreFilename} in Mod: {mod.FriendlyName}");}
                                 globalSettings.ShipCores.Add(newShipCore);
                                 MyAPIGateway.Utilities.ShowMessage("Load Config:", $"Loaded Core {newShipCore.UniqueName} From: {mod.FriendlyName}");
                             }
@@ -200,9 +197,12 @@ namespace ShipCoreFramework
                     globalSettings.BlockGroups.Add(DefaultGridClassConfig.VanillaArtillery);
                     globalSettings.BlockGroups.Add(DefaultGridClassConfig.VanillaBrawl);
                     globalSettings.BlockGroups.Add(DefaultGridClassConfig.VanillaPDC);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.Turrets);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.StaticWeaponry);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.Production);
+                    //globalSettings.BlockGroups.Add(DefaultGridClassConfig.Weaponry);
+                    
                 }
-
-                MyAPIGateway.Utilities.ShowMessage("Save Config:", $"ShipCores.Count = {globalSettings.ShipCores.Count}");
                 if(globalSettings.ShipCores.Count==0)
                 {
                     globalSettings.ShipCores.Add(new ShipCore
@@ -249,10 +249,19 @@ namespace ShipCoreFramework
                             },
                             BlockLimits = new BlockLimit[]
                             {
-                                new BlockLimit
+                                /*new BlockLimit
                                 {
                                     Name = "Example: Weapons",
-                                    BlockGroups = new string[]{"Weaponry",},
+                                    BlockGroupsShortHand = new string[]{"Weaponry",},
+                                    MaxCount = 10f,
+                                    TurnedOffByNoFlyZone = true,
+                                    PunishmentType = PunishmentType.Delete,
+                                    DirectionType = DirectionType.Any,
+                                },*/
+                                new BlockLimit
+                                {
+                                    Name = "Example: Drills",
+                                    BlockGroupsShortHand = new string[]{"Drills",},
                                     MaxCount = 10f,
                                     TurnedOffByNoFlyZone = true,
                                     PunishmentType = PunishmentType.Delete,
@@ -262,20 +271,52 @@ namespace ShipCoreFramework
                         }
                     );
                 }
+                /*
+                var chosenNoCore = NoCoreConfigs.FirstOrDefault(core => core.UniqueName == NoCoreSimpleName);
+                if (chosenNoCore != null)
+                {
+                    DefaultNoCore = chosenNoCore;
+                }
                 else
                 {
-                    var chosenNoCore = NoCoreConfigs.FirstOrDefault(core => core.UniqueName == NoCoreSimpleName);
-                    if (chosenNoCore != null)
+                    var exceptionMessage =
+                        $"No no-core config found for simple name: \"{NoCoreSimpleName}\", please make sure to define the preferred no core! The following cores can be chosen: \n\n";
+                    exceptionMessage = NoCoreConfigs.Aggregate(exceptionMessage,
+                        (current, noCore) => current + $"- {noCore.UniqueName}\n");
+                    throw new Exception(exceptionMessage);
+                }*/
+                //BlockGroups Fix, yes it cannot be done during load.
+                foreach(ShipCore core in globalSettings.ShipCores){
+                    foreach(BlockLimit Limit in core.BlockLimits)
                     {
-                        DefaultNoCore = chosenNoCore;
+                        foreach(string shorthand in Limit.BlockGroupsShortHand)
+                        {
+                            foreach(BlockGroup group in globalSettings.BlockGroups)
+                            {
+                                
+                                if (group.Name == shorthand)
+                                {
+                                    Limit.BlockGroups.Add(group);
+                                    MyAPIGateway.Utilities.ShowMessage($"Groups: ", $"{group.Name} Count: {Limit.BlockGroups.Count()}");
+                                }
+                            }
+                        }
                     }
-                    else
+                }
+                //Gotta do it again for no core
+                foreach(BlockLimit Limit in DefaultNoCore.BlockLimits)
+                {
+                    foreach(string shorthand in Limit.BlockGroupsShortHand)
                     {
-                        var exceptionMessage =
-                            $"No no-core config found for simple name: \"{NoCoreSimpleName}\", please make sure to define the preferred no core! The following cores can be chosen: \n\n";
-                        exceptionMessage = NoCoreConfigs.Aggregate(exceptionMessage,
-                            (current, noCore) => current + $"- {noCore.UniqueName}\n");
-                        throw new Exception(exceptionMessage);
+                        foreach(BlockGroup group in globalSettings.BlockGroups)
+                        {
+                            
+                            if (group.Name == shorthand)
+                            {
+                                Limit.BlockGroups.Add(group);
+                                MyAPIGateway.Utilities.ShowMessage($"Groups: ", $"{group.Name} Count: {Limit.BlockGroups.Count()}");
+                            }
+                        }
                     }
                 }
             }
@@ -450,7 +491,10 @@ namespace ShipCoreFramework
     {
         [XmlElement("Name")] public string Name = string.Empty;
 
-        [XmlElement("BlockGroups")] public string[] BlockGroups = Array.Empty<string>();
+        [XmlElement("BlockGroups")] public string[] BlockGroupsShortHand = Array.Empty<string>();
+        //Fetching the blocks every time we want to enfoce a limit is both stupid, tedius and over complicated I'm  doing it in load.
+        //[XmlIgnoreAttribute] public BlockGroup[] BlockGroups = Array.Empty<BlockGroup>();
+        [XmlIgnoreAttribute]  public List<BlockGroup> BlockGroups = new List<BlockGroup>();
 
         [XmlElement("MaxCount")] public float MaxCount;
 
