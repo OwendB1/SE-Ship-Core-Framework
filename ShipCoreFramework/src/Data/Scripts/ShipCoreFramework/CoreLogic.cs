@@ -22,9 +22,9 @@ namespace ShipCoreFramework
     [MyEntityComponentDescriptor(typeof(MyObjectBuilder_TerminalBlock), false)]
     public class CoreLogic : MyGameLogicComponent, IMyEventProxy
     {
-        private string _subtypeId;
-        private IMyTerminalBlock _coreBlock;
-        private MySync<bool, SyncDirection.BothWays> _syncIsMainCore = null;
+        public string _subtypeId;
+        public IMyTerminalBlock _coreBlock;
+        public MySync<bool, SyncDirection.BothWays> _syncIsMainCore = null;
         
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {
@@ -198,7 +198,7 @@ namespace ShipCoreFramework
             //so on and so forth more of an example, you would likely want to call these in the modifiers file....
         }
 
-        public override void Close()
+        public override void MarkForClose()
         {
             if (_coreBlock?.CubeGrid == null) return;
 
@@ -218,11 +218,12 @@ namespace ShipCoreFramework
             var slimBlocks = new List<IMySlimBlock>();
             grid.GetBlocks(slimBlocks, b => b.FatBlock is IMyTerminalBlock);
 
-            var newMainCore = (
-                from terminal in slimBlocks.Select(slim => slim.FatBlock as IMyTerminalBlock) 
-                where terminal != _coreBlock 
-                select terminal.GameLogic?.GetAs<CoreLogic>())
-                .FirstOrDefault(otherLogic => otherLogic._subtypeId == _subtypeId);
+            CoreLogic newMainCore = (
+                from terminal in slimBlocks.Select(slim => slim.FatBlock as IMyTerminalBlock)
+                where terminal != null && terminal != _coreBlock
+                select terminal.GameLogic?.GetAs<CoreLogic>()
+                ).FirstOrDefault(otherLogic => otherLogic != null && otherLogic._subtypeId == _subtypeId);
+
 
             if (newMainCore != null)
             {
@@ -238,7 +239,7 @@ namespace ShipCoreFramework
                 gridLogic.ActiveNoCore = false;
             }
             
-            base.Close();
+            base.MarkForClose();
         }
         
         private bool IsOnlyCoreOfThisTypeOnGrid()

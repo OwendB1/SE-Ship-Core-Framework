@@ -15,6 +15,23 @@ namespace ShipCoreFramework
 {
     public static class Utils
     {
+        public static CoreLogic GetGridCore(IMyCubeGrid grid,ShipCore core)
+        {
+            var fatTerminals = grid.GetFatBlocks<IMyTerminalBlock>();
+
+            foreach (var fatTerminal in fatTerminals)
+            {
+                var coreLogic = fatTerminal.GameLogic.GetAs<CoreLogic>();
+
+                if (coreLogic == null)
+                    continue;
+
+                if (coreLogic._subtypeId == core.SubtypeId && coreLogic._syncIsMainCore.Value)
+                    return coreLogic;
+            }
+
+            return null;
+        }
         public static void ShowNotification(string msg, int disappearTime = 10000, bool isCombatLog = false,
             string font = MyFontEnum.Red)
         {
