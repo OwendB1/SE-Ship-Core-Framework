@@ -67,6 +67,12 @@ namespace ShipCoreFramework
             ActiveNoCore = false;
             _isDisabled = false;
             
+            UpdateLimitsAndApplyModifiers();
+            EnforceBlockPunishment();
+        }
+
+        private void UpdateLimitsAndApplyModifiers()
+        {
             foreach (var blockLimit in ShipCore.BlockLimits)
             {
                 var blockVals = new List<KeyValuePair<IMyCubeBlock, double>>();
@@ -84,8 +90,6 @@ namespace ShipCoreFramework
 
                 BlocksPerLimit[blockLimit] = blockVals;
             }
-            
-            EnforceBlockPunishment();
             ApplyModifiers();
         }
 
@@ -196,6 +200,8 @@ namespace ShipCoreFramework
                 funcBlock.EnabledChanged += FuncBlockOnEnabledChanged;
                 funcBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged;
             }
+            
+            UpdateLimitsAndApplyModifiers();
         }
 
         private void FuncBlockOnEnabledChanged(IMyTerminalBlock obj)
