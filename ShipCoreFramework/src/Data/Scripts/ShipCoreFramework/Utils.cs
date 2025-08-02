@@ -112,7 +112,6 @@ namespace ShipCoreFramework
             var grids = new List<IMyCubeGrid>();
 
             group?.GetGrids(grids);
-            grids = grids.Where(g => g?.Physics != null).ToList();
             if (!grids.Any())
             {
                 subgrids = grids;

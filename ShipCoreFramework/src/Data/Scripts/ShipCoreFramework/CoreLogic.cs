@@ -36,7 +36,6 @@ namespace ShipCoreFramework
 
         private void InitOnPhysicsChanged(IMyEntity obj)
         {
-
             if (ModSessionManager.Config.ShipCores.All(core => core.SubtypeId != _coreBlock.BlockDefinition.SubtypeId)) return;
             if (_coreBlock.CubeGrid?.Physics == null) return;
             _subtypeId = _coreBlock.BlockDefinition.SubtypeId;
@@ -56,7 +55,7 @@ namespace ShipCoreFramework
             if (!_syncIsMainCore && onlyCore)
             {
                 _syncIsMainCore.Value = true;
-                _coreBlock.CubeGrid.GetMainGridLogic().Activate(_subtypeId);
+                _coreBlock.CubeGrid.GetMainGridLogic().Activate(_subtypeId, true);
                 SaveCoreState();
             }
             

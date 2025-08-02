@@ -38,7 +38,7 @@ namespace ShipCoreFramework
         private float ActiveDefenseDuration => ShipCore.ActiveDefenseModifiers.Duration;
         private float ActiveDefenseCoolDown => ShipCore.ActiveDefenseModifiers.Cooldown;
         
-        public GridModifiers Modifiers => CubeGridModifiers.GetActiveModifiers(this);
+        public GridModifiers Modifiers => ShipCore.Modifiers;
 
         public IMyCubeGrid Grid;
 
@@ -73,6 +73,7 @@ namespace ShipCoreFramework
 
         private void UpdateLimitsAndApplyModifiers()
         {
+            BlocksPerLimit.Clear();
             foreach (var blockLimit in ShipCore.BlockLimits)
             {
                 var blockVals = new List<KeyValuePair<IMyCubeBlock, double>>();
@@ -80,11 +81,8 @@ namespace ShipCoreFramework
                 {
                     foreach (var blockType in blockGroup.BlockTypes)
                     {
-                        var countingBlocks = _blocks
-                            .Where(b => Utils.GetBlockTypeId(b) == blockType.TypeId &&
-                                        Utils.GetBlockSubtypeId(b) == blockType.SubtypeId);
-                        blockVals.AddRange(countingBlocks.Select(bl =>
-                            new KeyValuePair<IMyCubeBlock, double>(bl, blockType.CountWeight)));
+                        var countingBlocks = _blocks.Where(b => Utils.GetBlockTypeId(b) == blockType.TypeId && Utils.GetBlockSubtypeId(b) == blockType.SubtypeId);
+                        blockVals.AddRange(countingBlocks.Select(bl => new KeyValuePair<IMyCubeBlock, double>(bl, blockType.CountWeight)));
                     }
                 }
 
@@ -163,20 +161,38 @@ namespace ShipCoreFramework
 
         private void InitOnPhysicsChanged(IMyEntity obj)
         {
-            var grid = obj as IMyCubeGrid;
-            if (grid?.Physics == null) return;
+            if (Grid?.Physics == null) return;
             
             Grid.OnPhysicsChanged -= InitOnPhysicsChanged;
             NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
-            
+            NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
+        }
+        
+        public override void UpdateOnceBeforeFrame()
+        {
             List<IMyCubeGrid> subgrids;
             var main = Grid.GetMainCubeGrid(out subgrids);
-            if (main.EntityId == Grid.EntityId) _isMainGrid = true;
-            else return;
-            
-            Utils.Log($"PhysicsChanged: change triggered. Initialising logic for main grid {grid.CustomName} (entity id: {grid.EntityId})!");
-            
-            //Init event handlers
+
+            if (main.EntityId == Grid.EntityId)
+            {
+                _isMainGrid = true;
+                _blocks.UnionWith(Grid.GetFatBlocks<MyCubeBlock>().Where(b => !b.IsPreview));
+            }
+            else
+            {
+                Utils.Log($"Delayed Init: subgrid {Grid.CustomName} (id: {Grid.EntityId})");
+                var mainLogic = main.GetMainGridLogic();
+                mainLogic._blocks.UnionWith(Grid.GetFatBlocks<MyCubeBlock>().Where(b => !b.IsPreview));
+                Grid.OnBlockOwnershipChanged += mainLogic.OnBlockOwnershipChanged;
+                Grid.OnIsStaticChanged += mainLogic.OnIsStaticChanged;
+                Grid.OnBlockAdded += mainLogic.OnBlockAdded;
+                Grid.OnBlockRemoved += mainLogic.OnBlockRemoved;
+                mainLogic.UpdateLimitsAndApplyModifiers();
+                return;
+            }
+
+            Utils.Log($"Delayed Init: main grid {Grid.CustomName} (id: {Grid.EntityId})");
+
             Grid.OnBlockOwnershipChanged += OnBlockOwnershipChanged;
             Grid.OnIsStaticChanged += OnIsStaticChanged;
             Grid.OnBlockAdded += OnBlockAdded;
@@ -184,23 +200,12 @@ namespace ShipCoreFramework
             Grid.OnBlockIntegrityChanged += OnBlockIntegrityChanged;
             Grid.OnGridMerge += OnGridMerge;
 
-            _blocks.UnionWith(Grid.GetFatBlocks<MyCubeBlock>().Where(b => b.IsPreview == false));
-            foreach (var subgrid in subgrids)
-            {
-                subgrid.OnBlockOwnershipChanged += OnBlockOwnershipChanged;
-                subgrid.OnIsStaticChanged += OnIsStaticChanged;
-                subgrid.OnBlockAdded += OnBlockAdded;
-                subgrid.OnBlockRemoved += OnBlockRemoved;
-
-                _blocks.UnionWith(subgrid.GetFatBlocks<MyCubeBlock>().Where(b => b.IsPreview == false));
-            }
-
             foreach (var funcBlock in _blocks.OfType<IMyFunctionalBlock>())
             {
                 funcBlock.EnabledChanged += FuncBlockOnEnabledChanged;
                 funcBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged;
             }
-            
+
             UpdateLimitsAndApplyModifiers();
         }
 
@@ -286,15 +291,14 @@ namespace ShipCoreFramework
                 MyAPIGateway.Utilities.ShowMessage("ShipCores:", $"{Utils.GetBlockSubtypeId(obj)} Violates MaxMass: {concreteGrid?.BlocksCount > ShipCore.MaxMass}");
                 Grid.RemoveBlock(obj);
                 return;
-            }        
-            foreach(BlockLimit limit in ShipCore.BlockLimits)
+            }       
+            foreach(var limit in ShipCore.BlockLimits)
             {
-                bool match = limit.BlockGroups
+                var match = limit.BlockGroups
                     .SelectMany(g => g.BlockTypes)
                     .Any(b => b.TypeId == Utils.GetBlockTypeId(obj) && b.SubtypeId == Utils.GetBlockSubtypeId(obj));
 
-                if(!match){continue;}
-                if (!BlocksPerLimit.ContainsKey(limit)) InitOnPhysicsChanged(concreteGrid);//Weird Fix I know but it does have to be fixed there are grids that just don't seem to under go a physics change
+                if (!match) continue;
                 var limitBlocks = BlocksPerLimit[limit];
                 var countWeight = limitBlocks.Sum(b => b.Value);
                 //I'll fix it later
@@ -303,7 +307,7 @@ namespace ShipCoreFramework
                 Utils.Log($"{countWeight} | {countForSpecificBlock} | {limit.MaxCount}");
                 if (countWeight + countForSpecificBlock > limit.MaxCount)
                 {
-                    MyAPIGateway.Utilities.ShowMessage("LimitStatus",$"Removing Bad block");
+                    Utils.Log("Removing Bad block", 3);
                     Grid.RemoveBlock(obj);
                     List<IMyCubeGrid> subs;
                     Grid.GetMainCubeGrid(out subs);
