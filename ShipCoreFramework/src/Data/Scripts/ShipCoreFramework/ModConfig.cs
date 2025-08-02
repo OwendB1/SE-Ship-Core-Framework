@@ -271,51 +271,27 @@ namespace ShipCoreFramework
                         }
                     );
                 }
-                /*
-                var chosenNoCore = NoCoreConfigs.FirstOrDefault(core => core.UniqueName == NoCoreSimpleName);
-                if (chosenNoCore != null)
+
+                foreach (var limit in globalSettings.ShipCores.SelectMany(core => core.BlockLimits))
                 {
-                    DefaultNoCore = chosenNoCore;
-                }
-                else
-                {
-                    var exceptionMessage =
-                        $"No no-core config found for simple name: \"{NoCoreSimpleName}\", please make sure to define the preferred no core! The following cores can be chosen: \n\n";
-                    exceptionMessage = NoCoreConfigs.Aggregate(exceptionMessage,
-                        (current, noCore) => current + $"- {noCore.UniqueName}\n");
-                    throw new Exception(exceptionMessage);
-                }*/
-                //BlockGroups Fix, yes it cannot be done during load.
-                foreach(ShipCore core in globalSettings.ShipCores){
-                    foreach(BlockLimit Limit in core.BlockLimits)
+                    foreach(var shorthand in limit.BlockGroupsShortHand)
                     {
-                        foreach(string shorthand in Limit.BlockGroupsShortHand)
+                        foreach (var group in globalSettings.BlockGroups.Where(group => group.Name == shorthand))
                         {
-                            foreach(BlockGroup group in globalSettings.BlockGroups)
-                            {
-                                
-                                if (group.Name == shorthand)
-                                {
-                                    Limit.BlockGroups.Add(group);
-                                    MyAPIGateway.Utilities.ShowMessage($"Groups: ", $"{group.Name} Count: {Limit.BlockGroups.Count()}");
-                                }
-                            }
+                            limit.BlockGroups.Add(group);
+                            MyAPIGateway.Utilities.ShowMessage($"Groups: ", $"{group.Name} Count: {limit.BlockGroups.Count()}");
                         }
                     }
                 }
-                //Gotta do it again for no core
-                foreach(BlockLimit Limit in DefaultNoCore.BlockLimits)
+
+                foreach(var limit in DefaultNoCore.BlockLimits)
                 {
-                    foreach(string shorthand in Limit.BlockGroupsShortHand)
+                    foreach(var shorthand in limit.BlockGroupsShortHand)
                     {
-                        foreach(BlockGroup group in globalSettings.BlockGroups)
+                        foreach (var group in globalSettings.BlockGroups.Where(group => group.Name == shorthand))
                         {
-                            
-                            if (group.Name == shorthand)
-                            {
-                                Limit.BlockGroups.Add(group);
-                                MyAPIGateway.Utilities.ShowMessage($"Groups: ", $"{group.Name} Count: {Limit.BlockGroups.Count()}");
-                            }
+                            limit.BlockGroups.Add(group);
+                            MyAPIGateway.Utilities.ShowMessage($"Groups: ", $"{group.Name} Count: {limit.BlockGroups.Count()}");
                         }
                     }
                 }
@@ -326,7 +302,7 @@ namespace ShipCoreFramework
             }
             return globalSettings;
         }
-        
+
         private static void ThrowErrorIfDuplicates<T, TKey>(List<T> list, Func<T, TKey> selector)
         {
             var dupeList = list.GroupBy(selector)
@@ -476,8 +452,8 @@ namespace ShipCoreFramework
 
     public struct ModifierNameValue
     {
-        public string Name;
-        public float Value;
+        public readonly string Name;
+        public readonly float Value;
 
         public ModifierNameValue(string name, float value)
         {
@@ -492,9 +468,8 @@ namespace ShipCoreFramework
         [XmlElement("Name")] public string Name = string.Empty;
 
         [XmlElement("BlockGroups")] public string[] BlockGroupsShortHand = Array.Empty<string>();
-        //Fetching the blocks every time we want to enfoce a limit is both stupid, tedius and over complicated I'm  doing it in load.
-        //[XmlIgnoreAttribute] public BlockGroup[] BlockGroups = Array.Empty<BlockGroup>();
-        [XmlIgnoreAttribute]  public List<BlockGroup> BlockGroups = new List<BlockGroup>();
+
+        [XmlIgnore]  public List<BlockGroup> BlockGroups = new List<BlockGroup>();
 
         [XmlElement("MaxCount")] public float MaxCount;
 
