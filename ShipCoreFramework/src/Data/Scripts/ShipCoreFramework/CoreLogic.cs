@@ -32,44 +32,6 @@ namespace ShipCoreFramework
             _coreBlock = (IMyTerminalBlock)Entity;
             if (ModSessionManager.Config.ShipCores.All(core => core.SubtypeId != _coreBlock.BlockDefinition.SubtypeId)) return;
             _coreBlock.CubeGrid.OnPhysicsChanged += InitOnPhysicsChanged;
-        }
-
-        private void InitOnPhysicsChanged(IMyEntity obj)
-        {
-
-            if (ModSessionManager.Config.ShipCores.All(core => core.SubtypeId != _coreBlock.BlockDefinition.SubtypeId)) return;
-            if (_coreBlock.CubeGrid?.Physics == null) return;
-            _subtypeId = _coreBlock.BlockDefinition.SubtypeId;
-            
-            _coreBlock.OnPhysicsChanged -= InitOnPhysicsChanged;//This line does not seem to do shit 
-            if (CheckIfCoreOfOtherTypeExists())
-            {
-                _coreBlock.Close();
-                return;
-            }
-            if (_coreBlock.Storage != null && _coreBlock.Storage.ContainsKey(Constants.CoreStateStorageGUID))
-            {
-                _syncIsMainCore.Value = _coreBlock.Storage[Constants.CoreStateStorageGUID] == "1";
-            }
-            ///No log fours?
-            var onlyCore = IsOnlyCoreOfThisTypeOnGrid();
-            if (!_syncIsMainCore && onlyCore)
-            {
-                _syncIsMainCore.Value = true;
-                _coreBlock.CubeGrid.GetMainGridLogic().Activate(_subtypeId);
-                SaveCoreState();
-            }
-            
-            
-            _coreBlock.CubeGrid.OnGridMerge += OnGridMerge;
-            
-            NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
-            
-            //Redundant due to init check
-            //if (!ModSessionManager.Config.ShipCores.Any(shipClass => _subtypeId.Contains(shipClass.UniqueName))) return;
-            
-            NeedsUpdate = MyEntityUpdateEnum.EACH_FRAME;
-            _coreBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged;
             _coreBlock.AddUpgradeValue("AssemblerSpeed", 1f);
             _coreBlock.AddUpgradeValue("DrillHarvestMultiplier", 1f);
             _coreBlock.AddUpgradeValue("GyroEfficiency", 1f);
@@ -106,7 +68,44 @@ namespace ShipCoreFramework
             _coreBlock.AddUpgradeValue("ActiveKineticDamage", 1f);
             _coreBlock.AddUpgradeValue("DurationDuration", 1f);
             _coreBlock.AddUpgradeValue("DamageCooldown", 1f);
+        }
+
+        private void InitOnPhysicsChanged(IMyEntity obj)
+        {
+
+            if (ModSessionManager.Config.ShipCores.All(core => core.SubtypeId != _coreBlock.BlockDefinition.SubtypeId)) return;
+            if (_coreBlock.CubeGrid?.Physics == null) return;
+            _subtypeId = _coreBlock.BlockDefinition.SubtypeId;
             
+            _coreBlock.OnPhysicsChanged -= InitOnPhysicsChanged;//This line does not seem to do shit 
+            if (CheckIfCoreOfOtherTypeExists())
+            {
+                _coreBlock.Close();
+                return;
+            }
+            if (_coreBlock.Storage != null && _coreBlock.Storage.ContainsKey(Constants.CoreStateStorageGUID))
+            {
+                _syncIsMainCore.Value = _coreBlock.Storage[Constants.CoreStateStorageGUID] == "1"; //This is causing crashes
+            }
+            ///No log fours?
+            var onlyCore = IsOnlyCoreOfThisTypeOnGrid();
+            if (!_syncIsMainCore && onlyCore)
+            {
+                _syncIsMainCore.Value = true;
+                _coreBlock.CubeGrid.GetMainGridLogic().Activate(_subtypeId);
+                SaveCoreState();
+            }
+            
+            
+            _coreBlock.CubeGrid.OnGridMerge += OnGridMerge;
+            
+            NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
+            
+            //Redundant due to init check
+            //if (!ModSessionManager.Config.ShipCores.Any(shipClass => _subtypeId.Contains(shipClass.UniqueName))) return;
+            
+            NeedsUpdate = MyEntityUpdateEnum.EACH_FRAME;
+            _coreBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged; 
             _coreBlock.RefreshCustomInfo();
         }
 

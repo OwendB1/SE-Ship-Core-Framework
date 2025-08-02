@@ -38,7 +38,7 @@ namespace ShipCoreFramework
         private float ActiveDefenseDuration => ShipCore.ActiveDefenseModifiers.Duration;
         private float ActiveDefenseCoolDown => ShipCore.ActiveDefenseModifiers.Cooldown;
         
-        public GridModifiers Modifiers => ShipCore.Modifiers;
+        public GridModifiers Modifiers => GetActiveModifiers();
 
         public IMyCubeGrid Grid;
 
@@ -51,6 +51,40 @@ namespace ShipCoreFramework
 
         public ShipCore ShipCore => Config.GetShipCoreByTypeId(ActiveNoCore ? string.Empty : _shipCoreTypeId);
 
+        public GridModifiers GetActiveModifiers()
+        {
+            if(ShipCore != Config.DefaultNoCore)
+            {
+                var MyCore = (
+                    from terminal in slimBlocks.Select(slim => slim.FatBlock as IMyTerminalBlock) 
+                    where terminal != _coreBlock 
+                    select terminal.GameLogic?.GetAs<CoreLogic>())
+                    .FirstOrDefault(otherLogic => otherLogic._subtypeId == _subtypeId);
+
+                GridModifiers EnhancedModifiers = new GridModifiers();
+                if(MyCore._syncIsMainCore)
+                {
+                    EnhancedModifiers.AssemblerSpeed=ShipCore.Modifiers.AssemblerSpeed*MyCore._coreBlock.UpgradeValues["AssemblerSpeed"];
+                    EnhancedModifiers.DrillHarvestMultiplier=ShipCore.Modifiers.DrillHarvestMultiplier*MyCore._coreBlock.UpgradeValues["DrillHarvestMultiplier"];
+                    EnhancedModifiers.GyroEfficiency=ShipCore.Modifiers.GyroEfficiency*MyCore._coreBlock.UpgradeValues["GyroEfficiency"];
+                    EnhancedModifiers.GyroForce=ShipCore.Modifiers.GyroForce*MyCore._coreBlock.UpgradeValues["GyroForce"];
+                    EnhancedModifiers.PowerProducersOutput=ShipCore.Modifiers.PowerProducersOutput*MyCore._coreBlock.UpgradeValues["PowerProducersOutput"];
+                    EnhancedModifiers.RefineEfficiency=ShipCore.Modifiers.RefineEfficiency*MyCore._coreBlock.UpgradeValues["RefineEfficiency"];
+                    EnhancedModifiers.RefineSpeed=ShipCore.Modifiers.RefineSpeed*MyCore._coreBlock.UpgradeValues["RefineSpeed"];
+                    EnhancedModifiers.ThrusterEfficiency=ShipCore.Modifiers.ThrusterEfficiency*MyCore._coreBlock.UpgradeValues["ThrusterEfficiency"];
+                    EnhancedModifiers.ThrusterForce=ShipCore.Modifiers.ThrusterForce*MyCore._coreBlock.UpgradeValues["ThrusterForce"];
+                    EnhancedModifiers.MaxSpeed=ShipCore.Modifiers.MaxSpeed*MyCore._coreBlock.UpgradeValues["MaxSpeed"];
+                    EnhancedModifiers.MaxBoost=ShipCore.Modifiers.MaxBoost*MyCore._coreBlock.UpgradeValues["MaxBoost"];
+                    EnhancedModifiers.BoostDuration=ShipCore.Modifiers.BoostDuration*MyCore._coreBlock.UpgradeValues["BoostDuration"];
+                    EnhancedModifiers.BoostCoolDown=ShipCore.Modifiers.BoostCoolDown*MyCore._coreBlock.UpgradeValues["BoostCoolDown"];
+                    return EnhancedModifiers;              
+                }
+
+
+            //_coreBlock.AddUpgradeValue("ReloadModifier", 1f);??????
+            }
+            return(ShipCore.Modifiers);
+        }
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {
             base.Init(objectBuilder);
@@ -220,6 +254,7 @@ namespace ShipCoreFramework
 
         private void ApplyModifiers(GridModifiers modifiers = null)
         {
+
             foreach (var block in from block in _blocks
                      let terminalBlock = block as IMyTerminalBlock
                      where terminalBlock != null
