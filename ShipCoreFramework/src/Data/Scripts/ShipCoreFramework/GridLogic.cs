@@ -66,6 +66,27 @@ namespace ShipCoreFramework
             _shipCoreTypeId = shipCoreTypeId;
             ActiveNoCore = false;
             _isDisabled = false;
+            
+            foreach (var blockLimit in ShipCore.BlockLimits)
+            {
+                var blockVals = new List<KeyValuePair<IMyCubeBlock, double>>();
+                foreach (var blockGroup in blockLimit.BlockGroups)
+                {
+                    foreach (var blockType in blockGroup.BlockTypes)
+                    {
+                        var countingBlocks = _blocks
+                            .Where(b => Utils.GetBlockTypeId(b) == blockType.TypeId &&
+                                        Utils.GetBlockSubtypeId(b) == blockType.SubtypeId);
+                        blockVals.AddRange(countingBlocks.Select(bl =>
+                            new KeyValuePair<IMyCubeBlock, double>(bl, blockType.CountWeight)));
+                    }
+                }
+
+                BlocksPerLimit[blockLimit] = blockVals;
+            }
+            
+            EnforceBlockPunishment();
+            ApplyModifiers();
         }
 
         public void ActivateDefense()
@@ -170,33 +191,11 @@ namespace ShipCoreFramework
                 _blocks.UnionWith(subgrid.GetFatBlocks<MyCubeBlock>().Where(b => b.IsPreview == false));
             }
 
-            foreach (var blockLimit in ShipCore.BlockLimits)
-            {
-                var blockVals = new List<KeyValuePair<IMyCubeBlock, double>>();
-                foreach (var blockGroup in blockLimit.BlockGroups)
-                {
-                    foreach (var blockType in blockGroup.BlockTypes)
-                    {
-                        var countingBlocks = _blocks
-                            .Where(b => Utils.GetBlockTypeId(b) == blockType.TypeId &&
-                                        Utils.GetBlockSubtypeId(b) == blockType.SubtypeId);
-                        blockVals.AddRange(countingBlocks.Select(bl =>
-                            new KeyValuePair<IMyCubeBlock, double>(bl, blockType.CountWeight)));
-                    }
-                }
-
-                BlocksPerLimit[blockLimit] = blockVals;
-            }
-
             foreach (var funcBlock in _blocks.OfType<IMyFunctionalBlock>())
             {
                 funcBlock.EnabledChanged += FuncBlockOnEnabledChanged;
                 funcBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged;
             }
-
-            EnforceBlockPunishment();
-            ApplyModifiers();
-            
         }
 
         private void FuncBlockOnEnabledChanged(IMyTerminalBlock obj)
