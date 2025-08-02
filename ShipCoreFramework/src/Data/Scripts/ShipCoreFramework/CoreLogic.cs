@@ -102,63 +102,17 @@ namespace ShipCoreFramework
             _coreBlock.AddUpgradeValue("DamageCooldown", 1f);
         }
 
-        private void InitOnPhysicsChanged(IMyEntity obj)
-        {
-
-            if (ModSessionManager.Config.ShipCores.All(core => core.SubtypeId != _coreBlock.BlockDefinition.SubtypeId)) return;
-            if (_coreBlock.CubeGrid?.Physics == null) return;
-            _subtypeId = _coreBlock.BlockDefinition.SubtypeId;
-            
-            _coreBlock.OnPhysicsChanged -= InitOnPhysicsChanged;//This line does not seem to do shit 
-            if (CheckIfCoreOfOtherTypeExists())
-            {
-                _coreBlock.Close();
-                return;
-            }
-            if (_coreBlock.Storage != null && _coreBlock.Storage.ContainsKey(Constants.CoreStateStorageGUID))
-            {
-                _syncIsMainCore.Value = _coreBlock.Storage[Constants.CoreStateStorageGUID] == "1"; //This is causing crashes
-            }
-            ///No log fours?
-            var onlyCore = IsOnlyCoreOfThisTypeOnGrid();
-            if (!_syncIsMainCore && onlyCore)
-            {
-                _syncIsMainCore.Value = true;
-                _coreBlock.CubeGrid.GetMainGridLogic().Activate(_subtypeId);
-                SaveCoreState();
-            }
-            
-            
-            _coreBlock.CubeGrid.OnGridMerge += OnGridMerge;
-            
-            NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
-            
-            //Redundant due to init check
-            //if (!ModSessionManager.Config.ShipCores.Any(shipClass => _subtypeId.Contains(shipClass.UniqueName))) return;
-            
-            NeedsUpdate = MyEntityUpdateEnum.EACH_FRAME;
-            _coreBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged; 
-            _coreBlock.RefreshCustomInfo();
-        }
-
         private bool CheckIfCoreOfOtherTypeExists()
         {
-            //None of this works, see if EVERY IMYTERMINAL CAN BE A CORELOGIC then , you have a problem
-            try{
             var fatTerminals = _coreBlock.CubeGrid.GetFatBlocks<IMyTerminalBlock>();
-            foreach (var fatTerminal in fatTerminals)
+            var coreSubtypeId = ModSessionManager.Config.ShipCores.Select(core => core.SubtypeId).ToList();
+            coreSubtypeId.Remove(_subtypeId);
+            
+            return fatTerminals.Any(terminal =>
             {
-                var otherCoreLogic = fatTerminal.GameLogic.GetAs<CoreLogic>();
-                if(otherCoreLogic == null) continue;
-                if (otherCoreLogic._subtypeId != _subtypeId) return true;
-            }
-            return false;
-            }
-            catch (Exception e)
-            {
-                MyAPIGateway.Utilities.ShowMessage("ShipCores:", "Error CheckIfCoreOfOtherTypeExists" + e);
-                return false;
-            }
+                var subtype = Utils.GetBlockSubtypeId(terminal.SlimBlock);
+                return coreSubtypeId.Any(sub => sub == subtype);
+            });
         }
 
         private void OnGridMerge(IMyCubeGrid arg1, IMyCubeGrid arg2)
