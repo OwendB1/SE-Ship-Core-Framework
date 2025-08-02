@@ -198,7 +198,7 @@ namespace ShipCoreFramework
             //so on and so forth more of an example, you would likely want to call these in the modifiers file....
         }
 
-        public override void Close()
+        public override void MarkForClose()
         {
             if (_coreBlock?.CubeGrid == null) return;
 
@@ -219,9 +219,9 @@ namespace ShipCoreFramework
             grid.GetBlocks(slimBlocks, b => b.FatBlock is IMyTerminalBlock);
 
             var newMainCore = (
-                from terminal in slimBlocks.Select(slim => slim.FatBlock as IMyTerminalBlock) 
-                where terminal != _coreBlock 
-                select terminal.GameLogic?.GetAs<CoreLogic>())
+                    from terminal in slimBlocks.Select(slim => slim.FatBlock as IMyTerminalBlock) 
+                    where terminal != _coreBlock 
+                    select terminal.GameLogic?.GetAs<CoreLogic>())
                 .FirstOrDefault(otherLogic => otherLogic._subtypeId == _subtypeId);
 
             if (newMainCore != null)
@@ -238,7 +238,7 @@ namespace ShipCoreFramework
                 gridLogic.ActiveNoCore = false;
             }
             
-            base.Close();
+            base.MarkForClose();
         }
         
         private bool IsOnlyCoreOfThisTypeOnGrid()
