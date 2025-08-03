@@ -197,7 +197,7 @@ namespace ShipCoreFramework
             //so on and so forth more of an example, you would likely want to call these in the modifiers file....
         }
 
-        public override void MarkForClose()
+        public override void Close()
         {
             if (_coreBlock?.CubeGrid == null) return;
 
@@ -238,7 +238,7 @@ namespace ShipCoreFramework
                 gridLogic.ActiveNoCore = false;
             }
             
-            base.MarkForClose();
+            base.Close();
         }
         
         private bool IsOnlyCoreOfThisTypeOnGrid()

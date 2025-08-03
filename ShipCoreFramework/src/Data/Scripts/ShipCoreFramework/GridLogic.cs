@@ -218,8 +218,7 @@ namespace ShipCoreFramework
                 foreach (var block in _blocks) CubeGridModifiers.ApplyModifiers(block, ShipCore.Modifiers);
             }
 
-            if (func.Enabled)
-                EnforceBlockPunishment(func);
+            if (func.Enabled) EnforceBlockPunishment(func);
         }
 
         private void OnUpgradeValuesChanged()
@@ -386,7 +385,6 @@ namespace ShipCoreFramework
         {
             if (block != null)
             {
-            
                 foreach (var limit in ShipCore.BlockLimits)
                 {
                     var limitBlocks = BlocksPerLimit[limit];

@@ -14,8 +14,8 @@ namespace ShipCoreFramework
             //So I need to fix the modifiers.
             if (gridLogic?.Grid == null || gridLogic.ShipCore == null) return;
             
-            var maxSpeed = gridLogic.ShipCore.Modifiers.MaxSpeed;
-            if (gridLogic.BoostEnabled) maxSpeed *= gridLogic.ShipCore.Modifiers.MaxBoost;
+            var maxSpeed = ModSessionManager.Config.MaxPossibleSpeedMetersPerSecond*gridLogic.Modifiers.MaxSpeed;
+            if (gridLogic.BoostEnabled) maxSpeed *= ModSessionManager.Config.MaxPossibleSpeedMetersPerSecond*gridLogic.Modifiers.MaxBoost;
             var velocity = gridLogic.Grid.Physics.LinearVelocity;
 
             if (!(velocity.LengthSquared() > maxSpeed * maxSpeed)) return;
