@@ -16,8 +16,12 @@ namespace ShipCoreFramework
     [MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation)]
     public class ModSessionManager : MySessionComponentBase
     {
+        public static bool IsClient { get { return !(IsServer && IsDedicated); } }
+        public static bool IsDedicated { get { return MyAPIGateway.Utilities.IsDedicated; } }
+        public static bool IsServer { get { return MyAPIGateway.Multiplayer.IsServer; } }
+        public static bool IsActive { get { return MyAPIGateway.Multiplayer.MultiplayerActive; } }
         public static ModConfig Config = new ModConfig();
-
+        private IMyPlayer Client = MyAPIGateway.Session != null ? MyAPIGateway.Session.LocalHumanPlayer : null;
         public override void LoadData()
         {
             MyAPIGateway.Utilities.MessageEntered += Commands.OnChatCommand;

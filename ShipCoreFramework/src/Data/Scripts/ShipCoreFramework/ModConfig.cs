@@ -6,7 +6,7 @@ using System.Linq;
 using System.Xml.Serialization;
 using Sandbox.ModAPI;
 using VRageMath;
-
+using VRage.Utils;
 #endregion
 
 namespace ShipCoreFramework
@@ -35,7 +35,17 @@ namespace ShipCoreFramework
 
 
         [XmlIgnoreAttribute] public string NoCoreSimpleName = "NoCoreGrids";
-        [XmlElement("NoFlyZones")] public List<Zones> NoFlyZones = new List<Zones>();
+        [XmlElement("NoFlyZones")] public List<Zones> NoFlyZones = new List<Zones>
+            {
+                new Zones
+                {
+		            Id = 0,
+                    Position = new Vector3D(0,0,0),
+                    Radius = 1000.0,
+                    AllowedCoresSubtype = new List<string>(),
+                    ForceOff = false
+                },
+            };
 
         public ShipCore GetShipCoreByTypeId(string coreTypeId)
         {
@@ -53,8 +63,7 @@ namespace ShipCoreFramework
         {
             try
             {
-                var globalConfigWriter =
-                    MyAPIGateway.Utilities.WriteFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig));
+                var globalConfigWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig));
                 globalConfigWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this));
                 globalConfigWriter.Close();
                 Utils.Log($"Save Config: Saved {GlobalConfigFileName}", showInChat ? 3 : 0);
@@ -213,6 +222,8 @@ namespace ShipCoreFramework
                             LargeGridMobile = true,
                             SmallGrid = true,
                             MaxBlocks = 50000,
+                            //MaxPCU=,
+                            //MaxMass=,
                             Modifiers = new GridModifiers{
                                 ThrusterForce = 1.5f,
                                 ThrusterEfficiency = 1.5f,
@@ -223,7 +234,7 @@ namespace ShipCoreFramework
                                 AssemblerSpeed = 1.5f,
                                 PowerProducersOutput = 1.5f,
                                 DrillHarvestMultiplier = 1.5f,
-                                MaxSpeed = 200f,
+                                MaxSpeed = 0.6f,
                             },
                             PassiveDefenseModifiers = new GridDefenseModifiers
                             {
@@ -327,6 +338,8 @@ namespace ShipCoreFramework
         public double Radius;
         [XmlElement("AllowedCoresSubtype")]
         public List<string> AllowedCoresSubtype = new List<string>();
+        [XmlElement("OverideBlockLimitsForceShutOff")]
+        public bool ForceOff = false;
 
     }
     
@@ -407,7 +420,7 @@ namespace ShipCoreFramework
         [XmlElement("ThrusterForce")]
         public float ThrusterForce = 1;
         [XmlElement("MaxSpeed")]
-        public float MaxSpeed = 100.0f;
+        public float MaxSpeed = 0.3f;
         [XmlElement("MaxBoost")]
         public float MaxBoost = 1.2f;
         [XmlElement("BoostDuration")]

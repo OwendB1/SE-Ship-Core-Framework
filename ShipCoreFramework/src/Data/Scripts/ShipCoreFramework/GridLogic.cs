@@ -9,7 +9,7 @@ using VRage.Game.Components;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
-
+using VRage.Utils;
 #endregion
 
 namespace ShipCoreFramework
@@ -22,7 +22,8 @@ namespace ShipCoreFramework
         private bool _isMainGrid = false;
         private bool _isDisabled = false;
         private bool _once = true;
-        
+        public MyStringHash DamageType_BlockLimit = MyStringHash.GetOrCompute("BlockLimitsViolaion");
+        public MyStringHash DamageType_NoFlyZone = MyStringHash.GetOrCompute("NoFLyZoneViolaion");
         public readonly Dictionary<BlockLimit, List<KeyValuePair<IMyCubeBlock, double>>> BlocksPerLimit = new Dictionary<BlockLimit, List<KeyValuePair<IMyCubeBlock, double>>>();
         
         public bool BoostEnabled;
@@ -38,7 +39,7 @@ namespace ShipCoreFramework
         private float ActiveDefenseDuration => ShipCore.ActiveDefenseModifiers.Duration;
         private float ActiveDefenseCoolDown => ShipCore.ActiveDefenseModifiers.Cooldown;
         
-        public GridModifiers Modifiers => ShipCore.Modifiers;
+        public GridModifiers Modifiers => CubeGridModifiers.GetActiveModifiers(this);
 
         public IMyCubeGrid Grid;
 
@@ -118,11 +119,12 @@ namespace ShipCoreFramework
         public override void UpdateBeforeSimulation()
         {
             base.UpdateBeforeSimulation();
-            if (!_isMainGrid || !ActiveNoCore) return;
+            if (!_isMainGrid) return;
+            SpeedEnforcement.EnforceSpeedLimit(this);
+            NoFlyZones.EnforceNoFlyZones(this);
+            if (!ActiveNoCore) return;
             RunBoostTimerTick();
             RunActiveDefenseTimerTick();
-            
-            SpeedEnforcement.EnforceSpeedLimit(this);
         }
 
         private void RunBoostTimerTick()
@@ -190,7 +192,15 @@ namespace ShipCoreFramework
                 mainLogic.UpdateLimitsAndApplyModifiers();
                 return;
             }
-
+            //Init Cores, Blocks do not undergo a physics change when loaded in or pasted as part of a grid
+            /*
+                var fatTerminals = Grid.GetFatBlocks<IMyTerminalBlock>().ToList();
+            foreach(IMyTerminalBlock block in fatTerminals)
+            {
+                var coreLogic = block.GameLogic.GetAs<CoreLogic>();
+                if(coreLogic!=null){coreLogic.InitOnPhysicsChanged(coreLogic._coreBlock);}//No need tofilter as thier is a filter in there.
+                    
+            }*/
             Utils.Log($"Delayed Init: main grid {Grid.CustomName} (id: {Grid.EntityId})");
 
             Grid.OnBlockOwnershipChanged += OnBlockOwnershipChanged;
@@ -380,9 +390,48 @@ namespace ShipCoreFramework
                 mainLogic._blocks.UnionWith(fatBlocks);
             }
         }
-        
+        public void WhackABlock(IMyCubeBlock block, PunishmentType harm, MyStringHash? CustomDamageType = null)
+        {
+            MyStringHash DamageType = CustomDamageType?? DamageType_BlockLimit;
+            double damageRequired = 0;
+            switch (harm)
+            {
+                //case PunishmentType.ShutOff:
+                    //break;
+                case PunishmentType.Damage:
+                    // Whack,50%
+                    damageRequired = block.SlimBlock.Integrity - (block.SlimBlock.MaxIntegrity * 0.5);
+                    if (damageRequired < 0) damageRequired = 0;
+                    block.SlimBlock.DoDamage((float)damageRequired, DamageType, true);
+                    break;
+
+                case PunishmentType.Delete:
+                    Grid.RemoveBlock(block.SlimBlock);
+                    break;
+                case PunishmentType.Explode:
+                    //Game will cause explosion on damage = integridy, if block explodes on destruction most do, if not... I don't care that much.
+                    block.SlimBlock.DoDamage((float)block.SlimBlock.Integrity, DamageType, true);
+                    break;
+
+                default:
+                    //Shut off, or whack if that's not possible
+                    var func = block as IMyFunctionalBlock;
+                    if (func != null)
+                    {
+                        func.Enabled = false;
+                    }
+                    else
+                    {
+                        damageRequired = block.SlimBlock.Integrity - (block.SlimBlock.MaxIntegrity * 0.2);
+                        if (damageRequired < 0) damageRequired = 0;
+                        block.SlimBlock.DoDamage((float)damageRequired, DamageType, true);
+                    }
+                    break;
+            }
+        }
         private void EnforceBlockPunishment(IMyCubeBlock block = null)//this probably needs more attention
         {
+            //wtf
             if (block != null)
             {
                 foreach (var limit in ShipCore.BlockLimits)
@@ -391,20 +440,7 @@ namespace ShipCoreFramework
                     var countWeight = limitBlocks.Sum(l => l.Value);
                     Utils.Log($"Block check: {limit.Name} | {countWeight} | {limit.MaxCount}");
                     if (countWeight <= limit.MaxCount) continue;
-                    var func = block as IMyFunctionalBlock;
-                    if (func != null)
-                    {
-                        func.Enabled = false;
-                    }
-                    else
-                    {
-                        var slim = block.SlimBlock;
-                        var targetIntegrity = slim.MaxIntegrity * 0.2;
-                        var damageRequired = slim.Integrity - targetIntegrity;
-
-                        if (damageRequired < 0) damageRequired = 0;
-                        slim.DoDamage((float)damageRequired, MyDamageType.Bullet, true);
-                    }
+                    WhackABlock(block,limit.PunishmentType);
                 }
             }
             else
@@ -418,20 +454,7 @@ namespace ShipCoreFramework
                     {
                         countWeight += limitBlock.Value;
                         if (countWeight <= limit.MaxCount) continue;
-                        var func = limitBlock.Key as IMyFunctionalBlock;
-                        if (func != null)
-                        {
-                            func.Enabled = false;
-                        }
-                        else
-                        {
-                            var slim = limitBlock.Key.SlimBlock;
-                            var targetIntegrity = slim.MaxIntegrity * 0.2;
-                            var damageRequired = slim.Integrity - targetIntegrity;
-
-                            if (damageRequired < 0) damageRequired = 0;
-                            slim.DoDamage((float)damageRequired, MyDamageType.Bullet, true);
-                        }
+                        WhackABlock(block,limit.PunishmentType);
                     }
                 }
             }

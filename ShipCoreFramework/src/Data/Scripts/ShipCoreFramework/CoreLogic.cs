@@ -24,41 +24,44 @@ namespace ShipCoreFramework
     {
         public string _subtypeId;
         public IMyTerminalBlock _coreBlock;
-        public MySync<bool, SyncDirection.BothWays> _syncIsMainCore = null;
-        
+        public MySync<bool, SyncDirection.BothWays> _syncIsMainCore = null;//Default is true.
+
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {
             base.Init(objectBuilder);
             _coreBlock = (IMyTerminalBlock)Entity;
             if (ModSessionManager.Config.ShipCores.All(core => core.SubtypeId != _coreBlock.BlockDefinition.SubtypeId)) return;
+            _syncIsMainCore.ValidateAndSet(false);
             _coreBlock.CubeGrid.OnPhysicsChanged += InitOnPhysicsChanged;
         }
 
-        private void InitOnPhysicsChanged(IMyEntity obj)
+        public void InitOnPhysicsChanged(IMyEntity obj)
         {
+            if (_coreBlock.CubeGrid?.Physics == null){Utils.Log($"Missing Physics {_coreBlock.CubeGrid.CustomName} ( {_coreBlock.CubeGrid?.Physics})", 3); return;}//is this is?
+            _coreBlock.OnPhysicsChanged -= InitOnPhysicsChanged;//Either way we want the triger if the block now exist.
             if (ModSessionManager.Config.ShipCores.All(core => core.SubtypeId != _coreBlock.BlockDefinition.SubtypeId)) return;
-            if (_coreBlock.CubeGrid?.Physics == null) return;
             _subtypeId = _coreBlock.BlockDefinition.SubtypeId;
-            
-            _coreBlock.OnPhysicsChanged -= InitOnPhysicsChanged; //This line does not seem to do shit 
             if (CheckIfCoreOfOtherTypeExists())
             {
+                Utils.Log($"Other Core Exist: {_coreBlock.CubeGrid.CustomName}", 3);
                 _coreBlock.Close();
                 return;
             }
             if (_coreBlock.Storage != null && _coreBlock.Storage.ContainsKey(Constants.CoreStateStorageGUID))
             {
-                _syncIsMainCore.Value = _coreBlock.Storage[Constants.CoreStateStorageGUID] == "1";
+                bool SyncVar = _coreBlock.Storage[Constants.CoreStateStorageGUID] == "1";
+                _syncIsMainCore.ValidateAndSet(SyncVar);
             }
             ///No log fours?
             var onlyCore = IsOnlyCoreOfThisTypeOnGrid();
-            if (!_syncIsMainCore && onlyCore)
+            Utils.Log($"Core Initial: {_coreBlock.CustomName}, SyncValue: {!_syncIsMainCore.Value}, onlyCore: {onlyCore}", 3);
+            if ((!_syncIsMainCore.Value && onlyCore)||(_syncIsMainCore.Value))
             {
-                _syncIsMainCore.Value = true;
+                _syncIsMainCore.ValidateAndSet(true);
                 _coreBlock.CubeGrid.GetMainGridLogic().Activate(_subtypeId, true);
                 SaveCoreState();
             }
-            
+            Utils.Log($"Core Initial: {_coreBlock.CustomName}", 3);
             _coreBlock.CubeGrid.OnGridMerge += OnGridMerge;
             NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
             NeedsUpdate = MyEntityUpdateEnum.EACH_FRAME;
@@ -152,7 +155,7 @@ namespace ShipCoreFramework
             checkbox.Getter = delegate(IMyTerminalBlock b)
             {
                 var l = b.GameLogic?.GetAs<CoreLogic>();
-                return l != null && l._syncIsMainCore;
+                return l != null && l._syncIsMainCore.Value;
             };
 
             checkbox.Setter = delegate(IMyTerminalBlock b, bool val)
@@ -172,8 +175,8 @@ namespace ShipCoreFramework
                     if (terminal == null || terminal == b) continue;
 
                     var otherLogic = terminal.GameLogic?.GetAs<CoreLogic>();
-                    if (otherLogic == null || !otherLogic._syncIsMainCore) continue;
-                    otherLogic._syncIsMainCore.Value = false;
+                    if (otherLogic == null || !otherLogic._syncIsMainCore.Value) continue;
+                    otherLogic._syncIsMainCore.ValidateAndSet(false);
                     terminal.RefreshCustomInfo();
                 }
 
@@ -184,7 +187,7 @@ namespace ShipCoreFramework
             checkbox.Enabled = delegate(IMyTerminalBlock b)
             {
                 var l = b.GameLogic?.GetAs<CoreLogic>();
-                return l != null && !l._syncIsMainCore;
+                return l != null && !l._syncIsMainCore.Value;
             };
 
             controls.Add(checkbox);
@@ -206,7 +209,7 @@ namespace ShipCoreFramework
             if (gridLogic == null) return;
             
             // If this core is NOT the main core, nothing to reassign
-            if (!_syncIsMainCore)
+            if (!_syncIsMainCore.Value)
             {
                 //Anoying
                 Utils.ShowNotification($"A backup core of grid {grid.CustomName} was destroyed!",10000, true);
@@ -226,7 +229,7 @@ namespace ShipCoreFramework
 
             if (newMainCore != null)
             {
-                newMainCore._syncIsMainCore.Value = true;
+                newMainCore._syncIsMainCore.ValidateAndSet(true);
                 newMainCore.SaveCoreState();
                 newMainCore._coreBlock.RefreshCustomInfo();
                 Utils.ShowNotification($"{grid.CustomName}'s main core destroyed! Successfully switched to backup core.",10000, true);
@@ -246,7 +249,6 @@ namespace ShipCoreFramework
             var fatTerminals = _coreBlock.CubeGrid.GetFatBlocks<IMyTerminalBlock>();
             return fatTerminals.Count(fatTerminal => fatTerminal.BlockDefinition.SubtypeId == _subtypeId) == 1;
         }
-
         private void SaveCoreState()
         {
             if (_coreBlock.Storage == null) _coreBlock.Storage = new MyModStorageComponent();
