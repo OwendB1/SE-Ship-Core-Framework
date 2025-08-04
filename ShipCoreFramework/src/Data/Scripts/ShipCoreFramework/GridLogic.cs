@@ -19,9 +19,8 @@ namespace ShipCoreFramework
     {
         private readonly HashSet<MyCubeBlock> _blocks = new HashSet<MyCubeBlock>();
         private static ModConfig Config => ModSessionManager.Config;
-        private bool _once = true;
-        public MyStringHash DamageType_BlockLimit = MyStringHash.GetOrCompute("BlockLimitsViolaion");
-        public MyStringHash DamageType_NoFlyZone = MyStringHash.GetOrCompute("NoFLyZoneViolaion");
+        private readonly MyStringHash _damageTypeBlockLimit = MyStringHash.GetOrCompute("BlockLimitsViolation");
+        public MyStringHash DamageTypeNoFlyZone = MyStringHash.GetOrCompute("NoFLyZoneViolation");
         public readonly Dictionary<BlockLimit, List<KeyValuePair<IMyCubeBlock, double>>> BlocksPerLimit = new Dictionary<BlockLimit, List<KeyValuePair<IMyCubeBlock, double>>>();
         
         public bool BoostEnabled;
@@ -381,7 +380,7 @@ namespace ShipCoreFramework
         }
         public void WhackABlock(IMyCubeBlock block, PunishmentType harm, MyStringHash? CustomDamageType = null)
         {
-            MyStringHash DamageType = CustomDamageType?? DamageType_BlockLimit;
+            MyStringHash DamageType = CustomDamageType?? _damageTypeBlockLimit;
             double damageRequired = 0;
             switch (harm)
             {
