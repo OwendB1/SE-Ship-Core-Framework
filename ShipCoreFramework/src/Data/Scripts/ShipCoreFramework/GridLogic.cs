@@ -262,7 +262,6 @@ namespace ShipCoreFramework
                 GridsPerPlayerClassManager.RemoveCubeGrid(this);
                 GridsPerPlayerClassManager.AddCubeGrid(this);
             }
-            _once = false;
         }
         
         private void OnIsStaticChanged(IMyCubeGrid grid, bool isStatic)
