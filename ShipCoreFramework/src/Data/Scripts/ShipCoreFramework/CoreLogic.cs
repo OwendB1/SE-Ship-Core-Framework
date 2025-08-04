@@ -236,9 +236,9 @@ namespace ShipCoreFramework
             }
             else
             {
-                // No other core of this type found — deactivate the grid
+                // No other core of this type found — reset the grid to no core
                 Utils.ShowNotification($"All cores destroyed! {grid.CustomName} has become inactive!",5000, true);
-                gridLogic.ActiveNoCore = false;
+                gridLogic.ResetCore();
             }
             
             base.Close();
