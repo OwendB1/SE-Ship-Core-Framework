@@ -58,7 +58,7 @@ namespace ShipCoreFramework
             if ((!_syncIsMainCore.Value && onlyCore)||(_syncIsMainCore.Value))
             {
                 _syncIsMainCore.ValidateAndSet(true);
-                _coreBlock.CubeGrid.GetMainGridLogic().Activate(_subtypeId, true);
+                _coreBlock.CubeGrid.GetMainGridLogic().Activate(_subtypeId);
                 SaveCoreState();
             }
             Utils.Log($"Core Initial: {_coreBlock.CustomName}", 3);

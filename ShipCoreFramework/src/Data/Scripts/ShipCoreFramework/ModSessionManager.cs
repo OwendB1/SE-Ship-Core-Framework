@@ -66,10 +66,10 @@ namespace ShipCoreFramework
                 .Select(x => x.GameLogic.GetAs<GridLogic>())
                 .Where(logic => logic?.OwningFaction?.FactionId == factionId)
                 .ToList();
-            
+            /* This will n eed a pass
             foreach (var gridLogic in factionGridLogics.Where(gridLogic =>
                          gridLogic.OwningFaction.Members.Count < gridLogic.ShipCore.MinPlayers))
-                gridLogic.ActiveNoCore = false;
+                gridLogic.ActiveNoCore = false;*/
         }
 
         protected override void UnloadData()
