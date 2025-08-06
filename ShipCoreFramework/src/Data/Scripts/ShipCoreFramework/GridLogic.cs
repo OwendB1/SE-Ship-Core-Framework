@@ -59,6 +59,10 @@ namespace ShipCoreFramework
         {
             Utils.Log($"Activate: Activating logic for {Grid.CustomName} (entity id: {Grid.EntityId})!");
             _shipCoreTypeId = shipCoreTypeId;
+            
+            GridsPerFactionClassManager.AddCubeGrid(this);
+            GridsPerPlayerClassManager.AddCubeGrid(this);
+            
             UpdateLimitsAndApplyModifiers();
             EnforceBlockPunishment();
         }
@@ -66,6 +70,10 @@ namespace ShipCoreFramework
         public void ResetCore()
         {
             _shipCoreTypeId = string.Empty;
+            
+            GridsPerFactionClassManager.RemoveCubeGrid(this);
+            GridsPerPlayerClassManager.RemoveCubeGrid(this);
+            
             UpdateLimitsAndApplyModifiers();
             EnforceBlockPunishment();
         }

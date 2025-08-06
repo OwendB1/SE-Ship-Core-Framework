@@ -26,7 +26,7 @@ namespace ShipCoreFramework
                 if (coreLogic == null)
                     continue;
 
-                if (coreLogic._subtypeId == core.SubtypeId && coreLogic._syncIsMainCore.Value)
+                if (coreLogic.SubtypeId == core.SubtypeId && coreLogic.SyncIsMainCore.Value)
                     return coreLogic;
             }
 

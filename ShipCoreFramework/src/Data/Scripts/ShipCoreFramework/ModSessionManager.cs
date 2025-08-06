@@ -16,12 +16,12 @@ namespace ShipCoreFramework
     [MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation)]
     public class ModSessionManager : MySessionComponentBase
     {
-        public static bool IsClient { get { return !(IsServer && IsDedicated); } }
-        public static bool IsDedicated { get { return MyAPIGateway.Utilities.IsDedicated; } }
-        public static bool IsServer { get { return MyAPIGateway.Multiplayer.IsServer; } }
-        public static bool IsActive { get { return MyAPIGateway.Multiplayer.MultiplayerActive; } }
+        public static bool IsClient => !(IsServer && IsDedicated);
+        private static bool IsDedicated => MyAPIGateway.Utilities.IsDedicated;
+        private static bool IsServer => MyAPIGateway.Multiplayer.IsServer;
+        public static bool IsActive => MyAPIGateway.Multiplayer.MultiplayerActive;
         public static ModConfig Config = new ModConfig();
-        private IMyPlayer Client = MyAPIGateway.Session != null ? MyAPIGateway.Session.LocalHumanPlayer : null;
+        private IMyPlayer _client = MyAPIGateway.Session != null ? MyAPIGateway.Session.LocalHumanPlayer : null;
         public override void LoadData()
         {
             MyAPIGateway.Utilities.MessageEntered += Commands.OnChatCommand;
@@ -69,7 +69,7 @@ namespace ShipCoreFramework
             
             foreach (var gridLogic in factionGridLogics.Where(gridLogic =>
                          gridLogic.OwningFaction.Members.Count < gridLogic.ShipCore.MinPlayers))
-                gridLogic.ActiveNoCore = false;
+                gridLogic.ResetCore();
         }
 
         protected override void UnloadData()
