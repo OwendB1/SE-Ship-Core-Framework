@@ -1,4 +1,4 @@
-﻿#region
+#region
 
 using System.Collections.Generic;
 using System.Linq;
@@ -66,7 +66,7 @@ namespace ShipCoreFramework
                 .Select(x => x.GameLogic.GetAs<GridLogic>())
                 .Where(logic => logic?.OwningFaction?.FactionId == factionId)
                 .ToList();
-            
+                
             foreach (var gridLogic in factionGridLogics.Where(gridLogic =>
                          gridLogic.OwningFaction.Members.Count < gridLogic.ShipCore.MinPlayers))
                 gridLogic.ResetCore();

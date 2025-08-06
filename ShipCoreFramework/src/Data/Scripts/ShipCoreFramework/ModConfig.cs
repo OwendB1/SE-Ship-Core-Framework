@@ -35,17 +35,8 @@ namespace ShipCoreFramework
 
 
         [XmlIgnoreAttribute] public string NoCoreSimpleName = "NoCoreGrids";
-        [XmlElement("NoFlyZones")] public List<Zones> NoFlyZones = new List<Zones>
-            {
-                new Zones
-                {
-		            Id = 0,
-                    Position = new Vector3D(0,0,0),
-                    Radius = 1000.0,
-                    AllowedCoresSubtype = new List<string>(),
-                    ForceOff = false
-                },
-            };
+        [XmlElement("NoFlyZones")] public List<Zones> NoFlyZones = new List<Zones>();
+
 
         public ShipCore GetShipCoreByTypeId(string coreTypeId)
         {
@@ -79,6 +70,18 @@ namespace ShipCoreFramework
                 defaultNoCoreWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this.DefaultNoCore));
                 defaultNoCoreWriter.Close();
                 Utils.Log($"Save Config: Saved {DefaultNoCoreFileName}", showInChat ? 3 : 0);
+
+                var manifestWriter =
+                    MyAPIGateway.Utilities.WriteFileInWorldStorage(CoreManifestFileName, typeof(CoreManifest));
+                manifestWriter.Write(MyAPIGateway.Utilities.SerializeToXML(new List<string>(){"Example Core.xml"}));
+                manifestWriter.Close();
+
+                var shipcoreWriter =
+                    MyAPIGateway.Utilities.WriteFileInWorldStorage("Example Core.xml", typeof(ShipCore));
+                shipcoreWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this.ShipCores[0]));
+                shipcoreWriter.Close();
+
+                //Utils.Log($"Save Config: Saved {CoreManifestFileName}", showInChat ? 3 : 0);
             }
             catch (Exception e)
             {
