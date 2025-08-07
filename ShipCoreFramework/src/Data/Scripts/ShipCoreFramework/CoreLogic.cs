@@ -24,7 +24,7 @@ namespace ShipCoreFramework
     {
         public string SubtypeId;
         public IMyTerminalBlock CoreBlock;
-        public readonly MySync<bool, SyncDirection.BothWays> SyncIsMainCore = null;//Default is true.
+        public MySync<bool, SyncDirection.BothWays> SyncIsMainCore = null;//Default is true.
 
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {
