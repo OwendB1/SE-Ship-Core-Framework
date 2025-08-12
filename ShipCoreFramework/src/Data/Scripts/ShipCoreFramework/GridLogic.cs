@@ -1,5 +1,6 @@
 #region
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.Entities;
@@ -41,7 +42,7 @@ namespace ShipCoreFramework
         public IMyCubeGrid Grid;
         
         private string _shipCoreTypeId = string.Empty;
-
+        
         public IMyFaction OwningFaction => Grid.GetOwningFaction();
 
         public long MajorityOwningPlayerId => GetMajorityOwner();
@@ -60,15 +61,13 @@ namespace ShipCoreFramework
             Utils.Log($"Activate: Activating logic for {Grid.CustomName} (entity id: {Grid.EntityId})!");
             _shipCoreTypeId = shipCoreTypeId;
             
-            GridsPerFactionClassManager.AddCubeGrid(this);
-            GridsPerPlayerClassManager.AddCubeGrid(this);
-            
             UpdateLimitsAndApplyModifiers();
             EnforceBlockPunishment();
         }
 
         public void ResetCore()
         {
+            Utils.Log($"Reset: Resetting logic for {Grid.CustomName} (entity id: {Grid.EntityId})!");
             _shipCoreTypeId = string.Empty;
             
             GridsPerFactionClassManager.RemoveCubeGrid(this);
@@ -196,15 +195,7 @@ namespace ShipCoreFramework
                 mainLogic.UpdateLimitsAndApplyModifiers();
                 return;
             }
-            //Init Cores, Blocks do not undergo a physics change when loaded in or pasted as part of a grid
-            /*
-                var fatTerminals = Grid.GetFatBlocks<IMyTerminalBlock>().ToList();
-            foreach(IMyTerminalBlock block in fatTerminals)
-            {
-                var coreLogic = block.GameLogic.GetAs<CoreLogic>();
-                if(coreLogic!=null){coreLogic.InitOnPhysicsChanged(coreLogic._coreBlock);}//No need tofilter as thier is a filter in there.
-                    
-            }*/
+
             Utils.Log($"Delayed Init: main grid {Grid.CustomName} (id: {Grid.EntityId})");
 
             Grid.OnBlockOwnershipChanged += OnBlockOwnershipChanged;

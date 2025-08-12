@@ -42,19 +42,7 @@ namespace ShipCoreFramework
             if (ModSessionManager.Config.ShipCores.All(core => core.SubtypeId != CoreBlock.BlockDefinition.SubtypeId)) return;
             SubtypeId = CoreBlock.BlockDefinition.SubtypeId;
             
-            if (!GridsPerFactionClassManager.WillGridBeWithinFactionLimits(CoreBlock.CubeGrid.GetMainGridLogic(), SubtypeId))
-            {
-                Utils.Log("Per faction limit of this core has been hit!", 3);
-                CoreBlock.Delete();
-                return;
-            }
-
-            if (!GridsPerPlayerClassManager.WillGridBeWithinPlayerLimits(CoreBlock.CubeGrid.GetMainGridLogic(), SubtypeId))
-            {
-                Utils.Log("Per player limit of this core has been hit!", 3);
-                CoreBlock.Delete();
-                return;
-            }
+            LimitRescheduler.ValidateOrSchedule(CoreBlock, CoreBlock.CubeGrid, SubtypeId);
             
             if (CheckIfCoreOfOtherTypeExists())
             {
@@ -146,6 +134,12 @@ namespace ShipCoreFramework
             if (MyAPIGateway.TerminalControls == null) return;
             //Think this can be done in init/ after init just once
             MyAPIGateway.TerminalControls.CustomControlGetter += CustomControlGetter;
+            LimitRescheduler.Tick(CoreBlock);
+        }
+
+        public override void UpdateAfterSimulation10()
+        {
+            LimitRescheduler.Tick(CoreBlock);
         }
 
         private static void CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controls)

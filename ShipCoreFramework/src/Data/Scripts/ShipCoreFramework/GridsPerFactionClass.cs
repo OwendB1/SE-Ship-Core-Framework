@@ -20,7 +20,7 @@ namespace ShipCoreFramework
             var factionId = gridLogic.OwningFaction?.FactionId ?? -1;
             if (!Config.IsValidCoreType(newCoreType))
             {
-                Utils.Log($"GridsPerFactionClass::IsGridWithinFactionLimits: Unknown grid class id {newCoreType}", 2);
+                Utils.Log($"GridsPerFactionClass::IsGridWithinFactionLimits: Unknown core type id {newCoreType}", 2);
                 return false;
             }
 

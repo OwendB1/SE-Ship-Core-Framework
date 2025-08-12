@@ -162,7 +162,6 @@ namespace ShipCoreFramework
                  if (!ownersPerFaction.ContainsKey(ownerFaction)) ownersPerFaction[ownerFaction] = 1;
                 else ownersPerFaction[ownerFaction]++;
             }
-            
             return ownersPerFaction.Count == 0 ? null : ownersPerFaction.MaxBy(kvp => kvp.Value).Key;
         }
 

@@ -22,7 +22,7 @@ namespace ShipCoreFramework
 
             if (!Config.IsValidCoreType(newCoreType))
             {
-                Utils.Log($"GridsPerPlayerClass::IsGridWithinPlayerLimits: Unknown grid class id {newCoreType}", 2);
+                Utils.Log($"GridsPerPlayerClass::IsGridWithinPlayerLimits: Unknown core type id {newCoreType}", 2);
                 return false;
             }
 
