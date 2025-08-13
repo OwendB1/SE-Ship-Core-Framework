@@ -81,46 +81,22 @@ namespace ShipCoreFramework
 
         private void UpdateLimitsAndApplyModifiers()
         {
-            // Clear the existing limits mapping before recalculating
             BlocksPerLimit.Clear();
-
-            // Iterate through each block limit configuration in the ship's core
-            foreach (BlockLimit blockLimit in ShipCore.BlockLimits)
+            foreach (var blockLimit in ShipCore.BlockLimits)
             {
-                var blockVals = new List<KeyValuePair<IMyCubeBlock, double>>();
-
-                foreach (BlockGroup blockGroup in blockLimit.BlockGroups)
-                {
-                    foreach (BlockType blockType in blockGroup.BlockTypes)
-                    {
-                        foreach (IMyCubeBlock block in _blocks)
-                        {
-                            // Skip invalid references
-                            if (block == null || block.Closed || block.CubeGrid == null)
-                                continue;
-
-                            var typeId = Utils.GetBlockTypeId(block);
-                            //Utils.Log($"UpdateLimits: MyTypeID: {typeId?? "I have no type ID"})");
-                            //Utils.ShowNotification($"{typeId}'",10000, true);
-                            var subtypeId = Utils.GetBlockSubtypeId(block);
-
-                            if (typeId == blockType.TypeId && subtypeId == blockType.SubtypeId)
-                            {
-                                blockVals.Add(new KeyValuePair<IMyCubeBlock, double>(block, blockType.CountWeight));
-                            }
-                        }
-                    }
-                }
+                var blockVals = (
+                    from blockGroup in blockLimit.BlockGroups 
+                    from blockType in blockGroup.BlockTypes 
+                    from IMyCubeBlock block in _blocks 
+                    where block != null && !block.Closed && block.CubeGrid != null 
+                    let typeId = Utils.GetBlockTypeId(block) let subtypeId = Utils.GetBlockSubtypeId(block) 
+                    where typeId == blockType.TypeId && subtypeId == blockType.SubtypeId select new KeyValuePair<IMyCubeBlock, double>(block, blockType.CountWeight)).ToList();
 
                 BlocksPerLimit[blockLimit] = blockVals;
             }
-
-
-            // Apply any modifiers after all limits have been recalculated
             ApplyModifiers();
         }
-
-
+        
         public void ActivateDefense()
         {
             if (ActiveDefenseEnabled || _activeDefenseCooldownTimer > 0f)

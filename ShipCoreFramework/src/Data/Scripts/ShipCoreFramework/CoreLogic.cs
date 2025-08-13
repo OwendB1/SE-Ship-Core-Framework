@@ -24,7 +24,7 @@ namespace ShipCoreFramework
     {
         public string SubtypeId;
         public IMyTerminalBlock CoreBlock;
-        public MySync<bool, SyncDirection.BothWays> SyncIsMainCore = null;//Default is true.
+        public MySync<bool, SyncDirection.BothWays> SyncIsMainCore = null;
 
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {
@@ -32,17 +32,17 @@ namespace ShipCoreFramework
             CoreBlock = (IMyTerminalBlock)Entity;
             if (ModSessionManager.Config.ShipCores.All(core => core.SubtypeId != CoreBlock.BlockDefinition.SubtypeId)) return;
             SyncIsMainCore.ValidateAndSet(false);
-            CoreBlock.CubeGrid.OnPhysicsChanged += InitOnPhysicsChanged;//Ok this sounds crazy, but i think thi funciton is running X*NumberOfBlocks it's been added to for each block
+            CoreBlock.CubeGrid.OnPhysicsChanged += InitOnPhysicsChanged;
         }
 
         private void InitOnPhysicsChanged(IMyEntity obj)
         {
-            if (CoreBlock.CubeGrid?.Physics == null){Utils.Log($"Missing Physics {CoreBlock.CubeGrid?.CustomName} ({CoreBlock.CubeGrid?.Physics})", 3); return;}//is this is?
-            CoreBlock.OnPhysicsChanged -= InitOnPhysicsChanged;//Either way we want the triger if the block now exist.
+            if (CoreBlock.CubeGrid?.Physics == null){Utils.Log($"Missing Physics {CoreBlock.CubeGrid?.CustomName} ({CoreBlock.CubeGrid?.Physics})", 3); return;}
+            CoreBlock.OnPhysicsChanged -= InitOnPhysicsChanged;
             if (ModSessionManager.Config.ShipCores.All(core => core.SubtypeId != CoreBlock.BlockDefinition.SubtypeId)) return;
             SubtypeId = CoreBlock.BlockDefinition.SubtypeId;
             
-            LimitRescheduler.TryValidate(CoreBlock, CoreBlock.CubeGrid, SubtypeId);
+            LimitRescheduler.ValidateOrSchedule(CoreBlock, CoreBlock.CubeGrid, SubtypeId);
             
             if (CheckIfCoreOfOtherTypeExists())
             {
@@ -56,16 +56,13 @@ namespace ShipCoreFramework
                 var syncVar = CoreBlock.Storage[Constants.CoreStateStorageGUID] == "1";
                 SyncIsMainCore.ValidateAndSet(syncVar);
             }
-            ///No log fours?
+
             var onlyCore = IsOnlyCoreOfThisTypeOnGrid();
             Utils.Log($"Core Initial: {CoreBlock.CustomName}, SyncValue: {!SyncIsMainCore.Value}, onlyCore: {onlyCore}", 3);
             if ((!SyncIsMainCore.Value && onlyCore)||(SyncIsMainCore.Value))
             {
                 SyncIsMainCore.ValidateAndSet(true);
                 CoreBlock.CubeGrid.GetMainGridLogic().Activate(SubtypeId);
-                //var MyGridLogic = CoreBlock.CubeGrid.GetMainGridLogic()
-                //MyGridLogic.Activate(SubtypeId);
-                //MyGridLogic.CoreBlock=this;
                 SaveCoreState();
             }
             Utils.Log($"Core Initial: {CoreBlock.CustomName}", 3);
@@ -135,15 +132,15 @@ namespace ShipCoreFramework
         {
             base.UpdateOnceBeforeFrame();
             if (MyAPIGateway.TerminalControls == null) return;
-            //Think this can be done in init/ after init just once
+
             MyAPIGateway.TerminalControls.CustomControlGetter += CustomControlGetter;
-            //LimitRescheduler.Tick(CoreBlock);
+            LimitRescheduler.Tick(CoreBlock);
         }
-        /*
+        
         public override void UpdateAfterSimulation10()
         {
             LimitRescheduler.Tick(CoreBlock);
-        }*/
+        }
 
         private static void CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controls)
         {
