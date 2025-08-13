@@ -24,28 +24,33 @@ namespace ShipCoreFramework
                 
                 GridModifiers EnhancedModifiers = new GridModifiers();
                 //MyCore._syncIsMainCore
-                CoreLogic myBlock = Utils.GetGridCore(GridLogic.Grid,ShipCore);
-                try
+                CoreLogic myBlock = GridLogic.CoreBlock;
+                if(myBlock==null)
                 {
-                    EnhancedModifiers.AssemblerSpeed=ShipCore.Modifiers.AssemblerSpeed*myBlock.CoreBlock.UpgradeValues["AssemblerSpeed"];
-                    EnhancedModifiers.DrillHarvestMultiplier=ShipCore.Modifiers.DrillHarvestMultiplier*myBlock.CoreBlock.UpgradeValues["DrillHarvestMultiplier"];
-                    EnhancedModifiers.GyroEfficiency=ShipCore.Modifiers.GyroEfficiency*myBlock.CoreBlock.UpgradeValues["GyroEfficiency"];
-                    EnhancedModifiers.GyroForce=ShipCore.Modifiers.GyroForce*myBlock.CoreBlock.UpgradeValues["GyroForce"];
-                    EnhancedModifiers.PowerProducersOutput=ShipCore.Modifiers.PowerProducersOutput*myBlock.CoreBlock.UpgradeValues["PowerProducersOutput"];
-                    EnhancedModifiers.RefineEfficiency=ShipCore.Modifiers.RefineEfficiency*myBlock.CoreBlock.UpgradeValues["RefineEfficiency"];
-                    EnhancedModifiers.RefineSpeed=ShipCore.Modifiers.RefineSpeed*myBlock.CoreBlock.UpgradeValues["RefineSpeed"];
-                    EnhancedModifiers.ThrusterEfficiency=ShipCore.Modifiers.ThrusterEfficiency*myBlock.CoreBlock.UpgradeValues["ThrusterEfficiency"];
-                    EnhancedModifiers.ThrusterForce=ShipCore.Modifiers.ThrusterForce*myBlock.CoreBlock.UpgradeValues["ThrusterForce"];
-                    EnhancedModifiers.MaxSpeed=ShipCore.Modifiers.MaxSpeed*myBlock.CoreBlock.UpgradeValues["MaxSpeed"];
-                    EnhancedModifiers.MaxBoost=ShipCore.Modifiers.MaxBoost*myBlock.CoreBlock.UpgradeValues["MaxBoost"];
-                    EnhancedModifiers.BoostDuration=ShipCore.Modifiers.BoostDuration*myBlock.CoreBlock.UpgradeValues["BoostDuration"];
-                    EnhancedModifiers.BoostCoolDown=ShipCore.Modifiers.BoostCoolDown*myBlock.CoreBlock.UpgradeValues["BoostCoolDown"];
-                    return EnhancedModifiers;
+                    return(ShipCore.Modifiers);
+                }/*
+                try
+                {*/
+                EnhancedModifiers.AssemblerSpeed=ShipCore.Modifiers.AssemblerSpeed*myBlock.CoreBlock.UpgradeValues["AssemblerSpeed"];
+                EnhancedModifiers.DrillHarvestMultiplier=ShipCore.Modifiers.DrillHarvestMultiplier*myBlock.CoreBlock.UpgradeValues["DrillHarvestMultiplier"];
+                EnhancedModifiers.GyroEfficiency=ShipCore.Modifiers.GyroEfficiency*myBlock.CoreBlock.UpgradeValues["GyroEfficiency"];
+                EnhancedModifiers.GyroForce=ShipCore.Modifiers.GyroForce*myBlock.CoreBlock.UpgradeValues["GyroForce"];
+                EnhancedModifiers.PowerProducersOutput=ShipCore.Modifiers.PowerProducersOutput*myBlock.CoreBlock.UpgradeValues["PowerProducersOutput"];
+                EnhancedModifiers.RefineEfficiency=ShipCore.Modifiers.RefineEfficiency*myBlock.CoreBlock.UpgradeValues["RefineEfficiency"];
+                EnhancedModifiers.RefineSpeed=ShipCore.Modifiers.RefineSpeed*myBlock.CoreBlock.UpgradeValues["RefineSpeed"];
+                EnhancedModifiers.ThrusterEfficiency=ShipCore.Modifiers.ThrusterEfficiency*myBlock.CoreBlock.UpgradeValues["ThrusterEfficiency"];
+                EnhancedModifiers.ThrusterForce=ShipCore.Modifiers.ThrusterForce*myBlock.CoreBlock.UpgradeValues["ThrusterForce"];
+                EnhancedModifiers.MaxSpeed=ShipCore.Modifiers.MaxSpeed*myBlock.CoreBlock.UpgradeValues["MaxSpeed"];
+                EnhancedModifiers.MaxBoost=ShipCore.Modifiers.MaxBoost*myBlock.CoreBlock.UpgradeValues["MaxBoost"];
+                EnhancedModifiers.BoostDuration=ShipCore.Modifiers.BoostDuration*myBlock.CoreBlock.UpgradeValues["BoostDuration"];
+                EnhancedModifiers.BoostCoolDown=ShipCore.Modifiers.BoostCoolDown*myBlock.CoreBlock.UpgradeValues["BoostCoolDown"];
+                return EnhancedModifiers;
+                /*
                 }
                 catch
                 {
                     return(ShipCore.Modifiers);
-                }
+                }*/
                             
             }
             return(ShipCore.Modifiers);

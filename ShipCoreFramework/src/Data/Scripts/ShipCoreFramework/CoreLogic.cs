@@ -32,7 +32,7 @@ namespace ShipCoreFramework
             CoreBlock = (IMyTerminalBlock)Entity;
             if (ModSessionManager.Config.ShipCores.All(core => core.SubtypeId != CoreBlock.BlockDefinition.SubtypeId)) return;
             SyncIsMainCore.ValidateAndSet(false);
-            CoreBlock.CubeGrid.OnPhysicsChanged += InitOnPhysicsChanged;
+            CoreBlock.CubeGrid.OnPhysicsChanged += InitOnPhysicsChanged;//Ok this sounds crazy, but i think thi funciton is running X*NumberOfBlocks it's been added to for each block
         }
 
         private void InitOnPhysicsChanged(IMyEntity obj)
@@ -42,7 +42,7 @@ namespace ShipCoreFramework
             if (ModSessionManager.Config.ShipCores.All(core => core.SubtypeId != CoreBlock.BlockDefinition.SubtypeId)) return;
             SubtypeId = CoreBlock.BlockDefinition.SubtypeId;
             
-            LimitRescheduler.ValidateOrSchedule(CoreBlock, CoreBlock.CubeGrid, SubtypeId);
+            LimitRescheduler.TryValidate(CoreBlock, CoreBlock.CubeGrid, SubtypeId);
             
             if (CheckIfCoreOfOtherTypeExists())
             {
@@ -63,6 +63,9 @@ namespace ShipCoreFramework
             {
                 SyncIsMainCore.ValidateAndSet(true);
                 CoreBlock.CubeGrid.GetMainGridLogic().Activate(SubtypeId);
+                //var MyGridLogic = CoreBlock.CubeGrid.GetMainGridLogic()
+                //MyGridLogic.Activate(SubtypeId);
+                //MyGridLogic.CoreBlock=this;
                 SaveCoreState();
             }
             Utils.Log($"Core Initial: {CoreBlock.CustomName}", 3);
@@ -134,13 +137,13 @@ namespace ShipCoreFramework
             if (MyAPIGateway.TerminalControls == null) return;
             //Think this can be done in init/ after init just once
             MyAPIGateway.TerminalControls.CustomControlGetter += CustomControlGetter;
-            LimitRescheduler.Tick(CoreBlock);
+            //LimitRescheduler.Tick(CoreBlock);
         }
-
+        /*
         public override void UpdateAfterSimulation10()
         {
             LimitRescheduler.Tick(CoreBlock);
-        }
+        }*/
 
         private static void CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controls)
         {

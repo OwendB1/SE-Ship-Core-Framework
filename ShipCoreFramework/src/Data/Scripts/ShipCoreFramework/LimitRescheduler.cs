@@ -13,7 +13,7 @@ public static class LimitRescheduler
     }
 
     private static readonly Dictionary<long, Pending> PendingByBlock = new Dictionary<long, Pending>();
-
+    /*
     public static void ValidateOrSchedule(IMyCubeBlock coreBlock, IMyCubeGrid grid, string subtypeId)
     {
         if (TryValidate(coreBlock, grid, subtypeId)) return;
@@ -28,30 +28,32 @@ public static class LimitRescheduler
         if (!TryValidate(p.CoreBlock, p.Grid, p.SubtypeId)) return;
         PendingByBlock.Remove(coreBlock.EntityId);
         coreBlock.NeedsUpdate &= ~MyEntityUpdateEnum.EACH_100TH_FRAME;
-    }
+    }*/
 
-    private static bool TryValidate(IMyCubeBlock coreBlock, IMyCubeGrid grid, string subtypeId)
+    public static void TryValidate(IMyCubeBlock coreBlock, IMyCubeGrid grid, string subtypeId)
     {
-        if (grid?.BigOwners == null) return false;
+        if (grid?.BigOwners == null) return;
 
         var main = grid.GetMainGridLogic();
 
         if (!GridsPerFactionClassManager.WillGridBeWithinFactionLimits(main, subtypeId))
         {
-            Utils.Log("Per faction limit of this core has been hit!", 3);
-            coreBlock.Delete();
+            Utils.Log("Per faction limit of this core has been hit!", 3);// Why is this message showing up twice?
+            grid.RemoveBlock(coreBlock.SlimBlock,true);//true to update physics ie, avoid phantom blocks
+            //coreBlock.Delete(); //It don't work like that. What this was doing was closing the logic but not removing the block from the grid, causing a crash.
             main.ResetCore();
-            return true;
+            return;
         } 
-        GridsPerFactionClassManager.AddCubeGrid(main);
-
         if (!GridsPerPlayerClassManager.WillGridBeWithinPlayerLimits(main, subtypeId))
         {
             Utils.Log("Per player limit of this core has been hit!", 3);
-            coreBlock.Delete();
-            return true;
+            grid.RemoveBlock(coreBlock.SlimBlock,true);
+            //coreBlock.Delete();
+            return;
         }
+        //Best not to add it until you know it satisfies both conditions
+        GridsPerFactionClassManager.AddCubeGrid(main);
         GridsPerPlayerClassManager.AddCubeGrid(main);
-        return true;
+        return;
     }
 }

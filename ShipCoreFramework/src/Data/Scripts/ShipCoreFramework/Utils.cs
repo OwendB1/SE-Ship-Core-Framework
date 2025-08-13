@@ -17,6 +17,7 @@ namespace ShipCoreFramework
     {
         public static CoreLogic GetGridCore(IMyCubeGrid grid,ShipCore core)
         {
+            if(grid==null || core==null){return null;}
             var fatTerminals = grid.GetFatBlocks<IMyTerminalBlock>();
 
             foreach (var fatTerminal in fatTerminals)
@@ -71,7 +72,6 @@ namespace ShipCoreFramework
                 MyAPIGateway.Utilities.ShowMessage("[Ship Cores] Exception:",
                     $"{e.Message}\nStack trace:\n{e.StackTrace}");
         }
-
         public static string GetBlockTypeId(IMyCubeBlock block)
         {
             return Convert.ToString(block.BlockDefinition.TypeId).Replace("MyObjectBuilder_", "");

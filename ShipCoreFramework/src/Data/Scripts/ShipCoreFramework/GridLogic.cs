@@ -31,13 +31,15 @@ namespace ShipCoreFramework
         public bool ActiveDefenseEnabled;
         private float _activeDefenseCooldownTimer;
         private float _activeDefenseDurationTimer;
-        
+
+        public CoreLogic CoreBlock => Utils.GetGridCore(Grid,ShipCore);
+
         private float BoostDuration => ShipCore.Modifiers.BoostDuration;
         private float BoostCoolDown => ShipCore.Modifiers.BoostCoolDown;
         private float ActiveDefenseDuration => ShipCore.ActiveDefenseModifiers.Duration;
         private float ActiveDefenseCoolDown => ShipCore.ActiveDefenseModifiers.Cooldown;
         
-        public GridModifiers Modifiers => CubeGridModifiers.GetActiveModifiers(this);
+        public GridModifiers Modifiers => CubeGridModifiers.GetActiveModifiers(this);//ModSessionManager.Config.DefaultNoCore.Modifiers;
 
         public IMyCubeGrid Grid;
         
@@ -79,23 +81,45 @@ namespace ShipCoreFramework
 
         private void UpdateLimitsAndApplyModifiers()
         {
+            // Clear the existing limits mapping before recalculating
             BlocksPerLimit.Clear();
-            foreach (var blockLimit in ShipCore.BlockLimits)
+
+            // Iterate through each block limit configuration in the ship's core
+            foreach (BlockLimit blockLimit in ShipCore.BlockLimits)
             {
                 var blockVals = new List<KeyValuePair<IMyCubeBlock, double>>();
-                foreach (var blockGroup in blockLimit.BlockGroups)
+
+                foreach (BlockGroup blockGroup in blockLimit.BlockGroups)
                 {
-                    foreach (var blockType in blockGroup.BlockTypes)
+                    foreach (BlockType blockType in blockGroup.BlockTypes)
                     {
-                        var countingBlocks = _blocks.Where(b => Utils.GetBlockTypeId(b) == blockType.TypeId && Utils.GetBlockSubtypeId(b) == blockType.SubtypeId);
-                        blockVals.AddRange(countingBlocks.Select(bl => new KeyValuePair<IMyCubeBlock, double>(bl, blockType.CountWeight)));
+                        foreach (IMyCubeBlock block in _blocks)
+                        {
+                            // Skip invalid references
+                            if (block == null || block.Closed || block.CubeGrid == null)
+                                continue;
+
+                            var typeId = Utils.GetBlockTypeId(block);
+                            //Utils.Log($"UpdateLimits: MyTypeID: {typeId?? "I have no type ID"})");
+                            //Utils.ShowNotification($"{typeId}'",10000, true);
+                            var subtypeId = Utils.GetBlockSubtypeId(block);
+
+                            if (typeId == blockType.TypeId && subtypeId == blockType.SubtypeId)
+                            {
+                                blockVals.Add(new KeyValuePair<IMyCubeBlock, double>(block, blockType.CountWeight));
+                            }
+                        }
                     }
                 }
 
                 BlocksPerLimit[blockLimit] = blockVals;
             }
+
+
+            // Apply any modifiers after all limits have been recalculated
             ApplyModifiers();
         }
+
 
         public void ActivateDefense()
         {
@@ -392,7 +416,7 @@ namespace ShipCoreFramework
                     break;
 
                 case PunishmentType.Delete:
-                    Grid.RemoveBlock(block.SlimBlock);
+                    Grid.RemoveBlock(block.SlimBlock,true);
                     break;
                 case PunishmentType.Explode:
                     //Game will cause explosion on damage = integridy, if block explodes on destruction most do, if not... I don't care that much.

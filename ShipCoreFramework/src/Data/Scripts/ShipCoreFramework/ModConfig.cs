@@ -47,7 +47,7 @@ namespace ShipCoreFramework
 
         public bool IsValidCoreType(string coreTypeName)
         {
-            return ShipCores.Any(core => core.UniqueName == coreTypeName);
+            return ShipCores.Any(core => core.SubtypeId == coreTypeName);
         }
 
         public void SaveConfig(bool showInChat = false)
@@ -225,6 +225,8 @@ namespace ShipCoreFramework
                             LargeGridMobile = true,
                             SmallGrid = true,
                             MaxBlocks = 50000,
+                            MaxPerFaction=10,
+                            MaxPerPlayer=15,
                             //MaxPCU=,
                             //MaxMass=,
                             Modifiers = new GridModifiers{
