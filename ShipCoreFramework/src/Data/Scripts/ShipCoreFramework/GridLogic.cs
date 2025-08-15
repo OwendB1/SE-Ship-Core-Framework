@@ -328,7 +328,7 @@ namespace ShipCoreFramework
             ApplyModifiers();
         }
 
-        private void OnBlockRemoved(IMySlimBlock obj)//This works, IDK how I feel about min grid
+        private void OnBlockRemoved(IMySlimBlock obj)
         {
             if (obj.FatBlock != null && HasFunctioningBeaconIfNeeded() == false)
             {
