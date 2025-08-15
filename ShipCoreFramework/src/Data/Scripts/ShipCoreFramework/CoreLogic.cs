@@ -1,12 +1,12 @@
 #region
-using System;
+
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces.Terminal;
-using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
 using VRage.Game.ModAPI.Network;
@@ -20,11 +20,11 @@ using VRage.Utils;
 
 namespace ShipCoreFramework
 {
-    [MyEntityComponentDescriptor(typeof(MyObjectBuilder_TerminalBlock), false)]
-    public class CoreLogic : MyGameLogicComponent, IMyEventProxy, IMyEventOwner
+    [MyEntityComponentDescriptor(typeof(MyObjectBuilder_Beacon), false)]
+    public class CoreLogic : MyGameLogicComponent, IMyEventProxy
     {
         public string SubtypeId;
-        public IMyTerminalBlock CoreBlock;
+        public IMyBeacon CoreBlock;
         public MySync<bool, SyncDirection.BothWays> SyncIsMainCore;
         public MySync<ulong, SyncDirection.BothWays> SyncBoostReq;
         public MySync<ulong, SyncDirection.BothWays> SyncDefenseReq;
@@ -39,7 +39,7 @@ namespace ShipCoreFramework
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {
             base.Init(objectBuilder);
-            CoreBlock = (IMyTerminalBlock)Entity;
+            CoreBlock = (IMyBeacon)Entity;
             if (ModSessionManager.Config.ShipCores.All(core => core.SubtypeId != CoreBlock.BlockDefinition.SubtypeId)) return;
             SyncIsMainCore.ValidateAndSet(false);
             CoreBlock.CubeGrid.OnPhysicsChanged += InitOnPhysicsChanged;
@@ -76,8 +76,9 @@ namespace ShipCoreFramework
                 SaveCoreState();
             }
             
-            NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
             NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
+            NeedsUpdate |= MyEntityUpdateEnum.EACH_100TH_FRAME;
+            NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
             
             Utils.Log($"Core Initial: {CoreBlock.CustomName}", 3);
             CoreBlock.CubeGrid.OnGridMerge += OnGridMerge;
@@ -135,6 +136,7 @@ namespace ShipCoreFramework
         public override void UpdateAfterSimulation10()
         {
             LimitRescheduler.Tick(CoreBlock);
+            UpdateBeacon();
         }
         
         public override void UpdateBeforeSimulation()
@@ -176,7 +178,7 @@ namespace ShipCoreFramework
             var slimBlocks = new List<IMySlimBlock>();
             grid.GetBlocks(slimBlocks, b => b.FatBlock is IMyTerminalBlock);
 
-            CoreLogic newMainCore = (
+            var newMainCore = (
                 from terminal in slimBlocks.Select(slim => slim.FatBlock as IMyTerminalBlock)
                 where terminal != null && terminal != CoreBlock
                 select terminal.GameLogic?.GetAs<CoreLogic>()
@@ -309,6 +311,15 @@ namespace ShipCoreFramework
             defense.ValidForGroups = false;
             defense.Action = b => { var l = b?.GameLogic?.GetAs<CoreLogic>(); l?.TriggerDefenseFromClient(); };
             MyAPIGateway.TerminalControls.AddAction<IMyTerminalBlock>(defense);
+        }
+
+        private void UpdateBeacon()
+        {
+            var coreTypeDef = CoreBlock.CubeGrid.GetMainGridLogic().ShipCore;
+            if (coreTypeDef.ForceBroadCast == false) return; 
+            CoreBlock.Enabled = true; 
+            CoreBlock.Radius = coreTypeDef.ForceBroadCastRange; 
+            if(!CoreBlock.HudText.Contains(coreTypeDef.UniqueName)) CoreBlock.HudText = $"{CoreBlock.CubeGrid.DisplayName} | {coreTypeDef.UniqueName}";
         }
         
         private void TriggerBoostFromClient()
