@@ -1,1 +1,9 @@
-㰿硭氠癥牳楯渽∱⸰∠敮捯摩湧㴢畴昭ㄶ∿㸍਼䵯摃潮晩朠硭汮猺硳搽≨瑴瀺⼯睷眮眳⹯牧⼲〰ㄯ塍䱓捨敭愢⁸浬湳㩸獩㴢桴瑰㨯⽷睷⹷㌮潲术㈰〱⽘䵌卣桥浡⵩湳瑡湣攢㸍ਠ‼䑥扵杍潤放晡汳攼⽄敢畧䵯摥㸍ਠ‼䍯浢慴䱯杧楮朾瑲略㰯䍯浢慴䱯杧楮朾ഊ†㱌佇彌䕖䕌㸰㰯䱏䝟䱅噅䰾ഊ†㱃䱉䕎呟何呐啔彌佇彌䕖䕌㸳㰯䍌䥅乔彏啔偕呟䱏䝟䱅噅䰾ഊ†㱍慸偯獳楢汥印敥摍整敲獐敲卥捯湤㸳〰㰯䵡硐潳獩扬敓灥敤䵥瑥牳健牓散潮搾ഊ†㱉湣汵摥䅩䙡捴楯湳㹦慬獥㰯䥮捬畤敁楆慣瑩潮猾ഊ㰯䵯摃潮晩朾
+<?xml version="1.0" encoding="UTF-8"?>
+<ModConfig xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <DebugMode>false</DebugMode>
+  <CombatLogging>true</CombatLogging>
+  <LOG_LEVEL>0</LOG_LEVEL>
+  <CLIENT_OUTPUT_LOG_LEVEL>3</CLIENT_OUTPUT_LOG_LEVEL>
+  <MaxPossibleSpeedMetersPerSecond>300</MaxPossibleSpeedMetersPerSecond>
+  <IncludeAiFactions>false</IncludeAiFactions>
+</ModConfig>
