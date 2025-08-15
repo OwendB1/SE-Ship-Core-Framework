@@ -25,9 +25,9 @@ namespace ShipCoreFramework
     {
         public string SubtypeId;
         public IMyBeacon CoreBlock;
-        public MySync<bool, SyncDirection.BothWays> SyncIsMainCore;
-        public MySync<ulong, SyncDirection.BothWays> SyncBoostReq;
-        public MySync<ulong, SyncDirection.BothWays> SyncDefenseReq;
+        public MySync<bool, SyncDirection.BothWays> SyncIsMainCore = null;
+        private MySync<ulong, SyncDirection.BothWays> _syncBoostReq = null;
+        private MySync<ulong, SyncDirection.BothWays> _syncDefenseReq = null;
 
         private ulong _lastBoostReq;
         private ulong _lastDefenseReq;
@@ -145,15 +145,15 @@ namespace ShipCoreFramework
             if (!Constants.IsServer || CoreBlock?.CubeGrid == null) return;
             
             var core = Utils.GetGridCore(CoreBlock.CubeGrid, null);
-            if (SyncBoostReq.Value != _lastBoostReq)
+            if (_syncBoostReq.Value != _lastBoostReq)
             {
-                _lastBoostReq = SyncBoostReq.Value;
+                _lastBoostReq = _syncBoostReq.Value;
                 if (core != null && core.SyncIsMainCore.Value)
                     CoreBlock.CubeGrid.GetMainGridLogic()?.ActivateBoost();
             }
 
-            if (SyncDefenseReq.Value == _lastDefenseReq) return;
-            _lastDefenseReq = SyncDefenseReq.Value;
+            if (_syncDefenseReq.Value == _lastDefenseReq) return;
+            _lastDefenseReq = _syncDefenseReq.Value;
             if (core != null && core.SyncIsMainCore.Value)
                 CoreBlock.CubeGrid.GetMainGridLogic()?.ActivateDefense();
         }
@@ -327,7 +327,7 @@ namespace ShipCoreFramework
             if (CoreBlock?.CubeGrid == null) return;
             if (!SyncIsMainCore.Value) { if (Constants.IsClient) Utils.ShowNotification("Only the main core can trigger boost.", 1000); return; }
             if (Constants.IsServer) CoreBlock.CubeGrid.GetMainGridLogic()?.ActivateBoost();
-            else SyncBoostReq.Value = SyncBoostReq.Value + 1;
+            else _syncBoostReq.Value = _syncBoostReq.Value + 1;
         }
 
         private void TriggerDefenseFromClient()
@@ -335,7 +335,7 @@ namespace ShipCoreFramework
             if (CoreBlock?.CubeGrid == null) return;
             if (!SyncIsMainCore.Value) { if (Constants.IsClient) Utils.ShowNotification("Only the main core can trigger defense.", 1000); return; }
             if (Constants.IsServer) CoreBlock.CubeGrid.GetMainGridLogic()?.ActivateDefense();
-            else SyncDefenseReq.Value = SyncDefenseReq.Value + 1;
+            else _syncDefenseReq.Value = _syncDefenseReq.Value + 1;
         }
         
         private bool IsOnlyCoreOfThisTypeOnGrid()

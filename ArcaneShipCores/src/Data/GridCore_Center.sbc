@@ -3,7 +3,7 @@
 	<CubeBlocks>
         <Definition xsi:type="MyObjectBuilder_CubeBlockDefinition">
 			<Id>
-				<TypeId>TerminalBlock</TypeId>
+				<TypeId>Beacon</TypeId>
 				<SubtypeId>Example_Core</SubtypeId>
 			</Id>
 			<DisplayName>Example Grid Core</DisplayName>
