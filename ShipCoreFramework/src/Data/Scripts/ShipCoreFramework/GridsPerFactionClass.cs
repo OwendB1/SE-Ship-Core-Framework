@@ -26,13 +26,13 @@ namespace ShipCoreFramework
             
             var maxAllowedGrids = Config.GetShipCoreByTypeId(coreType).MaxPerFaction;
             var minNeededPlayers = Config.GetShipCoreByTypeId(coreType).MinPlayers;
-            if (maxAllowedGrids < 0 && minNeededPlayers < 2) 
+            if (maxAllowedGrids < 0) 
             {
                 Utils.Log($"GridsPerFactionClass::IsGridWithinFactionLimits: No Faction Limit on Core: {coreType}", 3);
                 return true;
             }
 
-            if(factionId == -1) 
+            if(factionId == -1 && minNeededPlayers > 1) 
             {
                 Utils.Log($"GridsPerFactionClass::IsGridWithinFactionLimits: Player is not in Faction and therefore cannot build faction limited core: {coreType}", 3);
                 return false;
