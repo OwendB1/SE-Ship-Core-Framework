@@ -98,6 +98,11 @@ namespace ShipCoreFramework
             var globalSettings = new ModConfig();
             try
             {
+                if (!MyAPIGateway.Utilities.FileExistsInWorldStorage(DefaultNoCoreFileName, typeof(ShipCore)))
+                {
+                    Utils.Log("No NoCore is selected for this world. Admin: use /core select <name> to choose one.", 2, "Ship Core Config");
+                }
+                
                 //Get World Settings
                 if (MyAPIGateway.Utilities.FileExistsInWorldStorage(GlobalConfigFileName, typeof(ModConfig)))
                 {
@@ -132,7 +137,7 @@ namespace ShipCoreFramework
                             if (newBlockGroups == null)
                                 throw new Exception($"Failed to load block groups from Mod: {mod.FriendlyName}");
                             globalSettings.BlockGroups.AddRange(newBlockGroups);
-                            MyAPIGateway.Utilities.ShowMessage("Load Config:", $"Loaded Groups From: {mod.FriendlyName}");
+                            Utils.Log($"Loaded Groups From: {mod.FriendlyName}", 0, "Ship Core Config");
                             
                         }
 
@@ -146,7 +151,7 @@ namespace ShipCoreFramework
                             if (newNoCore == null)
                                 throw new Exception($"Failed to load no-core from Mod: {mod.FriendlyName}");
                             globalSettings.NoCoreConfigs.Add(newNoCore);
-                            MyAPIGateway.Utilities.ShowMessage("Load Config:", $"Loaded No-Core Config From: {mod.FriendlyName}");
+                            Utils.Log($"Loaded No-Core Config From: {mod.FriendlyName}", 0, "Ship Core Config");
                         }
 
                     if (!MyAPIGateway.Utilities.FileExistsInModLocation(CoreManifestFileName, mod)) continue;
@@ -168,7 +173,7 @@ namespace ShipCoreFramework
 
                                 if (newShipCore == null){throw new Exception($"Failed to load ship core from file {shipCoreFilename} in Mod: {mod.FriendlyName}");}
                                 globalSettings.ShipCores.Add(newShipCore);
-                                MyAPIGateway.Utilities.ShowMessage("Load Config:", $"Loaded Core {newShipCore.UniqueName} From: {mod.FriendlyName}");
+                                Utils.Log($"Loaded Core {newShipCore.UniqueName} From: {mod.FriendlyName}", 0, "Ship Core Config");
                             }
                     }
                 }
@@ -176,13 +181,13 @@ namespace ShipCoreFramework
                 ThrowErrorIfDuplicates(NoCoreConfigs, core => core.UniqueName);
                 ThrowErrorIfDuplicates(ShipCores, core => core.UniqueName);
                 ThrowErrorIfDuplicates(BlockGroups, groups => groups.Name);
-                MyAPIGateway.Utilities.ShowMessage("Save Config:", $"NoCoreConfigs.Count = {globalSettings.NoCoreConfigs.Count}");
+                Utils.Log($"NoCoreConfigs.Count = {globalSettings.NoCoreConfigs.Count}", 0, "Ship Core Config");
                 if (globalSettings.NoCoreConfigs.Count == 0)
                 {
                     //Utils.Log($"Could not find any no-core configs, setting no-core config to use pre-generated internal one!!", 1);
                     globalSettings.DefaultNoCore = DefaultNoCoreConfig.ShipCore;
                 }
-                MyAPIGateway.Utilities.ShowMessage("Save Config:", $"BlockGroups.Count = {globalSettings.BlockGroups.Count}");
+                Utils.Log($"BlockGroups.Count = {globalSettings.BlockGroups.Count}", 0, "Ship Core Config");
                 if(globalSettings.BlockGroups.Count == 0)
                 {
                     globalSettings.BlockGroups.Add(DefaultGridClassConfig.VanillaSmallGridFixedWeapons);
@@ -294,7 +299,7 @@ namespace ShipCoreFramework
                         foreach (var group in globalSettings.BlockGroups.Where(group => group.Name == shorthand))
                         {
                             limit.BlockGroups.Add(group);
-                            MyAPIGateway.Utilities.ShowMessage($"Groups: ", $"{group.Name} Count: {limit.BlockGroups.Count()}");
+                            Utils.Log($"{group.Name} Count: {limit.BlockGroups.Count}",0, "Ship Core Config groups");
                         }
                     }
                 }
@@ -306,14 +311,14 @@ namespace ShipCoreFramework
                         foreach (var group in globalSettings.BlockGroups.Where(group => group.Name == shorthand))
                         {
                             limit.BlockGroups.Add(group);
-                            MyAPIGateway.Utilities.ShowMessage($"Groups: ", $"{group.Name} Count: {limit.BlockGroups.Count()}");
+                            Utils.Log($"{group.Name} Count: {limit.BlockGroups.Count}",0, "Ship Core Config groups");
                         }
                     }
                 }
             }
             catch (Exception e)
             {
-                MyAPIGateway.Utilities.ShowMessage("Load Error:", $"{e.Message}");
+                Utils.Log($"Load Error: {e.Message}", 0, "Ship Core Config");
             }
             return globalSettings;
         }

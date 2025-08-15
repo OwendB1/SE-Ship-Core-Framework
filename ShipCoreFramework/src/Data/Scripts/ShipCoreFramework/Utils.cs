@@ -41,28 +41,20 @@ namespace ShipCoreFramework
             MyAPIGateway.Utilities.ShowNotification(msg, disappearTime, font);
         }
         
-        public static void ShowMessage(string msg, bool showToolTip = false)
+        public static void ShowMessage(string msg, string tooltip = "[Ship Cores]: ")
         {
-            MyAPIGateway.Utilities.ShowMessage(showToolTip ? "[Ship Cores]: " : "", msg);
+            MyAPIGateway.Utilities.ShowMessage(tooltip, msg);
         }
 
-        /*public static List<BlockType> GetBlockTypes(this BlockLimit blockLimit) //No Longer needed
+        public static void Log(string msg, int logPriority = 0, string tooltip = "Ship Cores")
         {
-            var relevantBlockGroups = ModSessionManager.Config.BlockGroups.Where(group => Enumerable.Contains(blockLimit.BlockGroups, group.Name)).ToList();
-            var blockTypes = new List<BlockType>();
-            relevantBlockGroups.ForEach(gr => blockTypes.AddRange(gr.BlockTypes));
-            return blockTypes;
-        }*/
-
-        public static void Log(string msg, int logPriority = 0)
-        {
-            if (logPriority >= ModSessionManager.Config.LogLevel) MyLog.Default.WriteLine($"[Ship Cores]: {msg}");
+            if (logPriority >= ModSessionManager.Config.LogLevel) MyLog.Default.WriteLine($"[{tooltip}]: {msg}");
 
             if (logPriority >= ModSessionManager.Config.ClientOutputLogLevel)
-                MyAPIGateway.Utilities.ShowMessage($"[Ship Cores={logPriority}]: ", msg);
+                MyAPIGateway.Utilities.ShowMessage($"[{tooltip}={logPriority}]: ", msg);
 
             if (ModSessionManager.Config != null && ModSessionManager.Config.DebugMode)
-                MyAPIGateway.Utilities.ShowMessage($"[Ship Cores={logPriority}]: ", msg);
+                MyAPIGateway.Utilities.ShowMessage($"[{tooltip}={logPriority}]: ", msg);
         }
 
         public static void LogException(Exception e)

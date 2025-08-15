@@ -276,21 +276,21 @@ namespace ShipCoreFramework
              //MaxBlocks
             if (concreteGrid?.BlocksCount >= ShipCore.MaxBlocks && ShipCore.MaxBlocks > 0)
             {
-                MyAPIGateway.Utilities.ShowMessage("ShipCores:", $"{Utils.GetBlockSubtypeId(obj)} Violates MaxBlocks: {concreteGrid?.BlocksCount > ShipCore.MaxBlocks}");
+                Utils.Log($"{Utils.GetBlockSubtypeId(obj)} Violates MaxBlocks: {concreteGrid?.BlocksCount > ShipCore.MaxBlocks}", 2);
                 Grid.RemoveBlock(obj);
                 return;
             }
             //Missing MaxPCU
             if (concreteGrid?.BlocksPCU >= ShipCore.MaxPCU && ShipCore.MaxPCU > 0)
             {
-                MyAPIGateway.Utilities.ShowMessage("ShipCores:", $"{Utils.GetBlockSubtypeId(obj)} Violates MaxPCU: {concreteGrid?.BlocksCount > ShipCore.MaxPCU}");
+                Utils.Log($"{Utils.GetBlockSubtypeId(obj)} Violates MaxPCU: {concreteGrid?.BlocksCount > ShipCore.MaxPCU}", 2);
                 Grid.RemoveBlock(obj);
                 return;
             }
             // MaxMass, Not sure if this is dry or wet mass... testing required
             if (concreteGrid?.Mass >= ShipCore.MaxMass && ShipCore.MaxMass > 0f)
             {
-                MyAPIGateway.Utilities.ShowMessage("ShipCores:", $"{Utils.GetBlockSubtypeId(obj)} Violates MaxMass: {concreteGrid?.BlocksCount > ShipCore.MaxMass}");
+                Utils.Log($"{Utils.GetBlockSubtypeId(obj)} Violates MaxMass: {concreteGrid?.BlocksCount > ShipCore.MaxMass}",2);
                 Grid.RemoveBlock(obj);
                 return;
             } 
@@ -304,13 +304,12 @@ namespace ShipCoreFramework
                 if (!match) continue;
                 var limitBlocks = BlocksPerLimit[limit];
                 var countWeight = limitBlocks.Sum(b => b.Value);
-                //I'll fix it later
-                var countForSpecificBlock = limit.BlockGroups.SelectMany(g => g.BlockTypes).FirstOrDefault(b => b.TypeId == Utils.GetBlockTypeId(obj) && b.SubtypeId == Utils.GetBlockSubtypeId(obj)).CountWeight;
+                var countForSpecificBlock = limit.BlockGroups.SelectMany(g => g.BlockTypes).First(b => b.TypeId == Utils.GetBlockTypeId(obj) && b.SubtypeId == Utils.GetBlockSubtypeId(obj)).CountWeight;
 
                 Utils.Log($"{countWeight} | {countForSpecificBlock} | {limit.MaxCount}");
                 if (countWeight + countForSpecificBlock > limit.MaxCount)
                 {
-                    Utils.Log("Removing Bad block", 3);
+                    Utils.Log("Removing block", 1);
                     Grid.RemoveBlock(obj);
                     List<IMyCubeGrid> subs;
                     Grid.GetMainCubeGrid(out subs);

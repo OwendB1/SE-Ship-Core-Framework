@@ -13,26 +13,25 @@ namespace ShipCoreFramework
     {
         public static void OnChatCommand(string messageText, ref bool sendToOthers)
         {
-            // Example: /core status, /core activate, etc.
             if (!messageText.StartsWith("/core", StringComparison.OrdinalIgnoreCase)) return;
 
-            sendToOthers = false; // block from normal chat
+            sendToOthers = false;
 
-            if (!CheckIfAdmin()) return;
-            
             var allArgs = messageText.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            
-            if (allArgs.Length < 2)
+
+            if (allArgs.Length < 2 || allArgs[1].Equals("help", StringComparison.OrdinalIgnoreCase))
             {
                 ShowHelp();
                 return;
             }
-            var args = allArgs.Skip(1).ToArray(); // Remove the /core prefix
+
+            var args = allArgs.Skip(1).ToArray();
             var sub = args[0].ToLower();
 
             switch (sub)
             {
                 case "reloadconfig":
+                    if (!CheckIfAdmin()) return;
                     ReloadConfig();
                     break;
                 case "listcores":
@@ -54,18 +53,19 @@ namespace ShipCoreFramework
                     CombatLog(args);
                     break;
                 case "select":
+                    if (!CheckIfAdmin()) return;
                     Select(args);
                     break;
                 case "setworldspeed":
+                    if (!CheckIfAdmin()) return;
                     SetWorldSpeed(args);
                     break;
-                case "help":
                 default:
                     ShowHelp();
                     break;
             }
         }
-        
+
         private static void ReloadConfig()
         {
             ModSessionManager.Config = ModSessionManager.Config.LoadConfig();
@@ -90,7 +90,7 @@ namespace ShipCoreFramework
                 Utils.ShowMessage("Usage: /core coreinfo <uniquename>");
                 return;
             }
-            var infoName = args[1];
+            var infoName = string.Join(" ", args.Skip(1));
             var infoCore = ModSessionManager.Config.ShipCores.FirstOrDefault(
                 c => c.UniqueName.Equals(infoName, StringComparison.OrdinalIgnoreCase));
             if (infoCore == null)
@@ -156,43 +156,30 @@ namespace ShipCoreFramework
         {
             if (args.Length < 2)
             {
-                Utils.ShowMessage("Usage: /core select <globalconfig|nocore> [name]");
+                Utils.ShowMessage("Usage: /core select <NoCoreName|Subtype>");
                 return;
             }
-            var selectType = args[1].ToLower();
-            switch (selectType)
+
+            var key = string.Join(" ", args.Skip(1));
+            var found = ModSessionManager.Config.NoCoreConfigs.FirstOrDefault(
+                c => c.UniqueName.Equals(key, StringComparison.OrdinalIgnoreCase) ||
+                     c.SubtypeId.Equals(key, StringComparison.OrdinalIgnoreCase));
+
+            if (found == null)
             {
-                case "globalconfig":
-                    ModSessionManager.Config = ModSessionManager.Config.LoadConfig();
-                    Utils.ShowMessage("Global config reloaded and selected.");
-                    break;
-                case "nocore":
-                {
-                    if (args.Length < 3)
-                    {
-                        Utils.ShowMessage("Usage: /core select nocore <UniqueName>");
-                        return;
-                    }
-                    var ncName = args[2];
-                    var found = ModSessionManager.Config.NoCoreConfigs.FirstOrDefault(
-                        c => c.UniqueName.Equals(ncName, StringComparison.OrdinalIgnoreCase));
-                    if (found == null)
-                    {
-                        Utils.ShowMessage($"No 'no core' config found named '{ncName}'.");
-                        return;
-                    }
-                    ModSessionManager.Config.DefaultNoCore = found;
-                    Utils.ShowMessage($"Selected 'no core' config: {found.UniqueName}");
-                    break;
-                }
+                Utils.ShowMessage($"No 'no core' config found matching '{key}'. Use /core listnocores.");
+                return;
             }
+
+            ModSessionManager.Config.DefaultNoCore = found;
+            ModSessionManager.Config.SaveConfig(true);
+            Utils.ShowMessage($"Selected 'no core' config: {found.UniqueName} ({found.SubtypeId})");
         }
-        
+
         private static void SetWorldSpeed(string[] args)
         {
             if (args.Length == 1)
             {
-                // Show current speed limit if no value given
                 Utils.ShowMessage($"Current world speed limit: {ModSessionManager.Config.MaxPossibleSpeedMetersPerSecond} m/s");
                 return;
             }
@@ -206,14 +193,49 @@ namespace ShipCoreFramework
 
             ModSessionManager.Config.MaxPossibleSpeedMetersPerSecond = newSpeed;
             Utils.ShowMessage($"World speed limit set to {newSpeed} m/s (session config only).");
-
-            // Uncomment below if you want it to save instantly:
-            // ModSessionManager.Config.SaveConfig();
         }
 
         private static void ShowHelp()
         {
-            Utils.ShowMessage("Commands: reloadconfig, listcores, coreinfo <name>, listnocores, listnoflyzones, debug on/off, combatlog on/off, select globalconfig, select nocore <name>, setworldspeed <m/s value>");
+            var body =
+@"Commands
+
+/core help
+Shows this help screen.
+
+/core select <NoCoreName|Subtype>
+Selects the NoCore configuration for this world and saves it.
+
+/core listnocores
+Lists available NoCore configs.
+
+/core listcores
+Lists available ship cores.
+
+/core coreinfo <UniqueName>
+Shows details for a core by UniqueName.
+
+/core reloadconfig
+Reloads configuration from disk.
+
+/core listnoflyzones
+Lists defined NoFlyZones.
+
+/core debug on|off
+Toggles debug mode.
+
+/core combatlog on|off
+Toggles combat logging.
+
+/core setworldspeed <m/s>
+Sets the session max possible speed in m/s.";
+
+            MyAPIGateway.Utilities.ShowMissionScreen(
+                "ShipCore Framework",
+                "/core help",
+                "Command Reference",
+                body
+            );
         }
 
         private static bool CheckIfAdmin()
