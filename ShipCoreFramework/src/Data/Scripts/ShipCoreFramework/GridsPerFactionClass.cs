@@ -14,31 +14,40 @@ namespace ShipCoreFramework
 
         private static ModConfig Config => ModSessionManager.Config;
 
-        public static bool WillGridBeWithinFactionLimits(GridLogic gridLogic, string newCoreType)
+        public static bool WillGridBeWithinFactionLimits(GridLogic gridLogic, string coreType)
         {
             if (!IsApplicableGrid(gridLogic)) return true;
             var factionId = gridLogic.OwningFaction?.FactionId ?? -1;
-            if (!Config.IsValidCoreType(newCoreType))
+            if (!Config.IsValidCoreType(coreType))
             {
-                Utils.Log($"GridsPerFactionClass::IsGridWithinFactionLimits: Unknown core type id {newCoreType}", 3);
+                Utils.Log($"GridsPerFactionClass::IsGridWithinFactionLimits: Unknown core type id {coreType}", 3);
                 return false;
             }
-            var numAllowedGrids = Config.GetShipCoreByTypeId(newCoreType).MaxPerFaction; //if we know the number of allowed grids is less than 0, we don't need to do anything limit is disabled.
-            if (numAllowedGrids < 0) 
+            
+            var maxAllowedGrids = Config.GetShipCoreByTypeId(coreType).MaxPerFaction;
+            var minNeededPlayers = Config.GetShipCoreByTypeId(coreType).MinPlayers;
+            if (maxAllowedGrids < 0 && minNeededPlayers < 2) 
             {
-                Utils.Log($"GridsPerFactionClass::IsGridWithinFactionLimits: No Faction Limit on Core: {newCoreType}", 3);
+                Utils.Log($"GridsPerFactionClass::IsGridWithinFactionLimits: No Faction Limit on Core: {coreType}", 3);
                 return true;
             }
-            //If a player has no faction, putting all players not in a faction in the -1 faction does not work.
+
             if(factionId == -1) 
             {
-                Utils.Log($"GridsPerFactionClass::IsGridWithinFactionLimits: Player is not in Faction and therefore cannot build faction limited core: {newCoreType}", 3);
+                Utils.Log($"GridsPerFactionClass::IsGridWithinFactionLimits: Player is not in Faction and therefore cannot build faction limited core: {coreType}", 3);
                 return false;
             }
-            if (PerFaction.ContainsKey(factionId) && PerFaction[factionId].ContainsKey(newCoreType))
+
+            if (gridLogic.OwningFaction?.Members.Count < minNeededPlayers)
             {
-                var idx = PerFaction[factionId][newCoreType].Count + 1;
-                return idx <= numAllowedGrids;
+                Utils.Log($"GridsPerFactionClass::IsGridWithinFactionLimits: Faction does not have the minimum amount of players needed for core: {coreType}", 3);
+                return false;
+            }
+            
+            if (PerFaction.ContainsKey(factionId) && PerFaction[factionId].ContainsKey(coreType))
+            {
+                var idx = PerFaction[factionId][coreType].Count + 1;
+                return idx <= maxAllowedGrids;
             }
 
             Utils.Log("GridsPerFactionClass::IsGridWithinFactionLimits: Faction or class not found in faction limits data",3);
