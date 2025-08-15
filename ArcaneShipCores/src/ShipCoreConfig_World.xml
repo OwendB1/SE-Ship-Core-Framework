@@ -3,7 +3,7 @@
   <DebugMode>false</DebugMode>
   <CombatLogging>true</CombatLogging>
   <LOG_LEVEL>0</LOG_LEVEL>
-  <CLIENT_OUTPUT_LOG_LEVEL>3</CLIENT_OUTPUT_LOG_LEVEL>
+  <CLIENT_OUTPUT_LOG_LEVEL>2</CLIENT_OUTPUT_LOG_LEVEL>
   <MaxPossibleSpeedMetersPerSecond>300</MaxPossibleSpeedMetersPerSecond>
   <IncludeAiFactions>false</IncludeAiFactions>
 </ModConfig>

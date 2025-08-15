@@ -100,7 +100,7 @@ namespace ShipCoreFramework
             {
                 if (!MyAPIGateway.Utilities.FileExistsInWorldStorage(DefaultNoCoreFileName, typeof(ShipCore)))
                 {
-                    Utils.Log("No NoCore is selected for this world. Admin: use /core select <name> to choose one.", 2, "Ship Core Config");
+                    Utils.ShowNotification("No NoCore is selected for this world. Admin: use /core select <name> to choose one.", 0);
                 }
                 
                 //Get World Settings
