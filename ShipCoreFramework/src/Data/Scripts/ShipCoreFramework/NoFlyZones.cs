@@ -1,6 +1,7 @@
 ﻿#region
 using System.Collections.Generic;
 using System.Linq;
+using Sandbox.ModAPI;
 using VRageMath;
 using VRage.Utils;
 #endregion
@@ -16,35 +17,32 @@ namespace ShipCoreFramework
             foreach (var zone in ModSessionManager.Config.NoFlyZones)
             {
                 var distance = Vector3D.DistanceSquared(zone.Position, gridLogic.Grid.GetPosition());
-                if (distance <= zone.Radius * zone.Radius && !zone.AllowedCoresSubtype.Contains(gridLogic.ShipCore.UniqueName))
+                if (!(distance <= zone.Radius * zone.Radius) || zone.AllowedCoresSubtype.Contains(gridLogic.ShipCore.UniqueName)) continue;
+                var fatTerminals = gridLogic.Grid.GetFatBlocks<IMyTerminalBlock>().ToList();
+                foreach(var block in fatTerminals)
                 {
-                    
-                    var fatTerminals = gridLogic.Grid.GetFatBlocks<IMyTerminalBlock>().ToList();
-                    foreach(var block in fatTerminals)
+                    if(zone.ForceOff)
                     {
-                        if(zone.ForceOff)
+                        gridLogic.WhackABlock(block,PunishmentType.ShutOff,gridLogic.DamageTypeNoFlyZone);
+                    }
+                    else
+                    {                        
+                        foreach (var limit in gridLogic.ShipCore.BlockLimits)
                         {
-                            gridLogic.WhackABlock(block,PunishmentType.ShutOff,gridLogic.DamageTypeNoFlyZone);
-                        }
-                        else
-                        {                        
-                            foreach (var limit in gridLogic.ShipCore.BlockLimits)
-                            {
-                                var match = limit.BlockGroups
-                                    .SelectMany(g => g.BlockTypes)
-                                    .Any(b => b.TypeId == Utils.GetBlockTypeId(block) && b.SubtypeId == Utils.GetBlockSubtypeId(block));
+                            var match = limit.BlockGroups
+                                .SelectMany(g => g.BlockTypes)
+                                .Any(b => b.TypeId == Utils.GetBlockTypeId(block) && b.SubtypeId == Utils.GetBlockSubtypeId(block));
 
-                                if (!match){continue;}
-                                if(limit.TurnedOffByNoFlyZone)
-                                {
-                                    gridLogic.WhackABlock(block,limit.PunishmentType,gridLogic.DamageTypeNoFlyZone);
-                                }
+                            if (!match){continue;}
+                            if(limit.TurnedOffByNoFlyZone)
+                            {
+                                gridLogic.WhackABlock(block,limit.PunishmentType,gridLogic.DamageTypeNoFlyZone);
                             }
                         }
-
                     }
-                    //Utils.Log($"Action Taken against Grid{gridLogic.Grid.CustomName} in NoFlyZone: {zone.Id}", 3);
+
                 }
+                //Utils.Log($"Action Taken against Grid{gridLogic.Grid.CustomName} in NoFlyZone: {zone.Id}", 3);
             }
         }
     }

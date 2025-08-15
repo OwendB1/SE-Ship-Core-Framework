@@ -148,8 +148,7 @@ namespace ShipCoreFramework
                 new Cell(ShipCore.UniqueName)
             });
 
-            _headerTable.RenderToSprites(spritesToRender, screenTopLeft + padding, screenInnerWidth, new Vector2(15, 0),
-                out currentPosition);
+            _headerTable.RenderToSprites(spritesToRender, screenTopLeft + padding, screenInnerWidth, new Vector2(15, 0), out currentPosition);
 
             //Render the results checklist
 

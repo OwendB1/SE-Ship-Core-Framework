@@ -114,8 +114,7 @@ namespace ShipCoreFramework
                 else
                 {
                     //Write Global Settings using predefined values
-                    var globalConfigWriter =
-                        MyAPIGateway.Utilities.WriteFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig));
+                    var globalConfigWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig));
                     globalConfigWriter.Write(MyAPIGateway.Utilities.SerializeToXML(globalSettings));
                     globalConfigWriter.Close();
                 }
