@@ -376,9 +376,10 @@ namespace ShipCoreFramework
                 mainLogic._blocks.UnionWith(fatBlocks);
             }
         }
-        public void WhackABlock(IMyCubeBlock block, PunishmentType harm, MyStringHash? CustomDamageType = null)
+        public void WhackABlock(IMyCubeBlock block, PunishmentType harm, MyStringHash? customDamageType = null)
         {
-            MyStringHash DamageType = CustomDamageType?? _damageTypeBlockLimit;
+            if (block?.SlimBlock == null) return;
+            var damageType = customDamageType ?? _damageTypeBlockLimit;
             double damageRequired = 0;
             switch (harm)
             {
@@ -386,9 +387,9 @@ namespace ShipCoreFramework
                     //break;
                 case PunishmentType.Damage:
                     // Whack,50%
-                    damageRequired = block.SlimBlock.Integrity - (block.SlimBlock.MaxIntegrity * 0.5);
+                    damageRequired = block.SlimBlock.Integrity - block.SlimBlock.MaxIntegrity * 0.5;
                     if (damageRequired < 0) damageRequired = 0;
-                    block.SlimBlock.DoDamage((float)damageRequired, DamageType, true);
+                    block.SlimBlock.DoDamage((float)damageRequired, damageType, true);
                     break;
 
                 case PunishmentType.Delete:
@@ -396,7 +397,7 @@ namespace ShipCoreFramework
                     break;
                 case PunishmentType.Explode:
                     //Game will cause explosion on damage = integridy, if block explodes on destruction most do, if not... I don't care that much.
-                    block.SlimBlock.DoDamage((float)block.SlimBlock.Integrity, DamageType, true);
+                    block.SlimBlock.DoDamage(block.SlimBlock.Integrity, damageType, true);
                     break;
 
                 default:
@@ -410,7 +411,7 @@ namespace ShipCoreFramework
                     {
                         damageRequired = block.SlimBlock.Integrity - (block.SlimBlock.MaxIntegrity * 0.2);
                         if (damageRequired < 0) damageRequired = 0;
-                        block.SlimBlock.DoDamage((float)damageRequired, DamageType, true);
+                        block.SlimBlock.DoDamage((float)damageRequired, damageType, true);
                     }
                     break;
             }
