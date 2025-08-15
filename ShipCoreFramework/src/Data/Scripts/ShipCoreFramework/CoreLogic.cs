@@ -48,7 +48,7 @@ namespace ShipCoreFramework
         private void InitOnPhysicsChanged(IMyEntity obj)
         {
             if (CoreBlock.CubeGrid?.Physics == null){Utils.Log($"Missing Physics {CoreBlock.CubeGrid?.CustomName} ({CoreBlock.CubeGrid?.Physics})", 3); return;}
-            CoreBlock.OnPhysicsChanged -= InitOnPhysicsChanged;
+            CoreBlock.CubeGrid.OnPhysicsChanged -= InitOnPhysicsChanged;
             if (ModSessionManager.Config.ShipCores.All(core => core.SubtypeId != CoreBlock.BlockDefinition.SubtypeId)) return;
             SubtypeId = CoreBlock.BlockDefinition.SubtypeId;
             
