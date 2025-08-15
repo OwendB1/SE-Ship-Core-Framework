@@ -1,5 +1,6 @@
 ﻿#region
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.Entities;
@@ -15,45 +16,34 @@ namespace ShipCoreFramework
 {
     public static class CubeGridModifiers
     {
-        public static GridModifiers GetActiveModifiers(GridLogic GridLogic)
+        public static GridModifiers GetActiveModifiers(GridLogic gridLogic)
         {
-            ShipCore ShipCore=GridLogic.ShipCore;
+            var shipCore = gridLogic.ShipCore;
+
+            if (shipCore == ModSessionManager.Config.DefaultNoCore) return (shipCore.Modifiers);
+            var enhancedModifiers = new GridModifiers();
+            if (enhancedModifiers == null) throw new ArgumentNullException(nameof(enhancedModifiers));
+            //MyCore._syncIsMainCore
             
-            if(ShipCore != ModSessionManager.Config.DefaultNoCore)
+            var myBlock = gridLogic.CoreBlock;
+            if(myBlock==null)
             {
-                
-                GridModifiers EnhancedModifiers = new GridModifiers();
-                //MyCore._syncIsMainCore
-                CoreLogic myBlock = GridLogic.CoreBlock;
-                if(myBlock==null)
-                {
-                    return(ShipCore.Modifiers);
-                }/*
-                try
-                {*/
-                EnhancedModifiers.AssemblerSpeed=ShipCore.Modifiers.AssemblerSpeed*myBlock.CoreBlock.UpgradeValues["AssemblerSpeed"];
-                EnhancedModifiers.DrillHarvestMultiplier=ShipCore.Modifiers.DrillHarvestMultiplier*myBlock.CoreBlock.UpgradeValues["DrillHarvestMultiplier"];
-                EnhancedModifiers.GyroEfficiency=ShipCore.Modifiers.GyroEfficiency*myBlock.CoreBlock.UpgradeValues["GyroEfficiency"];
-                EnhancedModifiers.GyroForce=ShipCore.Modifiers.GyroForce*myBlock.CoreBlock.UpgradeValues["GyroForce"];
-                EnhancedModifiers.PowerProducersOutput=ShipCore.Modifiers.PowerProducersOutput*myBlock.CoreBlock.UpgradeValues["PowerProducersOutput"];
-                EnhancedModifiers.RefineEfficiency=ShipCore.Modifiers.RefineEfficiency*myBlock.CoreBlock.UpgradeValues["RefineEfficiency"];
-                EnhancedModifiers.RefineSpeed=ShipCore.Modifiers.RefineSpeed*myBlock.CoreBlock.UpgradeValues["RefineSpeed"];
-                EnhancedModifiers.ThrusterEfficiency=ShipCore.Modifiers.ThrusterEfficiency*myBlock.CoreBlock.UpgradeValues["ThrusterEfficiency"];
-                EnhancedModifiers.ThrusterForce=ShipCore.Modifiers.ThrusterForce*myBlock.CoreBlock.UpgradeValues["ThrusterForce"];
-                EnhancedModifiers.MaxSpeed=ShipCore.Modifiers.MaxSpeed*myBlock.CoreBlock.UpgradeValues["MaxSpeed"];
-                EnhancedModifiers.MaxBoost=ShipCore.Modifiers.MaxBoost*myBlock.CoreBlock.UpgradeValues["MaxBoost"];
-                EnhancedModifiers.BoostDuration=ShipCore.Modifiers.BoostDuration*myBlock.CoreBlock.UpgradeValues["BoostDuration"];
-                EnhancedModifiers.BoostCoolDown=ShipCore.Modifiers.BoostCoolDown*myBlock.CoreBlock.UpgradeValues["BoostCoolDown"];
-                return EnhancedModifiers;
-                /*
-                }
-                catch
-                {
-                    return(ShipCore.Modifiers);
-                }*/
-                            
+                return(shipCore.Modifiers);
             }
-            return(ShipCore.Modifiers);
+            enhancedModifiers.AssemblerSpeed=shipCore.Modifiers.AssemblerSpeed*myBlock.CoreBlock.UpgradeValues["AssemblerSpeed"];
+            enhancedModifiers.DrillHarvestMultiplier=shipCore.Modifiers.DrillHarvestMultiplier*myBlock.CoreBlock.UpgradeValues["DrillHarvestMultiplier"];
+            enhancedModifiers.GyroEfficiency=shipCore.Modifiers.GyroEfficiency*myBlock.CoreBlock.UpgradeValues["GyroEfficiency"];
+            enhancedModifiers.GyroForce=shipCore.Modifiers.GyroForce*myBlock.CoreBlock.UpgradeValues["GyroForce"];
+            enhancedModifiers.PowerProducersOutput=shipCore.Modifiers.PowerProducersOutput*myBlock.CoreBlock.UpgradeValues["PowerProducersOutput"];
+            enhancedModifiers.RefineEfficiency=shipCore.Modifiers.RefineEfficiency*myBlock.CoreBlock.UpgradeValues["RefineEfficiency"];
+            enhancedModifiers.RefineSpeed=shipCore.Modifiers.RefineSpeed*myBlock.CoreBlock.UpgradeValues["RefineSpeed"];
+            enhancedModifiers.ThrusterEfficiency=shipCore.Modifiers.ThrusterEfficiency*myBlock.CoreBlock.UpgradeValues["ThrusterEfficiency"];
+            enhancedModifiers.ThrusterForce=shipCore.Modifiers.ThrusterForce*myBlock.CoreBlock.UpgradeValues["ThrusterForce"];
+            enhancedModifiers.MaxSpeed=shipCore.Modifiers.MaxSpeed*myBlock.CoreBlock.UpgradeValues["MaxSpeed"];
+            enhancedModifiers.MaxBoost=shipCore.Modifiers.MaxBoost*myBlock.CoreBlock.UpgradeValues["MaxBoost"];
+            enhancedModifiers.BoostDuration=shipCore.Modifiers.BoostDuration*myBlock.CoreBlock.UpgradeValues["BoostDuration"];
+            enhancedModifiers.BoostCoolDown=shipCore.Modifiers.BoostCoolDown*myBlock.CoreBlock.UpgradeValues["BoostCoolDown"];
+            return enhancedModifiers;
         }
         public static void ApplyModifiers(IMyCubeBlock block, GridModifiers modifiers)
         {

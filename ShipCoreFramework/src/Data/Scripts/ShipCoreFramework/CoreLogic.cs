@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces.Terminal;
@@ -20,11 +21,20 @@ using VRage.Utils;
 namespace ShipCoreFramework
 {
     [MyEntityComponentDescriptor(typeof(MyObjectBuilder_TerminalBlock), false)]
-    public class CoreLogic : MyGameLogicComponent, IMyEventProxy
+    public class CoreLogic : MyGameLogicComponent, IMyEventProxy, IMyEventOwner
     {
         public string SubtypeId;
         public IMyTerminalBlock CoreBlock;
-        public MySync<bool, SyncDirection.BothWays> SyncIsMainCore = null;
+        public MySync<bool, SyncDirection.BothWays> SyncIsMainCore;
+        public MySync<ulong, SyncDirection.BothWays> SyncBoostReq;
+        public MySync<ulong, SyncDirection.BothWays> SyncDefenseReq;
+
+        private ulong _lastBoostReq;
+        private ulong _lastDefenseReq;
+
+        private static bool _actionsRegistered;
+
+        #region Init methods
 
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {
@@ -65,10 +75,12 @@ namespace ShipCoreFramework
                 CoreBlock.CubeGrid.GetMainGridLogic().Activate(SubtypeId);
                 SaveCoreState();
             }
+            
+            NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
+            NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
+            
             Utils.Log($"Core Initial: {CoreBlock.CustomName}", 3);
             CoreBlock.CubeGrid.OnGridMerge += OnGridMerge;
-            NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
-            NeedsUpdate = MyEntityUpdateEnum.EACH_FRAME;
             CoreBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged;
             CoreBlock.AddUpgradeValue("AssemblerSpeed", 1f);
             CoreBlock.AddUpgradeValue("DrillHarvestMultiplier", 1f);
@@ -108,17 +120,93 @@ namespace ShipCoreFramework
             CoreBlock.AddUpgradeValue("DamageCooldown", 1f);
         }
 
-        private bool CheckIfCoreOfOtherTypeExists()
+        #endregion
+
+        public override void UpdateOnceBeforeFrame()
         {
-            var fatTerminals = CoreBlock.CubeGrid.GetFatBlocks<IMyTerminalBlock>();
-            var coreSubtypeId = ModSessionManager.Config.ShipCores.Select(core => core.SubtypeId).ToList();
-            coreSubtypeId.Remove(SubtypeId);
+            base.UpdateOnceBeforeFrame();
+            if (MyAPIGateway.TerminalControls == null) return;
+
+            MyAPIGateway.TerminalControls.CustomControlGetter += CustomControlGetter;
+            RegisterToolbarActionsOnce();
+            LimitRescheduler.Tick(CoreBlock);
+        }
+        
+        public override void UpdateAfterSimulation10()
+        {
+            LimitRescheduler.Tick(CoreBlock);
+        }
+        
+        public override void UpdateBeforeSimulation()
+        {
+            base.UpdateBeforeSimulation();
+            if (!Constants.IsServer || CoreBlock?.CubeGrid == null) return;
             
-            return fatTerminals.Any(terminal =>
+            var core = Utils.GetGridCore(CoreBlock.CubeGrid, null);
+            if (SyncBoostReq.Value != _lastBoostReq)
             {
-                var subtype = Utils.GetBlockSubtypeId(terminal.SlimBlock);
-                return coreSubtypeId.Any(sub => sub == subtype);
-            });
+                _lastBoostReq = SyncBoostReq.Value;
+                if (core != null && core.SyncIsMainCore.Value)
+                    CoreBlock.CubeGrid.GetMainGridLogic()?.ActivateBoost();
+            }
+
+            if (SyncDefenseReq.Value == _lastDefenseReq) return;
+            _lastDefenseReq = SyncDefenseReq.Value;
+            if (core != null && core.SyncIsMainCore.Value)
+                CoreBlock.CubeGrid.GetMainGridLogic()?.ActivateDefense();
+        }
+        
+        public override void Close()
+        {
+            if (CoreBlock?.CubeGrid == null) return;
+
+            var grid = CoreBlock.CubeGrid;
+            var gridLogic = grid.GameLogic?.GetAs<GridLogic>();
+            if (gridLogic == null) return;
+            
+            // If this core is NOT the main core, nothing to reassign
+            if (!SyncIsMainCore.Value)
+            {
+                //Anoying
+                Utils.ShowNotification($"A backup core of grid {grid.CustomName} was destroyed!",10000, true);
+                return;
+            }
+            
+            // Try to find another core of the same type on the grid
+            var slimBlocks = new List<IMySlimBlock>();
+            grid.GetBlocks(slimBlocks, b => b.FatBlock is IMyTerminalBlock);
+
+            CoreLogic newMainCore = (
+                from terminal in slimBlocks.Select(slim => slim.FatBlock as IMyTerminalBlock)
+                where terminal != null && terminal != CoreBlock
+                select terminal.GameLogic?.GetAs<CoreLogic>()
+                ).FirstOrDefault(otherLogic => otherLogic != null && otherLogic.SubtypeId == SubtypeId);
+
+
+            if (newMainCore != null)
+            {
+                newMainCore.SyncIsMainCore.ValidateAndSet(true);
+                newMainCore.SaveCoreState();
+                newMainCore.CoreBlock.RefreshCustomInfo();
+                Utils.ShowNotification($"{grid.CustomName}'s main core destroyed! Successfully switched to backup core.",10000, true);
+            }
+            else
+            {
+                // No other core of this type found — reset the grid to no core
+                Utils.ShowNotification($"All cores destroyed! {grid.CustomName} has become inactive!",5000, true);
+                gridLogic.ResetCore();
+            }
+            
+            base.Close();
+        }
+
+        #region Event Delegates
+        
+        private void OnUpgradeValuesChanged()
+        {
+            var AssemblerSpeed = CoreBlock.UpgradeValues["AssemblerSpeed"];
+            var DrillHarvestMultiplier = CoreBlock.UpgradeValues["DrillHarvestMultiplier"];
+            //so on and so forth more of an example, you would likely want to call these in the modifiers file....
         }
 
         private void OnGridMerge(IMyCubeGrid arg1, IMyCubeGrid arg2)
@@ -127,34 +215,17 @@ namespace ShipCoreFramework
             var actualMainGrid = arg1.GetMainCubeGrid(out ignored);
             if (CoreBlock.CubeGrid.EntityId != actualMainGrid.EntityId) CoreBlock.Delete();
         }
-
-        public override void UpdateOnceBeforeFrame()
-        {
-            base.UpdateOnceBeforeFrame();
-            if (MyAPIGateway.TerminalControls == null) return;
-
-            MyAPIGateway.TerminalControls.CustomControlGetter += CustomControlGetter;
-            LimitRescheduler.Tick(CoreBlock);
-        }
         
-        public override void UpdateAfterSimulation10()
-        {
-            LimitRescheduler.Tick(CoreBlock);
-        }
-
         private static void CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controls)
         {
             if (!Constants.IsClient) return;
             var logic = block?.GameLogic?.GetAs<CoreLogic>();
-            if (logic == null) return;
-
-            if (MyAPIGateway.TerminalControls == null) return;
+            if (logic == null|| MyAPIGateway.TerminalControls == null) return;
 
             const string controlId = "MainCoreCheckbox";
-
             if (controls.Any(t => t.Id == controlId))
             {
-                return; // Avoid duplicates
+                return;
             }
 
             var checkbox = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyTerminalBlock>(controlId);
@@ -203,55 +274,57 @@ namespace ShipCoreFramework
             controls.Add(checkbox);
         }
 
-        private void OnUpgradeValuesChanged()
-        {
-            var AssemblerSpeed = CoreBlock.UpgradeValues["AssemblerSpeed"];
-            var DrillHarvestMultiplier = CoreBlock.UpgradeValues["DrillHarvestMultiplier"];
-            //so on and so forth more of an example, you would likely want to call these in the modifiers file....
-        }
+        #endregion
 
-        public override void Close()
+        #region Helper methods
+
+        private bool CheckIfCoreOfOtherTypeExists()
+        {
+            var fatTerminals = CoreBlock.CubeGrid.GetFatBlocks<IMyTerminalBlock>();
+            var coreSubtypeId = ModSessionManager.Config.ShipCores.Select(core => core.SubtypeId).ToList();
+            coreSubtypeId.Remove(SubtypeId);
+            
+            return fatTerminals.Any(terminal =>
+            {
+                var subtype = Utils.GetBlockSubtypeId(terminal.SlimBlock);
+                return coreSubtypeId.Any(sub => sub == subtype);
+            });
+        }
+        
+        private void RegisterToolbarActionsOnce()
+        {
+            if (_actionsRegistered) return;
+            _actionsRegistered = true;
+
+            var boost = MyAPIGateway.TerminalControls.CreateAction<IMyTerminalBlock>("ShipCore_ActivateBoost");
+            boost.Name = new StringBuilder("Activate Boost");
+            boost.Icon = @"Textures\GUI\Icons\Actions\SwitchOn.dds";
+            boost.ValidForGroups = false;
+            boost.Action = b => { var l = b?.GameLogic?.GetAs<CoreLogic>(); l?.TriggerBoostFromClient(); };
+            MyAPIGateway.TerminalControls.AddAction<IMyTerminalBlock>(boost);
+
+            var defense = MyAPIGateway.TerminalControls.CreateAction<IMyTerminalBlock>("ShipCore_ActivateDefense");
+            defense.Name = new StringBuilder("Activate Defense");
+            defense.Icon = @"Textures\GUI\Icons\Actions\SwitchOn.dds";
+            defense.ValidForGroups = false;
+            defense.Action = b => { var l = b?.GameLogic?.GetAs<CoreLogic>(); l?.TriggerDefenseFromClient(); };
+            MyAPIGateway.TerminalControls.AddAction<IMyTerminalBlock>(defense);
+        }
+        
+        private void TriggerBoostFromClient()
         {
             if (CoreBlock?.CubeGrid == null) return;
+            if (!SyncIsMainCore.Value) { if (Constants.IsClient) Utils.ShowNotification("Only the main core can trigger boost.", 1000); return; }
+            if (Constants.IsServer) CoreBlock.CubeGrid.GetMainGridLogic()?.ActivateBoost();
+            else SyncBoostReq.Value = SyncBoostReq.Value + 1;
+        }
 
-            var grid = CoreBlock.CubeGrid;
-            var gridLogic = grid.GameLogic?.GetAs<GridLogic>();
-            if (gridLogic == null) return;
-            
-            // If this core is NOT the main core, nothing to reassign
-            if (!SyncIsMainCore.Value)
-            {
-                //Anoying
-                Utils.ShowNotification($"A backup core of grid {grid.CustomName} was destroyed!",10000, true);
-                return;
-            }
-            
-            // Try to find another core of the same type on the grid
-            var slimBlocks = new List<IMySlimBlock>();
-            grid.GetBlocks(slimBlocks, b => b.FatBlock is IMyTerminalBlock);
-
-            CoreLogic newMainCore = (
-                from terminal in slimBlocks.Select(slim => slim.FatBlock as IMyTerminalBlock)
-                where terminal != null && terminal != CoreBlock
-                select terminal.GameLogic?.GetAs<CoreLogic>()
-                ).FirstOrDefault(otherLogic => otherLogic != null && otherLogic.SubtypeId == SubtypeId);
-
-
-            if (newMainCore != null)
-            {
-                newMainCore.SyncIsMainCore.ValidateAndSet(true);
-                newMainCore.SaveCoreState();
-                newMainCore.CoreBlock.RefreshCustomInfo();
-                Utils.ShowNotification($"{grid.CustomName}'s main core destroyed! Successfully switched to backup core.",10000, true);
-            }
-            else
-            {
-                // No other core of this type found — reset the grid to no core
-                Utils.ShowNotification($"All cores destroyed! {grid.CustomName} has become inactive!",5000, true);
-                gridLogic.ResetCore();
-            }
-            
-            base.Close();
+        private void TriggerDefenseFromClient()
+        {
+            if (CoreBlock?.CubeGrid == null) return;
+            if (!SyncIsMainCore.Value) { if (Constants.IsClient) Utils.ShowNotification("Only the main core can trigger defense.", 1000); return; }
+            if (Constants.IsServer) CoreBlock.CubeGrid.GetMainGridLogic()?.ActivateDefense();
+            else SyncDefenseReq.Value = SyncDefenseReq.Value + 1;
         }
         
         private bool IsOnlyCoreOfThisTypeOnGrid()
@@ -264,5 +337,7 @@ namespace ShipCoreFramework
             if (CoreBlock.Storage == null) CoreBlock.Storage = new MyModStorageComponent();
             CoreBlock.Storage[Constants.CoreStateStorageGUID] = SyncIsMainCore ? "1" : "0";
         }
+
+        #endregion
     }
 }
