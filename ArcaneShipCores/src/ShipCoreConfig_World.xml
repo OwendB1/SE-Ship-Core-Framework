@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ModConfig xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <DebugMode>false</DebugMode>
-  <CombatLogging>true</CombatLogging>
-  <LOG_LEVEL>0</LOG_LEVEL>
-  <CLIENT_OUTPUT_LOG_LEVEL>2</CLIENT_OUTPUT_LOG_LEVEL>
-  <MaxPossibleSpeedMetersPerSecond>300</MaxPossibleSpeedMetersPerSecond>
-  <IncludeAiFactions>false</IncludeAiFactions>
-</ModConfig>

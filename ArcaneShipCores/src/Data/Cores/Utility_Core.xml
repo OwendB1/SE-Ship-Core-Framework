@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-16"?>
 <ShipCore xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <SubtypeId>Example_Core</SubtypeId>
-  <UniqueName>Example Grid Class</UniqueName>
+  <SubtypeId>Utility_Core</SubtypeId>
+  <UniqueName>Utility Grid Class</UniqueName>
   <ForceBroadCast>false</ForceBroadCast>
   <ForceBroadCastRange>0</ForceBroadCastRange>
   <LargeGridStatic>true</LargeGridStatic>
@@ -10,9 +10,8 @@
   <MaxBlocks>50000</MaxBlocks>
   <MaxMass>-1</MaxMass>
   <MaxPCU>-1</MaxPCU>
-  <MaxPerFaction>10</MaxPerFaction>
-  <MaxPerPlayer>15</MaxPerPlayer>
-  <MinBlocks>-1</MinBlocks>
+  <MaxPerFaction>-1</MaxPerFaction>
+  <MaxPerPlayer>3</MaxPerPlayer>
   <MinPlayers>-1</MinPlayers>
   <Modifiers>
     <AssemblerSpeed>1.5</AssemblerSpeed>

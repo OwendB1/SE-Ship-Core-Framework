@@ -383,8 +383,6 @@ namespace ShipCoreFramework
         public int MaxPerFaction = -1;
         [XmlElement("MaxPerPlayer")]
         public int MaxPerPlayer = -1;
-        [XmlElement("MinBlocks")]
-        public int MinBlocks = -1;
         [XmlElement("MinPlayers")]
         public int MinPlayers = -1;
         [XmlElement("Modifiers")]

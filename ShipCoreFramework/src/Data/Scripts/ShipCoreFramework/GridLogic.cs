@@ -344,12 +344,12 @@ namespace ShipCoreFramework
                 if (index >= 0)
                     BlocksPerLimit[limit].RemoveAt(index);
             }
-
+            /*
             var concreteGrid = Grid as MyCubeGrid;
             if (concreteGrid?.BlocksCount < ShipCore.MinBlocks)
             {
                 //Damage x2?, honestly I still want to just remove MinBlocks
-            }
+            }*/
 
             _blocks.Remove(obj.FatBlock as MyCubeBlock);
             ApplyModifiers();

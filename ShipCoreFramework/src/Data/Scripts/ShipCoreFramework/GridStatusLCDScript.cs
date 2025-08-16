@@ -151,7 +151,7 @@ namespace ShipCoreFramework
             _headerTable.RenderToSprites(spritesToRender, screenTopLeft + padding, screenInnerWidth, new Vector2(15, 0), out currentPosition);
 
             //Render the results checklist
-
+            /*
             if (ShipCore.MaxBlocks > 1 || ShipCore.MinBlocks > 1)
             {
                 var passed = (ShipCore.MaxBlocks < 1 || Grid.BlocksCount <= ShipCore.MaxBlocks) &&
@@ -170,7 +170,7 @@ namespace ShipCoreFramework
                     new Cell(target, passed ? successColor : failColor),
                     passed ? new Cell() : new Cell("X", failColor)
                 });
-            }
+            }*/
 
             if (ShipCore.MaxMass > 1)
                 _gridResultsTable.Rows.Add(new Row

@@ -4,11 +4,11 @@
         <Definition xsi:type="MyObjectBuilder_BeaconDefinition">
             <Id>
                 <TypeId>Beacon</TypeId>
-                <SubtypeId>Example_Core_Small</SubtypeId>
+                <SubtypeId>Gunship_Core</SubtypeId>
             </Id>
-            <DisplayName>DisplayName_Block_Beacon</DisplayName>
-            <Icon>Textures\GUI\Icons\Cubes\beacon.dds</Icon>
-            <Description>Description_Beacon</Description>
+            <DisplayName>Gunship Core</DisplayName>
+            <Icon>Textures\SmallGridCore.dds</Icon>
+            <Description>Gunship Core</Description>
             <CubeSize>Small</CubeSize>
             <GuiVisible>false</GuiVisible>
             <BlockTopology>TriangleMesh</BlockTopology>
@@ -40,7 +40,7 @@
 			</BuildProgressModels>
 			<MirroringY>Z</MirroringY>
 			<MirroringZ>Y</MirroringZ>
-            <BlockPairName>Example_Core</BlockPairName>
+            <BlockPairName>Gunship_Core</BlockPairName>
             <EdgeType>Light</EdgeType>
             <BuildTimeSeconds>15</BuildTimeSeconds>
             <DamageEffectName>Damage_Electrical_Damaged</DamageEffectName>
