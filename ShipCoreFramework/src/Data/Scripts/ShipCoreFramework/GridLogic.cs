@@ -307,7 +307,9 @@ namespace ShipCoreFramework
                 var countForSpecificBlock = limit.BlockGroups.SelectMany(g => g.BlockTypes).First(b => b.TypeId == Utils.GetBlockTypeId(obj) && b.SubtypeId == Utils.GetBlockSubtypeId(obj)).CountWeight;
 
                 Utils.Log($"{countWeight} | {countForSpecificBlock} | {limit.MaxCount}");
-                if (countWeight + countForSpecificBlock > limit.MaxCount)
+                bool ValidDirection = true;
+                if (CoreBlock?.CoreBlock != null) { ValidDirection=IsValidDirection(CoreBlock.CoreBlock, obj, limit.AllowedDirections); } else { Utils.Log($"Log Direction Check: \nCoreBlock is null", 3); }
+                if ((countWeight + countForSpecificBlock > limit.MaxCount)&&(ValidDirection))
                 {
                     Utils.Log("Removing block", 1);
                     Grid.RemoveBlock(obj);
@@ -375,11 +377,56 @@ namespace ShipCoreFramework
                 mainLogic._blocks.UnionWith(fatBlocks);
             }
         }
-        public bool IsValidDirection(IMyCubeBlock myCore, IMyCubeBlock block, DirectionType Direction = DirectionType.Any)
+        private static readonly Dictionary<string, string> OppositeDirections =new Dictionary<string, string>{{ "Forward", "Backward" },{ "Backward", "Forward" },{ "Left", "Right" },{ "Right", "Left" },{ "Up", "Down" },{ "Down", "Up" }};
+        private static readonly Dictionary<string, string> RotateLeftXY =new Dictionary<string, string>{{ "Forward", "Right" },{ "Right", "Backward" },{ "Backward", "Left" },{ "Left", "Forward" },{ "Up", "Up" },{ "Down", "Down" }};
+        private static readonly Dictionary<string, string> RotateRightXY =new Dictionary<string, string>{{ "Forward", "Left" },{ "Left", "Backward"},{ "Backward", "Right" },{ "Right", "Forward" },{ "Up", "Up" },{ "Down", "Down" }};
+
+        public bool IsValidDirection(IMyCubeBlock myCore, IMySlimBlock block, List<DirectionType> AllowedDirections)
         {
-            if (myCore?.Orientation == null || block?.Orientation == null) { Utils.Log($"Log Direction Check: Orientation data missing", 3); return true;}
-            Utils.Log($"Log Direction Check: \nCoreBlock:{myCore.Orientation}\nBlockToCheck:{block.Orientation}", 3);
-            return true;
+            if (myCore?.Orientation == null || block?.Orientation == null) { Utils.Log($"Log Direction Check: Orientation data missing", 3); return true; }
+            List<string> myCoreDirection = Convert.ToString(myCore.Orientation).Replace("[", "").Replace("]", "").Split(new char[] { ',', ':' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+            List<string> blockDirection = Convert.ToString(block.Orientation).Replace("[", "").Replace("]", "").Split(new char[] { ',', ':' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+            myCoreDirection.RemoveAt(2);
+            blockDirection.RemoveAt(2);
+            myCoreDirection.RemoveAt(0);
+            blockDirection.RemoveAt(0);
+            Utils.Log($"Log Direction Check: \nCoreBlock:{myCoreDirection[0]}:{myCoreDirection[1]}\nBlockToCheck:{blockDirection[0]}:{blockDirection[1]}", 3);
+            //XY Axis
+            DirectionType XYDirection = DirectionType.Forward;
+            if (myCoreDirection[0] == blockDirection[0])
+            {
+                XYDirection = DirectionType.Forward;
+            }
+            else if (myCoreDirection[0] == OppositeDirections[blockDirection[0]])
+            {
+                XYDirection = DirectionType.Backward;
+            }
+            else if (myCoreDirection[0] == RotateLeftXY[blockDirection[0]])
+            {
+                XYDirection = DirectionType.Left;
+            }
+            else if (myCoreDirection[0] == RotateRightXY[blockDirection[0]])
+            {
+                XYDirection = DirectionType.Right;
+            }
+            else if (myCoreDirection[1] == blockDirection[0])
+            {
+                XYDirection = DirectionType.Up;
+            }
+            else
+            { 
+                XYDirection = DirectionType.Down;
+            }
+            Utils.Log($"Log Direction Check: Block {XYDirection}", 3);
+            if (AllowedDirections.Contains(XYDirection))//&& AllowedDirections.Contains(ZDirection)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+
         }
         public void WhackABlock(IMyCubeBlock block, PunishmentType harm, MyStringHash? customDamageType = null)
         {
@@ -421,7 +468,7 @@ namespace ShipCoreFramework
                     break;
             }
         }
-        private void EnforceBlockPunishment(IMyCubeBlock block = null)//this probably needs more attention
+        private void EnforceBlockPunishment(IMyCubeBlock block = null)//if this is null then how dows any of this work
         {
             //wtf
             if (block != null)
@@ -431,11 +478,14 @@ namespace ShipCoreFramework
                     var limitBlocks = BlocksPerLimit[limit];
                     var countWeight = limitBlocks.Sum(l => l.Value);
                     Utils.Log($"Block check: {limit.Name} | {countWeight} | {limit.MaxCount}");
-                    if (countWeight <= limit.MaxCount && IsValidDirection(CoreBlock.CoreBlock as IMyCubeBlock, block, limit.DirectionType)) continue;
+                    bool ValidDirection = true;
+                    if (CoreBlock?.CoreBlock != null || block?.SlimBlock != null) { ValidDirection=IsValidDirection(CoreBlock.CoreBlock, block.SlimBlock, limit.AllowedDirections);} else{Utils.Log($"Log Direction Check: \nCoreBlock is null", 3); }
+                    if (countWeight <= limit.MaxCount && ValidDirection) continue;
                     WhackABlock(block,limit.PunishmentType);
                 }
             }
-            else
+            /*
+            else //This seems to be the default state
             {
                 foreach (var limit in ShipCore.BlockLimits)
                 {
@@ -445,11 +495,13 @@ namespace ShipCoreFramework
                     foreach (var limitBlock in limitBlocks)
                     {
                         countWeight += limitBlock.Value;
-                        if (countWeight <= limit.MaxCount) continue;
-                        WhackABlock(block,limit.PunishmentType);
+                        bool ValidDirection = true;
+                        if (CoreBlock?.CoreBlock != null || block?.SlimBlock != null) { ValidDirection = IsValidDirection(CoreBlock.CoreBlock, block.SlimBlock, limit.AllowedDirections); } else { Utils.Log($"Log Direction Check: \nCoreBlock is null", 3); }
+                        if (countWeight <= limit.MaxCount && ValidDirection) continue;
+                        WhackABlock(block, limit.PunishmentType); //how does this work block is null
                     }
                 }
-            }
+            }*/
         }
 
         private bool HasFunctioningBeaconIfNeeded()

@@ -276,7 +276,7 @@ namespace ShipCoreFramework
                                     MaxCount = 10f,
                                     TurnedOffByNoFlyZone = true,
                                     PunishmentType = PunishmentType.Delete,
-                                    DirectionType = DirectionType.Any,
+                                    AllowedDirections =new List<DirectionType> {DirectionType.Forward,DirectionType.Backward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right},
                                 },*/
                                 new BlockLimit
                                 {
@@ -285,7 +285,7 @@ namespace ShipCoreFramework
                                     MaxCount = 10f,
                                     TurnedOffByNoFlyZone = true,
                                     PunishmentType = PunishmentType.Delete,
-                                    DirectionType = DirectionType.Any,
+                                    AllowedDirections =new List<DirectionType> {DirectionType.Forward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right},
                                 },
                             }
                         }
@@ -499,7 +499,7 @@ namespace ShipCoreFramework
 
         [XmlElement("PunishmentType")] public PunishmentType PunishmentType = PunishmentType.ShutOff;
 
-        [XmlElement("DirectionType")] public DirectionType DirectionType = DirectionType.Any;
+        [XmlElement("AllowedDirections")] public List<DirectionType> AllowedDirections = new List<DirectionType>{DirectionType.Forward,DirectionType.Backward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right};
     }
 
     [XmlRoot("BlockGroup")]
@@ -573,6 +573,5 @@ namespace ShipCoreFramework
         Down,
         Left,
         Right,
-        Any
     }
 }

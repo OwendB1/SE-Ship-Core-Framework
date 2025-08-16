@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 namespace ShipCoreFramework
 {
     public static class DefaultNoCoreConfig
@@ -23,7 +26,7 @@ namespace ShipCoreFramework
                     MaxCount = 10f,
                     TurnedOffByNoFlyZone = true,
                     PunishmentType = PunishmentType.Delete,
-                    DirectionType = DirectionType.Any,
+                    AllowedDirections =new List<DirectionType> {DirectionType.Forward,DirectionType.Backward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right},
                 },
             }
         };
