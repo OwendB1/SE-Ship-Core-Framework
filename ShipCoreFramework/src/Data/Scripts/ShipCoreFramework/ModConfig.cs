@@ -15,7 +15,7 @@ namespace ShipCoreFramework
     public class ModConfig
     {
         [XmlIgnoreAttribute] private const string GlobalConfigFileName = "ShipCoreConfig_World.xml";
-        [XmlIgnoreAttribute] private const string CoreManifestFileName = "ShipCoreConfig_Manifest.xml";
+        [XmlIgnoreAttribute] private const string CoreManifestFileName = @"Data\ShipCoreConfig_Manifest.xml";
         [XmlIgnoreAttribute] private const string BlockGroupsFileName = "ShipCoreConfig_Groups.xml";
         [XmlIgnoreAttribute] private const string DefaultNoCoreFileName = "ShipCoreConfig_No_Core.xml";
         [XmlIgnoreAttribute] public readonly List<ShipCore> NoCoreConfigs = new List<ShipCore>();
@@ -73,7 +73,7 @@ namespace ShipCoreFramework
 
                 var manifestWriter =
                     MyAPIGateway.Utilities.WriteFileInWorldStorage(CoreManifestFileName, typeof(CoreManifest));
-                manifestWriter.Write(MyAPIGateway.Utilities.SerializeToXML(new List<string>(){"Example Core.xml"}));
+                manifestWriter.Write(MyAPIGateway.Utilities.SerializeToXML(new CoreManifest { ShipCoreFilenames = new List<string>() { "Example Core.xml" } }));
                 manifestWriter.Close();
 
                 var shipcoreWriter =
@@ -155,7 +155,7 @@ namespace ShipCoreFramework
                         }
 
                     if (!MyAPIGateway.Utilities.FileExistsInModLocation(CoreManifestFileName, mod)) continue;
-
+                    Utils.Log($"Found Manifest File in: {mod.FriendlyName}",3, "Ship Core Config");
                     //Check the Core Manifest to get all cores in the mod
                     using (var reader = MyAPIGateway.Utilities.ReadFileInModLocation(CoreManifestFileName, mod))
                     {
@@ -165,16 +165,21 @@ namespace ShipCoreFramework
                             throw new Exception($"Failed to Load Classes from Mod: {mod.FriendlyName}");
 
                         //Go get ship cores
-                        foreach (var shipCoreFilename in coreManifest.ShipCoreFilenames)
+                        foreach (string filename in coreManifest.ShipCoreFilenames)
+                        {
+                            string shipCoreFilename = $@"Data\{filename}";
+                            Utils.Log($"ShipCores:{mod.FriendlyName} Core Found:{shipCoreFilename}", 3, "Ship Core Config");
+                            if (!MyAPIGateway.Utilities.FileExistsInModLocation(shipCoreFilename, mod)) continue;
                             using (var textReader = MyAPIGateway.Utilities.ReadFileInModLocation(shipCoreFilename, mod))
                             {
                                 var modText = textReader.ReadToEnd();
                                 var newShipCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(modText);
 
-                                if (newShipCore == null){throw new Exception($"Failed to load ship core from file {shipCoreFilename} in Mod: {mod.FriendlyName}");}
+                                if (newShipCore == null) { throw new Exception($"Failed to load ship core from file {shipCoreFilename} in Mod: {mod.FriendlyName}"); }
                                 globalSettings.ShipCores.Add(newShipCore);
-                                Utils.Log($"Loaded Core {newShipCore.UniqueName} From: {mod.FriendlyName}", 0, "Ship Core Config");
+                                Utils.Log($"Loaded Core {newShipCore.UniqueName} From: {mod.FriendlyName}", 3, "Ship Core Config");
                             }
+                        }
                     }
                 }
 
@@ -219,65 +224,58 @@ namespace ShipCoreFramework
                     //globalSettings.BlockGroups.Add(DefaultGridClassConfig.Weaponry);
                     
                 }
-                if(globalSettings.ShipCores.Count==0)
+                /*
+                if (globalSettings.ShipCores.Count == 0)
                 {
                     globalSettings.ShipCores.Add(new ShipCore
+                    {
+                        UniqueName = "Example Grid Class",
+                        SubtypeId = "Example_Core",
+                        LargeGridStatic = true,
+                        LargeGridMobile = true,
+                        SmallGrid = true,
+                        MaxBlocks = 50000,
+                        MaxPerFaction = 10,
+                        MaxPerPlayer = 15,
+                        //MaxPCU=,
+                        //MaxMass=,
+                        Modifiers = new GridModifiers
                         {
-                            UniqueName = "Example Grid Class",
-                            SubtypeId = "Example_Core",
-                            LargeGridStatic = true,
-                            LargeGridMobile = true,
-                            SmallGrid = true,
-                            MaxBlocks = 50000,
-                            MaxPerFaction=10,
-                            MaxPerPlayer=15,
-                            //MaxPCU=,
-                            //MaxMass=,
-                            Modifiers = new GridModifiers{
-                                ThrusterForce = 1.5f,
-                                ThrusterEfficiency = 1.5f,
-                                GyroForce = 1.5f,
-                                GyroEfficiency = 1.5f,
-                                RefineEfficiency = 1.5f,
-                                RefineSpeed = 1.5f,
-                                AssemblerSpeed = 1.5f,
-                                PowerProducersOutput = 1.5f,
-                                DrillHarvestMultiplier = 1.5f,
-                                MaxSpeed = 0.6f,
-                            },
-                            PassiveDefenseModifiers = new GridDefenseModifiers
+                            ThrusterForce = 1.5f,
+                            ThrusterEfficiency = 1.5f,
+                            GyroForce = 1.5f,
+                            GyroEfficiency = 1.5f,
+                            RefineEfficiency = 1.5f,
+                            RefineSpeed = 1.5f,
+                            AssemblerSpeed = 1.5f,
+                            PowerProducersOutput = 1.5f,
+                            DrillHarvestMultiplier = 1.5f,
+                            MaxSpeed = 0.6f,
+                        },
+                        PassiveDefenseModifiers = new GridDefenseModifiers
+                        {
+                            Bullet = 0.9f,
+                            Energy = 0.9f,
+                            Kinetic = 0.9f,
+                            Duration = 0.9f,
+                            Cooldown = 0.9f,
+                            Rocket = 0.9f,
+                            Explosion = 0.9f,
+                            Environment = 0.9f,
+                        },
+                        ActiveDefenseModifiers = new GridDefenseModifiers
+                        {
+                            Bullet = 0.9f,
+                            Energy = 0.9f,
+                            Kinetic = 0.9f,
+                            Duration = 0.9f,
+                            Cooldown = 0.9f,
+                            Rocket = 0.9f,
+                            Explosion = 0.9f,
+                            Environment = 0.9f,
+                        },
+                        BlockLimits = new BlockLimit[]
                             {
-                                Bullet = 0.9f,
-                                Energy = 0.9f,
-                                Kinetic = 0.9f,
-                                Duration = 0.9f,
-                                Cooldown = 0.9f,
-                                Rocket = 0.9f,
-                                Explosion = 0.9f,
-                                Environment = 0.9f,
-                            },
-                            ActiveDefenseModifiers = new GridDefenseModifiers
-                            {
-                                Bullet = 0.9f,
-                                Energy = 0.9f,
-                                Kinetic = 0.9f,
-                                Duration = 0.9f,
-                                Cooldown = 0.9f,
-                                Rocket = 0.9f,
-                                Explosion = 0.9f,
-                                Environment = 0.9f,
-                            },
-                            BlockLimits = new BlockLimit[]
-                            {
-                                /*new BlockLimit
-                                {
-                                    Name = "Example: Weapons",
-                                    BlockGroupsShortHand = new string[]{"Weaponry",},
-                                    MaxCount = 10f,
-                                    TurnedOffByNoFlyZone = true,
-                                    PunishmentType = PunishmentType.Delete,
-                                    AllowedDirections =new List<DirectionType> {DirectionType.Forward,DirectionType.Backward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right},
-                                },*/
                                 new BlockLimit
                                 {
                                     Name = "Example: Drills",
@@ -288,10 +286,10 @@ namespace ShipCoreFramework
                                     AllowedDirections =new List<DirectionType> {DirectionType.Forward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right},
                                 },
                             }
-                        }
+                    }
                     );
-                }
-
+                }*/
+    
                 foreach (var limit in globalSettings.ShipCores.SelectMany(core => core.BlockLimits))
                 {
                     foreach(var shorthand in limit.BlockGroupsShortHand)
