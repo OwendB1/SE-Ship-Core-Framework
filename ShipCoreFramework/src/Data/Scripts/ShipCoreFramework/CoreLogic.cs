@@ -40,6 +40,7 @@ namespace ShipCoreFramework
         {
             base.Init(objectBuilder);
             CoreBlock = (IMyBeacon)Entity;
+            CubeGridModifiers.AddModifiers(CoreBlock);
             if (ModSessionManager.Config.ShipCores.All(core => core.SubtypeId != CoreBlock.BlockDefinition.SubtypeId)) return;
             SyncIsMainCore.ValidateAndSet(false);
             CoreBlock.CubeGrid.OnPhysicsChanged += InitOnPhysicsChanged;
@@ -72,7 +73,6 @@ namespace ShipCoreFramework
             if ((!SyncIsMainCore.Value && onlyCore)||(SyncIsMainCore.Value))
             {
                 SyncIsMainCore.ValidateAndSet(true);
-                CubeGridModifiers.AddModifiers(CoreBlock);
                 CoreBlock.CubeGrid.GetMainGridLogic().Activate(SubtypeId);
                 SaveCoreState();
             }

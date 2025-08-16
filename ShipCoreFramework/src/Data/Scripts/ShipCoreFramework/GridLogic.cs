@@ -64,7 +64,7 @@ namespace ShipCoreFramework
             _shipCoreTypeId = shipCoreTypeId;
             
             UpdateLimitsAndApplyModifiers();
-            EnforceBlockPunishment();
+            EnforceBlockPunishment(Grid);
         }
 
         public void ResetCore()
@@ -76,7 +76,7 @@ namespace ShipCoreFramework
             GridsPerPlayerClassManager.RemoveCubeGrid(this);
             
             UpdateLimitsAndApplyModifiers();
-            EnforceBlockPunishment();
+            EnforceBlockPunishment(Grid);
         }
 
         private void UpdateLimitsAndApplyModifiers()
@@ -242,7 +242,7 @@ namespace ShipCoreFramework
         //Event handlers
         private void OnBlockOwnershipChanged(IMyCubeGrid obj)
         {
-            EnforceBlockPunishment();
+            EnforceBlockPunishment(obj);//This needs tested
 
             if (OwningFaction != null)
             {
@@ -252,7 +252,7 @@ namespace ShipCoreFramework
                 }
                 GridsPerPlayerClassManager.RemoveCubeGrid(this);
                 GridsPerFactionClassManager.RemoveCubeGrid(this);
-                
+
                 GridsPerPlayerClassManager.AddCubeGrid(this);
                 GridsPerFactionClassManager.AddCubeGrid(this);
             }
@@ -309,7 +309,7 @@ namespace ShipCoreFramework
                 Utils.Log($"{countWeight} | {countForSpecificBlock} | {limit.MaxCount}");
                 bool ValidDirection = true;
                 if (CoreBlock?.CoreBlock != null) { ValidDirection=IsValidDirection(CoreBlock.CoreBlock, obj, limit.AllowedDirections); } else { Utils.Log($"Log Direction Check: \nCoreBlock is null", 3); }
-                if ((countWeight + countForSpecificBlock > limit.MaxCount)&&(ValidDirection))
+                if ((countWeight + countForSpecificBlock > limit.MaxCount)||(!ValidDirection))
                 {
                     Utils.Log("Removing block", 1);
                     Grid.RemoveBlock(obj);
@@ -468,40 +468,44 @@ namespace ShipCoreFramework
                     break;
             }
         }
-        private void EnforceBlockPunishment(IMyCubeBlock block = null)//if this is null then how dows any of this work
+        private void EnforceBlockPunishment(IMyCubeBlock block)
         {
-            //wtf
             if (block != null)
             {
                 foreach (var limit in ShipCore.BlockLimits)
                 {
+                    var match = limit.BlockGroups.SelectMany(g => g.BlockTypes).Any(b => b.TypeId == Utils.GetBlockTypeId(block) && b.SubtypeId == Utils.GetBlockSubtypeId(block));
+                    if (!match) continue;
                     var limitBlocks = BlocksPerLimit[limit];
                     var countWeight = limitBlocks.Sum(l => l.Value);
                     Utils.Log($"Block check: {limit.Name} | {countWeight} | {limit.MaxCount}");
                     bool ValidDirection = true;
-                    if (CoreBlock?.CoreBlock != null || block?.SlimBlock != null) { ValidDirection=IsValidDirection(CoreBlock.CoreBlock, block.SlimBlock, limit.AllowedDirections);} else{Utils.Log($"Log Direction Check: \nCoreBlock is null", 3); }
+                    if (CoreBlock?.CoreBlock != null && block?.SlimBlock != null && limit.AllowedDirections != null) { ValidDirection = IsValidDirection(CoreBlock.CoreBlock, block.SlimBlock, limit.AllowedDirections); } else { Utils.Log($"Log Direction Check: \nCoreBlock is null", 3); }
                     if (countWeight <= limit.MaxCount && ValidDirection) continue;
-                    WhackABlock(block,limit.PunishmentType);
+                    WhackABlock(block, limit.PunishmentType);
                 }
             }
-            /*
-            else //This seems to be the default state
+        }
+        private void EnforceBlockPunishment(IMyCubeGrid grid)
+        {
+            //Assume if method is called without a specific block we neet to check ALL BLOCKS
+            var myGridLogic = grid.GetMainGridLogic();
+            
+            foreach (MyCubeBlock _block in myGridLogic._blocks.ToList())
             {
-                foreach (var limit in ShipCore.BlockLimits)
+                foreach (BlockLimit limit in myGridLogic.ShipCore.BlockLimits)
                 {
-                    if (!BlocksPerLimit.ContainsKey(limit)) return;
-                    var limitBlocks = BlocksPerLimit[limit];
-                    double countWeight = 0;
-                    foreach (var limitBlock in limitBlocks)
-                    {
-                        countWeight += limitBlock.Value;
-                        bool ValidDirection = true;
-                        if (CoreBlock?.CoreBlock != null || block?.SlimBlock != null) { ValidDirection = IsValidDirection(CoreBlock.CoreBlock, block.SlimBlock, limit.AllowedDirections); } else { Utils.Log($"Log Direction Check: \nCoreBlock is null", 3); }
-                        if (countWeight <= limit.MaxCount && ValidDirection) continue;
-                        WhackABlock(block, limit.PunishmentType); //how does this work block is null
-                    }
+                    var match = limit.BlockGroups.SelectMany(g => g.BlockTypes).Any(b => b.TypeId == Utils.GetBlockTypeId(_block) && b.SubtypeId == Utils.GetBlockSubtypeId(_block));
+                    if (!match) continue;
+                    var limitBlocks = myGridLogic.BlocksPerLimit[limit];
+                    var countWeight = limitBlocks.Sum(l => l.Value);
+                    //Utils.Log($"Block check: {limit.Name} | {countWeight} | {limit.MaxCount}");
+                    bool ValidDirection = true;
+                    if (myGridLogic.CoreBlock?.CoreBlock != null && _block?.SlimBlock != null && limit.AllowedDirections != null) { ValidDirection = IsValidDirection(myGridLogic.CoreBlock.CoreBlock, _block.SlimBlock, limit.AllowedDirections); } else { Utils.Log($"Log Direction Check: \nCoreBlock is null", 3); }
+                    if (countWeight <= limit.MaxCount && ValidDirection) continue;
+                    WhackABlock(_block as IMyCubeBlock, limit.PunishmentType);
                 }
-            }*/
+            }
         }
 
         private bool HasFunctioningBeaconIfNeeded()
