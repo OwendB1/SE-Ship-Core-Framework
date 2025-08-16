@@ -16,33 +16,72 @@ namespace ShipCoreFramework
 {
     public static class CubeGridModifiers
     {
+        public static void AddModifiers(IMyCubeBlock CoreBlock)
+        {
+            CoreBlock.AddUpgradeValue("AssemblerSpeed", 1f);
+            CoreBlock.AddUpgradeValue("DrillHarvestMultiplier", 1f);
+            CoreBlock.AddUpgradeValue("GyroEfficiency", 1f);
+            CoreBlock.AddUpgradeValue("GyroForce", 1f);
+            CoreBlock.AddUpgradeValue("PowerProducersOutput", 1f);
+            CoreBlock.AddUpgradeValue("RefineEfficiency", 1f);
+            CoreBlock.AddUpgradeValue("RefineSpeed", 1f);
+            CoreBlock.AddUpgradeValue("ThrusterEfficiency", 1f);
+            CoreBlock.AddUpgradeValue("ThrusterForce", 1f);
+            /*
+                    CoreBlock.AddUpgradeValue("MaxBlocks", 1f);
+                    CoreBlock.AddUpgradeValue("MaxMass", 1f);
+                    CoreBlock.AddUpgradeValue("MaxPCU", 1f);
+                    */
+            CoreBlock.AddUpgradeValue("MaxSpeed", 1f);
+            CoreBlock.AddUpgradeValue("MaxBoost", 1f);
+            CoreBlock.AddUpgradeValue("BoostDuration", 1f);
+            CoreBlock.AddUpgradeValue("BoostCoolDown", 1f);
+
+            CoreBlock.AddUpgradeValue("ReloadModifier", 1f);
+
+            CoreBlock.AddUpgradeValue("PassiveBulletDamage", 1f);
+            CoreBlock.AddUpgradeValue("PassiveRocketDamage", 1f);
+            CoreBlock.AddUpgradeValue("PassiveExplosionDamage", 1f);
+            CoreBlock.AddUpgradeValue("PassiveEnvironmentDamage", 1f);
+            CoreBlock.AddUpgradeValue("PassiveEnergyDamage", 1f);
+            CoreBlock.AddUpgradeValue("PassiveKineticDamage", 1f);
+
+            CoreBlock.AddUpgradeValue("ActiveBulletDamage", 1f);
+            CoreBlock.AddUpgradeValue("ActiveRocketDamage", 1f);
+            CoreBlock.AddUpgradeValue("ActiveExplosionDamage", 1f);
+            CoreBlock.AddUpgradeValue("ActiveEnvironmentDamage", 1f);
+            CoreBlock.AddUpgradeValue("ActiveEnergyDamage", 1f);
+            CoreBlock.AddUpgradeValue("ActiveKineticDamage", 1f);
+            CoreBlock.AddUpgradeValue("DurationDuration", 1f);
+            CoreBlock.AddUpgradeValue("DamageCooldown", 1f);
+        }
         public static GridModifiers GetActiveModifiers(GridLogic gridLogic)
         {
             var shipCore = gridLogic.ShipCore;
 
-            if (shipCore == ModSessionManager.Config.DefaultNoCore) return (shipCore.Modifiers);
+            if (shipCore == ModSessionManager.Config.DefaultNoCore)return(shipCore.Modifiers);
             var enhancedModifiers = new GridModifiers();
             if (enhancedModifiers == null) throw new ArgumentNullException(nameof(enhancedModifiers));
             //MyCore._syncIsMainCore
-            
+
             var myBlock = gridLogic.CoreBlock;
-            if(myBlock==null)
+            if (myBlock == null)
             {
-                return(shipCore.Modifiers);
+                return (shipCore.Modifiers);
             }
-            enhancedModifiers.AssemblerSpeed=shipCore.Modifiers.AssemblerSpeed*myBlock.CoreBlock.UpgradeValues["AssemblerSpeed"];
-            enhancedModifiers.DrillHarvestMultiplier=shipCore.Modifiers.DrillHarvestMultiplier*myBlock.CoreBlock.UpgradeValues["DrillHarvestMultiplier"];
-            enhancedModifiers.GyroEfficiency=shipCore.Modifiers.GyroEfficiency*myBlock.CoreBlock.UpgradeValues["GyroEfficiency"];
-            enhancedModifiers.GyroForce=shipCore.Modifiers.GyroForce*myBlock.CoreBlock.UpgradeValues["GyroForce"];
-            enhancedModifiers.PowerProducersOutput=shipCore.Modifiers.PowerProducersOutput*myBlock.CoreBlock.UpgradeValues["PowerProducersOutput"];
-            enhancedModifiers.RefineEfficiency=shipCore.Modifiers.RefineEfficiency*myBlock.CoreBlock.UpgradeValues["RefineEfficiency"];
-            enhancedModifiers.RefineSpeed=shipCore.Modifiers.RefineSpeed*myBlock.CoreBlock.UpgradeValues["RefineSpeed"];
-            enhancedModifiers.ThrusterEfficiency=shipCore.Modifiers.ThrusterEfficiency*myBlock.CoreBlock.UpgradeValues["ThrusterEfficiency"];
-            enhancedModifiers.ThrusterForce=shipCore.Modifiers.ThrusterForce*myBlock.CoreBlock.UpgradeValues["ThrusterForce"];
-            enhancedModifiers.MaxSpeed=shipCore.Modifiers.MaxSpeed*myBlock.CoreBlock.UpgradeValues["MaxSpeed"];
-            enhancedModifiers.MaxBoost=shipCore.Modifiers.MaxBoost*myBlock.CoreBlock.UpgradeValues["MaxBoost"];
-            enhancedModifiers.BoostDuration=shipCore.Modifiers.BoostDuration*myBlock.CoreBlock.UpgradeValues["BoostDuration"];
-            enhancedModifiers.BoostCoolDown=shipCore.Modifiers.BoostCoolDown*myBlock.CoreBlock.UpgradeValues["BoostCoolDown"];
+            enhancedModifiers.AssemblerSpeed = shipCore.Modifiers.AssemblerSpeed * myBlock.CoreBlock.UpgradeValues["AssemblerSpeed"];
+            enhancedModifiers.DrillHarvestMultiplier = shipCore.Modifiers.DrillHarvestMultiplier * myBlock.CoreBlock.UpgradeValues["DrillHarvestMultiplier"];
+            enhancedModifiers.GyroEfficiency = shipCore.Modifiers.GyroEfficiency * myBlock.CoreBlock.UpgradeValues["GyroEfficiency"];
+            enhancedModifiers.GyroForce = shipCore.Modifiers.GyroForce * myBlock.CoreBlock.UpgradeValues["GyroForce"];
+            enhancedModifiers.PowerProducersOutput = shipCore.Modifiers.PowerProducersOutput * myBlock.CoreBlock.UpgradeValues["PowerProducersOutput"];
+            enhancedModifiers.RefineEfficiency = shipCore.Modifiers.RefineEfficiency * myBlock.CoreBlock.UpgradeValues["RefineEfficiency"];
+            enhancedModifiers.RefineSpeed = shipCore.Modifiers.RefineSpeed * myBlock.CoreBlock.UpgradeValues["RefineSpeed"];
+            enhancedModifiers.ThrusterEfficiency = shipCore.Modifiers.ThrusterEfficiency * myBlock.CoreBlock.UpgradeValues["ThrusterEfficiency"];
+            enhancedModifiers.ThrusterForce = shipCore.Modifiers.ThrusterForce * myBlock.CoreBlock.UpgradeValues["ThrusterForce"];
+            enhancedModifiers.MaxSpeed = shipCore.Modifiers.MaxSpeed * myBlock.CoreBlock.UpgradeValues["MaxSpeed"];
+            enhancedModifiers.MaxBoost = shipCore.Modifiers.MaxBoost * myBlock.CoreBlock.UpgradeValues["MaxBoost"];
+            enhancedModifiers.BoostDuration = shipCore.Modifiers.BoostDuration * myBlock.CoreBlock.UpgradeValues["BoostDuration"];
+            enhancedModifiers.BoostCoolDown = shipCore.Modifiers.BoostCoolDown * myBlock.CoreBlock.UpgradeValues["BoostCoolDown"];
             return enhancedModifiers;
         }
         public static void ApplyModifiers(IMyCubeBlock block, GridModifiers modifiers)

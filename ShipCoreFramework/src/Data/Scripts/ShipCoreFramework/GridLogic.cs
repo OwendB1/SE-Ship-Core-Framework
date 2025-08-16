@@ -39,7 +39,7 @@ namespace ShipCoreFramework
         private float ActiveDefenseDuration => ShipCore.ActiveDefenseModifiers.Duration;
         private float ActiveDefenseCoolDown => ShipCore.ActiveDefenseModifiers.Cooldown;
         
-        public GridModifiers Modifiers => CubeGridModifiers.GetActiveModifiers(this);//ModSessionManager.Config.DefaultNoCore.Modifiers;
+        public GridModifiers Modifiers = ModSessionManager.Config.DefaultNoCore.Modifiers;
 
         public IMyCubeGrid Grid;
         
@@ -232,7 +232,7 @@ namespace ShipCoreFramework
 
         private void ApplyModifiers(GridModifiers modifiers = null)
         {
-
+            Modifiers = CubeGridModifiers.GetActiveModifiers(this);
             foreach (var block in from block in _blocks
                      let terminalBlock = block as IMyTerminalBlock
                      where terminalBlock != null
@@ -375,6 +375,12 @@ namespace ShipCoreFramework
                 mainLogic._blocks.UnionWith(fatBlocks);
             }
         }
+        public bool IsValidDirection(IMyCubeBlock myCore, IMyCubeBlock block, DirectionType Direction = DirectionType.Any)
+        {
+            if (myCore?.Orientation == null || block?.Orientation == null) { Utils.Log($"Log Direction Check: Orientation data missing", 3); return true;}
+            Utils.Log($"Log Direction Check: \nCoreBlock:{myCore.Orientation}\nBlockToCheck:{block.Orientation}", 3);
+            return true;
+        }
         public void WhackABlock(IMyCubeBlock block, PunishmentType harm, MyStringHash? customDamageType = null)
         {
             if (block?.SlimBlock == null) return;
@@ -383,7 +389,7 @@ namespace ShipCoreFramework
             switch (harm)
             {
                 //case PunishmentType.ShutOff:
-                    //break;
+                //break;
                 case PunishmentType.Damage:
                     // Whack,50%
                     damageRequired = block.SlimBlock.Integrity - block.SlimBlock.MaxIntegrity * 0.5;
@@ -392,7 +398,7 @@ namespace ShipCoreFramework
                     break;
 
                 case PunishmentType.Delete:
-                    Grid.RemoveBlock(block.SlimBlock,true);
+                    Grid.RemoveBlock(block.SlimBlock, true);
                     break;
                 case PunishmentType.Explode:
                     //Game will cause explosion on damage = integridy, if block explodes on destruction most do, if not... I don't care that much.
@@ -425,7 +431,7 @@ namespace ShipCoreFramework
                     var limitBlocks = BlocksPerLimit[limit];
                     var countWeight = limitBlocks.Sum(l => l.Value);
                     Utils.Log($"Block check: {limit.Name} | {countWeight} | {limit.MaxCount}");
-                    if (countWeight <= limit.MaxCount) continue;
+                    if (countWeight <= limit.MaxCount && IsValidDirection(CoreBlock.CoreBlock as IMyCubeBlock, block, limit.DirectionType)) continue;
                     WhackABlock(block,limit.PunishmentType);
                 }
             }
