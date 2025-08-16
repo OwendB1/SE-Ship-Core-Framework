@@ -43,7 +43,7 @@ namespace ShipCoreFramework
         
         public static void ShowMessage(string msg, string tooltip = "[Ship Cores]: ")
         {
-            MyAPIGateway.Utilities.ShowMessage(tooltip, msg, MyFontEnum.Red);
+            MyAPIGateway.Utilities.ShowMessage(tooltip, msg);
         }
 
         public static void Log(string msg, int logPriority = 0, string tooltip = "Ship Cores")
