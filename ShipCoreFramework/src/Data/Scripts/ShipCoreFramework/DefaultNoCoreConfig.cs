@@ -12,7 +12,6 @@ namespace ShipCoreFramework
             SubtypeId = "NO-CORE",
             LargeGridStatic = true,
             LargeGridMobile = true,
-            SmallGrid = true,
             MaxBlocks = 30000,
             Modifiers = new GridModifiers(), // Use default modifiers
             PassiveDefenseModifiers = new GridDefenseModifiers(),
@@ -21,8 +20,26 @@ namespace ShipCoreFramework
             {
                 new BlockLimit
                 {
-                    Name = "Example: Drills",
-                    BlockGroupsShortHand = new string[]{"Drills",},
+                    Name = "Ship Tools",
+                    BlockGroupsShortHand = new string[]{"Drills","Welders","Grinders"},
+                    MaxCount = 10f,
+                    TurnedOffByNoFlyZone = true,
+                    PunishmentType = PunishmentType.Delete,
+                    AllowedDirections =new List<DirectionType> {DirectionType.Forward,DirectionType.Backward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right},
+                },
+                new BlockLimit
+                {
+                    Name = "Weapons",
+                    BlockGroupsShortHand = new string[]{"Weaponry"},
+                    MaxCount = 1f,
+                    TurnedOffByNoFlyZone = true,
+                    PunishmentType = PunishmentType.Delete,
+                    AllowedDirections =new List<DirectionType> {DirectionType.Forward,DirectionType.Backward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right},
+                },
+                new BlockLimit
+                {
+                    Name = "Production",
+                    BlockGroupsShortHand = new string[]{"Production"},
                     MaxCount = 10f,
                     TurnedOffByNoFlyZone = true,
                     PunishmentType = PunishmentType.Delete,

@@ -70,7 +70,7 @@ namespace ShipCoreFramework
                 defaultNoCoreWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this.DefaultNoCore));
                 defaultNoCoreWriter.Close();
                 Utils.Log($"Save Config: Saved {DefaultNoCoreFileName}", showInChat ? 3 : 0);
-
+                /*
                 var manifestWriter =
                     MyAPIGateway.Utilities.WriteFileInWorldStorage(CoreManifestFileName, typeof(CoreManifest));
                 manifestWriter.Write(MyAPIGateway.Utilities.SerializeToXML(new CoreManifest { ShipCoreFilenames = new List<string>() { "Example Core.xml" } }));
@@ -80,7 +80,7 @@ namespace ShipCoreFramework
                     MyAPIGateway.Utilities.WriteFileInWorldStorage("Example Core.xml", typeof(ShipCore));
                 shipcoreWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this.ShipCores[0]));
                 shipcoreWriter.Close();
-
+                */
                 //Utils.Log($"Save Config: Saved {CoreManifestFileName}", showInChat ? 3 : 0);
             }
             catch (Exception e)
@@ -185,7 +185,7 @@ namespace ShipCoreFramework
 
                 ThrowErrorIfDuplicates(NoCoreConfigs, core => core.UniqueName);
                 ThrowErrorIfDuplicates(ShipCores, core => core.UniqueName);
-                ThrowErrorIfDuplicates(BlockGroups, groups => groups.Name);
+                //ThrowErrorIfDuplicates(BlockGroups, groups => groups.Name); This is causing issues.
                 Utils.Log($"NoCoreConfigs.Count = {globalSettings.NoCoreConfigs.Count}", 0, "Ship Core Config");
                 if (globalSettings.NoCoreConfigs.Count == 0)
                 {
@@ -193,7 +193,7 @@ namespace ShipCoreFramework
                     globalSettings.DefaultNoCore = DefaultNoCoreConfig.ShipCore;
                 }
                 Utils.Log($"BlockGroups.Count = {globalSettings.BlockGroups.Count}", 0, "Ship Core Config");
-                if(globalSettings.BlockGroups.Count == 0)
+                if (globalSettings.BlockGroups.Count == 0)
                 {
                     globalSettings.BlockGroups.Add(DefaultGridClassConfig.VanillaSmallGridFixedWeapons);
                     globalSettings.BlockGroups.Add(DefaultGridClassConfig.VanillaSmallGridTurretWeapons);
@@ -221,74 +221,10 @@ namespace ShipCoreFramework
                     globalSettings.BlockGroups.Add(DefaultGridClassConfig.Turrets);
                     globalSettings.BlockGroups.Add(DefaultGridClassConfig.StaticWeaponry);
                     globalSettings.BlockGroups.Add(DefaultGridClassConfig.Production);
-                    //globalSettings.BlockGroups.Add(DefaultGridClassConfig.Weaponry);
-                    
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.Weaponry);
+                    globalSettings.BlockGroups.Add(DefaultGridClassConfig.Tools);
+
                 }
-                /*
-                if (globalSettings.ShipCores.Count == 0)
-                {
-                    globalSettings.ShipCores.Add(new ShipCore
-                    {
-                        UniqueName = "Example Grid Class",
-                        SubtypeId = "Example_Core",
-                        LargeGridStatic = true,
-                        LargeGridMobile = true,
-                        SmallGrid = true,
-                        MaxBlocks = 50000,
-                        MaxPerFaction = 10,
-                        MaxPerPlayer = 15,
-                        //MaxPCU=,
-                        //MaxMass=,
-                        Modifiers = new GridModifiers
-                        {
-                            ThrusterForce = 1.5f,
-                            ThrusterEfficiency = 1.5f,
-                            GyroForce = 1.5f,
-                            GyroEfficiency = 1.5f,
-                            RefineEfficiency = 1.5f,
-                            RefineSpeed = 1.5f,
-                            AssemblerSpeed = 1.5f,
-                            PowerProducersOutput = 1.5f,
-                            DrillHarvestMultiplier = 1.5f,
-                            MaxSpeed = 0.6f,
-                        },
-                        PassiveDefenseModifiers = new GridDefenseModifiers
-                        {
-                            Bullet = 0.9f,
-                            Energy = 0.9f,
-                            Kinetic = 0.9f,
-                            Duration = 0.9f,
-                            Cooldown = 0.9f,
-                            Rocket = 0.9f,
-                            Explosion = 0.9f,
-                            Environment = 0.9f,
-                        },
-                        ActiveDefenseModifiers = new GridDefenseModifiers
-                        {
-                            Bullet = 0.9f,
-                            Energy = 0.9f,
-                            Kinetic = 0.9f,
-                            Duration = 0.9f,
-                            Cooldown = 0.9f,
-                            Rocket = 0.9f,
-                            Explosion = 0.9f,
-                            Environment = 0.9f,
-                        },
-                        BlockLimits = new BlockLimit[]
-                            {
-                                new BlockLimit
-                                {
-                                    Name = "Example: Drills",
-                                    BlockGroupsShortHand = new string[]{"Drills",},
-                                    MaxCount = 10f,
-                                    TurnedOffByNoFlyZone = true,
-                                    PunishmentType = PunishmentType.Delete,
-                                    AllowedDirections =new List<DirectionType> {DirectionType.Forward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right},
-                                },
-                            }
-                    }
-                    );
-                }*/
     
                 foreach (var limit in globalSettings.ShipCores.SelectMany(core => core.BlockLimits))
                 {
@@ -371,9 +307,6 @@ namespace ShipCoreFramework
         public bool LargeGridStatic = false;
         [XmlElement("LargeGridMobile")]
         public bool LargeGridMobile = false;
-        [XmlElement("SmallGrid")]
-        public bool SmallGrid = false;
-        [XmlElement("MaxBlocks")]
         public int MaxBlocks = -1;
         [XmlElement("MaxMass")]
         public float MaxMass = -1;

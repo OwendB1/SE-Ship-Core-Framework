@@ -74,7 +74,7 @@ namespace ShipCoreFramework
 
         public static readonly BlockGroup Welders = new BlockGroup
         {
-            Name = "Drills",
+            Name = "Welders",
             BlockTypes = new List<BlockType>
             {
                 new BlockType("ShipWelder", "SmallShipWelder"),
@@ -255,11 +255,93 @@ namespace ShipCoreFramework
             }
         };
         // Concatenated block types
-        public static readonly BlockGroup StaticWeaponry = new BlockGroup { Name = "StaticWeaponry", BlockTypes = VanillaSmallGridFixedWeapons.BlockTypes.Concat(VanillaLargeGridFixedWeapons.BlockTypes).ToList() };
-        public static readonly BlockGroup Turrets = new BlockGroup { Name = "Turrets", BlockTypes = VanillaLargeGridTurretWeapons.BlockTypes.Concat(VanillaSmallGridTurretWeapons.BlockTypes).ToList() };
-        public static readonly BlockGroup Weaponry = new BlockGroup { Name = "Weaponry", BlockTypes = Turrets.BlockTypes.Concat(StaticWeaponry.BlockTypes).ToList() };
-        public static readonly BlockGroup Production = new BlockGroup { Name = "Production", BlockTypes = Refineries.BlockTypes.Concat(Assemblers.BlockTypes).ToList() };
-
+        public static readonly BlockGroup StaticWeaponry = new BlockGroup
+        {
+            Name = "StaticWeaponry",
+            BlockTypes = new List<BlockType>
+            {
+                new BlockType("SmallGatlingGun"),
+                new BlockType("SmallGatlingGun", "SmallGatlingGunWarfare2"),
+                new BlockType("SmallGatlingGun", "SmallBlockAutocannon"),
+                new BlockType("SmallMissileLauncher"),
+                new BlockType("SmallMissileLauncher", "SmallMissileLauncherWarfare2"),
+                new BlockType("SmallMissileLauncherReload", "SmallMissileLauncherReload"),
+                new BlockType("SmallMissileLauncherReload", "SmallBlockMediumCalibreGun"),
+                new BlockType("SmallMissileLauncherReload", "SmallRailgun"),
+                new BlockType("SmallMissileLauncher", "LargeMissileLauncher"),
+                new BlockType("SmallMissileLauncher", "LargeBlockLargeCalibreGun"),
+                new BlockType("SmallMissileLauncherReload", "LargeRailgun"),
+            }
+        };
+        public static readonly BlockGroup Turrets = new BlockGroup
+        {
+            Name = "Turrets",
+            BlockTypes = new List<BlockType>
+            {
+                new BlockType("LargeMissileTurret", "SmallBlockMediumCalibreTurret"),
+                new BlockType("LargeMissileTurret", "AutoCannonTurret"),
+                new BlockType("LargeMissileTurret", "SmallMissileTurret"),
+                new BlockType("LargeGatlingTurret", "SmallGatlingTurret"),
+                new BlockType("LargeMissileTurret"),
+                new BlockType("LargeMissileTurret", "LargeBlockMediumCalibreTurret"),
+                new BlockType("LargeMissileTurret", "LargeCalibreTurret"),
+                new BlockType("LargeGatlingTurret"),
+                new BlockType("InteriorTurret",  "LargeInteriorTurret"),
+            }
+        };
+        public static readonly BlockGroup Weaponry = new BlockGroup
+        {
+            Name = "Weaponry",
+            BlockTypes = new List<BlockType>
+            {
+                new BlockType("SmallGatlingGun"),
+                new BlockType("SmallGatlingGun", "SmallGatlingGunWarfare2"),
+                new BlockType("SmallGatlingGun", "SmallBlockAutocannon"),
+                new BlockType("SmallMissileLauncher"),
+                new BlockType("SmallMissileLauncher", "SmallMissileLauncherWarfare2"),
+                new BlockType("SmallMissileLauncherReload", "SmallMissileLauncherReload"),
+                new BlockType("SmallMissileLauncherReload", "SmallBlockMediumCalibreGun"),
+                new BlockType("SmallMissileLauncherReload", "SmallRailgun"),
+                new BlockType("SmallMissileLauncher", "LargeMissileLauncher"),
+                new BlockType("SmallMissileLauncher", "LargeBlockLargeCalibreGun"),
+                new BlockType("SmallMissileLauncherReload", "LargeRailgun"),
+                new BlockType("LargeMissileTurret", "SmallBlockMediumCalibreTurret"),
+                new BlockType("LargeMissileTurret", "AutoCannonTurret"),
+                new BlockType("LargeMissileTurret", "SmallMissileTurret"),
+                new BlockType("LargeGatlingTurret", "SmallGatlingTurret"),
+                new BlockType("LargeMissileTurret"),
+                new BlockType("LargeMissileTurret", "LargeBlockMediumCalibreTurret"),
+                new BlockType("LargeMissileTurret", "LargeCalibreTurret"),
+                new BlockType("LargeGatlingTurret"),
+                new BlockType("InteriorTurret",  "LargeInteriorTurret"),
+            }
+        };
+        public static readonly BlockGroup Production = new BlockGroup
+        {
+            Name = "Production",
+            BlockTypes = new List<BlockType>
+            {
+                new BlockType("Refinery", "Blast Furnace", 0.5f),
+                new BlockType("Refinery", "LargeRefineryIndustrial"),
+                new BlockType("Refinery", "LargeRefinery"),
+                new BlockType("Assembler", "BasicAssembler", 0.5f),
+                new BlockType("Assembler", "LargeAssemblerIndustrial"),
+                new BlockType("Assembler", "LargeAssembler")
+            }
+        };
+        public static readonly BlockGroup Tools = new BlockGroup
+        {
+            Name = "Tools",
+            BlockTypes = new List<BlockType>
+            {
+                new BlockType("ShipWelder", "SmallShipWelder"),
+                new BlockType("ShipWelder", "LargeShipWelder"),
+                new BlockType("ShipGrinder", "SmallShipGrinder"),
+                new BlockType("ShipGrinder", "LargeShipGrinder"),
+                new BlockType("ShipGrinder", "SmallShipGrinder"),
+                new BlockType("ShipGrinder", "LargeShipGrinder"),
+            }
+        };
         // Block limits
         /*
         private static readonly BlockLimit NoDrillsLimit = new BlockLimit
@@ -320,7 +402,6 @@ namespace ShipCoreFramework
             UniqueName = "Default No Core",
             MaxBlocks = 10000,
             MaxPCU = 25000,
-            SmallGrid = true,
             LargeGridMobile = true,
             LargeGridStatic = true,
             ForceBroadCast = false,
