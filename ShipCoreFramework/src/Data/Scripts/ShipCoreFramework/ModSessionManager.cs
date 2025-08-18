@@ -16,17 +16,11 @@ namespace ShipCoreFramework
     [MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation)]
     public class ModSessionManager : MySessionComponentBase
     {
-        public static bool IsClient => !(IsServer && IsDedicated);
-        private static bool IsDedicated => MyAPIGateway.Utilities.IsDedicated;
-        private static bool IsServer => MyAPIGateway.Multiplayer.IsServer;
-        public static bool IsActive => MyAPIGateway.Multiplayer.MultiplayerActive;
         public static ModConfig Config = new ModConfig();
-        private IMyPlayer _client = MyAPIGateway.Session != null ? MyAPIGateway.Session.LocalHumanPlayer : null;
+
         public override void LoadData()
         {
-            MyAPIGateway.Utilities.MessageEntered += Commands.OnChatCommand;
             Config = Config.LoadConfig();
-            Config.SaveConfig(true);
             MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed = Config.MaxPossibleSpeedMetersPerSecond;
             MyDefinitionManager.Static.EnvironmentDefinition.SmallShipMaxSpeed = Config.MaxPossibleSpeedMetersPerSecond;
             var speedDifferential = Config.MaxPossibleSpeedMetersPerSecond - 100.0f;
@@ -46,13 +40,15 @@ namespace ShipCoreFramework
                     Utils.Log($"AmmoType: {ammoId} was not sucessfully adjusted to match maxspeed");
             }
             
-            MyAPIGateway.Session.OnSessionReady += HookDamageHandler;
+            MyAPIGateway.Session.OnSessionReady += SessionReady;
             MyAPIGateway.Session.Factions.FactionStateChanged += FactionStateChanged;
+            MyAPIGateway.Utilities.MessageEntered += Commands.OnChatCommand;
         }
 
         private void FactionStateChanged(MyFactionStateChange action, long fromFactionId, long toFactionId,
             long factionId, long playerId)
         {
+            if (Config.SelectedNoCore == null) return;
             if (action != MyFactionStateChange.FactionMemberKick &&
                 action != MyFactionStateChange.FactionMemberLeave) return;
             Utils.Log(
@@ -74,7 +70,7 @@ namespace ShipCoreFramework
 
         protected override void UnloadData()
         {
-            MyAPIGateway.Session.OnSessionReady -= HookDamageHandler;
+            MyAPIGateway.Session.OnSessionReady -= SessionReady;
             var speedDifferential = Config.MaxPossibleSpeedMetersPerSecond - 100.0f;
             var ammoDefinitions = new List<string>
             {
@@ -104,9 +100,15 @@ namespace ShipCoreFramework
             Config.SaveConfig();
         }
 
-        private void HookDamageHandler()
+        private void SessionReady()
         {
+            if (Config.SelectedNoCore == null) return;
             MyAPIGateway.Session.DamageSystem.RegisterBeforeDamageHandler(99, CubeGridModifiers.GridClassDamageHandler);
+        }
+        
+        public override void UpdateAfterSimulation()
+        {
+            Utils.ProcessUiQueue();
         }
     }
 }

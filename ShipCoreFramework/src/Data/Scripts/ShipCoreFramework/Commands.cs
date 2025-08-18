@@ -171,7 +171,7 @@ namespace ShipCoreFramework
                 return;
             }
 
-            ModSessionManager.Config.DefaultNoCore = found;
+            ModSessionManager.Config.SelectedNoCore = found;
             ModSessionManager.Config.SaveConfig(true);
             Utils.ShowMessage($"Selected 'no core' config: {found.UniqueName} ({found.SubtypeId})");
         }

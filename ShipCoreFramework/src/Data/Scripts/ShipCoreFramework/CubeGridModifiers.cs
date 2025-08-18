@@ -1,4 +1,4 @@
-﻿#region
+#region
 
 using System;
 using System.Collections.Generic;
@@ -59,7 +59,7 @@ namespace ShipCoreFramework
         {
             var shipCore = gridLogic.ShipCore;
 
-            if (shipCore == ModSessionManager.Config.DefaultNoCore)return(shipCore.Modifiers);
+            if (shipCore == ModSessionManager.Config.SelectedNoCore) return (shipCore.Modifiers);
             var enhancedModifiers = new GridModifiers();
             if (enhancedModifiers == null) throw new ArgumentNullException(nameof(enhancedModifiers));
             //MyCore._syncIsMainCore

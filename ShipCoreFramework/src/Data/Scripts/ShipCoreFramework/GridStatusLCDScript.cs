@@ -20,9 +20,7 @@ namespace ShipCoreFramework
     internal class GridStatusLCDScript : MyTSSCommon
     {
         private static readonly float ScrollSpeed = 3; //pixels per update
-
-        private static readonly int
-            ScrollPauseUpdates = 15; //how many updates to say paused at the start and end when scrolling
+        private static readonly int ScrollPauseUpdates = 15; //how many updates to say paused at the start and end when scrolling
 
         private readonly Table _appliedModifiersTable = new Table
         {
@@ -58,13 +56,10 @@ namespace ShipCoreFramework
         private readonly IMyTerminalBlock _terminalBlock;
         private int _scrollTime;
 
-        public GridStatusLCDScript(IMyTextSurface surface, IngameCubeBlock block, Vector2 size) : base(surface, block,
-            size)
+        public GridStatusLCDScript(IMyTextSurface surface, IngameCubeBlock block, Vector2 size) : base(surface, block, size)
         {
-            _terminalBlock =
-                (IMyTerminalBlock)block; // internal stored m_block is the ingame interface which has no events, so can't unhook later on, therefore this field is required.
-            _terminalBlock.OnMarkForClose +=
-                BlockMarkedForClose; // required if you're gonna make use of Dispose() as it won't get called when block is removed or grid is cut/unloaded.
+            _terminalBlock = (IMyTerminalBlock)block; // internal stored m_block is the ingame interface which has no events, so can't unhook later on, therefore this field is required.
+            _terminalBlock.OnMarkForClose += BlockMarkedForClose; // required if you're going to make use of Dispose() as it won't get called when block is removed or grid is cut/unloaded.
 
             // Called when script is created.
             // This class is instanced per LCD that uses it, which means the same block can have multiple instances of this script aswell (e.g. a cockpit with all its screens set to use this script).
@@ -78,10 +73,8 @@ namespace ShipCoreFramework
 
         public override void Dispose()
         {
-            base.Dispose(); // do not remove
+            base.Dispose();
             _terminalBlock.OnMarkForClose -= BlockMarkedForClose;
-
-            // Called when script is removed for any reason, so that you can clean up stuff if you need to.
         }
 
         private void BlockMarkedForClose(IngameIMyEntity ent)
@@ -93,6 +86,7 @@ namespace ShipCoreFramework
         // it can't run every tick because the LCD is capped at 6fps anyway.
         public override void Run()
         {
+            if (ModSessionManager.Config.SelectedNoCore == null) return;
             try
             {
                 base.Run(); // do not remove
@@ -104,8 +98,7 @@ namespace ShipCoreFramework
 
                 Draw();
             }
-            catch (Exception
-                   e) // no reason to crash the entire game just for an LCD script, but do NOT ignore them either, nag user so they report it :}
+            catch (Exception e) // no reason to crash the entire game just for an LCD script, but do NOT ignore them either, nag user so they report it :}
             {
                 DrawError(e);
             }
@@ -236,7 +229,7 @@ namespace ShipCoreFramework
             foreach (var t in spritesToRender)
             {
                 var sprite = t;
-                if (scrollPosition.Y != 0) sprite.Position = sprite.Position - scrollPosition;
+                if (scrollPosition.Y != 0) sprite.Position -= scrollPosition;
                 frame.Add(sprite);
             }
 
@@ -276,7 +269,7 @@ namespace ShipCoreFramework
         {
             var sprite = MySprite.CreateText(text, "Monospace", Color.White, scale, TextAlignment.LEFT);
             sprite.Position =
-                position; // screenCorner + padding + new Vector2(0, y); // 16px from topleft corner of the visible surface
+                position; // screenCorner + padding + new Vector2(0, y); // 16px from top left corner of the visible surface
 
             positionAfter = position + new Vector2(0, TextUtils.GetTextHeight(text, scale));
 

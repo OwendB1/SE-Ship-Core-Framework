@@ -167,6 +167,7 @@ namespace ShipCoreFramework
 
         private void InitOnPhysicsChanged(IMyEntity obj)
         {
+            if (ModSessionManager.Config.SelectedNoCore == null) return;
             if (Grid?.Physics == null) return;
             
             Grid.OnPhysicsChanged -= InitOnPhysicsChanged;
@@ -527,6 +528,7 @@ namespace ShipCoreFramework
 
         public override void Close()
         {
+            if (ModSessionManager.Config.SelectedNoCore == null) return;
             GridsPerFactionClassManager.RemoveCubeGrid(this);
             GridsPerPlayerClassManager.RemoveCubeGrid(this);
             base.Close();

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ShipCore xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <SubtypeId>NO-CORE</SubtypeId>
-  <UniqueName>DEFAULT-NO-CORE-ALL-GRID-TYPES</UniqueName>
+  <UniqueName>ARCANE-NO-CORE-ALL-GRID-TYPES</UniqueName>
   <ForceBroadCast>false</ForceBroadCast>
   <ForceBroadCastRange>0</ForceBroadCastRange>
   <LargeGridStatic>true</LargeGridStatic>

@@ -15,30 +15,45 @@ namespace ShipCoreFramework
 {
     public static class Utils
     {
+        private struct PendingNotify
+        {
+            public readonly string Msg;
+            public readonly int Time;
+            public readonly string Font;
+            public readonly bool IsCombat;
+
+            public PendingNotify(string msg, int time, string font, bool isCombat)
+            {
+                Msg = msg;
+                Time = time;
+                Font = font;
+                IsCombat = isCombat;
+            }
+        }
+        
+        private static readonly Queue<PendingNotify> PendingNotifications = new Queue<PendingNotify>();
+            
         public static CoreLogic GetGridCore(IMyCubeGrid grid,ShipCore core)
         {
             if(grid==null || core==null){return null;}
             var fatTerminals = grid.GetFatBlocks<IMyTerminalBlock>();
 
-            foreach (var fatTerminal in fatTerminals)
-            {
-                var coreLogic = fatTerminal.GameLogic.GetAs<CoreLogic>();
-
-                if (coreLogic == null)
-                    continue;
-
-                if (coreLogic.SubtypeId == core.SubtypeId && coreLogic.SyncIsMainCore.Value)
-                    return coreLogic;
-            }
-
-            return null;
+            return fatTerminals.Select(fatTerminal => fatTerminal.GameLogic.GetAs<CoreLogic>())
+                .Where(coreLogic => coreLogic != null)
+                .FirstOrDefault(coreLogic => coreLogic.SubtypeId == core.SubtypeId && coreLogic.SyncIsMainCore.Value);
         }
-        public static void ShowNotification(string msg, int disappearTime = 10000, bool isCombatLog = false,
-            string font = MyFontEnum.Red)
+        public static void ShowNotification(string msg, int disappearTime = 10000, bool isCombatLog = false, string font = MyFontEnum.Red)
         {
-            if (isCombatLog && ModSessionManager.Config.CombatLogging == false) return;
             MyAPIGateway.Utilities.ShowMessage("[Ship Cores]: ", msg);
-            MyAPIGateway.Utilities.ShowNotification(msg, disappearTime, font);
+            PendingNotifications.Enqueue(new PendingNotify(msg, disappearTime, font, isCombatLog));
+        }
+        
+        public static void ProcessUiQueue()
+        {
+            if (PendingNotifications.Count <= 0) return;
+            var n = PendingNotifications.Dequeue();
+            if (n.IsCombat && ModSessionManager.Config.CombatLogging == false) return;
+            MyAPIGateway.Utilities.ShowNotification(n.Msg, n.Time, n.Font);
         }
         
         public static void ShowMessage(string msg, string tooltip = "[Ship Cores]: ")
@@ -175,7 +190,6 @@ namespace ShipCoreFramework
 
         public static float GetTextWidth(string text, float scale = 1f)
         {
-            //It might be more complex than this..?
             return text.Length * CharWidth * scale;
         }
 
@@ -184,7 +198,7 @@ namespace ShipCoreFramework
             return NumLines(text) * GetLineHeight(scale);
         }
 
-        public static int NumLines(string text)
+        private static int NumLines(string text)
         {
             var charDiff = text.Length - text.Replace("\n", string.Empty).Length;
 
