@@ -170,6 +170,7 @@ namespace ShipCoreFramework
             if (Grid?.Physics == null) return;
             
             Grid.OnPhysicsChanged -= InitOnPhysicsChanged;
+            if ((!Config.IncludeAiFactions && OwningFaction.IsEveryoneNpc()) || Config.IgnoreFactionTags.Contains(OwningFaction.Tag)) return;
             NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
             NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
         }
@@ -178,7 +179,7 @@ namespace ShipCoreFramework
         {
             List<IMyCubeGrid> subgrids;
             var main = Grid.GetMainCubeGrid(out subgrids);
-
+            
             if (main.EntityId == Grid.EntityId)
             {
                 _blocks.UnionWith(Grid.GetFatBlocks<MyCubeBlock>().Where(b => !b.IsPreview));
@@ -245,10 +246,8 @@ namespace ShipCoreFramework
 
             if (OwningFaction != null)
             {
-                if ((!Config.IncludeAiFactions && OwningFaction.IsEveryoneNpc()) || Config.IgnoreFactionTags.Contains(OwningFaction.Tag))
-                {
-                    return;
-                }
+                if ((!Config.IncludeAiFactions && OwningFaction.IsEveryoneNpc()) || Config.IgnoreFactionTags.Contains(OwningFaction.Tag)) return;
+                
                 GridsPerPlayerClassManager.RemoveCubeGrid(this);
                 GridsPerFactionClassManager.RemoveCubeGrid(this);
 

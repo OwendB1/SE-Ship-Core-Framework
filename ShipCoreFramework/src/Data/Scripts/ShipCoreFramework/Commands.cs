@@ -2,6 +2,7 @@
 
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 
@@ -59,6 +60,10 @@ namespace ShipCoreFramework
                 case "setworldspeed":
                     if (!CheckIfAdmin()) return;
                     SetWorldSpeed(args);
+                    break;
+                case "ignoretags":
+                case "ignoretag":
+                    IgnoreTags(args);
                     break;
                 default:
                     ShowHelp();
@@ -195,6 +200,99 @@ namespace ShipCoreFramework
             Utils.ShowMessage($"World speed limit set to {newSpeed} m/s (session config only).");
         }
 
+        private static void IgnoreTags(string[] args)
+        {
+            if (args.Length < 2)
+            {
+                Utils.ShowMessage("Usage: /core ignoretags list|add <tag>|remove <tag>");
+                return;
+            }
+
+            var action = args[1].ToLower();
+            switch (action)
+            {
+                case "list":
+                    ListIgnoredTags();
+                    break;
+                case "add":
+                    if (!CheckIfAdmin()) return;
+                    AddIgnoredTag(args);
+                    break;
+                case "remove":
+                    if (!CheckIfAdmin()) return;
+                    RemoveIgnoredTag(args);
+                    break;
+                default:
+                    Utils.ShowMessage("Usage: /core ignoretags list|add <tag>|remove <tag>");
+                    break;
+            }
+        }
+
+        private static void ListIgnoredTags()
+        {
+            var tags = ModSessionManager.Config.IgnoreFactionTags ?? (ModSessionManager.Config.IgnoreFactionTags = new List<string>());
+            if (tags.Count == 0)
+            {
+                Utils.ShowMessage("No ignored faction tags.");
+                return;
+            }
+            Utils.ShowMessage("Ignored faction tags: " + string.Join(", ", tags));
+        }
+
+        private static void AddIgnoredTag(string[] args)
+        {
+            if (args.Length < 3)
+            {
+                Utils.ShowMessage("Usage: /core ignoretags add <tag>");
+                return;
+            }
+
+            var tag = string.Join(" ", args.Skip(2)).Trim();
+            if (string.IsNullOrWhiteSpace(tag))
+            {
+                Utils.ShowMessage("Tag cannot be empty.");
+                return;
+            }
+
+            var tags = ModSessionManager.Config.IgnoreFactionTags ?? (ModSessionManager.Config.IgnoreFactionTags = new List<string>());
+            if (tags.Any(t => t.Equals(tag, StringComparison.OrdinalIgnoreCase)))
+            {
+                Utils.ShowMessage($"Tag '{tag}' is already ignored.");
+                return;
+            }
+
+            tags.Add(tag);
+            ModSessionManager.Config.SaveConfig(true);
+            Utils.ShowMessage($"Added ignored faction tag '{tag}'.");
+        }
+
+        private static void RemoveIgnoredTag(string[] args)
+        {
+            if (args.Length < 3)
+            {
+                Utils.ShowMessage("Usage: /core ignoretags remove <tag>");
+                return;
+            }
+
+            var tag = string.Join(" ", args.Skip(2)).Trim();
+            if (string.IsNullOrWhiteSpace(tag))
+            {
+                Utils.ShowMessage("Tag cannot be empty.");
+                return;
+            }
+
+            var tags = ModSessionManager.Config.IgnoreFactionTags ?? (ModSessionManager.Config.IgnoreFactionTags = new List<string>());
+            var removed = tags.RemoveAll(t => t.Equals(tag, StringComparison.OrdinalIgnoreCase));
+            if (removed == 0)
+            {
+                Utils.ShowMessage($"Tag '{tag}' was not in the ignore list.");
+                return;
+            }
+
+            ModSessionManager.Config.SaveConfig(true);
+            Utils.ShowMessage($"Removed ignored faction tag '{tag}'.");
+        }
+
         private static void ShowHelp()
         {
             var body =
@@ -228,7 +326,16 @@ Toggles debug mode.
 Toggles combat logging.
 
 /core setworldspeed <m/s>
-Sets the session max possible speed in m/s.";
+Sets the session max possible speed in m/s.
+
+/core ignoretags list
+Lists the current ignored faction tags.
+
+/core ignoretags add <tag>
+Adds a tag to the ignored faction tags. (Admin)
+
+/core ignoretags remove <tag>
+Removes a tag from the ignored faction tags. (Admin)";
 
             MyAPIGateway.Utilities.ShowMissionScreen(
                 "ShipCore Framework",
