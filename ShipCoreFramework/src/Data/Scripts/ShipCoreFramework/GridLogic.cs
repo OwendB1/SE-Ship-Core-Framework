@@ -38,8 +38,7 @@ namespace ShipCoreFramework
         private float BoostCoolDown => ShipCore.Modifiers.BoostCoolDown;
         private float ActiveDefenseDuration => ShipCore.ActiveDefenseModifiers.Duration;
         private float ActiveDefenseCoolDown => ShipCore.ActiveDefenseModifiers.Cooldown;
-        
-        public GridModifiers Modifiers = ModSessionManager.Config.DefaultNoCore.Modifiers;
+        public GridModifiers Modifiers => CubeGridModifiers.GetActiveModifiers(this);
 
         public IMyCubeGrid Grid;
         
@@ -233,7 +232,6 @@ namespace ShipCoreFramework
 
         private void ApplyModifiers(GridModifiers modifiers = null)
         {
-            Modifiers = CubeGridModifiers.GetActiveModifiers(this);
             foreach (var block in from block in _blocks
                      let terminalBlock = block as IMyTerminalBlock
                      where terminalBlock != null
@@ -308,9 +306,10 @@ namespace ShipCoreFramework
                 var countForSpecificBlock = limit.BlockGroups.SelectMany(g => g.BlockTypes).First(b => b.TypeId == Utils.GetBlockTypeId(obj) && b.SubtypeId == Utils.GetBlockSubtypeId(obj)).CountWeight;
 
                 Utils.Log($"{countWeight} | {countForSpecificBlock} | {limit.MaxCount}");
-                bool ValidDirection = true;
-                if (CoreBlock?.CoreBlock != null) { ValidDirection=IsValidDirection(CoreBlock.CoreBlock, obj, limit.AllowedDirections); } else { Utils.Log($"Log Direction Check: \nCoreBlock is null", 3); }
-                if ((countWeight + countForSpecificBlock > limit.MaxCount)||(!ValidDirection))
+                
+                var validDirection = true;
+                if (CoreBlock?.CoreBlock != null) { validDirection=IsValidDirection(CoreBlock.CoreBlock, obj, limit.AllowedDirections); } else { Utils.Log($"Log Direction Check: \nCoreBlock is null", 3); }
+                if (countWeight + countForSpecificBlock > limit.MaxCount||!validDirection)
                 {
                     Utils.Log("Removing block", 1);
                     Grid.RemoveBlock(obj);
@@ -382,18 +381,18 @@ namespace ShipCoreFramework
         private static readonly Dictionary<string, string> RotateLeftXY =new Dictionary<string, string>{{ "Forward", "Right" },{ "Right", "Backward" },{ "Backward", "Left" },{ "Left", "Forward" },{ "Up", "Up" },{ "Down", "Down" }};
         private static readonly Dictionary<string, string> RotateRightXY =new Dictionary<string, string>{{ "Forward", "Left" },{ "Left", "Backward"},{ "Backward", "Right" },{ "Right", "Forward" },{ "Up", "Up" },{ "Down", "Down" }};
 
-        public bool IsValidDirection(IMyCubeBlock myCore, IMySlimBlock block, List<DirectionType> AllowedDirections)
+        private static bool IsValidDirection(IMyCubeBlock myCore, IMySlimBlock block, List<DirectionType> allowedDirections)
         {
             if (myCore?.Orientation == null || block?.Orientation == null) { Utils.Log($"Log Direction Check: Orientation data missing", 3); return true; }
-            List<string> myCoreDirection = Convert.ToString(myCore.Orientation).Replace("[", "").Replace("]", "").Split(new char[] { ',', ':' }, StringSplitOptions.RemoveEmptyEntries).ToList();
-            List<string> blockDirection = Convert.ToString(block.Orientation).Replace("[", "").Replace("]", "").Split(new char[] { ',', ':' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+            var myCoreDirection = Convert.ToString(myCore.Orientation).Replace("[", "").Replace("]", "").Split(new char[] { ',', ':' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+            var blockDirection = Convert.ToString(block.Orientation).Replace("[", "").Replace("]", "").Split(new char[] { ',', ':' }, StringSplitOptions.RemoveEmptyEntries).ToList();
             myCoreDirection.RemoveAt(2);
             blockDirection.RemoveAt(2);
             myCoreDirection.RemoveAt(0);
             blockDirection.RemoveAt(0);
             Utils.Log($"Log Direction Check: \nCoreBlock:{myCoreDirection[0]}:{myCoreDirection[1]}\nBlockToCheck:{blockDirection[0]}:{blockDirection[1]}", 3);
             //XY Axis
-            DirectionType XYDirection = DirectionType.Forward;
+            DirectionType XYDirection;
             if (myCoreDirection[0] == blockDirection[0])
             {
                 XYDirection = DirectionType.Forward;
@@ -419,15 +418,7 @@ namespace ShipCoreFramework
                 XYDirection = DirectionType.Down;
             }
             Utils.Log($"Log Direction Check: Block {XYDirection}", 3);
-            if (AllowedDirections.Contains(XYDirection))//&& AllowedDirections.Contains(ZDirection)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-
+            return allowedDirections.Contains(XYDirection); //&& AllowedDirections.Contains(ZDirection)
         }
         public void WhackABlock(IMyCubeBlock block, PunishmentType harm, MyStringHash? customDamageType = null)
         {
@@ -471,20 +462,21 @@ namespace ShipCoreFramework
         }
         private void EnforceBlockPunishment(IMyCubeBlock block)
         {
-            if (block != null)
+            if (block == null) return;
+            foreach (var limit in ShipCore.BlockLimits)
             {
-                foreach (var limit in ShipCore.BlockLimits)
-                {
-                    var match = limit.BlockGroups.SelectMany(g => g.BlockTypes).Any(b => b.TypeId == Utils.GetBlockTypeId(block) && b.SubtypeId == Utils.GetBlockSubtypeId(block));
-                    if (!match) continue;
-                    var limitBlocks = BlocksPerLimit[limit];
-                    var countWeight = limitBlocks.Sum(l => l.Value);
-                    Utils.Log($"Block check: {limit.Name} | {countWeight} | {limit.MaxCount}");
-                    bool ValidDirection = true;
-                    if (CoreBlock?.CoreBlock != null && block?.SlimBlock != null && limit.AllowedDirections != null) { ValidDirection = IsValidDirection(CoreBlock.CoreBlock, block.SlimBlock, limit.AllowedDirections); } else { Utils.Log($"Log Direction Check: \nCoreBlock is null", 3); }
-                    if (countWeight <= limit.MaxCount && ValidDirection) continue;
-                    WhackABlock(block, limit.PunishmentType);
-                }
+                var match = limit.BlockGroups.SelectMany(g => g.BlockTypes).Any(b => b.TypeId == Utils.GetBlockTypeId(block) && b.SubtypeId == Utils.GetBlockSubtypeId(block));
+                if (!match) continue;
+                var limitBlocks = BlocksPerLimit[limit];
+                var countWeight = limitBlocks.Sum(l => l.Value);
+                Utils.Log($"Block check: {limit.Name} | {countWeight} | {limit.MaxCount}");
+                var validDirection = true;
+                if (CoreBlock?.CoreBlock != null && block.SlimBlock != null && limit.AllowedDirections != null)
+                { 
+                    validDirection = IsValidDirection(CoreBlock.CoreBlock, block.SlimBlock, limit.AllowedDirections);
+                } else Utils.Log("Log Direction Check: CoreBlock is null");
+                if (countWeight <= limit.MaxCount && validDirection) continue;
+                WhackABlock(block, limit.PunishmentType);
             }
         }
         private void EnforceBlockPunishment(IMyCubeGrid grid)
@@ -492,19 +484,23 @@ namespace ShipCoreFramework
             //Assume if method is called without a specific block we neet to check ALL BLOCKS
             var myGridLogic = grid.GetMainGridLogic();
             
-            foreach (MyCubeBlock _block in myGridLogic._blocks.ToList())
+            foreach (var block in myGridLogic._blocks.ToList())
             {
-                foreach (BlockLimit limit in myGridLogic.ShipCore.BlockLimits)
+                foreach (var limit in myGridLogic.ShipCore.BlockLimits)
                 {
-                    var match = limit.BlockGroups.SelectMany(g => g.BlockTypes).Any(b => b.TypeId == Utils.GetBlockTypeId(_block) && b.SubtypeId == Utils.GetBlockSubtypeId(_block));
+                    var match = limit.BlockGroups.SelectMany(g => g.BlockTypes).Any(b => b.TypeId == Utils.GetBlockTypeId(block) && b.SubtypeId == Utils.GetBlockSubtypeId(block));
                     if (!match) continue;
                     var limitBlocks = myGridLogic.BlocksPerLimit[limit];
                     var countWeight = limitBlocks.Sum(l => l.Value);
                     //Utils.Log($"Block check: {limit.Name} | {countWeight} | {limit.MaxCount}");
-                    bool ValidDirection = true;
-                    if (myGridLogic.CoreBlock?.CoreBlock != null && _block?.SlimBlock != null && limit.AllowedDirections != null) { ValidDirection = IsValidDirection(myGridLogic.CoreBlock.CoreBlock, _block.SlimBlock, limit.AllowedDirections); } else { Utils.Log($"Log Direction Check: \nCoreBlock is null", 3); }
-                    if (countWeight <= limit.MaxCount && ValidDirection) continue;
-                    WhackABlock(_block as IMyCubeBlock, limit.PunishmentType);
+                    var validDirection = true;
+                    if (myGridLogic.CoreBlock?.CoreBlock != null && block?.SlimBlock != null &&
+                        limit.AllowedDirections != null)
+                    {
+                        validDirection = IsValidDirection(myGridLogic.CoreBlock.CoreBlock, block.SlimBlock, limit.AllowedDirections);
+                    } else Utils.Log("Log Direction Check: CoreBlock is null"); 
+                    if (countWeight <= limit.MaxCount && validDirection) continue;
+                    WhackABlock(block, limit.PunishmentType);
                 }
             }
         }
@@ -513,12 +509,6 @@ namespace ShipCoreFramework
         {
             return ShipCore.ForceBroadCast == false ||
                    _blocks.OfType<IMyFunctionalBlock>().Any(block => block is IMyBeacon && block.Enabled);
-        }
-
-        private IEnumerable<BlockLimit> GetRelevantLimits(IMySlimBlock block)
-        {
-            return ShipCore.BlockLimits.Where(limit => limit.BlockGroups.Any(group => group.BlockTypes.Any(type =>
-                type.TypeId == Utils.GetBlockTypeId(block) && type.SubtypeId == Utils.GetBlockSubtypeId(block))));
         }
 
         private long GetMajorityOwner()
