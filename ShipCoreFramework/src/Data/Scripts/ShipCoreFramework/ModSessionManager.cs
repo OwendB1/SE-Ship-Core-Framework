@@ -84,16 +84,13 @@ namespace ShipCoreFramework
                     var ammoDefinition =
                         MyDefinitionManager.Static.GetAmmoDefinition(
                             new MyDefinitionId(typeof(MyObjectBuilder_AmmoDefinition), ammoId));
-                    if (ammoDefinition != null)
-                        ammoDefinition.DesiredSpeed -= speedDifferential;
-                    else
-                        Utils.Log($"AmmoType: {ammoId} was not sucessfully adjusted to match maxspeed");
+                    if (ammoDefinition != null) ammoDefinition.DesiredSpeed -= speedDifferential;
                 }
                 catch
                 {
-                    Utils.Log($"Vanilla AmmoType {ammoId} is missing.");
+                    // ignored
                 }
-            
+
             GridsPerFactionClassManager.Reset();
             GridsPerPlayerClassManager.Reset();
 
