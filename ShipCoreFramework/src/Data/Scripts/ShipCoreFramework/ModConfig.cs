@@ -17,7 +17,7 @@ namespace ShipCoreFramework
     {
         [XmlIgnore] private const string SelectedNoCoreKey = "ShipCore.SelectedNoCoreBlobV1";
         [XmlIgnore] private const string GlobalConfigFileName = "ShipCoreConfig_World.xml";
-        [XmlIgnore] private const string CoreManifestFileName = "ShipCoreConfig_Manifest.xml";
+        [XmlIgnore] private const string CoreManifestFileName = @"Data\ShipCoreConfig_Manifest.xml";
         [XmlIgnore] private const string BlockGroupsFileName = "ShipCoreConfig_Groups.xml";
         [XmlIgnore] private const string DefaultNoCoreFileName = "ShipCoreConfig_No_Core.xml";
         [XmlIgnore] public readonly List<ShipCore> NoCoreConfigs = new List<ShipCore>();

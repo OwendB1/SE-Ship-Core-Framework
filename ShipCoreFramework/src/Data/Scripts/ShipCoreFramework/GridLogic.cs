@@ -38,7 +38,7 @@ namespace ShipCoreFramework
         private float BoostCoolDown => ShipCore.Modifiers.BoostCoolDown;
         private float ActiveDefenseDuration => ShipCore.ActiveDefenseModifiers.Duration;
         private float ActiveDefenseCoolDown => ShipCore.ActiveDefenseModifiers.Cooldown;
-        public GridModifiers Modifiers => CubeGridModifiers.GetActiveModifiers(this);
+        public GridModifiers Modifiers => CubeGridModifiers.GetActiveModifiers(this) ;
 
         public IMyCubeGrid Grid;
         
