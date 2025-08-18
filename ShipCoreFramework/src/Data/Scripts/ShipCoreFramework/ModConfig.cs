@@ -70,7 +70,7 @@ namespace ShipCoreFramework
                 shipCoreWriter.Write(MyAPIGateway.Utilities.SerializeToXML(ShipCores[0]));
                 shipCoreWriter.Close();
 
-                if (!Constants.IsServer || SelectedNoCore == null) return;
+                if (!Constants.IsClient || SelectedNoCore == null) return;
                 var encodedCore = Encoding.UTF8.GetBytes(MyAPIGateway.Utilities.SerializeToXML(SelectedNoCore));
                 MyAPIGateway.Utilities.SetVariable(SelectedNoCoreKey, Convert.ToBase64String(encodedCore));
             }

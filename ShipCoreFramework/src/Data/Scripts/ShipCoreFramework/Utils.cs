@@ -65,20 +65,20 @@ namespace ShipCoreFramework
         {
             if (logPriority >= ModSessionManager.Config.LogLevel) MyLog.Default.WriteLine($"[{tooltip}]: {msg}");
 
-            if (logPriority >= ModSessionManager.Config.ClientOutputLogLevel)
-                MyAPIGateway.Utilities.ShowMessage($"[{tooltip}={logPriority}]: ", msg);
+            try
+            {
+                if (logPriority >= ModSessionManager.Config.ClientOutputLogLevel)
+                    MyAPIGateway.Utilities.ShowMessage($"[{tooltip}={logPriority}]: ", msg);
 
-            if (ModSessionManager.Config != null && ModSessionManager.Config.DebugMode)
-                MyAPIGateway.Utilities.ShowMessage($"[{tooltip}={logPriority}]: ", msg);
+                if (ModSessionManager.Config != null && ModSessionManager.Config.DebugMode)
+                    MyAPIGateway.Utilities.ShowMessage($"[{tooltip}={logPriority}]: ", msg);
+            }
+            catch (Exception)
+            {
+                // Ignore
+            }
         }
-
-        public static void LogException(Exception e)
-        {
-            Log($"Exception message = {e.Message}, Stack trace:\n{e.StackTrace}", 3);
-            if (ModSessionManager.Config != null && ModSessionManager.Config.DebugMode)
-                MyAPIGateway.Utilities.ShowMessage("[Ship Cores] Exception:",
-                    $"{e.Message}\nStack trace:\n{e.StackTrace}");
-        }
+        
         public static string GetBlockTypeId(IMyCubeBlock block)
         {
             return Convert.ToString(block.BlockDefinition.TypeId).Replace("MyObjectBuilder_", "");
@@ -128,19 +128,6 @@ namespace ShipCoreFramework
             var biggestGrid = grids.OfType<MyCubeGrid>().MaxBy(concrete => concrete.BlocksCount);
             subgrids = grids.Where(g => g.EntityId != biggestGrid.EntityId).ToList();
             return biggestGrid;
-        }
-
-        public static T[] ConcatArrays<T>(params T[][] p)
-        {
-            var position = 0;
-            var outputArray = new T[p.Sum(a => a.Length)];
-            foreach (var current in p)
-            {
-                Array.Copy(current, 0, outputArray, position, current.Length);
-                position += current.Length;
-            }
-
-            return outputArray;
         }
 
         public static List<ulong> GetGridRecipientIds(this IMyCubeGrid grid)
