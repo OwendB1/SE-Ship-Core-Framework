@@ -62,7 +62,7 @@ namespace ShipCoreFramework
                 blockGroupsWriter.Close();
                 Utils.Log($"Save Config: Saved {BlockGroupsFileName}", showInChat ? 3 : 0);
 
-                if (!Constants.IsClient || SelectedNoCore == null) return;
+                if (!Constants.IsServer || SelectedNoCore == null) return;
                 var encodedCore = Encoding.UTF8.GetBytes(MyAPIGateway.Utilities.SerializeToXML(SelectedNoCore));
                 MyAPIGateway.Utilities.SetVariable(SelectedNoCoreKey, Convert.ToBase64String(encodedCore));
             }
@@ -76,28 +76,28 @@ namespace ShipCoreFramework
             }
         }
 
-        public ModConfig LoadConfig()
+        public void LoadConfig()
         {
-            var globalSettings = new ModConfig();
-            
             //Get World Settings
             if (MyAPIGateway.Utilities.FileExistsInWorldStorage(GlobalConfigFileName, typeof(ModConfig)))
             {
-                using (var reader =
-                       MyAPIGateway.Utilities.ReadFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig)))
+                using (var reader = MyAPIGateway.Utilities.ReadFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig)))
                 {
                     var text = reader.ReadToEnd();
-                    var newGlobalSettings = MyAPIGateway.Utilities.SerializeFromXML<ModConfig>(text);
-                    if (newGlobalSettings == null)
-                        throw new Exception("Failed to load world config.");
-                    globalSettings = newGlobalSettings;
+                    var import = MyAPIGateway.Utilities.SerializeFromXML<ModConfig>(text);
+                    if (import == null) throw new Exception("Failed to load world config.");
+                    DebugMode = import.DebugMode;
+                    CombatLogging = import.CombatLogging;
+                    LogLevel = import.LogLevel;
+                    MaxPossibleSpeedMetersPerSecond = import.MaxPossibleSpeedMetersPerSecond;
+                    IncludeAiFactions = import.IncludeAiFactions;
                 }
             }
             else
             {
                 //Write Global Settings using predefined values
                 var globalConfigWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig));
-                globalConfigWriter.Write(MyAPIGateway.Utilities.SerializeToXML(globalSettings));
+                globalConfigWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this));
                 globalConfigWriter.Close();
             }
             
@@ -108,7 +108,7 @@ namespace ShipCoreFramework
                 Utils.ShowNotification("No NoCore is selected for this world. Admin: use /core select <name> to choose one.", 999999999);
             }
             else SelectedNoCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(Encoding.UTF8.GetString(Convert.FromBase64String(savedBlobB64)));
-
+            
             //Run Though Mods
             foreach (var mod in MyAPIGateway.Session.Mods)
             {
@@ -121,9 +121,8 @@ namespace ShipCoreFramework
 
                         if (newBlockGroups == null)
                             throw new Exception($"Failed to load block groups from Mod: {mod.FriendlyName}");
-                        globalSettings.BlockGroups.AddRange(newBlockGroups);
+                        BlockGroups.AddRange(newBlockGroups);
                         Utils.Log($"Loaded Groups From: {mod.FriendlyName}", 0, "Ship Core Config");
-                        
                     }
 
                 //Add default Core to list
@@ -135,7 +134,7 @@ namespace ShipCoreFramework
 
                         if (newNoCore == null)
                             throw new Exception($"Failed to load no-core from Mod: {mod.FriendlyName}");
-                        globalSettings.NoCoreConfigs.Add(newNoCore);
+                        NoCoreConfigs.Add(newNoCore);
                         Utils.Log($"Loaded No-Core Config From: {mod.FriendlyName}", 0, "Ship Core Config");
                     }
 
@@ -157,7 +156,7 @@ namespace ShipCoreFramework
                             var newShipCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(modText);
 
                             if (newShipCore == null){throw new Exception($"Failed to load ship core from file {shipCoreFilename} in Mod: {mod.FriendlyName}");}
-                            globalSettings.ShipCores.Add(newShipCore);
+                            ShipCores.Add(newShipCore);
                             Utils.Log($"Loaded Core {newShipCore.UniqueName} From: {mod.FriendlyName}", 0, "Ship Core Config");
                         }
                 }
@@ -166,14 +165,14 @@ namespace ShipCoreFramework
             ThrowErrorIfDuplicates(NoCoreConfigs, core => core.UniqueName);
             ThrowErrorIfDuplicates(ShipCores, core => core.UniqueName);
             ThrowErrorIfDuplicates(BlockGroups, groups => groups.Name);
-            Utils.Log($"NoCoreConfigs.Count = {globalSettings.NoCoreConfigs.Count}", 0, "Ship Core Config");
-            Utils.Log($"BlockGroups.Count = {globalSettings.BlockGroups.Count}", 0, "Ship Core Config");
+            Utils.Log($"NoCoreConfigs.Count = {NoCoreConfigs.Count}", 0, "Ship Core Config");
+            Utils.Log($"BlockGroups.Count = {BlockGroups.Count}", 0, "Ship Core Config");
 
-            foreach (var limit in globalSettings.ShipCores.SelectMany(core => core.BlockLimits))
+            foreach (var limit in ShipCores.SelectMany(core => core.BlockLimits))
             {
                 foreach(var shorthand in limit.BlockGroupsShortHand)
                 {
-                    foreach (var group in globalSettings.BlockGroups.Where(group => group.Name == shorthand))
+                    foreach (var group in BlockGroups.Where(group => group.Name == shorthand))
                     {
                         limit.BlockGroups.Add(group);
                         Utils.Log($"{group.Name} Count: {limit.BlockGroups.Count}",0, "Ship Core Config groups");
@@ -181,21 +180,18 @@ namespace ShipCoreFramework
                 }
             }
 
-            if (SelectedNoCore == null) return globalSettings;
+            if (SelectedNoCore == null) return;
             foreach(var limit in SelectedNoCore.BlockLimits)
             {
                 foreach(var shorthand in limit.BlockGroupsShortHand)
                 {
-                    foreach (var group in globalSettings.BlockGroups.Where(group => group.Name == shorthand))
+                    foreach (var group in BlockGroups.Where(group => group.Name == shorthand))
                     {
                         limit.BlockGroups.Add(group);
                         Utils.Log($"{group.Name} Count: {limit.BlockGroups.Count}",0, "Ship Core Config groups");
                     }
                 }
             }
-            
-            
-            return globalSettings;
         }
 
         private static void ThrowErrorIfDuplicates<T, TKey>(List<T> list, Func<T, TKey> selector)

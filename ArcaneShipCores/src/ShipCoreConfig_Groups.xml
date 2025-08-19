@@ -126,7 +126,7 @@
     </BlockTypes>
   </BlockGroup>
   <BlockGroup>
-    <Name>Drills</Name>
+    <Name>Welders</Name>
     <BlockTypes>
       <TypeId>ShipWelder</TypeId>
       <SubtypeId>SmallShipWelder</SubtypeId>

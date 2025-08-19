@@ -19,7 +19,6 @@ namespace ShipCoreFramework
     public class GridLogic : MyGameLogicComponent
     {
         private readonly HashSet<MyCubeBlock> _blocks = new HashSet<MyCubeBlock>();
-        private static ModConfig Config => ModSessionManager.Config;
         private readonly MyStringHash _damageTypeBlockLimit = MyStringHash.GetOrCompute("BlockLimitsViolation");
         public MyStringHash DamageTypeNoFlyZone = MyStringHash.GetOrCompute("NoFLyZoneViolation");
         public readonly Dictionary<BlockLimit, List<KeyValuePair<IMyCubeBlock, double>>> BlocksPerLimit = new Dictionary<BlockLimit, List<KeyValuePair<IMyCubeBlock, double>>>();
@@ -48,7 +47,7 @@ namespace ShipCoreFramework
 
         public long MajorityOwningPlayerId => GetMajorityOwner();
 
-        public ShipCore ShipCore => Config.GetShipCoreByTypeId(_shipCoreTypeId);
+        public ShipCore ShipCore => ModSessionManager.Config.GetShipCoreByTypeId(_shipCoreTypeId);
         
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {
@@ -166,17 +165,34 @@ namespace ShipCoreFramework
 
         private void InitOnPhysicsChanged(IMyEntity obj)
         {
-            if (ModSessionManager.Config.SelectedNoCore == null) return;
+            if (ModSessionManager.Config.SelectedNoCore == null)
+            {
+                Utils.Log("NOCORE is NULL for GRID");
+                return;
+            }
             if (Grid?.Physics == null) return;
             
             Grid.OnPhysicsChanged -= InitOnPhysicsChanged;
-            if ((!Config.IncludeAiFactions && OwningFaction.IsEveryoneNpc()) || Config.IgnoreFactionTags.Contains(OwningFaction.Tag)) return;
             NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
             NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
         }
         
         public override void UpdateOnceBeforeFrame()
         {
+            if (OwningFaction == null)
+            {
+                // Try again next frame—ownership often appears shortly after spawn/merge
+                NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
+                return;
+            }
+            
+            if (!ModSessionManager.Config.IncludeAiFactions && OwningFaction.IsEveryoneNpc() ||
+                ModSessionManager.Config.IgnoreFactionTags.Contains(OwningFaction.Tag))
+            {
+                NeedsUpdate = MyEntityUpdateEnum.NONE;
+                return;
+            }
+            
             List<IMyCubeGrid> subgrids;
             var main = Grid.GetMainCubeGrid(out subgrids);
             
@@ -189,11 +205,20 @@ namespace ShipCoreFramework
                 Utils.Log($"Delayed Init: subgrid {Grid.CustomName} (id: {Grid.EntityId})");
                 var mainLogic = main.GetMainGridLogic();
                 mainLogic._blocks.UnionWith(Grid.GetFatBlocks<MyCubeBlock>().Where(b => !b.IsPreview));
+                
                 Grid.OnBlockOwnershipChanged += mainLogic.OnBlockOwnershipChanged;
                 Grid.OnIsStaticChanged += mainLogic.OnIsStaticChanged;
                 Grid.OnBlockAdded += mainLogic.OnBlockAdded;
                 Grid.OnBlockRemoved += mainLogic.OnBlockRemoved;
+
+                foreach (var funcBlock in _blocks.OfType<IMyFunctionalBlock>())
+                {
+                    funcBlock.EnabledChanged += FuncBlockOnEnabledChanged;
+                    funcBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged;
+                }
+                
                 mainLogic.UpdateLimitsAndApplyModifiers();
+                Utils.Log("8");
                 return;
             }
 
@@ -246,7 +271,8 @@ namespace ShipCoreFramework
 
             if (OwningFaction != null)
             {
-                if ((!Config.IncludeAiFactions && OwningFaction.IsEveryoneNpc()) || Config.IgnoreFactionTags.Contains(OwningFaction.Tag)) return;
+                if (!ModSessionManager.Config.IncludeAiFactions && OwningFaction.IsEveryoneNpc() || 
+                    ModSessionManager.Config.IgnoreFactionTags.Contains(OwningFaction.Tag)) return;
                 
                 GridsPerPlayerClassManager.RemoveCubeGrid(this);
                 GridsPerFactionClassManager.RemoveCubeGrid(this);
@@ -517,9 +543,11 @@ namespace ShipCoreFramework
 
         public override void Close()
         {
-            if (ModSessionManager.Config.SelectedNoCore == null) return;
-            GridsPerFactionClassManager.RemoveCubeGrid(this);
-            GridsPerPlayerClassManager.RemoveCubeGrid(this);
+            if (ModSessionManager.Config.SelectedNoCore != null)
+            {
+                GridsPerFactionClassManager.RemoveCubeGrid(this); 
+                GridsPerPlayerClassManager.RemoveCubeGrid(this);
+            }
             base.Close();
         }
     }

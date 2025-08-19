@@ -13,19 +13,14 @@ using VRage.ModAPI;
 
 namespace ShipCoreFramework
 {
-    [MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation)]
+    [MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation, 0)]
     public class ModSessionManager : MySessionComponentBase
     {
         public static ModConfig Config = new ModConfig();
 
-        public override void BeforeStart()
-        {
-            base.BeforeStart();
-            Config = Config.LoadConfig();
-        }
-
         public override void LoadData()
         {
+            Config.LoadConfig();
             MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed = Config.MaxPossibleSpeedMetersPerSecond;
             MyDefinitionManager.Static.EnvironmentDefinition.SmallShipMaxSpeed = Config.MaxPossibleSpeedMetersPerSecond;
             var speedDifferential = Config.MaxPossibleSpeedMetersPerSecond - 100.0f;
@@ -76,6 +71,8 @@ namespace ShipCoreFramework
         protected override void UnloadData()
         {
             MyAPIGateway.Session.OnSessionReady -= SessionReady;
+            MyAPIGateway.Session.Factions.FactionStateChanged -= FactionStateChanged;
+            MyAPIGateway.Utilities.MessageEntered -= Commands.OnChatCommand;
             var speedDifferential = Config.MaxPossibleSpeedMetersPerSecond - 100.0f;
             var ammoDefinitions = new List<string>
             {
