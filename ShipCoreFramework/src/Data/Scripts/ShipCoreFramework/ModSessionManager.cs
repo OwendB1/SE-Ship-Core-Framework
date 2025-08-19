@@ -18,9 +18,14 @@ namespace ShipCoreFramework
     {
         public static ModConfig Config = new ModConfig();
 
+        public override void BeforeStart()
+        {
+            base.BeforeStart();
+            Config = Config.LoadConfig();
+        }
+
         public override void LoadData()
         {
-            Config = Config.LoadConfig();
             MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed = Config.MaxPossibleSpeedMetersPerSecond;
             MyDefinitionManager.Static.EnvironmentDefinition.SmallShipMaxSpeed = Config.MaxPossibleSpeedMetersPerSecond;
             var speedDifferential = Config.MaxPossibleSpeedMetersPerSecond - 100.0f;
