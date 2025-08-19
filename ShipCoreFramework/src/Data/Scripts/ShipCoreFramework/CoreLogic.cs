@@ -97,6 +97,7 @@ namespace ShipCoreFramework
             if (MyAPIGateway.TerminalControls == null) return;
 
             MyAPIGateway.TerminalControls.CustomControlGetter += CustomControlGetter;
+            CoreBlock.CubeGrid.OnGridMerge += OnGridMerge;
             RegisterToolbarActionsOnce();
             LimitRescheduler.Tick(CoreBlock);
         }
@@ -130,7 +131,10 @@ namespace ShipCoreFramework
         {
             if (ModSessionManager.Config.SelectedNoCore == null) return;
             if (CoreBlock?.CubeGrid == null) return;
-
+            
+            MyAPIGateway.TerminalControls.CustomControlGetter -= CustomControlGetter;
+            CoreBlock.CubeGrid.OnGridMerge -= OnGridMerge;
+            
             var grid = CoreBlock.CubeGrid;
             var gridLogic = grid.GameLogic?.GetAs<GridLogic>();
             if (gridLogic == null) return;
