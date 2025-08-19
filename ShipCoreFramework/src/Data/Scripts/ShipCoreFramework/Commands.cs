@@ -65,6 +65,10 @@ namespace ShipCoreFramework
                 case "ignoretag":
                     IgnoreTags(args);
                     break;
+                case "ignoreai":
+                    if (!CheckIfAdmin()) return;
+                    IgnoreAi();
+                    break;
                 default:
                     ShowHelp();
                     break;
@@ -229,9 +233,16 @@ namespace ShipCoreFramework
             }
         }
 
+        private static void IgnoreAi()
+        {
+            ModSessionManager.Config.IgnoreAiFactions = !ModSessionManager.Config.IgnoreAiFactions;
+            ModSessionManager.Config.SaveConfig(true);
+            Utils.ShowMessage($"Set AI factions ignore to {ModSessionManager.Config.IgnoreAiFactions}.");
+        }
+
         private static void ListIgnoredTags()
         {
-            var tags = ModSessionManager.Config.IgnoreFactionTags ?? (ModSessionManager.Config.IgnoreFactionTags = new List<string>());
+            var tags = ModSessionManager.Config.IgnoredFactionTags ?? (ModSessionManager.Config.IgnoredFactionTags = new List<string>());
             if (tags.Count == 0)
             {
                 Utils.ShowMessage("No ignored faction tags.");
@@ -255,7 +266,7 @@ namespace ShipCoreFramework
                 return;
             }
 
-            var tags = ModSessionManager.Config.IgnoreFactionTags ?? (ModSessionManager.Config.IgnoreFactionTags = new List<string>());
+            var tags = ModSessionManager.Config.IgnoredFactionTags ?? (ModSessionManager.Config.IgnoredFactionTags = new List<string>());
             if (tags.Any(t => t.Equals(tag, StringComparison.OrdinalIgnoreCase)))
             {
                 Utils.ShowMessage($"Tag '{tag}' is already ignored.");
@@ -282,7 +293,7 @@ namespace ShipCoreFramework
                 return;
             }
 
-            var tags = ModSessionManager.Config.IgnoreFactionTags ?? (ModSessionManager.Config.IgnoreFactionTags = new List<string>());
+            var tags = ModSessionManager.Config.IgnoredFactionTags ?? (ModSessionManager.Config.IgnoredFactionTags = new List<string>());
             var removed = tags.RemoveAll(t => t.Equals(tag, StringComparison.OrdinalIgnoreCase));
             if (removed == 0)
             {
@@ -336,7 +347,10 @@ Lists the current ignored faction tags.
 Adds a tag to the ignored faction tags. (Admin)
 
 /core ignoretags remove <tag>
-Removes a tag from the ignored faction tags. (Admin)";
+Removes a tag from the ignored faction tags. (Admin)
+
+/core ignoreai 
+Toggles ignore of ai on or off. (Admin)";
 
             MyAPIGateway.Utilities.ShowMissionScreen(
                 "ShipCore Framework",

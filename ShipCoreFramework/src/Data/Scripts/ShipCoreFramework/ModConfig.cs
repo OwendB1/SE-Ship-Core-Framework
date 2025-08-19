@@ -15,6 +15,8 @@ namespace ShipCoreFramework
     [XmlRoot("ModConfig")]
     public class ModConfig
     {
+        [XmlIgnore] private const string IgnoreAiKey = "ShipCore.IgnoreAiV1";
+        [XmlIgnore] private const string IgnoredFactionsKey = "ShipCore.IgnoredFactionsV1";
         [XmlIgnore] private const string SelectedNoCoreKey = "ShipCore.SelectedNoCoreBlobV1";
         [XmlIgnore] private const string GlobalConfigFileName = "ShipCoreConfig_World.xml";
         [XmlIgnore] private const string CoreManifestFileName = "ShipCoreConfig_Manifest.xml";
@@ -23,7 +25,9 @@ namespace ShipCoreFramework
         [XmlIgnore] public readonly List<ShipCore> NoCoreConfigs = new List<ShipCore>();
         [XmlIgnore] public readonly List<BlockGroup> BlockGroups = new List<BlockGroup>();
         [XmlIgnore] public readonly List<ShipCore> ShipCores = new List<ShipCore>();
+        [XmlIgnore] public List<string> IgnoredFactionTags = new List<string>();
         [XmlIgnore] public ShipCore SelectedNoCore;
+        [XmlIgnore] public bool IgnoreAiFactions;
         
         [XmlElement("DebugMode")] public bool DebugMode = false;
         [XmlElement("CombatLogging")] public bool CombatLogging = true;
@@ -31,9 +35,6 @@ namespace ShipCoreFramework
         [XmlElement("CLIENT_OUTPUT_LOG_LEVEL")]public int ClientOutputLogLevel = 2; //messages with logPriority >= this will get output to clients
 
         [XmlElement("MaxPossibleSpeedMetersPerSecond")] public float MaxPossibleSpeedMetersPerSecond = 300;
-
-        [XmlElement("IncludeAiFactions")] public bool IncludeAiFactions;
-        [XmlElement("IgnoreFactionTags")] public List<string> IgnoreFactionTags = new List<string>();
         [XmlElement("NoFlyZones")] public List<Zones> NoFlyZones = new List<Zones>();
         
         public ShipCore GetShipCoreByTypeId(string coreTypeId)
@@ -62,9 +63,9 @@ namespace ShipCoreFramework
                 blockGroupsWriter.Close();
                 Utils.Log($"Save Config: Saved {BlockGroupsFileName}", showInChat ? 3 : 0);
 
-                if (!Constants.IsServer || SelectedNoCore == null) return;
-                var encodedCore = Encoding.UTF8.GetBytes(MyAPIGateway.Utilities.SerializeToXML(SelectedNoCore));
-                MyAPIGateway.Utilities.SetVariable(SelectedNoCoreKey, Convert.ToBase64String(encodedCore));
+                Utils.SaveToSandbox(IgnoreAiKey, IgnoreAiFactions);
+                Utils.SaveToSandbox(IgnoredFactionsKey, IgnoredFactionTags);
+                Utils.SaveToSandbox(SelectedNoCoreKey, SelectedNoCore);
             }
             catch (Exception e)
             {
@@ -75,7 +76,7 @@ namespace ShipCoreFramework
                 globalConfigWriter.Close();
             }
         }
-
+        
         public void LoadConfig()
         {
             //Get World Settings
@@ -90,7 +91,6 @@ namespace ShipCoreFramework
                     CombatLogging = import.CombatLogging;
                     LogLevel = import.LogLevel;
                     MaxPossibleSpeedMetersPerSecond = import.MaxPossibleSpeedMetersPerSecond;
-                    IncludeAiFactions = import.IncludeAiFactions;
                 }
             }
             else
@@ -100,14 +100,10 @@ namespace ShipCoreFramework
                 globalConfigWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this));
                 globalConfigWriter.Close();
             }
-            
-            string savedBlobB64;
-            var hasAny = MyAPIGateway.Utilities.GetVariable(SelectedNoCoreKey, out savedBlobB64);
-            if (!hasAny)
-            {
-                Utils.ShowNotification("No NoCore is selected for this world. Admin: use /core select <name> to choose one.", 999999999);
-            }
-            else SelectedNoCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(Encoding.UTF8.GetString(Convert.FromBase64String(savedBlobB64)));
+
+            IgnoreAiFactions = Utils.LoadFromSandbox<bool>(IgnoreAiKey);
+            IgnoredFactionTags = Utils.LoadFromSandbox<List<string>>(IgnoredFactionsKey);
+            SelectedNoCore = Utils.LoadFromSandbox<ShipCore>(SelectedNoCoreKey);
             
             //Run Though Mods
             foreach (var mod in MyAPIGateway.Session.Mods)

@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game;
@@ -162,6 +163,24 @@ namespace ShipCoreFramework
         public static long GetGridOwner(IMyCubeGrid grid)
         {
             return grid.BigOwners.FirstOrDefault();
+        }
+        
+        public static T LoadFromSandbox<T>(string keyName)
+        {
+            string savedBlobB64;
+            var hasAny = MyAPIGateway.Utilities.GetVariable(keyName, out savedBlobB64);
+            if (!hasAny)
+            {
+                ShowNotification("No NoCore is selected for this world. Admin: use /core select <name> to choose one.", 999999999);
+            }
+            return MyAPIGateway.Utilities.SerializeFromXML<T>(Encoding.UTF8.GetString(Convert.FromBase64String(savedBlobB64)));
+        }
+        
+        public static void SaveToSandbox<T>(string keyName,T item)
+        {
+            if (!Constants.IsServer || item == null) return;
+            var encodedCore = Encoding.UTF8.GetBytes(MyAPIGateway.Utilities.SerializeToXML(item));
+            MyAPIGateway.Utilities.SetVariable(keyName, Convert.ToBase64String(encodedCore));
         }
     }
 

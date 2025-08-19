@@ -186,8 +186,8 @@ namespace ShipCoreFramework
                 return;
             }
             
-            if (!ModSessionManager.Config.IncludeAiFactions && OwningFaction.IsEveryoneNpc() ||
-                ModSessionManager.Config.IgnoreFactionTags.Contains(OwningFaction.Tag))
+            if (ModSessionManager.Config.IgnoreAiFactions && OwningFaction.IsEveryoneNpc() ||
+                ModSessionManager.Config.IgnoredFactionTags.Contains(OwningFaction.Tag))
             {
                 NeedsUpdate = MyEntityUpdateEnum.NONE;
                 return;
@@ -271,8 +271,8 @@ namespace ShipCoreFramework
 
             if (OwningFaction != null)
             {
-                if (!ModSessionManager.Config.IncludeAiFactions && OwningFaction.IsEveryoneNpc() || 
-                    ModSessionManager.Config.IgnoreFactionTags.Contains(OwningFaction.Tag)) return;
+                if (ModSessionManager.Config.IgnoreAiFactions && OwningFaction.IsEveryoneNpc() || 
+                    ModSessionManager.Config.IgnoredFactionTags.Contains(OwningFaction.Tag)) return;
                 
                 GridsPerPlayerClassManager.RemoveCubeGrid(this);
                 GridsPerFactionClassManager.RemoveCubeGrid(this);

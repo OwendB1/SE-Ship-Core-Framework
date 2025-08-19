@@ -86,13 +86,13 @@ namespace ShipCoreFramework
                 gridsEntry.Value.Clear();
         }
 
-        public static bool IsApplicableGrid(GridLogic gridLogic)
+        private static bool IsApplicableGrid(GridLogic gridLogic)
         {
-            if (!Config.IncludeAiFactions && gridLogic.OwningFaction != null &&
+            if (Config.IgnoreAiFactions && gridLogic.OwningFaction != null &&
                 gridLogic.OwningFaction.IsEveryoneNpc()) return false;
 
-            return Config.IgnoreFactionTags == null || gridLogic.OwningFaction == null ||
-                   !Config.IgnoreFactionTags.Contains(gridLogic.OwningFaction.Tag);
+            return Config.IgnoredFactionTags == null || gridLogic.OwningFaction == null ||
+                   !Config.IgnoredFactionTags.Contains(gridLogic.OwningFaction.Tag);
         }
 
         private static Dictionary<string, List<long>> GetDefaultPLayerGridsSet()
