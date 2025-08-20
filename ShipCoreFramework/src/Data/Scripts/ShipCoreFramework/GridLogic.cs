@@ -419,6 +419,8 @@ namespace ShipCoreFramework
         private static bool IsValidDirection(IMyCubeBlock myCore, IMySlimBlock block, List<DirectionType> allowedDirections)
         {
             if (myCore?.Orientation == null || block?.Orientation == null) { Utils.Log($"Log Direction Check: Orientation data missing", 3); return true; }
+            //if grid is on subgrid, ignore directional locking
+            if (myCore.CubeGrid!=block.CubeGrid) { Utils.Log($"Log Direction Check: Block is on subgrid and is ignored.", 3); return true; }
             var myCoreDirection = Convert.ToString(myCore.Orientation).Replace("[", "").Replace("]", "").Split(new char[] { ',', ':' }, StringSplitOptions.RemoveEmptyEntries).ToList();
             var blockDirection = Convert.ToString(block.Orientation).Replace("[", "").Replace("]", "").Split(new char[] { ',', ':' }, StringSplitOptions.RemoveEmptyEntries).ToList();
             myCoreDirection.RemoveAt(2);

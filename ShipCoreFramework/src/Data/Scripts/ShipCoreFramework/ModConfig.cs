@@ -24,7 +24,7 @@ namespace ShipCoreFramework
         [XmlIgnore] private const string DefaultNoCoreFileName = @"Data\ShipCoreConfig_No_Core.xml";
         [XmlIgnore] public readonly List<ShipCore> NoCoreConfigs = new List<ShipCore>();
         [XmlIgnore] public readonly List<BlockGroup> BlockGroups = new List<BlockGroup>();
-        [XmlIgnore]  public readonly List<ShipCore> ShipCores = new List<ShipCore>();
+        [XmlIgnore] public readonly List<ShipCore> ShipCores = new List<ShipCore>();
         [XmlIgnore] public List<string> IgnoredFactionTags = new List<string>();
         [XmlIgnore] public ShipCore SelectedNoCore;
         [XmlIgnore] public bool IgnoreAiFactions;
@@ -365,7 +365,7 @@ namespace ShipCoreFramework
 
         [XmlElement("PunishmentType")] public PunishmentType PunishmentType = PunishmentType.ShutOff;
 
-        [XmlElement("AllowedDirections")] public List<DirectionType> AllowedDirections = new List<DirectionType>{DirectionType.Forward,DirectionType.Backward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right};
+        [XmlElement("AllowedDirections")] public List<DirectionType> AllowedDirections;// = new List<DirectionType>{DirectionType.Forward,DirectionType.Backward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right};
     }
 
     [XmlRoot("BlockGroup")]
