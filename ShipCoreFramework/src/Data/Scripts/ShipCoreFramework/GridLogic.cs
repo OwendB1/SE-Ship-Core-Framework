@@ -97,9 +97,14 @@ namespace ShipCoreFramework
         
         public void ActivateDefense()
         {
-            if (ActiveDefenseEnabled || _activeDefenseCooldownTimer > 0f)
+            if(ActiveDefenseEnabled)
             {
-                Utils.ShowNotification("Active Defense is cooling down!", 1000);
+                Utils.ShowNotification($"Active Defense Time Remaining:{(_activeDefenseDurationTimer/60f).ToString("0.0")}", 1000);
+                return;
+            }
+            if (_activeDefenseCooldownTimer > 0f)
+            {
+                Utils.ShowNotification($"Active Defense is cooling down! Cooldown Time:{(_boostCooldownTimer/60f).ToString("0.0")}", 1000);
                 return;
             }
             ActiveDefenseEnabled = true;
@@ -109,9 +114,14 @@ namespace ShipCoreFramework
         
         public void ActivateBoost()
         {
-            if (BoostEnabled || _boostCooldownTimer > 0f)
+            if (BoostEnabled)
             {
-                Utils.ShowNotification("Boost is cooling down!", 1000);
+                Utils.ShowNotification($"Boost Time Remaining:{(_boostDurationTimer/60f).ToString("0.0")}", 1000);
+                return;
+            }
+            if (_boostCooldownTimer > 0f)
+            {
+                Utils.ShowNotification($"Boost is cooling down! Cooldown Time:{(_boostCooldownTimer/60f).ToString("0.0")}", 1000);
                 return;
             }
             BoostEnabled = true;
@@ -179,15 +189,15 @@ namespace ShipCoreFramework
         
         public override void UpdateOnceBeforeFrame()
         {
-            if (OwningFaction == null)
+            /*if (OwningFaction == null) a player can have no faction
             {
                 // Try again next frame—ownership often appears shortly after spawn/merge
                 NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
                 return;
-            }
+            }*/ 
             
-            if (ModSessionManager.Config.IgnoreAiFactions && OwningFaction.IsEveryoneNpc() ||
-                ModSessionManager.Config.IgnoredFactionTags.Contains(OwningFaction.Tag))
+            if (OwningFaction != null &&(ModSessionManager.Config.IgnoreAiFactions && OwningFaction.IsEveryoneNpc() ||
+                ModSessionManager.Config.IgnoredFactionTags.Contains(OwningFaction.Tag)))
             {
                 NeedsUpdate = MyEntityUpdateEnum.NONE;
                 return;

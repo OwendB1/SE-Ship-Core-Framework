@@ -19,17 +19,17 @@ namespace ShipCoreFramework
         [XmlIgnore] private const string IgnoredFactionsKey = "ShipCore.IgnoredFactionsV1";
         [XmlIgnore] private const string SelectedNoCoreKey = "ShipCore.SelectedNoCoreBlobV1";
         [XmlIgnore] private const string GlobalConfigFileName = "ShipCoreConfig_World.xml";
-        [XmlIgnore] private const string CoreManifestFileName = "ShipCoreConfig_Manifest.xml";
-        [XmlIgnore] private const string BlockGroupsFileName = "ShipCoreConfig_Groups.xml";
-        [XmlIgnore] private const string DefaultNoCoreFileName = "ShipCoreConfig_No_Core.xml";
+        [XmlIgnore] private const string CoreManifestFileName = @"Data\ShipCoreConfig_Manifest.xml";
+        [XmlIgnore] private const string BlockGroupsFileName = @"Data\ShipCoreConfig_Groups.xml";
+        [XmlIgnore] private const string DefaultNoCoreFileName = @"Data\ShipCoreConfig_No_Core.xml";
         [XmlIgnore] public readonly List<ShipCore> NoCoreConfigs = new List<ShipCore>();
         [XmlIgnore] public readonly List<BlockGroup> BlockGroups = new List<BlockGroup>();
-        [XmlIgnore] public readonly List<ShipCore> ShipCores = new List<ShipCore>();
+        [XmlIgnore]  public readonly List<ShipCore> ShipCores = new List<ShipCore>();
         [XmlIgnore] public List<string> IgnoredFactionTags = new List<string>();
         [XmlIgnore] public ShipCore SelectedNoCore;
         [XmlIgnore] public bool IgnoreAiFactions;
         
-        [XmlElement("DebugMode")] public bool DebugMode = false;
+        [XmlElement("DebugMode")] public bool DebugMode = true;
         [XmlElement("CombatLogging")] public bool CombatLogging = true;
         [XmlElement("LOG_LEVEL")]public int LogLevel = 0; //messages with logPriority >= this will get logged, less than will be ignored
         [XmlElement("CLIENT_OUTPUT_LOG_LEVEL")]public int ClientOutputLogLevel = 2; //messages with logPriority >= this will get output to clients
@@ -58,11 +58,12 @@ namespace ShipCoreFramework
                 globalConfigWriter.Close();
                 Utils.Log($"Save Config: Saved {GlobalConfigFileName}", showInChat ? 3 : 0);
 
-                var blockGroupsWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage(BlockGroupsFileName, typeof(BlockGroup[]));
+                /* NOT READ FROM World Storage, so does not need saved in world storage.
+                var blockGroupsWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage("ShipCoreConfig_Groups.xml", typeof(BlockGroup[]));
                 blockGroupsWriter.Write(MyAPIGateway.Utilities.SerializeToXML(BlockGroups));
                 blockGroupsWriter.Close();
                 Utils.Log($"Save Config: Saved {BlockGroupsFileName}", showInChat ? 3 : 0);
-
+                */
                 Utils.SaveToSandbox(IgnoreAiKey, IgnoreAiFactions);
                 Utils.SaveToSandbox(IgnoredFactionsKey, IgnoredFactionTags);
                 Utils.SaveToSandbox(SelectedNoCoreKey, SelectedNoCore);
@@ -102,9 +103,12 @@ namespace ShipCoreFramework
             }
 
             IgnoreAiFactions = Utils.LoadFromSandbox<bool>(IgnoreAiKey);
+            if(IgnoreAiFactions==null){IgnoreAiFactions=true;}
             IgnoredFactionTags = Utils.LoadFromSandbox<List<string>>(IgnoredFactionsKey);
+            if(IgnoredFactionTags==null){IgnoredFactionTags = new List<string>{"SPRT"};}
             SelectedNoCore = Utils.LoadFromSandbox<ShipCore>(SelectedNoCoreKey);
-            
+            if(SelectedNoCore == null){SelectedNoCore = DefaultNoCoreConfig.ShipCore;}
+            //if(SelectedNoCore==null)
             //Run Though Mods
             foreach (var mod in MyAPIGateway.Session.Mods)
             {
@@ -135,7 +139,7 @@ namespace ShipCoreFramework
                     }
 
                 if (!MyAPIGateway.Utilities.FileExistsInModLocation(CoreManifestFileName, mod)) continue;
-
+                Utils.Log($"Found Manifest in: {mod.FriendlyName}", 0, "Ship Core Config");
                 //Check the Core Manifest to get all cores in the mod
                 using (var reader = MyAPIGateway.Utilities.ReadFileInModLocation(CoreManifestFileName, mod))
                 {
@@ -146,15 +150,16 @@ namespace ShipCoreFramework
 
                     //Go get ship cores
                     foreach (var shipCoreFilename in coreManifest.ShipCoreFilenames)
-                        using (var textReader = MyAPIGateway.Utilities.ReadFileInModLocation(shipCoreFilename, mod))
-                        {
-                            var modText = textReader.ReadToEnd();
-                            var newShipCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(modText);
+                        if (MyAPIGateway.Utilities.FileExistsInModLocation(shipCoreFilename, mod))
+                            using (var textReader = MyAPIGateway.Utilities.ReadFileInModLocation(shipCoreFilename, mod))
+                            {
+                                var modText = textReader.ReadToEnd();
+                                var newShipCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(modText);
 
-                            if (newShipCore == null){throw new Exception($"Failed to load ship core from file {shipCoreFilename} in Mod: {mod.FriendlyName}");}
-                            ShipCores.Add(newShipCore);
-                            Utils.Log($"Loaded Core {newShipCore.UniqueName} From: {mod.FriendlyName}", 0, "Ship Core Config");
-                        }
+                                if (newShipCore == null){throw new Exception($"Failed to load ship core from file {shipCoreFilename} in Mod: {mod.FriendlyName}");}
+                                ShipCores.Add(newShipCore);
+                                Utils.Log($"Loaded Core {newShipCore.UniqueName} From: {mod.FriendlyName}", 0, "Ship Core Config");
+                            }
                 }
             }
 

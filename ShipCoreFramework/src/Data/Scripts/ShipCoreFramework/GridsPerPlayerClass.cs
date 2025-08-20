@@ -9,7 +9,7 @@ namespace ShipCoreFramework
 {
     public static class GridsPerPlayerClassManager
     {
-        private static readonly Dictionary<long, Dictionary<string, List<long>>> PerPlayer =
+        public static readonly Dictionary<long, Dictionary<string, List<long>>> PerPlayer =
             new Dictionary<long, Dictionary<string, List<long>>>();
 
         private static ModConfig Config => ModSessionManager.Config;

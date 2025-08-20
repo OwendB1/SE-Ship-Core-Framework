@@ -271,19 +271,19 @@ namespace ShipCoreFramework
             if (_actionsRegistered) return;
             _actionsRegistered = true;
 
-            var boost = MyAPIGateway.TerminalControls.CreateAction<IMyTerminalBlock>("ShipCore_ActivateBoost");
+            var boost = MyAPIGateway.TerminalControls.CreateAction<IMyBeacon>("ShipCore_ActivateBoost");
             boost.Name = new StringBuilder("Activate Boost");
-            boost.Icon = @"Textures\GUI\Icons\Actions\SwitchOn.dds";
+            boost.Icon = @"Textures\BoostButton_Sad_Static.png";
             boost.ValidForGroups = false;
             boost.Action = b => { var l = b?.GameLogic?.GetAs<CoreLogic>(); l?.TriggerBoostFromClient(); };
-            MyAPIGateway.TerminalControls.AddAction<IMyTerminalBlock>(boost);
+            MyAPIGateway.TerminalControls.AddAction<IMyBeacon>(boost);
 
-            var defense = MyAPIGateway.TerminalControls.CreateAction<IMyTerminalBlock>("ShipCore_ActivateDefense");
+            var defense = MyAPIGateway.TerminalControls.CreateAction<IMyBeacon>("ShipCore_ActivateDefense");
             defense.Name = new StringBuilder("Activate Defense");
-            defense.Icon = @"Textures\GUI\Icons\Actions\SwitchOn.dds";
+            defense.Icon = @"Textures\BoostButton_Sad_Static.png";
             defense.ValidForGroups = false;
             defense.Action = b => { var l = b?.GameLogic?.GetAs<CoreLogic>(); l?.TriggerDefenseFromClient(); };
-            MyAPIGateway.TerminalControls.AddAction<IMyTerminalBlock>(defense);
+            MyAPIGateway.TerminalControls.AddAction<IMyBeacon>(defense);
         }
 
         private void UpdateBeacon()

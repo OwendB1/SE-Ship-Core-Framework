@@ -5,6 +5,7 @@ using System.Linq;
 using System.Collections.Generic;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
+using Sandbox.Game.Entities;
 
 #endregion
 
@@ -68,6 +69,9 @@ namespace ShipCoreFramework
                 case "ignoreai":
                     if (!CheckIfAdmin()) return;
                     IgnoreAi();
+                    break;
+                case "limit":
+                    ShipClassLimit();
                     break;
                 default:
                     ShowHelp();
@@ -305,6 +309,125 @@ namespace ShipCoreFramework
             Utils.ShowMessage($"Removed ignored faction tag '{tag}'.");
         }
 
+        private static void ShipClassLimit()
+        {
+            var targetGrid = Utils.RaycastForGrid(50.0);
+            
+            if (targetGrid == null)
+            {
+                Utils.ShowMessage("No grid found within 50m of crosshairs.");
+                return;
+            }
+
+            var player = MyAPIGateway.Session?.Player;
+            if (player == null) return;
+
+            // Check if player owns the grid
+            if (!targetGrid.BigOwners.Contains(player.IdentityId))
+            {
+                if(CheckIfAdmin())
+                {
+                    Utils.ShowMessage($"This Grid is owned by: {player.DisplayName}");
+                }
+                else
+                {
+                    Utils.ShowMessage("You don't own this grid.");
+                    return;
+                }
+            }
+            //            
+            var gridLogic = targetGrid.GetMainGridLogic();
+            if (gridLogic?.ShipCore == null)
+            {
+                Utils.ShowMessage($"Grid '{targetGrid.CustomName}' has no ship core or configuration.");
+                return;
+            }
+            var shipCore = gridLogic.ShipCore;
+            if (gridLogic.OwningFaction != null &&(ModSessionManager.Config.IgnoreAiFactions && gridLogic.OwningFaction.IsEveryoneNpc() || ModSessionManager.Config.IgnoredFactionTags.Contains(gridLogic.OwningFaction.Tag)))
+            {
+                Utils.ShowMessage($"Grid '{targetGrid.CustomName}' is ignored.");
+                return;
+            }
+            var limits = gridLogic.BlocksPerLimit;
+            var concreteGrid = targetGrid as MyCubeGrid;
+
+            var body = $"Grid: {targetGrid.CustomName}\nShip Class: {shipCore.UniqueName}\n\n";
+            if(gridLogic.ShipCore.MaxPerPlayer>0)
+            {
+                body+=$"Per Player Limit:{GridsPerPlayerClassManager.PerPlayer[player.IdentityId][gridLogic.ShipCore.SubtypeId].Count}/{gridLogic.ShipCore.MaxPerPlayer}\n";
+            }
+            if(gridLogic.OwningFaction != null && (gridLogic.ShipCore.MaxPerFaction>0))
+            {
+                body+=$"Per Player Limit:{GridsPerFactionClassManager.PerFaction[player.IdentityId][gridLogic.ShipCore.SubtypeId].Count}/{gridLogic.ShipCore.MaxPerFaction}\n";
+            }            
+            // Grid Statistics
+            body += "Grid Statistics:\n";
+            
+            // Block Count
+            var blockCountStatus = shipCore.MaxBlocks > 0 ? $"{concreteGrid?.BlocksCount} / {shipCore.MaxBlocks}" : concreteGrid?.BlocksCount.ToString();
+            var blockCountPercent = shipCore.MaxBlocks > 0 ? (concreteGrid?.BlocksCount / (float)shipCore.MaxBlocks * 100) : 0;
+            body += $"  Blocks: {blockCountStatus}";
+            if (shipCore.MaxBlocks > 0)
+                body += $" ({blockCountPercent:F1}%)";
+            body += "\n";
+            
+            // Mass
+            var massStatus = shipCore.MaxMass > 0 ? $"{concreteGrid?.Mass:F0} / {shipCore.MaxMass:F0} kg" : $"{concreteGrid?.Mass:F0} kg";
+            var massPercent = shipCore.MaxMass > 0 ? (concreteGrid?.Mass / shipCore.MaxMass * 100) : 0;
+            body += $"  Mass: {massStatus}";
+            if (shipCore.MaxMass > 0)
+                body += $" ({massPercent:F1}%)";
+            body += "\n";
+            
+            // PCU
+            var pcuStatus = shipCore.MaxPCU > 0 ? $"{concreteGrid?.BlocksPCU} / {shipCore.MaxPCU}" : concreteGrid?.BlocksPCU.ToString();
+            var pcuPercent = shipCore.MaxPCU > 0 ? (concreteGrid?.BlocksPCU / (float)shipCore.MaxPCU * 100) : 0;
+            body += $"  PCU: {pcuStatus}";
+            if (shipCore.MaxPCU > 0)
+                body += $" ({pcuPercent:F1}%)";
+            body += "\n\n";
+            
+            if (shipCore.BlockLimits.Length == 0)
+            {
+                body += "No block limits configured for this ship class.";
+            }
+            else
+            {
+                body += "Block Limits:\n";
+                foreach (var blockLimit in shipCore.BlockLimits)
+                {
+                    var usedBlocks = limits.ContainsKey(blockLimit) ? limits[blockLimit] : new List<KeyValuePair<IMyCubeBlock, double>>();
+                    var totalWeight = usedBlocks.Sum(kvp => kvp.Value);
+                    var percentage = blockLimit.MaxCount > 0 ? (totalWeight / blockLimit.MaxCount * 100) : 0;
+                    
+                    body += $"\n{blockLimit.Name}:\n";
+                    body += $"  Used: {totalWeight:F1} / {blockLimit.MaxCount} ({percentage:F1}%)\n";
+                    body += $"  Punishment: {blockLimit.PunishmentType}\n";
+                    
+                    if (usedBlocks.Count > 0 && usedBlocks.Count <= 10) // Show individual blocks if not too many
+                    {
+                        body += "  Blocks:\n";
+                        foreach (var block in usedBlocks.Take(10))
+                        {
+                            var blockName = block.Key.DisplayNameText ?? block.Key.DefinitionDisplayNameText;
+                            body += $"    - {blockName} (Weight: {block.Value})\n";
+                        }
+                        if (usedBlocks.Count > 10)
+                        {
+                            body += $"    ... and {usedBlocks.Count - 10} more\n";
+                        }
+                    }
+                }
+            }
+
+            MyAPIGateway.Utilities.ShowMissionScreen(
+                "Ship Core Framework",
+                $"Ship Class Limits - {targetGrid.CustomName}",
+                "Block Limits & Usage",
+                body
+            );
+        }
+
         private static void ShowHelp()
         {
             var body =
@@ -350,7 +473,10 @@ Adds a tag to the ignored faction tags. (Admin)
 Removes a tag from the ignored faction tags. (Admin)
 
 /core ignoreai 
-Toggles ignore of ai on or off. (Admin)";
+Toggles ignore of ai on or off. (Admin)
+
+/core limit
+Raycasts from crosshairs to find a grid and displays its ship class limits and current usage.";
 
             MyAPIGateway.Utilities.ShowMissionScreen(
                 "ShipCore Framework",

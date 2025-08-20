@@ -9,7 +9,7 @@ namespace ShipCoreFramework
 {
     public static class GridsPerFactionClassManager
     {
-        private static readonly Dictionary<long, Dictionary<string, List<long>>> PerFaction =
+        public static readonly Dictionary<long, Dictionary<string, List<long>>> PerFaction =
             new Dictionary<long, Dictionary<string, List<long>>>();
 
         private static ModConfig Config => ModSessionManager.Config;

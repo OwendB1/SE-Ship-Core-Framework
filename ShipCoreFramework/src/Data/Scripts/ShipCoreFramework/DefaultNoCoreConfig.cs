@@ -25,7 +25,7 @@ namespace ShipCoreFramework
                     MaxCount = 10f,
                     TurnedOffByNoFlyZone = true,
                     PunishmentType = PunishmentType.Delete,
-                    AllowedDirections =new List<DirectionType> {DirectionType.Forward,DirectionType.Backward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right},
+                    AllowedDirections =new List<DirectionType> {DirectionType.Forward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right},
                 },
                 new BlockLimit
                 {
@@ -34,7 +34,7 @@ namespace ShipCoreFramework
                     MaxCount = 1f,
                     TurnedOffByNoFlyZone = true,
                     PunishmentType = PunishmentType.Delete,
-                    AllowedDirections =new List<DirectionType> {DirectionType.Forward,DirectionType.Backward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right},
+                    AllowedDirections =new List<DirectionType> {DirectionType.Forward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right},
                 },
                 new BlockLimit
                 {

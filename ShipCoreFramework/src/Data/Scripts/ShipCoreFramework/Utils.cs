@@ -171,16 +171,38 @@ namespace ShipCoreFramework
             var hasAny = MyAPIGateway.Utilities.GetVariable(keyName, out savedBlobB64);
             if (!hasAny)
             {
-                ShowNotification("No NoCore is selected for this world. Admin: use /core select <name> to choose one.", 999999999);
+                ShowNotification($"{keyName} has no value", 100000); 
             }
+            if(string.IsNullOrWhiteSpace(savedBlobB64)){return default(T);}
             return MyAPIGateway.Utilities.SerializeFromXML<T>(Encoding.UTF8.GetString(Convert.FromBase64String(savedBlobB64)));
         }
         
         public static void SaveToSandbox<T>(string keyName,T item)
         {
+            //Maybe IsClient?
             if (!Constants.IsServer || item == null) return;
             var encodedCore = Encoding.UTF8.GetBytes(MyAPIGateway.Utilities.SerializeToXML(item));
             MyAPIGateway.Utilities.SetVariable(keyName, Convert.ToBase64String(encodedCore));
+        }
+        public static IMyCubeGrid RaycastForGrid(double maxDistance = 50.0)
+        {
+            var player = MyAPIGateway.Session?.Player;
+            if (player?.Character == null) return null;
+
+            var worldMatrix = player.Character.WorldMatrix;
+            var startPos = worldMatrix.Translation + worldMatrix.Forward * 1.5; // Start slightly in front of character
+            var endPos = startPos + worldMatrix.Forward * maxDistance;
+
+            var hits = new List<IHitInfo>();
+            MyAPIGateway.Physics.CastRay(startPos, endPos, hits);
+
+            foreach (var hit in hits)
+            {
+                var grid = hit.HitEntity as IMyCubeGrid;
+                if (grid != null) return grid;
+            }
+
+            return null;
         }
     }
 
