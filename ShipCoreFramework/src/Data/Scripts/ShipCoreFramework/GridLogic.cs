@@ -196,7 +196,7 @@ namespace ShipCoreFramework
                 return;
             }*/ 
             
-            if (OwningFaction != null &&(ModSessionManager.Config.IgnoreAiFactions && OwningFaction.IsEveryoneNpc() ||
+            if (OwningFaction != null && (ModSessionManager.Config.IgnoreAiFactions && OwningFaction.IsEveryoneNpc() ||
                 ModSessionManager.Config.IgnoredFactionTags.Contains(OwningFaction.Tag)))
             {
                 NeedsUpdate = MyEntityUpdateEnum.NONE;
