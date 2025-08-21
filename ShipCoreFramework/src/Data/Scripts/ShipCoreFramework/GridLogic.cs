@@ -31,6 +31,8 @@ namespace ShipCoreFramework
         private float _activeDefenseCooldownTimer;
         private float _activeDefenseDurationTimer;
 
+        public bool _NeedsSubgridsRedone=false;
+
         public CoreLogic CoreBlock => Utils.GetGridCore(Grid,ShipCore);
 
         private float BoostDuration => ShipCore.Modifiers.BoostDuration;
@@ -129,9 +131,27 @@ namespace ShipCoreFramework
             Utils.ShowNotification("Boost Engaged!", 1000);
         }
 
-        public override void UpdateBeforeSimulation()
+        public override void UpdateAfterSimulation()
         {
-            base.UpdateBeforeSimulation();
+            base.UpdateAfterSimulation();
+            if(_NeedsSubgridsRedone)
+            {
+                List<IMyCubeGrid> subgrids;
+                var MainGrid = Grid.GetMainCubeGrid(out subgrids);
+                foreach(IMyCubeGrid grid in subgrids)
+                {
+                    grid.OnBlockOwnershipChanged -= OnBlockOwnershipChanged;
+                    grid.OnIsStaticChanged -= OnIsStaticChanged;
+                    grid.OnBlockAdded -= OnBlockAdded;
+                    grid.OnBlockRemoved -= OnBlockRemoved;     
+                    grid.OnBlockOwnershipChanged += OnBlockOwnershipChanged;
+                    grid.OnIsStaticChanged += OnIsStaticChanged;
+                    grid.OnBlockAdded += OnBlockAdded;
+                    grid.OnBlockRemoved += OnBlockRemoved;     
+                    var fatBlocks = grid.GetFatBlocks<MyCubeBlock>().Where(b => b.IsPreview == false);
+                    _blocks.UnionWith(fatBlocks);
+                }
+            }
             SpeedEnforcement.EnforceSpeedLimit(this);
             if (_shipCoreTypeId == string.Empty) return;
             NoFlyZones.EnforceNoFlyZones(this);
@@ -392,25 +412,14 @@ namespace ShipCoreFramework
         
         private void OnGridMerge(IMyCubeGrid main, IMyCubeGrid sub)
         {
-            var mainLogic = main.GetMainGridLogic();
-            if (mainLogic.Grid.EntityId == main.EntityId) // this check makes sure that the blocks and events are always added to the biggest grid instead of the rotor order
-            {
-                sub.OnBlockOwnershipChanged += mainLogic.OnBlockOwnershipChanged;
-                sub.OnIsStaticChanged += mainLogic.OnIsStaticChanged;
-                sub.OnBlockAdded += mainLogic.OnBlockAdded;
-                sub.OnBlockRemoved += mainLogic.OnBlockRemoved;
-                var fatBlocks = sub.GetFatBlocks<MyCubeBlock>().Where(b => b.IsPreview == false);
-                mainLogic._blocks.UnionWith(fatBlocks);
-            }
-            else
-            {
-                main.OnBlockOwnershipChanged += mainLogic.OnBlockOwnershipChanged;
-                main.OnIsStaticChanged += mainLogic.OnIsStaticChanged;
-                main.OnBlockAdded += mainLogic.OnBlockAdded;
-                main.OnBlockRemoved += mainLogic.OnBlockRemoved;
-                var fatBlocks = main.GetFatBlocks<MyCubeBlock>().Where(b => b.IsPreview == false);
-                mainLogic._blocks.UnionWith(fatBlocks);
-            }
+            Utils.Log($"OnGridMerge: {main.CustomName} Sub: {sub.CustomName})");
+            List<IMyCubeGrid> mainsubgrids;
+            List<IMyCubeGrid> subgrids;
+            var MainGrid = main.GetMainCubeGrid(out mainsubgrids);
+            var mainLogic = MainGrid.GetMainGridLogic();
+            mainLogic._NeedsSubgridsRedone=true;
+            var subLogic = sub.GetMainCubeGrid(out subgrids).GetMainGridLogic();
+            subLogic.Close();
         }
         private static readonly Dictionary<string, string> OppositeDirections =new Dictionary<string, string>{{ "Forward", "Backward" },{ "Backward", "Forward" },{ "Left", "Right" },{ "Right", "Left" },{ "Up", "Down" },{ "Down", "Up" }};
         private static readonly Dictionary<string, string> RotateLeftXY =new Dictionary<string, string>{{ "Forward", "Right" },{ "Right", "Backward" },{ "Backward", "Left" },{ "Left", "Forward" },{ "Up", "Up" },{ "Down", "Down" }};
@@ -500,18 +509,20 @@ namespace ShipCoreFramework
         private void EnforceBlockPunishment(IMyCubeBlock block)
         {
             if (block == null) return;
-            foreach (var limit in ShipCore.BlockLimits)
+            var myGridLogic = block.CubeGrid.GetMainGridLogic();
+            foreach (var limit in myGridLogic.ShipCore.BlockLimits)
             {
                 var match = limit.BlockGroups.SelectMany(g => g.BlockTypes).Any(b => b.TypeId == Utils.GetBlockTypeId(block) && b.SubtypeId == Utils.GetBlockSubtypeId(block));
                 if (!match) continue;
-                var limitBlocks = BlocksPerLimit[limit];
+                var limitBlocks = myGridLogic.BlocksPerLimit[limit];
                 var countWeight = limitBlocks.Sum(l => l.Value);
-                Utils.Log($"Block check: {limit.Name} | {countWeight} | {limit.MaxCount}");
+                //Utils.Log($"Block check: {limit.Name} | {countWeight} | {limit.MaxCount}");
                 var validDirection = true;
-                if (CoreBlock?.CoreBlock != null && block.SlimBlock != null && limit.AllowedDirections != null)
-                { 
-                    validDirection = IsValidDirection(CoreBlock.CoreBlock, block.SlimBlock, limit.AllowedDirections);
-                } else Utils.Log("Log Direction Check: CoreBlock is null");
+                if (myGridLogic.CoreBlock?.CoreBlock != null && block?.SlimBlock != null &&
+                    limit.AllowedDirections != null)
+                {
+                    validDirection = IsValidDirection(myGridLogic.CoreBlock.CoreBlock, block.SlimBlock, limit.AllowedDirections);
+                } else Utils.Log("Log Direction Check: CoreBlock is null"); 
                 if (countWeight <= limit.MaxCount && validDirection) continue;
                 WhackABlock(block, limit.PunishmentType);
             }

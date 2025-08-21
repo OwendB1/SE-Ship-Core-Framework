@@ -82,6 +82,7 @@ namespace ShipCoreFramework
         
         public static string GetBlockTypeId(IMyCubeBlock block)
         {
+            if(block==null) return Convert.ToString("CubeBlock");
             return Convert.ToString(block.BlockDefinition.TypeId).Replace("MyObjectBuilder_", "");
         }
 
@@ -169,10 +170,11 @@ namespace ShipCoreFramework
         {
             string savedBlobB64;
             var hasAny = MyAPIGateway.Utilities.GetVariable(keyName, out savedBlobB64);
+            /*
             if (!hasAny)
             {
-                ShowNotification($"{keyName} has no value", 100000); 
-            }
+                ShowNotification($"{keyName} has no value", 100000); Something logically wrong, it will load the variable then say it failed so I'm just pulling this.
+            }*/
             if(string.IsNullOrWhiteSpace(savedBlobB64)){return default(T);}
             return MyAPIGateway.Utilities.SerializeFromXML<T>(Encoding.UTF8.GetString(Convert.FromBase64String(savedBlobB64)));
         }
