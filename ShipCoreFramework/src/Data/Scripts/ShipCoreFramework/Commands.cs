@@ -358,7 +358,15 @@ namespace ShipCoreFramework
             }
             if(gridLogic.OwningFaction != null && (gridLogic.ShipCore.MaxPerFaction>0))
             {
-                body+=$"Per Player Limit:{GridsPerFactionClassManager.PerFaction[player.IdentityId][gridLogic.ShipCore.SubtypeId].Count}/{gridLogic.ShipCore.MaxPerFaction}\n";
+                if(gridLogic.OwningFaction!=null)
+                {
+                    body+=$"Per Faction Limit:{GridsPerFactionClassManager.PerFaction[gridLogic.OwningFaction.FactionId][gridLogic.ShipCore.SubtypeId].Count}/{gridLogic.ShipCore.MaxPerFaction}\n";
+                }
+                else
+                {
+                    body+=$"Per Faction Limit: A Faction is required for this class\n";
+                }
+                
             }            
             // Grid Statistics
             body += "Grid Statistics:\n";
