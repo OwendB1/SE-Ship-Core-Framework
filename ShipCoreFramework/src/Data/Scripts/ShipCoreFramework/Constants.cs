@@ -14,5 +14,6 @@ namespace ShipCoreFramework
         private static bool IsDedicated => MyAPIGateway.Utilities.IsDedicated;
         public static bool IsServer => MyAPIGateway.Multiplayer.IsServer;
         public static bool IsClient => !(IsServer && IsDedicated);
+        public static IMyPlayer LocalPlayer => MyAPIGateway.Session.LocalHumanPlayer ;
     }
 }

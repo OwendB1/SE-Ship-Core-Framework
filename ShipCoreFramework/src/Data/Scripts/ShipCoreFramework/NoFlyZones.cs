@@ -31,7 +31,7 @@ namespace ShipCoreFramework
                         {
                             var match = limit.BlockGroups
                                 .SelectMany(g => g.BlockTypes)
-                                .Any(b => b.TypeId == Utils.GetBlockTypeId(block) && b.SubtypeId == Utils.GetBlockSubtypeId(block));
+                                .Any(b => b.TypeId == Utils.GetBlockTypeId(block) && (b.SubtypeId=="any" || b.SubtypeId == Utils.GetBlockSubtypeId(block)));
 
                             if (!match){continue;}
                             if(limit.TurnedOffByNoFlyZone)

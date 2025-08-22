@@ -90,7 +90,7 @@ namespace ShipCoreFramework
                     from IMyCubeBlock block in _blocks 
                     where block != null && !block.Closed && block.CubeGrid != null 
                     let typeId = Utils.GetBlockTypeId(block) let subtypeId = Utils.GetBlockSubtypeId(block) 
-                    where typeId == blockType.TypeId && subtypeId == blockType.SubtypeId select new KeyValuePair<IMyCubeBlock, double>(block, blockType.CountWeight)).ToList();
+                    where typeId == blockType.TypeId && (string.IsNullOrEmpty(blockType.SubtypeId) || subtypeId == blockType.SubtypeId) select new KeyValuePair<IMyCubeBlock, double>(block, blockType.CountWeight)).ToList();
 
                 BlocksPerLimit[blockLimit] = blockVals;
             }
@@ -151,6 +151,9 @@ namespace ShipCoreFramework
                     var fatBlocks = grid.GetFatBlocks<MyCubeBlock>().Where(b => b.IsPreview == false);
                     _blocks.UnionWith(fatBlocks);
                 }
+                UpdateLimitsAndApplyModifiers();
+                EnforceBlockPunishment(Grid);
+                _NeedsSubgridsRedone=false;
             }
             SpeedEnforcement.EnforceSpeedLimit(this);
             if (_shipCoreTypeId == string.Empty) return;
@@ -297,24 +300,15 @@ namespace ShipCoreFramework
         //Event handlers
         private void OnBlockOwnershipChanged(IMyCubeGrid obj)
         {
-            EnforceBlockPunishment(obj);//This needs tested
-
+            GridsPerPlayerClassManager.RemoveCubeGrid(this);
+            GridsPerPlayerClassManager.AddCubeGrid(this);
             if (OwningFaction != null)
             {
-                if (ModSessionManager.Config.IgnoreAiFactions && OwningFaction.IsEveryoneNpc() || 
-                    ModSessionManager.Config.IgnoredFactionTags.Contains(OwningFaction.Tag)) return;
-                
-                GridsPerPlayerClassManager.RemoveCubeGrid(this);
                 GridsPerFactionClassManager.RemoveCubeGrid(this);
-
-                GridsPerPlayerClassManager.AddCubeGrid(this);
+                if (ModSessionManager.Config.IgnoreAiFactions && OwningFaction.IsEveryoneNpc() || ModSessionManager.Config.IgnoredFactionTags.Contains(OwningFaction.Tag)) return;
                 GridsPerFactionClassManager.AddCubeGrid(this);
             }
-            else
-            {
-                GridsPerPlayerClassManager.RemoveCubeGrid(this);
-                GridsPerPlayerClassManager.AddCubeGrid(this);
-            }
+            EnforceBlockPunishment(obj);
         }
         
         private void OnIsStaticChanged(IMyCubeGrid grid, bool isStatic)
@@ -353,12 +347,12 @@ namespace ShipCoreFramework
             {
                 var match = limit.BlockGroups
                     .SelectMany(g => g.BlockTypes)
-                    .Any(b => b.TypeId == Utils.GetBlockTypeId(obj) && b.SubtypeId == Utils.GetBlockSubtypeId(obj));
+                    .Any(b => b.TypeId == Utils.GetBlockTypeId(obj) && (b.SubtypeId=="any" || b.SubtypeId == Utils.GetBlockSubtypeId(obj)));
 
                 if (!match) continue;
                 var limitBlocks = BlocksPerLimit[limit];
                 var countWeight = limitBlocks.Sum(b => b.Value);
-                var countForSpecificBlock = limit.BlockGroups.SelectMany(g => g.BlockTypes).First(b => b.TypeId == Utils.GetBlockTypeId(obj) && b.SubtypeId == Utils.GetBlockSubtypeId(obj)).CountWeight;
+                var countForSpecificBlock = limit.BlockGroups.SelectMany(g => g.BlockTypes).First(b => b.TypeId == Utils.GetBlockTypeId(obj) && (b.SubtypeId=="any" || b.SubtypeId == Utils.GetBlockSubtypeId(obj))).CountWeight;
 
                 Utils.Log($"{countWeight} | {countForSpecificBlock} | {limit.MaxCount}");
                 
@@ -512,7 +506,7 @@ namespace ShipCoreFramework
             var myGridLogic = block.CubeGrid.GetMainGridLogic();
             foreach (var limit in myGridLogic.ShipCore.BlockLimits)
             {
-                var match = limit.BlockGroups.SelectMany(g => g.BlockTypes).Any(b => b.TypeId == Utils.GetBlockTypeId(block) && b.SubtypeId == Utils.GetBlockSubtypeId(block));
+                var match = limit.BlockGroups.SelectMany(g => g.BlockTypes).Any(b => b.TypeId == Utils.GetBlockTypeId(block) && (b.SubtypeId=="any" || b.SubtypeId == Utils.GetBlockSubtypeId(block)));
                 if (!match) continue;
                 var limitBlocks = myGridLogic.BlocksPerLimit[limit];
                 var countWeight = limitBlocks.Sum(l => l.Value);
@@ -536,7 +530,7 @@ namespace ShipCoreFramework
             {
                 foreach (var limit in myGridLogic.ShipCore.BlockLimits)
                 {
-                    var match = limit.BlockGroups.SelectMany(g => g.BlockTypes).Any(b => b.TypeId == Utils.GetBlockTypeId(block) && b.SubtypeId == Utils.GetBlockSubtypeId(block));
+                    var match = limit.BlockGroups.SelectMany(g => g.BlockTypes).Any(b => b.TypeId == Utils.GetBlockTypeId(block) && (b.SubtypeId=="any" || b.SubtypeId == Utils.GetBlockSubtypeId(block)));
                     if (!match) continue;
                     var limitBlocks = myGridLogic.BlocksPerLimit[limit];
                     var countWeight = limitBlocks.Sum(l => l.Value);

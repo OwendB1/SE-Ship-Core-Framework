@@ -131,7 +131,6 @@ namespace ShipCoreFramework
         {
             if (ModSessionManager.Config.SelectedNoCore == null) return;
             if (CoreBlock?.CubeGrid == null) return;
-            
             MyAPIGateway.TerminalControls.CustomControlGetter -= CustomControlGetter;
             CoreBlock.CubeGrid.OnGridMerge -= OnGridMerge;
             
@@ -143,7 +142,7 @@ namespace ShipCoreFramework
             if (!SyncIsMainCore.Value)
             {
                 //Anoying
-                Utils.ShowNotification($"A backup core of grid {grid.CustomName} was destroyed!",10000, true);
+                if(Constants.LocalPlayer!=null && (Constants.LocalPlayer.PlayerID==grid.BigOwners.FirstOrDefault())){Utils.ShowNotification($"A backup core of grid {grid.CustomName} was destroyed!",10000, true);}
                 return;
             }
             
@@ -163,12 +162,12 @@ namespace ShipCoreFramework
                 newMainCore.SyncIsMainCore.ValidateAndSet(true);
                 newMainCore.SaveCoreState();
                 newMainCore.CoreBlock.RefreshCustomInfo();
-                Utils.ShowNotification($"{grid.CustomName}'s main core destroyed! Successfully switched to backup core.",10000, true);
+                 if(Constants.LocalPlayer!=null && (Constants.LocalPlayer.PlayerID==grid.BigOwners.FirstOrDefault())){Utils.ShowNotification($"{grid.CustomName}'s main core destroyed! Successfully switched to backup core.",10000, true);}
             }
             else
             {
                 // No other core of this type found — reset the grid to no core
-                Utils.ShowNotification($"All cores destroyed! {grid.CustomName} has become inactive!",5000, true);
+                 if(Constants.LocalPlayer!=null && (Constants.LocalPlayer.PlayerID==grid.BigOwners.FirstOrDefault())){Utils.ShowNotification($"All cores destroyed! {grid.CustomName} has become inactive!",5000, true);}
                 gridLogic.ResetCore();
             }
             
