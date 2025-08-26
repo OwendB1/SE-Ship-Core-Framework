@@ -134,10 +134,13 @@ namespace ShipCoreFramework
         public override void UpdateAfterSimulation()
         {
             base.UpdateAfterSimulation();
+            List<IMyCubeGrid> subgrids;
+            var MainGrid = Grid.GetMainCubeGrid(out subgrids);
+            if(MainGrid!=Grid){return;}
             if(_NeedsSubgridsRedone)
             {
-                List<IMyCubeGrid> subgrids;
-                var MainGrid = Grid.GetMainCubeGrid(out subgrids);
+                _blocks.Clear();
+                _blocks.UnionWith(Grid.GetFatBlocks<MyCubeBlock>().Where(b => !b.IsPreview));
                 foreach(IMyCubeGrid grid in subgrids)
                 {
                     grid.OnBlockOwnershipChanged -= OnBlockOwnershipChanged;
@@ -261,7 +264,9 @@ namespace ShipCoreFramework
             Grid.OnIsStaticChanged += OnIsStaticChanged;
             Grid.OnBlockAdded += OnBlockAdded;
             Grid.OnBlockRemoved += OnBlockRemoved;
-            Grid.OnGridMerge += OnGridMerge;
+            Grid.OnGridMerge += OnGridMergeOrSplit;
+            Grid.OnGridSplit += OnGridMergeOrSplit;
+            (Grid as MyCubeGrid).OnConnectionChangeCompleted += OnConnectionChangeCompleted;
 
             foreach (var funcBlock in _blocks.OfType<IMyFunctionalBlock>())
             {
@@ -403,10 +408,18 @@ namespace ShipCoreFramework
             _blocks.Remove(obj.FatBlock as MyCubeBlock);
             ApplyModifiers();
         }
-        
-        private void OnGridMerge(IMyCubeGrid main, IMyCubeGrid sub)
+        private void OnConnectionChangeCompleted(MyCubeGrid mygrid,GridLinkTypeEnum GridGroupTypeChanged)
         {
-            Utils.Log($"OnGridMerge: {main.CustomName} Sub: {sub.CustomName})");
+            if(GridGroupTypeChanged != GridLinkTypeEnum.Mechanical){return;}
+             Utils.Log($"Subgrid Status Changed: {(mygrid as IMyCubeGrid).CustomName})");
+            List<IMyCubeGrid> subgrids;
+            var MainGrid = (mygrid as IMyCubeGrid).GetMainCubeGrid(out subgrids);
+            var mainLogic = MainGrid.GetMainGridLogic();
+            mainLogic._NeedsSubgridsRedone=true;
+        }
+        private void OnGridMergeOrSplit(IMyCubeGrid main, IMyCubeGrid sub)
+        {
+            Utils.Log($"OnGridMergeOrSplit: {main.CustomName} Sub: {sub.CustomName})");
             List<IMyCubeGrid> mainsubgrids;
             List<IMyCubeGrid> subgrids;
             var MainGrid = main.GetMainCubeGrid(out mainsubgrids);
@@ -420,10 +433,10 @@ namespace ShipCoreFramework
         private static readonly Dictionary<string, string> RotateRightXY =new Dictionary<string, string>{{ "Forward", "Left" },{ "Left", "Backward"},{ "Backward", "Right" },{ "Right", "Forward" },{ "Up", "Up" },{ "Down", "Down" }};
 
         private static bool IsValidDirection(IMyCubeBlock myCore, IMySlimBlock block, List<DirectionType> allowedDirections)
-        {
-            if (myCore?.Orientation == null || block?.Orientation == null) { Utils.Log($"Log Direction Check: Orientation data missing", 3); return true; }
+         {
+            if (myCore?.Orientation == null || block?.Orientation == null || allowedDirections.Count < 1) { Utils.Log($"Log Direction Check: Orientation data missing", 3); return true; }
             //if grid is on subgrid, ignore directional locking
-            if (myCore.CubeGrid!=block.CubeGrid) { Utils.Log($"Log Direction Check: Block is on subgrid and is ignored.", 3); return true; }
+            if (myCore.CubeGrid!=block.CubeGrid) {  return true; }//Utils.Log($"Log Direction Check: Block is on subgrid and is ignored.", 3);
             var myCoreDirection = Convert.ToString(myCore.Orientation).Replace("[", "").Replace("]", "").Split(new char[] { ',', ':' }, StringSplitOptions.RemoveEmptyEntries).ToList();
             var blockDirection = Convert.ToString(block.Orientation).Replace("[", "").Replace("]", "").Split(new char[] { ',', ':' }, StringSplitOptions.RemoveEmptyEntries).ToList();
             myCoreDirection.RemoveAt(2);
@@ -487,7 +500,7 @@ namespace ShipCoreFramework
                 default:
                     //Shut off, or whack if that's not possible
                     var func = block as IMyFunctionalBlock;
-                    if (func != null)
+                    if (func != null || (block is IMyShipDrill||block is IMyShipGrinder||block is IMyShipWelder))
                     {
                         func.Enabled = false;
                     }

@@ -29,7 +29,7 @@ namespace ShipCoreFramework
         [XmlIgnore] public ShipCore SelectedNoCore;
         [XmlIgnore] public bool IgnoreAiFactions;
         
-        [XmlElement("DebugMode")] public bool DebugMode = true;
+        [XmlElement("DebugMode")] public bool DebugMode = false;
         [XmlElement("CombatLogging")] public bool CombatLogging = true;
         [XmlElement("LOG_LEVEL")]public int LogLevel = 0; //messages with logPriority >= this will get logged, less than will be ignored
         [XmlElement("CLIENT_OUTPUT_LOG_LEVEL")]public int ClientOutputLogLevel = 2; //messages with logPriority >= this will get output to clients

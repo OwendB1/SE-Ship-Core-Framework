@@ -63,6 +63,7 @@ namespace ShipCoreFramework
             if (CheckIfCoreOfOtherTypeExists())
             {
                 Utils.Log($"Other Core Exist: {CoreBlock.CubeGrid.CustomName}", 3);
+                //This crashes the game
                 CoreBlock.Delete();
                 return;
             }
@@ -182,7 +183,6 @@ namespace ShipCoreFramework
             var DrillHarvestMultiplier = CoreBlock.UpgradeValues["DrillHarvestMultiplier"];
             //so on and so forth more of an example, you would likely want to call these in the modifiers file....
         }
-
         private void OnGridMerge(IMyCubeGrid arg1, IMyCubeGrid arg2)
         {
             List<IMyCubeGrid> ignored;
