@@ -32,7 +32,7 @@ namespace ShipCoreFramework
         [XmlElement("DebugMode")] public bool DebugMode = false;
         [XmlElement("CombatLogging")] public bool CombatLogging = true;
         [XmlElement("LOG_LEVEL")]public int LogLevel = 0; //messages with logPriority >= this will get logged, less than will be ignored
-        [XmlElement("CLIENT_OUTPUT_LOG_LEVEL")]public int ClientOutputLogLevel = 2; //messages with logPriority >= this will get output to clients
+        [XmlElement("CLIENT_OUTPUT_LOG_LEVEL")]public int ClientOutputLogLevel = 0; //messages with logPriority >= this will get output to clients
 
         [XmlElement("MaxPossibleSpeedMetersPerSecond")] public float MaxPossibleSpeedMetersPerSecond = 300;
         [XmlElement("NoFlyZones")] public List<Zones> NoFlyZones = new List<Zones>();
@@ -65,8 +65,11 @@ namespace ShipCoreFramework
                 Utils.Log($"Save Config: Saved {BlockGroupsFileName}", showInChat ? 3 : 0);
                 */
                 Utils.SaveToSandbox(IgnoreAiKey, IgnoreAiFactions);
+                Utils.Log($"Stored Data In World Config: Saved {IgnoreAiKey}", showInChat ? 3 : 0);
                 Utils.SaveToSandbox(IgnoredFactionsKey, IgnoredFactionTags);
+                Utils.Log($"Stored Data In World Config: : Saved {IgnoredFactionsKey}", showInChat ? 3 : 0);
                 Utils.SaveToSandbox(SelectedNoCoreKey, SelectedNoCore);
+                Utils.Log($"Stored Data In World Config: : Saved {SelectedNoCoreKey}", showInChat ? 3 : 0);
             }
             catch (Exception e)
             {
@@ -105,7 +108,7 @@ namespace ShipCoreFramework
             IgnoreAiFactions = Utils.LoadFromSandbox<bool>(IgnoreAiKey);
             if(IgnoreAiFactions==null){IgnoreAiFactions=true;}
             IgnoredFactionTags = Utils.LoadFromSandbox<List<string>>(IgnoredFactionsKey);
-            if(IgnoredFactionTags==null){IgnoredFactionTags = new List<string>{"SPRT"};}
+            if(IgnoredFactionTags==null){IgnoredFactionTags = new List<string>{"SPRT","ADMIN","FMCA", "BORG", "TERA"};}
             SelectedNoCore = Utils.LoadFromSandbox<ShipCore>(SelectedNoCoreKey);
             if(SelectedNoCore == null){SelectedNoCore = DefaultNoCoreConfig.ShipCore;}
             //if(SelectedNoCore==null)

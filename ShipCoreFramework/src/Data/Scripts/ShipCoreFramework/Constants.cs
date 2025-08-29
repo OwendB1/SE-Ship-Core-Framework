@@ -13,7 +13,9 @@ namespace ShipCoreFramework
         public static readonly Guid ConfigurableSpeedGUID = new Guid("f5bad034-f449-4a0a-a1a5-190783244f3d");
         private static bool IsDedicated => MyAPIGateway.Utilities.IsDedicated;
         public static bool IsServer => MyAPIGateway.Multiplayer.IsServer;
-        public static bool IsClient => !(IsServer && IsDedicated);
+        public static bool IsClient => !(IsServer && IsDedicated);//Not Reliable
+        public static bool IsMultiplayer => MyAPIGateway.Multiplayer.MultiplayerActive;
         public static IMyPlayer LocalPlayer => MyAPIGateway.Session.LocalHumanPlayer ;
+        public static ushort CommandsSyncId = 32123;
     }
 }

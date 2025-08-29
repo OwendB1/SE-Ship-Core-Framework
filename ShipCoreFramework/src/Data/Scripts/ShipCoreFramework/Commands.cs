@@ -2,10 +2,14 @@
 
 using System;
 using System.Linq;
+using System.Text;
 using System.Collections.Generic;
 using Sandbox.ModAPI;
+using VRage.Game.Components;
 using VRage.Game.ModAPI;
+using VRage.ModAPI;
 using Sandbox.Game.Entities;
+using Sandbox.Game;
 
 #endregion
 
@@ -13,165 +17,188 @@ namespace ShipCoreFramework
 {
     public static class Commands
     {
-        public static void OnChatCommand(string messageText, ref bool sendToOthers)
+        public static void ServerMessageHandler(ushort id, byte[] data, ulong sender, bool fromServer)
+        {
+            string message = System.Text.Encoding.UTF8.GetString(data);
+            Utils.Log($"Server: Command received from {sender}: {message}");
+            CommmandSwitch(Utils.GetPlayerIdFromSteamId(sender),message);
+            //MyVisualScriptLogicProvider.SendChatMessage($"Recieved Command:{message}","ShipCores: Server:", Utils.GetPlayerIdFromSteamId(sender), "Green");
+        }
+        private static void ForwardToServer(string message)
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes(message);
+            MyAPIGateway.Multiplayer.SendMessageToServer(Constants.CommandsSyncId, bytes);
+        }
+        public static void OnChatCommand(ulong sender,string messageText, ref bool sendToOthers)
         {
             if (!messageText.StartsWith("/core", StringComparison.OrdinalIgnoreCase)) return;
 
             sendToOthers = false;
-
+            if(!Constants.IsServer){ForwardToServer(messageText);}
+            CommmandSwitch(MyAPIGateway.Session.Player.PlayerID,messageText);
+        }
+        private static void CommmandSwitch(long playerId,string messageText)
+        {
             var allArgs = messageText.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
             if (allArgs.Length < 2 || allArgs[1].Equals("help", StringComparison.OrdinalIgnoreCase))
             {
-                ShowHelp();
+                if(Constants.LocalPlayer!=null) ShowHelp();
                 return;
             }
 
             var args = allArgs.Skip(1).ToArray();
             var sub = args[0].ToLower();
-
+            string ModMessage ="";
             switch (sub)
             {
                 case "reloadconfig":
-                    if (!CheckIfAdmin()) return;
-                    ReloadConfig();
+                    if(!CheckIfAdmin(playerId)){return;}
+                    ModMessage+=ReloadConfig();
                     break;
                 case "listcores":
-                    ListCores();
+                    ModMessage+=ListCores();
                     break;
                 case "coreinfo":
-                    CoreInfo(args);
+                    ModMessage+=CoreInfo(args);
                     break;
                 case "listnocores":
-                    ListNoCores();
+                    ModMessage+=ListNoCores();
                     break;
                 case "listnoflyzones":
-                    ListNoFlyZones();
+                    ModMessage+=ListNoFlyZones();
                     break;
                 case "debug":
-                    Debug(args);
+                    if(!CheckIfAdmin(playerId)){return;}
+                    ModMessage+=Debug(args);
                     break;
                 case "combatlog":
-                    CombatLog(args);
+                    if(!CheckIfAdmin(playerId)){return;}
+                    ModMessage+=CombatLog(args);
                     break;
                 case "select":
-                    if (!CheckIfAdmin()) return;
-                    Select(args);
+                    if(!CheckIfAdmin(playerId)){return;}
+                    ModMessage+=Select(args);
                     break;
                 case "setworldspeed":
-                    if (!CheckIfAdmin()) return;
-                    SetWorldSpeed(args);
+                    if(!CheckIfAdmin(playerId)){return;}
+                    ModMessage+=SetWorldSpeed(args);
                     break;
                 case "ignoretags":
                 case "ignoretag":
-                    IgnoreTags(args);
+                    ModMessage+=IgnoreTags(playerId,args);
                     break;
                 case "ignoreai":
-                    if (!CheckIfAdmin()) return;
-                    IgnoreAi();
+                    if(!CheckIfAdmin(playerId)){return;}
+                    ModMessage+=IgnoreAi();
                     break;
                 case "limit":
-                    ShipClassLimit();
-                    break;
+                    if(Constants.LocalPlayer!=null) ShipClassLimit(playerId);
+                    return;
                 default:
-                    ShowHelp();
-                    break;
+                    if(Constants.LocalPlayer!=null) ShowHelp();
+                    return;
+            }
+            if(Constants.IsServer)
+            {
+                MyVisualScriptLogicProvider.SendChatMessage(ModMessage,"ShipCores: Server:", playerId, "Green");
+            }
+            else //Is Client
+            {
+                MyVisualScriptLogicProvider.SendChatMessage(ModMessage,"ShipCores: LocalHost:", playerId, "Red");
             }
         }
-
-        private static void ReloadConfig()
+        private static string ReloadConfig()
         {
             ModSessionManager.Config = new ModConfig();
             ModSessionManager.Config.LoadConfig();
-            Utils.ShowMessage("Config reloaded from disk.");
+            return "Config reloaded from disk.";
         }
 
-        private static void ListCores()
+        private static string ListCores()
         {
             if (ModSessionManager.Config.ShipCores.Count == 0)
             {
-                Utils.ShowMessage("No ship cores defined.");
-                return;
+                return "No ship cores defined.";
+
             }
+            string ModMessage ="";
             foreach (var core in ModSessionManager.Config.ShipCores)
-                Utils.ShowMessage($"{core.UniqueName} (SubtypeId: {core.SubtypeId})");
+                ModMessage+=$"{core.UniqueName} (SubtypeId: {core.SubtypeId})";
+            return ModMessage;
         }
 
-        private static void CoreInfo(string[] args)
+        private static string CoreInfo(string[] args)
         {
             if (args.Length < 2)
             {
-                Utils.ShowMessage("Usage: /core coreinfo <uniquename>");
-                return;
+                return "Usage: /core coreinfo <uniquename>";
             }
             var infoName = string.Join(" ", args.Skip(1));
             var infoCore = ModSessionManager.Config.ShipCores.FirstOrDefault(
                 c => c.UniqueName.Equals(infoName, StringComparison.OrdinalIgnoreCase));
             if (infoCore == null)
             {
-                Utils.ShowMessage($"No core found with name '{infoName}'.");
-                return;
+                return $"No core found with name '{infoName}'.";
             }
-            Utils.ShowMessage(
-                $"Core: {infoCore.UniqueName}\nSubtype: {infoCore.SubtypeId}\nMaxBlocks: {infoCore.MaxBlocks}\nModifiers: {infoCore.Modifiers}");
+            return $"Core: {infoCore.UniqueName}\nSubtype: {infoCore.SubtypeId}\nMaxBlocks: {infoCore.MaxBlocks}\nModifiers: {infoCore.Modifiers}";
         }
 
-        private static void ListNoCores()
+        private static string ListNoCores()
         {
             if (ModSessionManager.Config.NoCoreConfigs.Count == 0)
             {
-                Utils.ShowMessage("No 'no core' configs available.");
-                return;
+                return "No 'no core' configs available.";
             }
+            string ModMessage ="";
             foreach (var nc in ModSessionManager.Config.NoCoreConfigs)
-                Utils.ShowMessage($"{nc.UniqueName} (SubtypeId: {nc.SubtypeId})");
+                ModMessage+=$"{nc.UniqueName} (SubtypeId: {nc.SubtypeId})";
+            return ModMessage;
         }
 
-        private static void ListNoFlyZones()
+        private static string ListNoFlyZones()
         {
+            string ModMessage = "";
             if (ModSessionManager.Config.NoFlyZones.Count == 0)
             {
-                Utils.ShowMessage("No NoFlyZones defined.");
-                return;
+                ModMessage+="No NoFlyZones defined.";
+                return ModMessage;
             }
             foreach (var zone in ModSessionManager.Config.NoFlyZones)
             {
                 var allowed = string.Join(", ", zone.AllowedCoresSubtype);
-                Utils.ShowMessage(
-                    $"Zone {zone.Id}: Center={zone.Position}, Radius={zone.Radius}, AllowedCores=[{allowed}]");
+                ModMessage+=$"Zone {zone.Id}: Center={zone.Position}, Radius={zone.Radius}, AllowedCores=[{allowed}]";
             }
+            return ModMessage;
         }
 
-        private static void Debug(string[] args)
+        private static string Debug(string[] args)
         {
             if (args.Length < 2)
             {
-                Utils.ShowMessage($"Debug mode is {(ModSessionManager.Config.DebugMode ? "ON" : "OFF")}");
-                return;
+                return $"Debug mode is {(ModSessionManager.Config.DebugMode ? "ON" : "OFF")}";
             }
             var debugVal = args[1].ToLower();
             ModSessionManager.Config.DebugMode = (debugVal == "on");
-            Utils.ShowMessage($"Debug mode set to {(ModSessionManager.Config.DebugMode ? "ON" : "OFF")}");
+            return $"Debug mode set to {(ModSessionManager.Config.DebugMode ? "ON" : "OFF")}";
         }
 
-        private static void CombatLog(string[] args)
+        private static string CombatLog(string[] args)
         {
             if (args.Length < 2)
             {
-                Utils.ShowMessage($"Combat logging is {(ModSessionManager.Config.CombatLogging ? "ON" : "OFF")}");
-                return;
+                return $"Combat logging is {(ModSessionManager.Config.CombatLogging ? "ON" : "OFF")}";
             }
             var clVal = args[1].ToLower();
             ModSessionManager.Config.CombatLogging = (clVal == "on");
-            Utils.ShowMessage($"Combat logging set to {(ModSessionManager.Config.CombatLogging ? "ON" : "OFF")}");
+            return $"Combat logging set to {(ModSessionManager.Config.CombatLogging ? "ON" : "OFF")}";
         }
 
-        private static void Select(string[] args)
+        private static string Select(string[] args)
         {
             if (args.Length < 2)
             {
-                Utils.ShowMessage("Usage: /core select <NoCoreName|Subtype>");
-                return;
+                return "Usage: /core select <NoCoreName|Subtype>";
             }
 
             var key = string.Join(" ", args.Skip(1));
@@ -181,135 +208,128 @@ namespace ShipCoreFramework
 
             if (found == null)
             {
-                Utils.ShowMessage($"No 'no core' config found matching '{key}'. Use /core listnocores.");
-                return;
+                return $"No 'no core' config found matching '{key}'. Use /core listnocores.";
             }
 
             ModSessionManager.Config.SelectedNoCore = found;
             ModSessionManager.Config.SaveConfig(true);
-            Utils.ShowMessage($"Selected 'no core' config: {found.UniqueName} ({found.SubtypeId})");
+            return $"Selected 'no core' config: {found.UniqueName} ({found.SubtypeId})";
         }
 
-        private static void SetWorldSpeed(string[] args)
+        private static string SetWorldSpeed(string[] args)
         {
             if (args.Length == 1)
             {
-                Utils.ShowMessage($"Current world speed limit: {ModSessionManager.Config.MaxPossibleSpeedMetersPerSecond} m/s");
-                return;
+                return $"Current world speed limit: {ModSessionManager.Config.MaxPossibleSpeedMetersPerSecond} m/s";
             }
 
             float newSpeed;
             if (!float.TryParse(args[1], out newSpeed) || newSpeed <= 0)
             {
-                Utils.ShowMessage("Usage: /core setworldspeed <positive number>");
-                return;
+                return "Usage: /core setworldspeed <positive number>";
             }
 
             ModSessionManager.Config.MaxPossibleSpeedMetersPerSecond = newSpeed;
-            Utils.ShowMessage($"World speed limit set to {newSpeed} m/s (session config only).");
+            return $"World speed limit set to {newSpeed} m/s (session config only).";
         }
 
-        private static void IgnoreTags(string[] args)
+        private static string IgnoreTags(long playerId, string[] args)
         {
             if (args.Length < 2)
             {
-                Utils.ShowMessage("Usage: /core ignoretags list|add <tag>|remove <tag>");
-                return;
+                return "Usage: /core ignoretags list|add <tag>|remove <tag>";
             }
 
             var action = args[1].ToLower();
+            var ModMessage ="";
             switch (action)
             {
                 case "list":
-                    ListIgnoredTags();
+                    ModMessage+=ListIgnoredTags();
                     break;
                 case "add":
-                    if (!CheckIfAdmin()) return;
-                    AddIgnoredTag(args);
+                    if (!CheckIfAdmin(playerId)) return "You are not Admin";
+                    ModMessage+=AddIgnoredTag(args);
                     break;
                 case "remove":
-                    if (!CheckIfAdmin()) return;
-                    RemoveIgnoredTag(args);
+                    if (!CheckIfAdmin(playerId)) return "You are not Admin";
+                    ModMessage+=RemoveIgnoredTag(args);
                     break;
                 default:
-                    Utils.ShowMessage("Usage: /core ignoretags list|add <tag>|remove <tag>");
+                    ModMessage+="Usage: /core ignoretags list|add <tag>|remove <tag>";
                     break;
             }
+            return ModMessage;
         }
 
-        private static void IgnoreAi()
+        private static string IgnoreAi()
         {
             ModSessionManager.Config.IgnoreAiFactions = !ModSessionManager.Config.IgnoreAiFactions;
             ModSessionManager.Config.SaveConfig(true);
-            Utils.ShowMessage($"Set AI factions ignore to {ModSessionManager.Config.IgnoreAiFactions}.");
+            return $"Set AI factions ignore to {ModSessionManager.Config.IgnoreAiFactions}.";
         }
 
-        private static void ListIgnoredTags()
+        private static string ListIgnoredTags()
         {
             var tags = ModSessionManager.Config.IgnoredFactionTags ?? (ModSessionManager.Config.IgnoredFactionTags = new List<string>());
             if (tags.Count == 0)
             {
-                Utils.ShowMessage("No ignored faction tags.");
-                return;
+                return "No ignored faction tags.";
             }
-            Utils.ShowMessage("Ignored faction tags: " + string.Join(", ", tags));
+            return "Ignored faction tags: " + string.Join(", ", tags);
         }
 
-        private static void AddIgnoredTag(string[] args)
+        private static string AddIgnoredTag(string[] args)
         {
             if (args.Length < 3)
             {
-                Utils.ShowMessage("Usage: /core ignoretags add <tag>");
-                return;
+                return "Usage: /core ignoretags add <tag>";
             }
 
             var tag = string.Join(" ", args.Skip(2)).Trim();
             if (string.IsNullOrWhiteSpace(tag))
             {
-                Utils.ShowMessage("Tag cannot be empty.");
-                return;
+               return "Tag cannot be empty.";
             }
 
             var tags = ModSessionManager.Config.IgnoredFactionTags ?? (ModSessionManager.Config.IgnoredFactionTags = new List<string>());
             if (tags.Any(t => t.Equals(tag, StringComparison.OrdinalIgnoreCase)))
             {
-                Utils.ShowMessage($"Tag '{tag}' is already ignored.");
-                return;
+                return $"Tag '{tag}' is already ignored.";
+
             }
 
             tags.Add(tag);
             ModSessionManager.Config.SaveConfig(true);
-            Utils.ShowMessage($"Added ignored faction tag '{tag}'.");
+            return $"Added ignored faction tag '{tag}'.";
         }
 
-        private static void RemoveIgnoredTag(string[] args)
+        private static string RemoveIgnoredTag(string[] args)
         {
             if (args.Length < 3)
             {
-                Utils.ShowMessage("Usage: /core ignoretags remove <tag>");
-                return;
+                return "Usage: /core ignoretags remove <tag>";
             }
 
             var tag = string.Join(" ", args.Skip(2)).Trim();
             if (string.IsNullOrWhiteSpace(tag))
             {
-                Utils.ShowMessage("Tag cannot be empty.");
-                return;
+                return "Tag cannot be empty.";
+
             }
 
             var tags = ModSessionManager.Config.IgnoredFactionTags ?? (ModSessionManager.Config.IgnoredFactionTags = new List<string>());
             var removed = tags.RemoveAll(t => t.Equals(tag, StringComparison.OrdinalIgnoreCase));
             if (removed == 0)
             {
-                Utils.ShowMessage($"Tag '{tag}' was not in the ignore list.");
-                return;
+                return $"Tag '{tag}' was not in the ignore list.";
             }
 
             ModSessionManager.Config.SaveConfig(true);
-            Utils.ShowMessage($"Removed ignored faction tag '{tag}'.");
+            return $"Removed ignored faction tag '{tag}'.";
         }
 
-        private static void ShipClassLimit()
+        private static void ShipClassLimit(long playerId)
         {
             var targetGrid = Utils.RaycastForGrid(50.0);
             
@@ -325,7 +345,7 @@ namespace ShipCoreFramework
             // Check if player owns the grid
             if (!targetGrid.BigOwners.Contains(player.IdentityId))
             {
-                if(CheckIfAdmin())
+                if(CheckIfAdmin(playerId))
                 {
                     Utils.ShowMessage($"This Grid is owned by: {player.DisplayName}");
                 }
@@ -463,25 +483,25 @@ Reloads configuration from disk.
 Lists defined NoFlyZones.
 
 /core debug on|off
-Toggles debug mode.
+Toggles debug mode (Local Client)
 
 /core combatlog on|off
-Toggles combat logging.
+Toggles combat logging (Admin Required)
 
 /core setworldspeed <m/s>
-Sets the session max possible speed in m/s.
+Sets the session max possible speed in m/s.(Admin Required)
 
 /core ignoretags list
 Lists the current ignored faction tags.
 
 /core ignoretags add <tag>
-Adds a tag to the ignored faction tags. (Admin)
+Adds a tag to the ignored faction tags. (Admin Required)
 
 /core ignoretags remove <tag>
-Removes a tag from the ignored faction tags. (Admin)
+Removes a tag from the ignored faction tags. (Admin Required)
 
 /core ignoreai 
-Toggles ignore of ai on or off. (Admin)
+Toggles ignore of ai on or off. (Admin Required)
 
 /core limit
 Raycasts from crosshairs to find a grid and displays its ship class limits and current usage.";
@@ -494,11 +514,18 @@ Raycasts from crosshairs to find a grid and displays its ship class limits and c
             );
         }
 
-        private static bool CheckIfAdmin()
+        private static bool CheckIfAdmin(long playerId)
         {
-            var player = MyAPIGateway.Session?.Player;
-            if (player != null && player.PromoteLevel >= MyPromoteLevel.Admin) return true;
-            Utils.ShowMessage("Admin privileges required for this command.");
+            if(!Constants.IsMultiplayer){return true;}
+            List<IMyPlayer> players = new List<IMyPlayer>();
+            MyAPIGateway.Players.GetPlayers(players);
+            foreach (var player in players)
+            {
+                if (player.IdentityId == playerId)
+                {
+                    return (player.PromoteLevel == MyPromoteLevel.Admin || player.PromoteLevel == MyPromoteLevel.Owner);
+                }
+            }
             return false;
         }
     }

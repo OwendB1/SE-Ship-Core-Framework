@@ -8,7 +8,7 @@
             </Id>
             <DisplayName>Utility GridCore</DisplayName>
             <Description>Utility GridCore</Description>
-            <Icon>Textures\LargeGridCore.dds</Icon>
+            <Icon>Textures\LargeGridCore.png</Icon>
             <CubeSize>Large</CubeSize>
             <GuiVisible>false</GuiVisible>
             <BlockTopology>TriangleMesh</BlockTopology>

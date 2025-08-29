@@ -42,7 +42,13 @@ namespace ShipCoreFramework
             
             MyAPIGateway.Session.OnSessionReady += SessionReady;
             MyAPIGateway.Session.Factions.FactionStateChanged += FactionStateChanged;
-            MyAPIGateway.Utilities.MessageEntered += Commands.OnChatCommand;
+            MyAPIGateway.Utilities.MessageEnteredSender += Commands.OnChatCommand;
+            if(Constants.IsMultiplayer && Constants.IsServer)
+            {
+                MyAPIGateway.Multiplayer.RegisterSecureMessageHandler(Constants.CommandsSyncId, Commands.ServerMessageHandler);
+                Utils.Log($"Ship Cores: Awaiting Commands From Clients");
+            }
+            Config.SaveConfig();
         }
 
         private void FactionStateChanged(MyFactionStateChange action, long fromFactionId, long toFactionId,
@@ -72,8 +78,12 @@ namespace ShipCoreFramework
         {
             MyAPIGateway.Session.OnSessionReady -= SessionReady;
             MyAPIGateway.Session.Factions.FactionStateChanged -= FactionStateChanged;
-            MyAPIGateway.Utilities.MessageEntered -= Commands.OnChatCommand;
+            MyAPIGateway.Utilities.MessageEnteredSender -= Commands.OnChatCommand;
             var speedDifferential = Config.MaxPossibleSpeedMetersPerSecond - 100.0f;
+            if(Constants.IsMultiplayer && Constants.IsServer)
+            {
+                MyAPIGateway.Multiplayer.UnregisterSecureMessageHandler(Constants.CommandsSyncId, Commands.ServerMessageHandler);
+            }
             var ammoDefinitions = new List<string>
             {
                 "Missile", "LargeCalibreShell", "MediumCalibreShell", "LargeCaliber", "AutocannonShell",
@@ -98,7 +108,6 @@ namespace ShipCoreFramework
             
             GridsPerFactionClassManager.Reset();
             GridsPerPlayerClassManager.Reset();
-
             Config.SaveConfig();
         }
 

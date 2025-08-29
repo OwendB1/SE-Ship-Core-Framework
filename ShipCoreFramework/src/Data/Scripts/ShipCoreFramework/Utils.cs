@@ -31,7 +31,20 @@ namespace ShipCoreFramework
                 IsCombat = isCombat;
             }
         }
-        
+        public static long GetPlayerIdFromSteamId(ulong steamId)
+        {
+            List<IMyPlayer> players = new List<IMyPlayer>();
+            MyAPIGateway.Players.GetPlayers(players);
+
+            foreach (var player in players)
+            {
+                if (player.SteamUserId == steamId)
+                {
+                    return player.IdentityId;
+                }
+            }
+            return 0l;
+        }
         private static readonly Queue<PendingNotify> PendingNotifications = new Queue<PendingNotify>();
             
         public static CoreLogic GetGridCore(IMyCubeGrid grid,ShipCore core)
@@ -68,6 +81,7 @@ namespace ShipCoreFramework
 
             try
             {
+                if(!(MyAPIGateway.Multiplayer.IsServer && MyAPIGateway.Utilities.IsDedicated)){return;}
                 if (logPriority >= ModSessionManager.Config.ClientOutputLogLevel)
                     MyAPIGateway.Utilities.ShowMessage($"[{tooltip}={logPriority}]: ", msg);
 
@@ -182,7 +196,7 @@ namespace ShipCoreFramework
         public static void SaveToSandbox<T>(string keyName,T item)
         {
             //Maybe IsClient?
-            if (!Constants.IsServer || item == null) return;
+            if (item == null ) return;
             var encodedCore = Encoding.UTF8.GetBytes(MyAPIGateway.Utilities.SerializeToXML(item));
             MyAPIGateway.Utilities.SetVariable(keyName, Convert.ToBase64String(encodedCore));
         }

@@ -10,7 +10,7 @@
   <MaxBlocks>50000</MaxBlocks>
   <MaxMass>-1</MaxMass>
   <MaxPCU>-1</MaxPCU>
-  <MaxPerFaction>-1</MaxPerFaction>
+  <MaxPerFaction>3</MaxPerFaction>
   <MaxPerPlayer>3</MaxPerPlayer>
   <MinPlayers>-1</MinPlayers>
   <Modifiers>
@@ -59,9 +59,5 @@
     <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
     <PunishmentType>Delete</PunishmentType>
     <AllowedDirections>Forward</AllowedDirections>
-    <AllowedDirections>Up</AllowedDirections>
-    <AllowedDirections>Down</AllowedDirections>
-    <AllowedDirections>Left</AllowedDirections>
-    <AllowedDirections>Right</AllowedDirections>
   </BlockLimits>
 </ShipCore>
