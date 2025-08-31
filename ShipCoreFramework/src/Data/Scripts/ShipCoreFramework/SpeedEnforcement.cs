@@ -1,8 +1,9 @@
 ﻿#region
-using System;
-using VRageMath;
+
 using System.Collections.Generic;
-using System.Linq;
+using VRage.Game.ModAPI;
+using VRageMath;
+
 #endregion
 
 namespace ShipCoreFramework
@@ -14,21 +15,21 @@ namespace ShipCoreFramework
 
             if (gridLogic?.Grid == null){return;}
             List<IMyCubeGrid> subgrids;
-            var MainGrid = gridLogic.Grid.GetMainCubeGrid(out subgrids);
-            if(gridLogic.Grid != MainGrid){return;}
+            var mainGrid = gridLogic.Grid.GetMainCubeGrid(out subgrids);
+            if(gridLogic.Grid != mainGrid){return;}
             var maxSpeed = ModSessionManager.Config.MaxPossibleSpeedMetersPerSecond*gridLogic.Modifiers.MaxSpeed;
             if (gridLogic.ShipCore != null && gridLogic.BoostEnabled)//Even if there is no core, speed must still be enforced, hence the move.
             {
                 maxSpeed *= gridLogic.Modifiers.MaxBoost;
             }
-            var velocity = MainGrid.Physics.LinearVelocity;
+            var velocity = mainGrid.Physics.LinearVelocity;
             if (!(velocity.LengthSquared() > maxSpeed * maxSpeed)) return;
             velocity = Vector3.Normalize(velocity) * maxSpeed;
-            MainGrid.Physics.SetSpeeds(velocity, MainGrid.Physics.AngularVelocity);
+            mainGrid.Physics.SetSpeeds(velocity, mainGrid.Physics.AngularVelocity);
             
             //if(Constants.IsServer){Utils.Log($"Max Speed: {maxSpeed}, My Velocity: {Math.Sqrt(velocity.LengthSquared())}",3);}
             
-            foreach(IMyCubeGrid grid in subgrids)
+            foreach(var grid in subgrids)
             {
                 grid.Physics.SetSpeeds(velocity, grid.Physics.AngularVelocity);
             }

@@ -1,15 +1,13 @@
 #region
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Collections.Generic;
-using Sandbox.ModAPI;
-using VRage.Game.Components;
-using VRage.Game.ModAPI;
-using VRage.ModAPI;
-using Sandbox.Game.Entities;
 using Sandbox.Game;
+using Sandbox.Game.Entities;
+using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 
 #endregion
 
@@ -19,14 +17,14 @@ namespace ShipCoreFramework
     {
         public static void ServerMessageHandler(ushort id, byte[] data, ulong sender, bool fromServer)
         {
-            string message = System.Text.Encoding.UTF8.GetString(data);
+            var message = Encoding.UTF8.GetString(data);
             Utils.Log($"Server: Command received from {sender}: {message}");
             CommmandSwitch(Utils.GetPlayerIdFromSteamId(sender),message);
             //MyVisualScriptLogicProvider.SendChatMessage($"Recieved Command:{message}","ShipCores: Server:", Utils.GetPlayerIdFromSteamId(sender), "Green");
         }
         private static void ForwardToServer(string message)
         {
-            byte[] bytes = Encoding.UTF8.GetBytes(message);
+            var bytes = Encoding.UTF8.GetBytes(message);
             MyAPIGateway.Multiplayer.SendMessageToServer(Constants.CommandsSyncId, bytes);
         }
         public static void OnChatCommand(ulong sender,string messageText, ref bool sendToOthers)
@@ -35,7 +33,7 @@ namespace ShipCoreFramework
 
             sendToOthers = false;
             if(!Constants.IsServer){ForwardToServer(messageText);}
-            CommmandSwitch(MyAPIGateway.Session.Player.PlayerID,messageText);
+            CommmandSwitch(MyAPIGateway.Session.Player.IdentityId,messageText);
         }
         private static void CommmandSwitch(long playerId,string messageText)
         {
@@ -49,48 +47,48 @@ namespace ShipCoreFramework
 
             var args = allArgs.Skip(1).ToArray();
             var sub = args[0].ToLower();
-            string ModMessage ="";
+            var modMessage ="";
             switch (sub)
             {
                 case "reloadconfig":
                     if(!CheckIfAdmin(playerId)){return;}
-                    ModMessage+=ReloadConfig();
+                    modMessage+=ReloadConfig();
                     break;
                 case "listcores":
-                    ModMessage+=ListCores();
+                    modMessage+=ListCores();
                     break;
                 case "coreinfo":
-                    ModMessage+=CoreInfo(args);
+                    modMessage+=CoreInfo(args);
                     break;
                 case "listnocores":
-                    ModMessage+=ListNoCores();
+                    modMessage+=ListNoCores();
                     break;
                 case "listnoflyzones":
-                    ModMessage+=ListNoFlyZones();
+                    modMessage+=ListNoFlyZones();
                     break;
                 case "debug":
                     if(!CheckIfAdmin(playerId)){return;}
-                    ModMessage+=Debug(args);
+                    modMessage+=Debug(args);
                     break;
                 case "combatlog":
                     if(!CheckIfAdmin(playerId)){return;}
-                    ModMessage+=CombatLog(args);
+                    modMessage+=CombatLog(args);
                     break;
                 case "select":
                     if(!CheckIfAdmin(playerId)){return;}
-                    ModMessage+=Select(args);
+                    modMessage+=Select(args);
                     break;
                 case "setworldspeed":
                     if(!CheckIfAdmin(playerId)){return;}
-                    ModMessage+=SetWorldSpeed(args);
+                    modMessage+=SetWorldSpeed(args);
                     break;
                 case "ignoretags":
                 case "ignoretag":
-                    ModMessage+=IgnoreTags(playerId,args);
+                    modMessage+=IgnoreTags(playerId,args);
                     break;
                 case "ignoreai":
                     if(!CheckIfAdmin(playerId)){return;}
-                    ModMessage+=IgnoreAi();
+                    modMessage+=IgnoreAi();
                     break;
                 case "limit":
                     if(Constants.LocalPlayer!=null) ShipClassLimit(playerId);
@@ -101,11 +99,11 @@ namespace ShipCoreFramework
             }
             if(Constants.IsServer)
             {
-                MyVisualScriptLogicProvider.SendChatMessage(ModMessage,"ShipCores: Server:", playerId, "Green");
+                MyVisualScriptLogicProvider.SendChatMessage(modMessage,"ShipCores: Server:", playerId, "Green");
             }
             else //Is Client
             {
-                MyVisualScriptLogicProvider.SendChatMessage(ModMessage,"ShipCores: LocalHost:", playerId, "Red");
+                MyVisualScriptLogicProvider.SendChatMessage(modMessage,"ShipCores: LocalHost:", playerId, "Red");
             }
         }
         private static string ReloadConfig()
@@ -117,15 +115,8 @@ namespace ShipCoreFramework
 
         private static string ListCores()
         {
-            if (ModSessionManager.Config.ShipCores.Count == 0)
-            {
-                return "No ship cores defined.";
-
-            }
-            string ModMessage ="";
-            foreach (var core in ModSessionManager.Config.ShipCores)
-                ModMessage+=$"{core.UniqueName} (SubtypeId: {core.SubtypeId})";
-            return ModMessage;
+            return ModSessionManager.Config.ShipCores.Count == 0 ? "No ship cores defined." : 
+                ModSessionManager.Config.ShipCores.Aggregate("", (current, core) => current + $"{core.UniqueName} (SubtypeId: {core.SubtypeId})");
         }
 
         private static string CoreInfo(string[] args)
@@ -146,30 +137,25 @@ namespace ShipCoreFramework
 
         private static string ListNoCores()
         {
-            if (ModSessionManager.Config.NoCoreConfigs.Count == 0)
-            {
-                return "No 'no core' configs available.";
-            }
-            string ModMessage ="";
-            foreach (var nc in ModSessionManager.Config.NoCoreConfigs)
-                ModMessage+=$"{nc.UniqueName} (SubtypeId: {nc.SubtypeId})";
-            return ModMessage;
+            return ModSessionManager.Config.NoCoreConfigs.Count == 0 ? "No 'no core' configs available." : 
+                ModSessionManager.Config.NoCoreConfigs.Aggregate("", (current, nc) => current + $"{nc.UniqueName} (SubtypeId: {nc.SubtypeId})");
         }
 
         private static string ListNoFlyZones()
         {
-            string ModMessage = "";
+            var modMessage = "";
             if (ModSessionManager.Config.NoFlyZones.Count == 0)
             {
-                ModMessage+="No NoFlyZones defined.";
-                return ModMessage;
+                modMessage+="No NoFlyZones defined.";
+                return modMessage;
             }
+            
             foreach (var zone in ModSessionManager.Config.NoFlyZones)
             {
                 var allowed = string.Join(", ", zone.AllowedCoresSubtype);
-                ModMessage+=$"Zone {zone.Id}: Center={zone.Position}, Radius={zone.Radius}, AllowedCores=[{allowed}]";
+                modMessage+=$"Zone {zone.Id}: Center={zone.Position}, Radius={zone.Radius}, AllowedCores=[{allowed}]";
             }
-            return ModMessage;
+            return modMessage;
         }
 
         private static string Debug(string[] args)
@@ -241,25 +227,25 @@ namespace ShipCoreFramework
             }
 
             var action = args[1].ToLower();
-            var ModMessage ="";
+            var modMessage ="";
             switch (action)
             {
                 case "list":
-                    ModMessage+=ListIgnoredTags();
+                    modMessage += ListIgnoredTags();
                     break;
                 case "add":
                     if (!CheckIfAdmin(playerId)) return "You are not Admin";
-                    ModMessage+=AddIgnoredTag(args);
+                    modMessage += AddIgnoredTag(args);
                     break;
                 case "remove":
                     if (!CheckIfAdmin(playerId)) return "You are not Admin";
-                    ModMessage+=RemoveIgnoredTag(args);
+                    modMessage += RemoveIgnoredTag(args);
                     break;
                 default:
-                    ModMessage+="Usage: /core ignoretags list|add <tag>|remove <tag>";
+                    modMessage+="Usage: /core ignoretags list|add <tag>|remove <tag>";
                     break;
             }
-            return ModMessage;
+            return modMessage;
         }
 
         private static string IgnoreAi()
@@ -331,7 +317,7 @@ namespace ShipCoreFramework
 
         private static void ShipClassLimit(long playerId)
         {
-            var targetGrid = Utils.RaycastForGrid(50.0);
+            var targetGrid = Utils.RaycastForGrid();
             
             if (targetGrid == null)
             {
@@ -431,19 +417,17 @@ namespace ShipCoreFramework
                     body += $"\n{blockLimit.Name}:\n";
                     body += $"  Used: {totalWeight:F1} / {blockLimit.MaxCount} ({percentage:F1}%)\n";
                     body += $"  Punishment: {blockLimit.PunishmentType}\n";
-                    
-                    if (usedBlocks.Count > 0 && usedBlocks.Count <= 10) // Show individual blocks if not too many
+
+                    if (usedBlocks.Count <= 0 || usedBlocks.Count > 10) continue; // Show individual blocks if not too many
+                    body += "  Blocks:\n";
+                    foreach (var block in usedBlocks.Take(10))
                     {
-                        body += "  Blocks:\n";
-                        foreach (var block in usedBlocks.Take(10))
-                        {
-                            var blockName = block.Key.DisplayNameText ?? block.Key.DefinitionDisplayNameText;
-                            body += $"    - {blockName} (Weight: {block.Value})\n";
-                        }
-                        if (usedBlocks.Count > 10)
-                        {
-                            body += $"    ... and {usedBlocks.Count - 10} more\n";
-                        }
+                        var blockName = block.Key.DisplayNameText ?? block.Key.DefinitionDisplayNameText;
+                        body += $"    - {blockName} (Weight: {block.Value})\n";
+                    }
+                    if (usedBlocks.Count > 10)
+                    {
+                        body += $"    ... and {usedBlocks.Count - 10} more\n";
                     }
                 }
             }
@@ -458,9 +442,7 @@ namespace ShipCoreFramework
 
         private static void ShowHelp()
         {
-            var body =
-@"Commands
-
+            const string body = @"Commands
 /core help
 Shows this help screen.
 
@@ -517,16 +499,10 @@ Raycasts from crosshairs to find a grid and displays its ship class limits and c
         private static bool CheckIfAdmin(long playerId)
         {
             if(!Constants.IsMultiplayer){return true;}
-            List<IMyPlayer> players = new List<IMyPlayer>();
+            var players = new List<IMyPlayer>();
             MyAPIGateway.Players.GetPlayers(players);
-            foreach (var player in players)
-            {
-                if (player.IdentityId == playerId)
-                {
-                    return (player.PromoteLevel == MyPromoteLevel.Admin || player.PromoteLevel == MyPromoteLevel.Owner);
-                }
-            }
-            return false;
+            return (from player in players where player.IdentityId == playerId 
+                select player.PromoteLevel == MyPromoteLevel.Admin || player.PromoteLevel == MyPromoteLevel.Owner).FirstOrDefault();
         }
     }
 }

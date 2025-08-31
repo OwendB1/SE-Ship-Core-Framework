@@ -2,6 +2,7 @@
 
 using System;
 using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 
 #endregion
 
@@ -16,6 +17,6 @@ namespace ShipCoreFramework
         public static bool IsClient => !(IsServer && IsDedicated);//Not Reliable
         public static bool IsMultiplayer => MyAPIGateway.Multiplayer.MultiplayerActive;
         public static IMyPlayer LocalPlayer => MyAPIGateway.Session.LocalHumanPlayer ;
-        public static ushort CommandsSyncId = 32123;
+        public const ushort CommandsSyncId = 32123;
     }
 }
