@@ -360,13 +360,13 @@ namespace ShipCoreFramework
             var body = $"Grid: {targetGrid.CustomName}\nShip Class: {shipCore.UniqueName}\n\n";
             if(gridLogic.ShipCore.MaxPerPlayer>0)
             {
-                body+=$"Per Player Limit:{GridsPerPlayerClassManager.PerPlayer[player.IdentityId][gridLogic.ShipCore.SubtypeId].Count}/{gridLogic.ShipCore.MaxPerPlayer}\n";
+                body+=$"Per Player Limit:{GridsPerPlayerManager.PerPlayer[player.IdentityId][gridLogic.ShipCore.SubtypeId].Count}/{gridLogic.ShipCore.MaxPerPlayer}\n";
             }
             if(gridLogic.OwningFaction != null && (gridLogic.ShipCore.MaxPerFaction>0))
             {
                 if(gridLogic.OwningFaction!=null)
                 {
-                    body+=$"Per Faction Limit:{GridsPerFactionClassManager.PerFaction[gridLogic.OwningFaction.FactionId][gridLogic.ShipCore.SubtypeId].Count}/{gridLogic.ShipCore.MaxPerFaction}\n";
+                    body+=$"Per Faction Limit:{GridsPerFactionManager.PerFaction[gridLogic.OwningFaction.FactionId][gridLogic.ShipCore.SubtypeId].Count}/{gridLogic.ShipCore.MaxPerFaction}\n";
                 }
                 else
                 {

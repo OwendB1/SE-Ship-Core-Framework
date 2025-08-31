@@ -72,8 +72,8 @@ namespace ShipCoreFramework
             Utils.Log($"Reset: Resetting logic for {Grid.CustomName} (entity id: {Grid.EntityId})!");
             _shipCoreTypeId = string.Empty;
             
-            GridsPerFactionClassManager.RemoveCubeGrid(this);
-            GridsPerPlayerClassManager.RemoveCubeGrid(this);
+            GridsPerFactionManager.RemoveCubeGrid(this);
+            GridsPerPlayerManager.RemoveCubeGrid(this);
             
             UpdateLimitsAndApplyModifiers();
             EnforceBlockPunishment(Grid);
@@ -305,13 +305,13 @@ namespace ShipCoreFramework
         //Event handlers
         private void OnBlockOwnershipChanged(IMyCubeGrid obj)
         {
-            GridsPerPlayerClassManager.RemoveCubeGrid(this);
-            GridsPerPlayerClassManager.AddCubeGrid(this);
+            GridsPerPlayerManager.RemoveCubeGrid(this);
+            GridsPerPlayerManager.AddCubeGrid(this);
             if (OwningFaction != null)
             {
-                GridsPerFactionClassManager.RemoveCubeGrid(this);
+                GridsPerFactionManager.RemoveCubeGrid(this);
                 if (ModSessionManager.Config.IgnoreAiFactions && OwningFaction.IsEveryoneNpc() || ModSessionManager.Config.IgnoredFactionTags.Contains(OwningFaction.Tag)) return;
-                GridsPerFactionClassManager.AddCubeGrid(this);
+                GridsPerFactionManager.AddCubeGrid(this);
             }
             EnforceBlockPunishment(obj);
         }
@@ -575,8 +575,8 @@ namespace ShipCoreFramework
         {
             if (ModSessionManager.Config.SelectedNoCore != null)
             {
-                GridsPerFactionClassManager.RemoveCubeGrid(this); 
-                GridsPerPlayerClassManager.RemoveCubeGrid(this);
+                GridsPerFactionManager.RemoveCubeGrid(this); 
+                GridsPerPlayerManager.RemoveCubeGrid(this);
             }
             base.Close();
         }

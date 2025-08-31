@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using NexusModAPI;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using VRage.Game;
@@ -17,10 +18,13 @@ namespace ShipCoreFramework
     public class ModSessionManager : MySessionComponentBase
     {
         public static ModConfig Config = new ModConfig();
+        private static NexusAPI _myNexusApi;
+        private bool _started;
 
         public override void LoadData()
         {
             Config.LoadConfig();
+            _myNexusApi = new NexusAPI(OnNexusEnabled);
             MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed = Config.MaxPossibleSpeedMetersPerSecond;
             MyDefinitionManager.Static.EnvironmentDefinition.SmallShipMaxSpeed = Config.MaxPossibleSpeedMetersPerSecond;
             var speedDifferential = Config.MaxPossibleSpeedMetersPerSecond - 100.0f;
@@ -106,9 +110,22 @@ namespace ShipCoreFramework
                     Utils.Log($"Vanilla AmmoType {ammoId} is missing.");
                 }
             
-            GridsPerFactionClassManager.Reset();
-            GridsPerPlayerClassManager.Reset();
+            LimitsNexusSync.Stop();
+            _myNexusApi?.Unload();
+            _myNexusApi = null;
+            
+            GridsPerFactionManager.Reset();
+            GridsPerPlayerManager.Reset();
             Config.SaveConfig();
+        }
+        
+        private void OnNexusEnabled()
+        {
+            if (_started) return;
+            if (!MyAPIGateway.Multiplayer.IsServer) return;
+            _started = true;
+            LimitsNexusSync.Start(_myNexusApi);
+            LimitsNexusSync.BroadcastSnapshot();
         }
 
         private void SessionReady()

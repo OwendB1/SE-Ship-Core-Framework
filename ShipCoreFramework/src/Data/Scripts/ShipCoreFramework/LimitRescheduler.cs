@@ -36,22 +36,22 @@ public static class LimitRescheduler
 
         var main = grid.GetMainGridLogic();
 
-        if (!GridsPerFactionClassManager.WillGridBeWithinFactionLimits(main, subtypeId))
+        if (!GridsPerFactionManager.WillGridBeWithinFactionLimits(main, subtypeId))
         {
             Utils.Log("Per faction limit of this core has been hit!", 3);// Why is this message showing up twice?
             grid.RemoveBlock(coreBlock.SlimBlock,true);
             main.ResetCore();
             return true;
         } 
-        if (!GridsPerPlayerClassManager.WillGridBeWithinPlayerLimits(main, subtypeId))
+        if (!GridsPerPlayerManager.WillGridBeWithinPlayerLimits(main, subtypeId))
         {
             Utils.Log("Per player limit of this core has been hit!", 3);
             grid.RemoveBlock(coreBlock.SlimBlock,true);
             return true;
         }
         //Best not to add it until you know it satisfies both conditions
-        GridsPerFactionClassManager.AddCubeGrid(main);
-        GridsPerPlayerClassManager.AddCubeGrid(main);
+        GridsPerFactionManager.AddCubeGrid(main);
+        GridsPerPlayerManager.AddCubeGrid(main);
         return true;
     }
 }
