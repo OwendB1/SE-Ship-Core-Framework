@@ -81,9 +81,7 @@ namespace ShipCoreFramework
         {
             Dispose();
         }
-
-        // gets called at the rate specified by NeedsUpdate
-        // it can't run every tick because the LCD is capped at 6fps anyway.
+        
         public override void Run()
         {
             if (ModSessionManager.Config.SelectedNoCore == null) return;
@@ -92,19 +90,16 @@ namespace ShipCoreFramework
                 base.Run(); // do not remove
                 _gridResultsTable.Clear();
                 if (!Constants.IsClient) return;
-                /*// hold L key to see how the error is shown, remove this after you've played around with it =)
-                if (MyAPIGateway.Input.IsKeyPress(VRage.Input.MyKeys.L))
-                    throw new Exception("Oh noes an error :}");*/
 
                 Draw();
             }
-            catch (Exception e) // no reason to crash the entire game just for an LCD script, but do NOT ignore them either, nag user so they report it :}
+            catch (Exception e)
             {
                 DrawError(e);
             }
         }
 
-        private void Draw() // this is a custom method which is called in Run().
+        private void Draw()
         {
             if (!Constants.IsClient) return;
 
@@ -265,7 +260,7 @@ namespace ShipCoreFramework
             return scrollPosition;
         }
 
-        private MySprite CreateLine(string text, Vector2 position, out Vector2 positionAfter, float scale = 1)
+        private static MySprite CreateLine(string text, Vector2 position, out Vector2 positionAfter, float scale = 1)
         {
             var sprite = MySprite.CreateText(text, "Monospace", Color.White, scale, TextAlignment.LEFT);
             sprite.Position =
