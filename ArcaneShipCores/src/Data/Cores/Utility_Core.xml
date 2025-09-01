@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-16"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <ShipCore xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <SubtypeId>Utility_Core</SubtypeId>
   <UniqueName>Utility Grid Class</UniqueName>
@@ -6,12 +6,12 @@
   <ForceBroadCastRange>0</ForceBroadCastRange>
   <LargeGridStatic>true</LargeGridStatic>
   <LargeGridMobile>true</LargeGridMobile>
-  <SmallGrid>true</SmallGrid>
   <MaxBlocks>50000</MaxBlocks>
   <MaxMass>-1</MaxMass>
   <MaxPCU>-1</MaxPCU>
   <MaxPerFaction>3</MaxPerFaction>
   <MaxPerPlayer>3</MaxPerPlayer>
+  <MinBlocks>-1</MinBlocks>
   <MinPlayers>-1</MinPlayers>
   <Modifiers>
     <AssemblerSpeed>1.5</AssemblerSpeed>
@@ -38,7 +38,6 @@
     <Explosion>0.9</Explosion>
     <Environment>0.9</Environment>
   </PassiveDefenseModifiers>
-  <SpeedBoostEnabled>false</SpeedBoostEnabled>
   <EnableActiveDefenseModifiers>false</EnableActiveDefenseModifiers>
   <ActiveDefenseModifiers>
     <Bullet>0.9</Bullet>
@@ -50,6 +49,7 @@
     <Explosion>0.9</Explosion>
     <Environment>0.9</Environment>
   </ActiveDefenseModifiers>
+  <SpeedBoostEnabled>false</SpeedBoostEnabled>
   <EnableReloadModifier>false</EnableReloadModifier>
   <ReloadModifier>1</ReloadModifier>
   <BlockLimits>
