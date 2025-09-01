@@ -521,6 +521,7 @@ namespace ShipCoreFramework
             {
                 var match = limit.BlockGroups.SelectMany(g => g.BlockTypes).Any(b => b.TypeId == Utils.GetBlockTypeId(block) && (b.SubtypeId=="any" || b.SubtypeId == Utils.GetBlockSubtypeId(block)));
                 if (!match) continue;
+                if (!myGridLogic.BlocksPerLimit.ContainsKey(limit)){continue;}
                 var limitBlocks = myGridLogic.BlocksPerLimit[limit];
                 var countWeight = limitBlocks.Sum(l => l.Value);
                 //Utils.Log($"Block check: {limit.Name} | {countWeight} | {limit.MaxCount}");
@@ -545,6 +546,7 @@ namespace ShipCoreFramework
                 {
                     var match = limit.BlockGroups.SelectMany(g => g.BlockTypes).Any(b => b.TypeId == Utils.GetBlockTypeId(block) && (b.SubtypeId=="any" || b.SubtypeId == Utils.GetBlockSubtypeId(block)));
                     if (!match) continue;
+                    if (!myGridLogic.BlocksPerLimit.ContainsKey(limit)){continue;}
                     var limitBlocks = myGridLogic.BlocksPerLimit[limit];
                     var countWeight = limitBlocks.Sum(l => l.Value);
                     //Utils.Log($"Block check: {limit.Name} | {countWeight} | {limit.MaxCount}");

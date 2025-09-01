@@ -64,7 +64,7 @@ namespace ShipCoreFramework
             {
                 Utils.Log($"Other Core Exist: {CoreBlock.CubeGrid.CustomName}", 3);
                 //This crashes the game
-                CoreBlock.Delete();
+                CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock,true);
                 return;
             }
             
@@ -163,12 +163,9 @@ namespace ShipCoreFramework
                 newMainCore.SyncIsMainCore.ValidateAndSet(true);
                 newMainCore.SaveCoreState();
                 newMainCore.CoreBlock.RefreshCustomInfo();
-                 if(Constants.LocalPlayer!=null && (Constants.LocalPlayer.PlayerID==grid.BigOwners.FirstOrDefault())){Utils.ShowNotification($"{grid.CustomName}'s main core destroyed! Successfully switched to backup core.",10000, true);}
             }
             else
             {
-                // No other core of this type found — reset the grid to no core
-                 if(Constants.LocalPlayer!=null && (Constants.LocalPlayer.PlayerID==grid.BigOwners.FirstOrDefault())){Utils.ShowNotification($"All cores destroyed! {grid.CustomName} has become inactive!",5000, true);}
                 gridLogic.ResetCore();
             }
             
@@ -187,7 +184,7 @@ namespace ShipCoreFramework
         {
             List<IMyCubeGrid> ignored;
             var actualMainGrid = arg1.GetMainCubeGrid(out ignored);
-            if (CoreBlock.CubeGrid.EntityId != actualMainGrid.EntityId) CoreBlock.Delete();
+            if (CoreBlock.CubeGrid.EntityId != actualMainGrid.EntityId) CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock,true);
         }
         
         private static void CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controls)
