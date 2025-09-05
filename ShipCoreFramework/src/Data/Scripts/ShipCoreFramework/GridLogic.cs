@@ -64,7 +64,7 @@ namespace ShipCoreFramework
             _shipCoreTypeId = shipCoreTypeId;
             
             UpdateLimitsAndApplyModifiers();
-            EnforceBlockPunishment(Grid);
+            EnforceGridPunishment();
         }
 
         public void ResetCore()
@@ -76,7 +76,7 @@ namespace ShipCoreFramework
             GridsPerPlayerManager.RemoveCubeGrid(this);
             
             UpdateLimitsAndApplyModifiers();
-            EnforceBlockPunishment(Grid);
+            EnforceGridPunishment();
         }
 
         private void UpdateLimitsAndApplyModifiers()
@@ -155,7 +155,7 @@ namespace ShipCoreFramework
                     _blocks.UnionWith(fatBlocks);
                 }
                 UpdateLimitsAndApplyModifiers();
-                EnforceBlockPunishment(Grid);
+                EnforceGridPunishment();
                 _needsSubgridsRedone=false;
             }
             SpeedEnforcement.EnforceSpeedLimit(this);
@@ -313,7 +313,7 @@ namespace ShipCoreFramework
                 if (ModSessionManager.Config.IgnoreAiFactions && OwningFaction.IsEveryoneNpc() || ModSessionManager.Config.IgnoredFactionTags.Contains(OwningFaction.Tag)) return;
                 GridsPerFactionManager.AddCubeGrid(this);
             }
-            EnforceBlockPunishment(obj);
+            EnforceGridPunishment();
         }
         
         private void OnIsStaticChanged(IMyCubeGrid grid, bool isStatic)
@@ -535,10 +535,10 @@ namespace ShipCoreFramework
                 WhackABlock(block, limit.PunishmentType);
             }
         }
-        private void EnforceBlockPunishment(IMyCubeGrid grid)
+        private void EnforceGridPunishment()
         {
             //Assume if method is called without a specific block we neet to check ALL BLOCKS
-            var myGridLogic = grid.GetMainGridLogic();
+            var myGridLogic = Grid.GetMainGridLogic();
             
             foreach (var block in myGridLogic._blocks.ToList())
             {

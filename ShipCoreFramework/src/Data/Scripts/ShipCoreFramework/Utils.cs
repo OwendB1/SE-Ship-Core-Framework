@@ -128,7 +128,7 @@ namespace ShipCoreFramework
 
         public static IMyCubeGrid GetMainCubeGrid(this IMyCubeGrid grid, out List<IMyCubeGrid> subgrids)
         {
-            var group = grid.GetGridGroup(GridLinkTypeEnum.Mechanical);
+            var group = grid?.GetGridGroup(GridLinkTypeEnum.Mechanical);
             var grids = new List<IMyCubeGrid>();
 
             group?.GetGrids(grids);
