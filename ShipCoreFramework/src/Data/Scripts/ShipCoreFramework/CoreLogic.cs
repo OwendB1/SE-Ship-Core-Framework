@@ -31,8 +31,9 @@ namespace ShipCoreFramework
 
         private ulong _lastBoostReq;
         private ulong _lastDefenseReq;
-
+        
         private static bool _actionsRegistered;
+        private static bool _hasPhysics;
 
         #region Init methods
 
@@ -43,6 +44,7 @@ namespace ShipCoreFramework
             CubeGridModifiers.AddModifiers(CoreBlock);
             if (ModSessionManager.Config.ShipCores.All(core => core.SubtypeId != CoreBlock.BlockDefinition.SubtypeId)) return;
             SyncIsMainCore.ValidateAndSet(false);
+            if (CoreBlock.CubeGrid?.Physics == null) return;
             CoreBlock.CubeGrid.OnPhysicsChanged += InitOnPhysicsChanged;
         }
 
@@ -53,7 +55,8 @@ namespace ShipCoreFramework
                 Utils.Log("NOCORE is NULL for CORE");
                 return;
             }
-            if (CoreBlock.CubeGrid?.Physics == null){Utils.Log($"Missing Physics {CoreBlock.CubeGrid?.CustomName} ({CoreBlock.CubeGrid?.Physics})", 3); return;}
+            if (CoreBlock.CubeGrid?.Physics == null) return;
+            _hasPhysics = true;
             CoreBlock.CubeGrid.OnPhysicsChanged -= InitOnPhysicsChanged;
             if (ModSessionManager.Config.ShipCores.All(core => core.SubtypeId != CoreBlock.BlockDefinition.SubtypeId)) return;
             SubtypeId = CoreBlock.BlockDefinition.SubtypeId;
@@ -132,6 +135,12 @@ namespace ShipCoreFramework
         {
             if (ModSessionManager.Config.SelectedNoCore == null) return;
             if (CoreBlock?.CubeGrid == null) return;
+            if (_hasPhysics == false)
+            {
+                base.Close();
+                return;
+            }
+            
             MyAPIGateway.TerminalControls.CustomControlGetter -= CustomControlGetter;
             CoreBlock.CubeGrid.OnGridMerge -= OnGridMerge;
             
@@ -143,7 +152,10 @@ namespace ShipCoreFramework
             if (!SyncIsMainCore.Value)
             {
                 //Anoying
-                if(Constants.LocalPlayer!=null && (Constants.LocalPlayer.PlayerID==grid.BigOwners.FirstOrDefault())){Utils.ShowNotification($"A backup core of grid {grid.CustomName} was destroyed!",10000, true);}
+                if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == grid.BigOwners.FirstOrDefault())
+                {
+                    Utils.ShowNotification($"A backup core of grid {grid.CustomName} was destroyed!",10000, true);
+                }
                 return;
             }
             

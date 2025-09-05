@@ -31,7 +31,7 @@ namespace ShipCoreFramework
         private float _activeDefenseCooldownTimer;
         private float _activeDefenseDurationTimer;
 
-        public bool _NeedsSubgridsRedone=false;
+        private bool _needsSubgridsRedone = false;
 
         public CoreLogic CoreBlock => Utils.GetGridCore(Grid,ShipCore);
 
@@ -137,7 +137,7 @@ namespace ShipCoreFramework
             List<IMyCubeGrid> subgrids;
             var MainGrid = Grid.GetMainCubeGrid(out subgrids);
             if(MainGrid!=Grid){return;}
-            if(_NeedsSubgridsRedone)
+            if(_needsSubgridsRedone)
             {
                 _blocks.Clear();
                 _blocks.UnionWith(Grid.GetFatBlocks<MyCubeBlock>().Where(b => !b.IsPreview));
@@ -156,7 +156,7 @@ namespace ShipCoreFramework
                 }
                 UpdateLimitsAndApplyModifiers();
                 EnforceBlockPunishment(Grid);
-                _NeedsSubgridsRedone=false;
+                _needsSubgridsRedone=false;
             }
             SpeedEnforcement.EnforceSpeedLimit(this);
             if (_shipCoreTypeId == string.Empty) return;
@@ -415,7 +415,7 @@ namespace ShipCoreFramework
             List<IMyCubeGrid> subgrids;
             var MainGrid = (mygrid as IMyCubeGrid).GetMainCubeGrid(out subgrids);
             var mainLogic = MainGrid.GetMainGridLogic();
-            mainLogic._NeedsSubgridsRedone=true;
+            mainLogic._needsSubgridsRedone=true;
         }
         private void OnGridMergeOrSplit(IMyCubeGrid main, IMyCubeGrid sub)
         {
@@ -424,7 +424,7 @@ namespace ShipCoreFramework
             List<IMyCubeGrid> subgrids;
             var MainGrid = main.GetMainCubeGrid(out mainsubgrids);
             var mainLogic = MainGrid.GetMainGridLogic();
-            mainLogic._NeedsSubgridsRedone=true;
+            mainLogic._needsSubgridsRedone=true;
             var subLogic = sub.GetMainCubeGrid(out subgrids).GetMainGridLogic();
             subLogic.Close();
         }

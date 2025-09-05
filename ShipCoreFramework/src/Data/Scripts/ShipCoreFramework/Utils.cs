@@ -81,11 +81,8 @@ namespace ShipCoreFramework
 
             try
             {
-                if(!(MyAPIGateway.Multiplayer.IsServer && MyAPIGateway.Utilities.IsDedicated)){return;}
-                if (logPriority >= ModSessionManager.Config.ClientOutputLogLevel)
-                    MyAPIGateway.Utilities.ShowMessage($"[{tooltip}={logPriority}]: ", msg);
-
-                if (ModSessionManager.Config != null && ModSessionManager.Config.DebugMode)
+                if(!Constants.IsClient && ModSessionManager.Config == null) return;
+                if (logPriority >= ModSessionManager.Config.ClientOutputLogLevel && ModSessionManager.Config.DebugMode)
                     MyAPIGateway.Utilities.ShowMessage($"[{tooltip}={logPriority}]: ", msg);
             }
             catch (Exception)
@@ -189,8 +186,7 @@ namespace ShipCoreFramework
             {
                 ShowNotification($"{keyName} has no value", 100000); Something logically wrong, it will load the variable then say it failed so I'm just pulling this.
             }*/
-            if(string.IsNullOrWhiteSpace(savedBlobB64)){return default(T);}
-            return MyAPIGateway.Utilities.SerializeFromXML<T>(Encoding.UTF8.GetString(Convert.FromBase64String(savedBlobB64)));
+            return string.IsNullOrWhiteSpace(savedBlobB64) ? default(T) : MyAPIGateway.Utilities.SerializeFromXML<T>(Encoding.UTF8.GetString(Convert.FromBase64String(savedBlobB64)));
         }
         
         public static void SaveToSandbox<T>(string keyName,T item)
@@ -212,13 +208,7 @@ namespace ShipCoreFramework
             var hits = new List<IHitInfo>();
             MyAPIGateway.Physics.CastRay(startPos, endPos, hits);
 
-            foreach (var hit in hits)
-            {
-                var grid = hit.HitEntity as IMyCubeGrid;
-                if (grid != null) return grid;
-            }
-
-            return null;
+            return hits.Select(hit => hit.HitEntity).OfType<IMyCubeGrid>().FirstOrDefault();
         }
     }
 

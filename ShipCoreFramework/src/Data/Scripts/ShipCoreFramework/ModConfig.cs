@@ -94,6 +94,7 @@ namespace ShipCoreFramework
                     DebugMode = import.DebugMode;
                     CombatLogging = import.CombatLogging;
                     LogLevel = import.LogLevel;
+                    ClientOutputLogLevel = import.ClientOutputLogLevel;
                     MaxPossibleSpeedMetersPerSecond = import.MaxPossibleSpeedMetersPerSecond;
                 }
             }
@@ -106,11 +107,9 @@ namespace ShipCoreFramework
             }
 
             IgnoreAiFactions = Utils.LoadFromSandbox<bool>(IgnoreAiKey);
-            if(IgnoreAiFactions==null){IgnoreAiFactions=true;}
-            IgnoredFactionTags = Utils.LoadFromSandbox<List<string>>(IgnoredFactionsKey);
-            if(IgnoredFactionTags==null){IgnoredFactionTags = new List<string>{"SPRT","ADMIN","FMCA", "BORG", "TERA"};}
-            SelectedNoCore = Utils.LoadFromSandbox<ShipCore>(SelectedNoCoreKey);
-            if(SelectedNoCore == null){SelectedNoCore = DefaultNoCoreConfig.ShipCore;}
+            IgnoredFactionTags = Utils.LoadFromSandbox<List<string>>(IgnoredFactionsKey) ?? new List<string>{"SPRT","ADMIN","FMCA", "BORG", "TERA"};
+            SelectedNoCore = Utils.LoadFromSandbox<ShipCore>(SelectedNoCoreKey) ?? DefaultNoCoreConfig.ShipCore;
+
             //if(SelectedNoCore==null)
             //Run Though Mods
             foreach (var mod in MyAPIGateway.Session.Mods)
