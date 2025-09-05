@@ -31,10 +31,10 @@ namespace ShipCoreFramework
 
         private ulong _lastBoostReq;
         private ulong _lastDefenseReq;
+        private bool _hasPhysics;
         
         private static bool _actionsRegistered;
-        private static bool _hasPhysics;
-
+        
         #region Init methods
 
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
@@ -44,7 +44,6 @@ namespace ShipCoreFramework
             CubeGridModifiers.AddModifiers(CoreBlock);
             if (ModSessionManager.Config.ShipCores.All(core => core.SubtypeId != CoreBlock.BlockDefinition.SubtypeId)) return;
             SyncIsMainCore.ValidateAndSet(false);
-            if (CoreBlock.CubeGrid?.Physics == null) return;
             CoreBlock.CubeGrid.OnPhysicsChanged += InitOnPhysicsChanged;
         }
 
@@ -135,6 +134,7 @@ namespace ShipCoreFramework
         {
             if (ModSessionManager.Config.SelectedNoCore == null) return;
             if (CoreBlock?.CubeGrid == null) return;
+            Utils.Log(_hasPhysics.ToString(), 0, "Core Close");
             if (_hasPhysics == false)
             {
                 base.Close();
@@ -151,7 +151,6 @@ namespace ShipCoreFramework
             // If this core is NOT the main core, nothing to reassign
             if (!SyncIsMainCore.Value)
             {
-                //Anoying
                 if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == grid.BigOwners.FirstOrDefault())
                 {
                     Utils.ShowNotification($"A backup core of grid {grid.CustomName} was destroyed!",10000, true);
@@ -178,6 +177,10 @@ namespace ShipCoreFramework
             }
             else
             {
+                if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == grid.BigOwners.FirstOrDefault())
+                {
+                    Utils.ShowNotification($"Main core of grid {grid.CustomName} was destroyed!",10000, true);
+                }
                 gridLogic.ResetCore();
             }
             
