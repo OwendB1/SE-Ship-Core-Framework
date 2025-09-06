@@ -315,35 +315,45 @@ namespace ShipCoreFramework
             }
             EnforceGridPunishment();
         }
-        
+
         private void OnIsStaticChanged(IMyCubeGrid grid, bool isStatic)
         {
             if (ShipCore.LargeGridStatic && !ShipCore.LargeGridMobile && !isStatic) grid.IsStatic = true;
             if (!ShipCore.LargeGridStatic && isStatic) grid.IsStatic = false;
+            //Needs Logic here!
         }
 
-        private void OnBlockAdded(IMySlimBlock obj) //This is working now.
+        private void OnBlockAdded(IMySlimBlock obj) //Now tells player why
         {
             Utils.Log($"{Utils.GetBlockTypeId(obj)} | {Utils.GetBlockSubtypeId(obj)}");
             var concreteGrid = Grid as MyCubeGrid;
              //MaxBlocks
             if (concreteGrid?.BlocksCount >= ShipCore.MaxBlocks && ShipCore.MaxBlocks > 0)
             {
-                Utils.Log($"{Utils.GetBlockSubtypeId(obj)} Violates MaxBlocks: {concreteGrid?.BlocksCount > ShipCore.MaxBlocks}", 2);
+                if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == Grid.BigOwners.FirstOrDefault())
+                {
+                    Utils.ShowNotification($"{Utils.GetBlockSubtypeId(obj)} Violates MaxBlocks: {concreteGrid?.BlocksCount > ShipCore.MaxBlocks}",10000, true);
+                }
                 Grid.RemoveBlock(obj);
                 return;
             }
             //Missing MaxPCU
             if (concreteGrid?.BlocksPCU >= ShipCore.MaxPCU && ShipCore.MaxPCU > 0)
             {
-                Utils.Log($"{Utils.GetBlockSubtypeId(obj)} Violates MaxPCU: {concreteGrid?.BlocksCount > ShipCore.MaxPCU}", 2);
+                if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == Grid.BigOwners.FirstOrDefault())
+                {
+                    Utils.ShowNotification($"{Utils.GetBlockSubtypeId(obj)} Violates MaxPCU: {concreteGrid?.BlocksCount > ShipCore.MaxPCU}",10000, true);
+                }
                 Grid.RemoveBlock(obj);
                 return;
             }
-            // MaxMass, Not sure if this is dry or wet mass... testing required
+            // MaxMass, Currently WET MASS
             if (concreteGrid?.Mass >= ShipCore.MaxMass && ShipCore.MaxMass > 0f)
             {
-                Utils.Log($"{Utils.GetBlockSubtypeId(obj)} Violates MaxMass: {concreteGrid?.BlocksCount > ShipCore.MaxMass}",2);
+                if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == Grid.BigOwners.FirstOrDefault())
+                {
+                    Utils.ShowNotification($"{Utils.GetBlockSubtypeId(obj)} Violates MaxMass: {concreteGrid?.BlocksCount > ShipCore.MaxMass}",10000, true);
+                }
                 Grid.RemoveBlock(obj);
                 return;
             } 
@@ -365,7 +375,10 @@ namespace ShipCoreFramework
                 if (CoreBlock?.CoreBlock != null) { validDirection=IsValidDirection(CoreBlock.CoreBlock, obj, limit.AllowedDirections); } else { Utils.Log($"Log Direction Check: \nCoreBlock is null", 3); }
                 if (countWeight + countForSpecificBlock > limit.MaxCount||!validDirection)
                 {
-                    Utils.Log("Removing block", 1);
+                    if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == Grid.BigOwners.FirstOrDefault())
+                    {
+                        Utils.ShowNotification($"{Utils.GetBlockSubtypeId(obj)} Violates Blocklimit {limit.Name}: {countWeight}/{limit.MaxCount}",10000, true);
+                    }
                     Grid.RemoveBlock(obj);
                     List<IMyCubeGrid> subs;
                     Grid.GetMainCubeGrid(out subs);
@@ -434,9 +447,9 @@ namespace ShipCoreFramework
 
         private static bool IsValidDirection(IMyCubeBlock myCore, IMySlimBlock block, List<DirectionType> allowedDirections)
          {
-            if (myCore?.Orientation == null || block?.Orientation == null || allowedDirections.Count < 1) { Utils.Log($"Log Direction Check: Orientation data missing", 3); return true; }
+            if (myCore?.Orientation == null || block?.Orientation == null || allowedDirections.Count < 1) {return true; }
             //if grid is on subgrid, ignore directional locking
-            if (myCore.CubeGrid!=block.CubeGrid) {  return true; }//Utils.Log($"Log Direction Check: Block is on subgrid and is ignored.", 3);
+            if (myCore.CubeGrid != block.CubeGrid) { return true; }//Utils.Log($"Log Direction Check: Block is on subgrid and is ignored.", 3);
             var myCoreDirection = Convert.ToString(myCore.Orientation).Replace("[", "").Replace("]", "").Split(new char[] { ',', ':' }, StringSplitOptions.RemoveEmptyEntries).ToList();
             var blockDirection = Convert.ToString(block.Orientation).Replace("[", "").Replace("]", "").Split(new char[] { ',', ':' }, StringSplitOptions.RemoveEmptyEntries).ToList();
             myCoreDirection.RemoveAt(2);

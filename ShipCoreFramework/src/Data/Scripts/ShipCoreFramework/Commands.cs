@@ -108,6 +108,7 @@ namespace ShipCoreFramework
         }
         private static string ReloadConfig()
         {
+            ModSessionManager.Config = null;
             ModSessionManager.Config = new ModConfig();
             ModSessionManager.Config.LoadConfig();
             return "Config reloaded from disk.";

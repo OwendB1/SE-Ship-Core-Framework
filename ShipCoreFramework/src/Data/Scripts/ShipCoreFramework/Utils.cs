@@ -143,7 +143,23 @@ namespace ShipCoreFramework
             subgrids = grids.Where(g => g.EntityId != biggestGrid.EntityId).ToList();
             return biggestGrid;
         }
+        public static IMyCubeGrid GetLargestConnectedGrid(this IMyCubeGrid grid, out List<IMyCubeGrid> subgrids)
+        //Required for speed enforcement
+        {
+            var group = grid?.GetGridGroup(GridLinkTypeEnum.Physical);
+            var grids = new List<IMyCubeGrid>();
 
+            group?.GetGrids(grids);
+            if (!grids.Any())
+            {
+                subgrids = grids;
+                return grid;
+            }
+
+            var biggestGrid = grids.OfType<MyCubeGrid>().MaxBy(concrete => concrete.BlocksCount);
+            subgrids = grids.Where(g => g.EntityId != biggestGrid.EntityId).ToList();
+            return biggestGrid;
+        }
         public static List<ulong> GetGridRecipientIds(this IMyCubeGrid grid)
         {
             var players = new List<IMyPlayer>();

@@ -15,12 +15,12 @@ namespace ShipCoreFramework
 
             if (gridLogic?.Grid == null){return;}
             List<IMyCubeGrid> subgrids;
-            var mainGrid = gridLogic.Grid.GetMainCubeGrid(out subgrids);
+            var mainGrid = gridLogic.Grid.GetLargestConnectedGrid(out subgrids);
             if(gridLogic.Grid != mainGrid){return;}
             var maxSpeed = ModSessionManager.Config.MaxPossibleSpeedMetersPerSecond*gridLogic.Modifiers.MaxSpeed;
             if (gridLogic.ShipCore != null && gridLogic.BoostEnabled)//Even if there is no core, speed must still be enforced, hence the move.
             {
-                maxSpeed *= gridLogic.Modifiers.MaxBoost;
+                maxSpeed = ModSessionManager.Config.MaxPossibleSpeedMetersPerSecond*gridLogic.Modifiers.MaxBoost;
             }
             var velocity = mainGrid.Physics.LinearVelocity;
             if (!(velocity.LengthSquared() > maxSpeed * maxSpeed)) return;
