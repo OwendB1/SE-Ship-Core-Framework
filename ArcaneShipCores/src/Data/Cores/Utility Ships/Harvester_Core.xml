@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-16"?>
+<ShipCore xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <SubtypeId>Harvester_Core</SubtypeId>
+  <UniqueName>Harvester Grid Class</UniqueName>
+  <ForceBroadCast>true</ForceBroadCast>
+  <ForceBroadCastRange>50000</ForceBroadCastRange>
+  <LargeGridStatic>true</LargeGridStatic>
+  <LargeGridMobile>true</LargeGridMobile>
+  <SmallGrid>true</SmallGrid>
+  <MaxBlocks>10000</MaxBlocks>
+  <MaxMass>-1</MaxMass>
+  <MaxPCU>60000</MaxPCU>
+  <MaxPerFaction>2</MaxPerFaction>
+  <MaxPerPlayer>-1</MaxPerPlayer>
+  <MinPlayers>5</MinPlayers>
+  <Modifiers>
+    <AssemblerSpeed>1</AssemblerSpeed>
+    <DrillHarvestMultiplier>5</DrillHarvestMultiplier>
+    <GyroEfficiency>0.5</GyroEfficiency>
+    <GyroForce>10</GyroForce>
+    <PowerProducersOutput>1</PowerProducersOutput>
+    <RefineEfficiency>2</RefineEfficiency>
+    <RefineSpeed>5</RefineSpeed>
+    <ThrusterEfficiency>0.5</ThrusterEfficiency>
+    <ThrusterForce>10</ThrusterForce>
+    <MaxSpeed>0.5</MaxSpeed>
+    <MaxBoost>0.7</MaxBoost>
+    <BoostDuration>10</BoostDuration>
+    <BoostCoolDown>60</BoostCoolDown>
+  </Modifiers>
+  <PassiveDefenseModifiers>
+    <Bullet>1</Bullet>
+    <Energy>1</Energy>
+    <Kinetic>1</Kinetic>
+    <Duration>1</Duration>
+    <Cooldown>1</Cooldown>
+    <Rocket>1</Rocket>
+    <Explosion>1</Explosion>
+    <Environment>0.8</Environment>
+  </PassiveDefenseModifiers>
+  <SpeedBoostEnabled>true</SpeedBoostEnabled>
+  <EnableActiveDefenseModifiers>true</EnableActiveDefenseModifiers>
+  <ActiveDefenseModifiers>
+    <Bullet>0.7</Bullet>
+    <Energy>0.7</Energy>
+    <Kinetic>0.7</Kinetic>
+    <Duration>0.7</Duration>
+    <Cooldown>0.7</Cooldown>
+    <Rocket>0.7</Rocket>
+    <Explosion>0.7</Explosion>
+    <Environment>0</Environment>
+  </ActiveDefenseModifiers>
+  <EnableReloadModifier>false</EnableReloadModifier>
+  <ReloadModifier>1</ReloadModifier>
+  <BlockLimits>
+    <Name>Drills</Name>
+    <BlockGroups>Drills</BlockGroups>
+    <MaxCount>20</MaxCount>
+    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishmentType>Delete</PunishmentType>
+    <AllowedDirections>Down</AllowedDirections>
+  </BlockLimits>
+  <BlockLimits>
+    <Name>Not-Alowed Tools</Name>
+    <BlockGroups>Grinders</BlockGroups>
+    <BlockGroups>Welders</BlockGroups>
+    <MaxCount>0</MaxCount>
+    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishmentType>Delete</PunishmentType>
+  </BlockLimits>
+  <BlockLimits>
+    <Name>Weaponry PDC Only</Name>
+    <BlockGroups>Weaponry</BlockGroups>
+    <MaxCount>30</MaxCount>
+    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishmentType>Delete</PunishmentType>
+  </BlockLimits>
+    <BlockLimits>
+    <Name>Non-PDC Weapons</Name>
+    <BlockGroups>Turrets</BlockGroups>
+    <BlockGroups>VanillaSmallGridFixedWeapons</BlockGroups>
+    <BlockGroups>VanillaLargeGridFixedWeapons</BlockGroups>
+    <MaxCount>0</MaxCount>
+    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishmentType>Delete</PunishmentType>
+  </BlockLimits>
+</ShipCore>

@@ -1,0 +1,66 @@
+<?xml version="1.0" ?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<CubeBlocks>
+        <Definition xsi:type="MyObjectBuilder_BeaconDefinition">
+            <Id>
+                <TypeId>Beacon</TypeId>
+                <SubtypeId>Citadel_Core</SubtypeId>
+            </Id>
+            <DisplayName>Citadel Core</DisplayName>
+            <Description>Citadel Core</Description>
+            <Icon>Textures\LargeGridCore.png</Icon>
+            <Icon>Textures\StationFiringArc.png</Icon>
+            <CubeSize>Large</CubeSize>
+            <GuiVisible>false</GuiVisible>
+            <BlockTopology>TriangleMesh</BlockTopology>
+			<Size x="1" y="1" z="1"/>
+			<ModelOffset x="0" y="0" z="0"/>
+			<Model>Models\GridCore_Center.mwm</Model>
+            <Components>
+                <Component Subtype="SteelPlate" Count="40" />
+                <Component Subtype="Construction" Count="30" />
+                <Component Subtype="LargeTube" Count="20" />
+                <Component Subtype="Computer" Count="10" />
+                <Component Subtype="RadioCommunication" Count="40" />
+                <Component Subtype="SteelPlate" Count="40" />
+            </Components>
+            <CriticalComponent Subtype="RadioCommunication" Index="0" />
+			<MountPoints>
+				<MountPoint Side="Front" StartX="0.21" StartY="0.00" EndX="0.79" EndY="1.00"/>
+				<MountPoint Side="Back" StartX="0.21" StartY="0.00" EndX="0.79" EndY="1.00"/>
+				<MountPoint Side="Left" StartX="0.21" StartY="0.00" EndX="0.79" EndY="1.00"/>
+				<MountPoint Side="Right" StartX="0.21" StartY="0.00" EndX="0.79" EndY="1.00"/>
+				<MountPoint Side="Top" StartX="0.20" StartY="0.00" EndX="0.80" EndY="1.00"/>
+				<MountPoint Side="Top" StartX="0.00" StartY="0.20" EndX="1.00" EndY="0.80"/>
+				<MountPoint Side="Top" StartX="0.10" StartY="0.10" EndX="0.90" EndY="0.90"/>
+				<MountPoint Side="Bottom" StartX="0.20" StartY="0.00" EndX="0.80" EndY="1.00"/>
+				<MountPoint Side="Bottom" StartX="0.00" StartY="0.20" EndX="1.00" EndY="0.80"/>
+				<MountPoint Side="Bottom" StartX="0.10" StartY="0.10" EndX="0.90" EndY="0.90"/>
+			</MountPoints>
+			<BuildProgressModels>
+				<Model BuildPercentUpperBound="0.33" File="Models\GridCore_Center_BS1.mwm"/>
+				<Model BuildPercentUpperBound="0.67" File="Models\GridCore_Center_BS2.mwm"/>
+				<Model BuildPercentUpperBound="1.00" File="Models\GridCore_Center_BS3.mwm"/>
+			</BuildProgressModels>
+            <BlockPairName>Citadel_Core</BlockPairName>
+            <EdgeType>Light</EdgeType>
+            <MirroringY>Z</MirroringY>
+            <BuildTimeSeconds>40</BuildTimeSeconds>
+            <DamageEffectName>Damage_Electrical_Damaged</DamageEffectName>
+            <DamagedSound>ParticleElectrical</DamagedSound>
+
+            <!-- Beacon properties -->
+            <!-- Antenna info-->
+            <ResourceSinkGroup>Utility</ResourceSinkGroup>
+            <MaxBroadcastRadius>200000</MaxBroadcastRadius>
+            <Flare>BeaconLarge</Flare>
+            <MaxBroadcastPowerDrainkW>20</MaxBroadcastPowerDrainkW>
+
+            <EmissiveColorPreset>Beacon</EmissiveColorPreset>
+            <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
+            <DestroySound>WepSmallWarheadExpl</DestroySound>
+            <PCU>50</PCU>
+            <IsAirTight>false</IsAirTight>
+        </Definition>
+	</CubeBlocks>
+</Definitions>

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-16"?>
+<ShipCore xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <SubtypeId>Interceptor_Core</SubtypeId>
+  <UniqueName>Interceptor Grid Class</UniqueName>
+  <ForceBroadCast>true</ForceBroadCast>
+  <ForceBroadCastRange>1000</ForceBroadCastRange>
+  <LargeGridStatic>true</LargeGridStatic>
+  <LargeGridMobile>true</LargeGridMobile>
+  <MaxBlocks>1000</MaxBlocks>
+  <MaxMass>-1</MaxMass>
+  <MaxPCU>5000</MaxPCU>
+  <MaxPerPlayer>10</MaxPerPlayer>
+  <MinPlayers>-1</MinPlayers>
+  <Modifiers>
+    <AssemblerSpeed>0</AssemblerSpeed>
+    <DrillHarvestMultiplier>0</DrillHarvestMultiplier>
+    <GyroEfficiency>1.5</GyroEfficiency>
+    <GyroForce>1.5</GyroForce>
+    <PowerProducersOutput>1</PowerProducersOutput>
+    <RefineEfficiency>0</RefineEfficiency>
+    <RefineSpeed>0</RefineSpeed>
+    <ThrusterEfficiency>1.5</ThrusterEfficiency>
+    <ThrusterForce>1.5</ThrusterForce>
+    <MaxSpeed>0.9</MaxSpeed>
+    <MaxBoost>1</MaxBoost>
+    <BoostDuration>5</BoostDuration>
+    <BoostCoolDown>10</BoostCoolDown>
+  </Modifiers>
+  <PassiveDefenseModifiers>
+    <Bullet>0.3</Bullet>
+    <Energy>0.3</Energy>
+    <Kinetic>0.3</Kinetic>
+    <Rocket>2</Rocket>
+    <Explosion>0.5</Explosion>
+    <Environment>1</Environment>
+  </PassiveDefenseModifiers>
+  <SpeedBoostEnabled>true</SpeedBoostEnabled>
+  <EnableActiveDefenseModifiers>true</EnableActiveDefenseModifiers>
+  <ActiveDefenseModifiers>
+    <Bullet>0.1</Bullet>
+    <Energy>0.1</Energy>
+    <Kinetic>0.1</Kinetic>
+    <Duration>5</Duration>
+    <Cooldown>10</Cooldown>
+    <Rocket>1.2</Rocket>
+    <Explosion>0.1</Explosion>
+    <Environment>1</Environment>
+  </ActiveDefenseModifiers>
+  <EnableReloadModifier>false</EnableReloadModifier>
+  <ReloadModifier>1</ReloadModifier>
+  <BlockLimits>
+    <Name>Weapons</Name>
+    <BlockGroups>Weaponry</BlockGroups>
+    <MaxCount>6</MaxCount>
+    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishmentType>Delete</PunishmentType>
+    <AllowedDirections>Forward</AllowedDirections>
+  </BlockLimits>
+  <BlockLimits>
+    <Name>No Turrets</Name>
+    <BlockGroups>Turrets</BlockGroups>
+    <MaxCount>0</MaxCount>
+    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishmentType>Delete</PunishmentType>
+  </BlockLimits>
+  <BlockLimits>
+    <Name>No Heavy Weaponry</Name>
+    <BlockGroups>VanillaArtillery</BlockGroups>
+    <BlockGroups>VanillaRailguns</BlockGroups>
+    <MaxCount>0</MaxCount>
+    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishmentType>Delete</PunishmentType>
+  </BlockLimits>
+</ShipCore>

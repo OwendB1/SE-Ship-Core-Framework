@@ -1,4 +1,22 @@
 <?xml version="1.0" encoding="utf-16"?>
 <CoreManifest>
-  <ShipCoreFilenames>Data\Cores\Utility_Core.xml</ShipCoreFilenames>
+  <ShipCoreFilenames>Data\Cores\Combat Grids\Utility_Core.xml</ShipCoreFilenames>
+  <ShipCoreFilenames>Data\Cores\Combat Grids\Frigate_Core.xml</ShipCoreFilenames>
+  <ShipCoreFilenames>Data\Cores\Combat Grids\Cruiser_Core.xml</ShipCoreFilenames>
+  <ShipCoreFilenames>Data\Cores\Combat Grids\Battleship_Core.xml</ShipCoreFilenames>
+
+  <ShipCoreFilenames>Data\Cores\Combat Grids\Interceptor_Core.xml</ShipCoreFilenames>
+  <ShipCoreFilenames>Data\Cores\Combat Grids\Fighter_Core.xml</ShipCoreFilenames>
+  <ShipCoreFilenames>Data\Cores\Combat Grids\Gunship_Core.xml</ShipCoreFilenames>
+
+
+  <ShipCoreFilenames>Data\Cores\Stations\Citadel_Core.xml</ShipCoreFilenames>
+  <ShipCoreFilenames>Data\Cores\Stations\Outpost_Core.xml</ShipCoreFilenames>
+  <ShipCoreFilenames>Data\Cores\Stations\Stronghold_Core.xml</ShipCoreFilenames>
+
+  <ShipCoreFilenames>Data\Cores\Utility Ships\Courier_Core.xml</ShipCoreFilenames>
+  <ShipCoreFilenames>Data\Cores\Utility Ships\Extractor_Core.xml</ShipCoreFilenames>
+  <ShipCoreFilenames>Data\Cores\Utility Ships\Harvester_Core.xml</ShipCoreFilenames>
+  <ShipCoreFilenames>Data\Cores\Utility Ships\Utility_Core.xml</ShipCoreFilenames>
+
 </CoreManifest>

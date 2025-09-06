@@ -8,7 +8,7 @@
 			</Id>
 			<DisplayName>GridCore UpgradeModule: Handling</DisplayName>
 			<Description>This Module Upgrades how Efficient your resouce usage is.</Description>
-			<Icon>Textures\SmallGridUpgrade.dds</Icon>
+			<Icon>Textures\SmallGridUpgrade.png</Icon>
 			<CubeSize>Small</CubeSize>
 			<BlockTopology>TriangleMesh</BlockTopology>
 			<Size x="1" y="1" z="1"/>

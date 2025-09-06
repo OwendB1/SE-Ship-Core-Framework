@@ -8,7 +8,7 @@
 			</Id>
 			<DisplayName>GridCore UpgradeModule: Combat</DisplayName>
 			<Description>This Module Exist to allow you to shread your enemies.</Description>
-			<Icon>Textures\LargeGridUpgrade.dds</Icon>
+			<Icon>Textures\LargeGridUpgrade.png</Icon>
 			<CubeSize>Large</CubeSize>
 			<BlockTopology>TriangleMesh</BlockTopology>
 			<Size x="1" y="1" z="1"/>

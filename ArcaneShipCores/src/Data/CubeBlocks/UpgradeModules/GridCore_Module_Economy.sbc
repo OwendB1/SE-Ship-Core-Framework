@@ -8,7 +8,7 @@
 			</Id>
 			<DisplayName>GridCore UpgradeModule: Economy</DisplayName>
 			<Description>This Module Upgrades how Efficient your resouce usage is.</Description>
-			<Icon>Textures\LargeGridUpgrade.dds</Icon>
+			<Icon>Textures\LargeGridUpgrade.png</Icon>
 			<CubeSize>Large</CubeSize>
 			<BlockTopology>TriangleMesh</BlockTopology>
 			<Size x="1" y="1" z="1"/>
