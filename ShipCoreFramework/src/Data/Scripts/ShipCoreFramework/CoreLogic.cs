@@ -151,10 +151,11 @@ namespace ShipCoreFramework
             // If this core is NOT the main core, nothing to reassign
             if (!SyncIsMainCore.Value)
             {
-                if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == grid.BigOwners.FirstOrDefault())
+                //NO Triggers on COnealment
+                /*if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == grid.BigOwners.FirstOrDefault())
                 {
                     Utils.ShowNotification($"A backup core of grid {grid.CustomName} was destroyed!",10000, true);
-                }
+                }*/
                 return;
             }
             
@@ -177,10 +178,11 @@ namespace ShipCoreFramework
             }
             else
             {
+                /* NO triggers on concealment
                 if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == grid.BigOwners.FirstOrDefault())
                 {
-                    Utils.ShowNotification($"Main core of grid {grid.CustomName} was destroyed!",10000, true);
-                }
+                    Utils.ShowNotification($"Main core of grid {grid.CustomName} was destroyed!", 10000, true);
+                }*/
                 gridLogic.ResetCore();
             }
             
@@ -204,7 +206,7 @@ namespace ShipCoreFramework
         
         private static void CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controls)
         {
-            if (!Constants.IsClient) return;
+            if(Constants.LocalPlayer == null){return;}
             var logic = block?.GameLogic?.GetAs<CoreLogic>();
             if (logic == null|| MyAPIGateway.TerminalControls == null) return;
 
@@ -309,7 +311,7 @@ namespace ShipCoreFramework
         private void TriggerBoostFromClient()
         {
             if (CoreBlock?.CubeGrid == null) return;
-            if (!SyncIsMainCore.Value) { if (Constants.IsClient) Utils.ShowNotification("Only the main core can trigger boost.", 1000); return; }
+            if (!SyncIsMainCore.Value) { Utils.ShowNotification("Only the main core can trigger boost.", 1000); return; }
             if (Constants.IsServer) CoreBlock.CubeGrid.GetMainGridLogic()?.ActivateBoost();
             else _syncBoostReq.Value = _syncBoostReq.Value + 1;
         }
@@ -317,7 +319,7 @@ namespace ShipCoreFramework
         private void TriggerDefenseFromClient()
         {
             if (CoreBlock?.CubeGrid == null) return;
-            if (!SyncIsMainCore.Value) { if (Constants.IsClient) Utils.ShowNotification("Only the main core can trigger defense.", 1000); return; }
+            if (!SyncIsMainCore.Value) { Utils.ShowNotification("Only the main core can trigger defense.", 1000); return; }
             if (Constants.IsServer) CoreBlock.CubeGrid.GetMainGridLogic()?.ActivateDefense();
             else _syncDefenseReq.Value = _syncDefenseReq.Value + 1;
         }

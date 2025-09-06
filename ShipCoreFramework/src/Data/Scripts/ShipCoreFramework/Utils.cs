@@ -58,6 +58,7 @@ namespace ShipCoreFramework
         }
         public static void ShowNotification(string msg, int disappearTime = 10000, bool isCombatLog = false, string font = MyFontEnum.Red)
         {
+            if(Constants.LocalPlayer == null){return;}
             MyAPIGateway.Utilities.ShowMessage("[Ship Cores]: ", msg);
             PendingNotifications.Enqueue(new PendingNotify(msg, disappearTime, font, isCombatLog));
         }
