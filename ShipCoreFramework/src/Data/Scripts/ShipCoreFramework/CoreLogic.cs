@@ -60,29 +60,10 @@ namespace ShipCoreFramework
             if (ModSessionManager.Config.ShipCores.All(core => core.SubtypeId != CoreBlock.BlockDefinition.SubtypeId)) return;
             SubtypeId = CoreBlock.BlockDefinition.SubtypeId;
             
-            LimitRescheduler.ValidateOrSchedule(CoreBlock, CoreBlock.CubeGrid, SubtypeId);
-            
-            if (CheckIfCoreOfOtherTypeExists())
-            {
-                Utils.Log($"Other Core Exist: {CoreBlock.CubeGrid.CustomName}", 3);
-                //This crashes the game
-                CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock,true);
-                return;
-            }
-            
             if (CoreBlock.Storage != null && CoreBlock.Storage.ContainsKey(Constants.CoreStateStorageGUID))
             {
                 var syncVar = CoreBlock.Storage[Constants.CoreStateStorageGUID] == "1";
                 SyncIsMainCore.ValidateAndSet(syncVar);
-            }
-
-            var onlyCore = IsOnlyCoreOfThisTypeOnGrid();
-            Utils.Log($"Core Initial: {CoreBlock.CustomName}, SyncValue: {!SyncIsMainCore.Value}, onlyCore: {onlyCore}", 3);
-            if ((!SyncIsMainCore.Value && onlyCore)||(SyncIsMainCore.Value))
-            {
-                SyncIsMainCore.ValidateAndSet(true);
-                CoreBlock.CubeGrid.GetMainGridLogic().Activate(SubtypeId);
-                SaveCoreState();
             }
             
             NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
@@ -98,7 +79,23 @@ namespace ShipCoreFramework
         {
             base.UpdateOnceBeforeFrame();
             if (MyAPIGateway.TerminalControls == null) return;
-
+            LimitRescheduler.ValidateOrSchedule(CoreBlock, CoreBlock.CubeGrid, SubtypeId);
+            
+            if (CheckIfCoreOfOtherTypeExists())
+            {
+                Utils.Log($"Other Core Exist: {CoreBlock.CubeGrid.CustomName}", 3);
+                //This crashes the game
+                CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock,true);
+                return;
+            }
+            var onlyCore = IsOnlyCoreOfThisTypeOnGrid();
+            Utils.Log($"Core Initial: {CoreBlock.CustomName}, SyncValue: {!SyncIsMainCore.Value}, onlyCore: {onlyCore}", 3);
+            if ((!SyncIsMainCore.Value && onlyCore)||(SyncIsMainCore.Value))
+            {
+                SyncIsMainCore.ValidateAndSet(true);
+                CoreBlock.CubeGrid.GetMainGridLogic().Activate(SubtypeId);
+                SaveCoreState();
+            }
             MyAPIGateway.TerminalControls.CustomControlGetter += CustomControlGetter;
             CoreBlock.CubeGrid.OnGridMerge += OnGridMerge;
             RegisterToolbarActionsOnce();
