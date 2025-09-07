@@ -45,7 +45,7 @@ namespace ShipCoreFramework
                             if (!match){continue;}
                             if(limit.TurnedOffByNoFlyZone)
                             {
-                                gridLogic.WhackABlock(block,limit.PunishmentType,gridLogic.DamageTypeNoFlyZone);
+                                Enforcement.WhackABlock(block,limit.PunishmentType,gridLogic.DamageTypeNoFlyZone);
                             }
                         }
                     }
