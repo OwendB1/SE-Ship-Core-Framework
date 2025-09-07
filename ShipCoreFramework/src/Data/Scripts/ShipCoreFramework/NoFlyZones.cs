@@ -1,9 +1,7 @@
 ﻿#region
-using System.Collections.Generic;
 using System.Linq;
 using Sandbox.ModAPI;
 using VRageMath;
-using VRage.Utils;
 #endregion
 
 namespace ShipCoreFramework
@@ -16,8 +14,19 @@ namespace ShipCoreFramework
 
             foreach (var zone in ModSessionManager.Config.NoFlyZones)
             {
+                if(zone.AllowedCoresSubtype.Contains(gridLogic.ShipCore.UniqueName)) continue;
+
                 var distance = Vector3D.DistanceSquared(zone.Position, gridLogic.Grid.GetPosition());
-                if (!(distance <= zone.Radius * zone.Radius) || zone.AllowedCoresSubtype.Contains(gridLogic.ShipCore.UniqueName)) continue;
+
+                if (!(distance <= zone.Radius * zone.Radius))
+                {
+                    var humanReadableDistance = Vector3D.Distance(zone.Position, gridLogic.Grid.GetPosition());
+                    if ((Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == gridLogic.Grid.BigOwners.FirstOrDefault()) && humanReadableDistance < zone.Radius+5000.0)
+                    {
+                        Utils.ShowNotification($"{gridLogic.Grid.CustomName} is {humanReadableDistance}m from a no fly zone", 100, true);
+                    }                    
+                    else continue;
+                }
                 var fatTerminals = gridLogic.Grid.GetFatBlocks<IMyTerminalBlock>().ToList();
                 foreach(var block in fatTerminals)
                 {

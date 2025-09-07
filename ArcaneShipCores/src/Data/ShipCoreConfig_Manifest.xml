@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-16"?>
 <CoreManifest>
-  <ShipCoreFilenames>Data\Cores\Combat Grids\Utility_Core.xml</ShipCoreFilenames>
   <ShipCoreFilenames>Data\Cores\Combat Grids\Frigate_Core.xml</ShipCoreFilenames>
   <ShipCoreFilenames>Data\Cores\Combat Grids\Cruiser_Core.xml</ShipCoreFilenames>
   <ShipCoreFilenames>Data\Cores\Combat Grids\Battleship_Core.xml</ShipCoreFilenames>

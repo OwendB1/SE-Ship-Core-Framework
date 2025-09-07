@@ -54,7 +54,7 @@
                 </MyUpgradeModuleInfo>
                 <MyUpgradeModuleInfo>
                     <UpgradeType>MaxBoost</UpgradeType>
-                    <Modifier>0.1</Modifier>
+                    <Modifier>0.05</Modifier>
 					<ModifierType>Additive</ModifierType>
                 </MyUpgradeModuleInfo>
                 <MyUpgradeModuleInfo>

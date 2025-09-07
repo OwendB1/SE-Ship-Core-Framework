@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using ShipCoreFramework;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -12,23 +13,24 @@ public static class LimitRescheduler
         public string SubtypeId;
     }
 
-    private static readonly Dictionary<long, Pending> PendingByBlock = new Dictionary<long, Pending>();
+    private static Dictionary<long, Pending> PendingByBlock = new Dictionary<long, Pending>();
       
-      public static void ValidateOrSchedule(IMyCubeBlock coreBlock, IMyCubeGrid grid, string subtypeId)
-      {
-          if (TryValidate(coreBlock, grid, subtypeId)) return;
-          PendingByBlock[coreBlock.EntityId] = new Pending { CoreBlock = coreBlock, Grid = grid, SubtypeId = subtypeId };
-          coreBlock.NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME | MyEntityUpdateEnum.EACH_100TH_FRAME;
-      }
+    public static void ValidateOrSchedule(IMyCubeBlock coreBlock, IMyCubeGrid grid, string subtypeId)
+    {
+        if (TryValidate(coreBlock, grid, subtypeId)) return;
+        //if(PendingByBlock.Contains(coreBlock.EntityId))
+        PendingByBlock.Add(coreBlock.EntityId, new Pending { CoreBlock = coreBlock, Grid = grid, SubtypeId = subtypeId });
+        coreBlock.NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME | MyEntityUpdateEnum.EACH_100TH_FRAME;
+    }
 
-      public static void Tick(IMyCubeBlock coreBlock)
-      {
-          Pending p;
-          if (!PendingByBlock.TryGetValue(coreBlock.EntityId, out p)) return;
-          if (!TryValidate(p.CoreBlock, p.Grid, p.SubtypeId)) return;
-          PendingByBlock.Remove(coreBlock.EntityId);
-          coreBlock.NeedsUpdate &= ~MyEntityUpdateEnum.EACH_100TH_FRAME;
-      }
+    public static void Tick(IMyCubeBlock coreBlock)
+    {
+        Pending p;
+        if (!PendingByBlock.TryGetValue(coreBlock.EntityId, out p)) return;
+        if (!TryValidate(p.CoreBlock, p.Grid, p.SubtypeId)) return;
+        PendingByBlock.Remove(coreBlock.EntityId);
+        coreBlock.NeedsUpdate &= ~MyEntityUpdateEnum.EACH_100TH_FRAME;
+    }
 
     private static bool TryValidate(IMyCubeBlock coreBlock, IMyCubeGrid grid, string subtypeId)
     {

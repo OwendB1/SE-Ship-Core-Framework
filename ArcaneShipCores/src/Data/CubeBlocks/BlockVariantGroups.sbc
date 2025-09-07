@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <BlockVariantGroups>
+        <BlockVariantGroup>
+            <Id Type="MyObjectBuilder_BlockVariantGroup" Subtype="Station Cores" />
+            <Icon>Textures\LargeGridCore.png</Icon>
+            <Icon>Textures\Station_Basic.png</Icon>
+            <DisplayName>Station Cores</DisplayName>
+            <Description>Station Cores, the heart of you bases.</Description>
+            <Blocks>
+                <Block Type="MyObjectBuilder_Beacon" Subtype="Outpost_Core" />
+                <Block Type="MyObjectBuilder_Beacon" Subtype="Stronghold_Core" />
+                <Block Type="MyObjectBuilder_Beacon" Subtype="Citadel_Core" />
+            </Blocks>
+        </BlockVariantGroup>
+        <BlockVariantGroup>
+            <Id Type="MyObjectBuilder_BlockVariantGroup" Subtype="Warship Cores" />
+            <Icon>Textures\LargeGridCore.png</Icon>
+            <Icon>Textures\LargeShip_Basic.png</Icon>
+            <DisplayName>Warship Cores</DisplayName>
+            <Description>Warship Cores, the necessary componets for the ultimate fleet.</Description>
+            <Blocks>
+                <Block Type="MyObjectBuilder_Beacon" Subtype="Frigate_Core" />
+                <Block Type="MyObjectBuilder_Beacon" Subtype="Cruiser_Core" />
+                <Block Type="MyObjectBuilder_Beacon" Subtype="Destroyer_Core" />
+                <Block Type="MyObjectBuilder_Beacon" Subtype="Battleship_Core" />
+                
+                <Block Type="MyObjectBuilder_Beacon" Subtype="Interceptor_Core" />
+                <Block Type="MyObjectBuilder_Beacon" Subtype="Fighter_Core" />
+                <Block Type="MyObjectBuilder_Beacon" Subtype="Gunship_Core" />                       
+            </Blocks>
+        </BlockVariantGroup>
+
+        <BlockVariantGroup>
+            <Id Type="MyObjectBuilder_BlockVariantGroup" Subtype="Utility Cores" />
+            <Icon>Textures\LargeGridCore.png</Icon>
+            <DisplayName>Warship Cores</DisplayName>
+            <Description>Warship Cores, the necessary componets for the ultimate fleet.</Description>
+            <Blocks>
+                <Block Type="MyObjectBuilder_Beacon" Subtype="Utility_Core" />
+                <Block Type="MyObjectBuilder_Beacon" Subtype="Extractor_Core" />
+                <Block Type="MyObjectBuilder_Beacon" Subtype="Courier_Core" />
+                <Block Type="MyObjectBuilder_Beacon" Subtype="Harvester_Core" />               
+            </Blocks>
+        </BlockVariantGroup>
+        <BlockVariantGroup>
+            <Id Type="MyObjectBuilder_BlockVariantGroup" Subtype="Core Upgrades" />
+            <Icon>Textures\LargeGridCore.png</Icon>
+            <DisplayName>Core Upgrades</DisplayName>
+            <Description>Core Upgrades, customize your grids to gain an edge.</Description>
+            <Blocks>
+                <Block Type="MyObjectBuilder_Beacon" Subtype="GridCore_Module_Combat" />
+                <Block Type="MyObjectBuilder_Beacon" Subtype="GridCore_Module_Economy" />
+                <Block Type="MyObjectBuilder_Beacon" Subtype="GridCore_Module_Handling" />
+                <Block Type="MyObjectBuilder_Beacon" Subtype="GridCore_Module_Harvester" /> 
+                <Block Type="MyObjectBuilder_Beacon" Subtype="GridCore_Module_Overdrive" />              
+            </Blocks>
+        </BlockVariantGroup>
+    </BlockVariantGroups>
+</Definitions>
