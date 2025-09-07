@@ -40,14 +40,16 @@ public static class LimitRescheduler
 
         if (!GridsPerFactionManager.WillGridBeWithinFactionLimits(main, subtypeId))
         {
-            Utils.Log("Per faction limit of this core has been hit!", 3);// Why is this message showing up twice?
             grid.RemoveBlock(coreBlock.SlimBlock,true);
             main.ResetCore();
             return true;
         } 
         if (!GridsPerPlayerManager.WillGridBeWithinPlayerLimits(main, subtypeId))
         {
-            Utils.Log("Per player limit of this core has been hit!", 3);
+            if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == grid.BigOwners.FirstOrDefault())
+            {
+                Utils.ShowNotification("Per player limit of this core has been hit!",10000, true);
+            }
             grid.RemoveBlock(coreBlock.SlimBlock,true);
             return true;
         }

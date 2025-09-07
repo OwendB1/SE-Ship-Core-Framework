@@ -318,9 +318,10 @@ namespace ShipCoreFramework
 
         private void OnIsStaticChanged(IMyCubeGrid grid, bool isStatic)
         {
-            if (ShipCore.LargeGridStatic && !ShipCore.LargeGridMobile && !isStatic) grid.IsStatic = true;
-            if (!ShipCore.LargeGridStatic && isStatic) grid.IsStatic = false;
+            //if (ShipCore.LargeGridStatic && !ShipCore.LargeGridMobile && !isStatic) grid.IsStatic = true;
+            //if (!ShipCore.LargeGridStatic && isStatic) grid.IsStatic = false;
             //Needs Logic here!
+            EnforceGridPunishment();
         }
 
         private void OnBlockAdded(IMySlimBlock obj) //Now tells player why
@@ -399,11 +400,12 @@ namespace ShipCoreFramework
 
         private void OnBlockRemoved(IMySlimBlock obj)
         {
-            if (obj.FatBlock != null && HasFunctioningBeaconIfNeeded() == false)
+            //Not Needed
+            /*if (obj.FatBlock != null && HasFunctioningBeaconIfNeeded() == false)
             {
                 foreach (var block in _blocks) CubeGridModifiers.ApplyModifiers(block, ShipCore.Modifiers);
-            }
-                
+            }*/
+            //Can this be done anywhere else?    
             foreach (var limit in ShipCore.BlockLimits)
             {
                 if (!BlocksPerLimit.ContainsKey(limit)) return;
@@ -550,9 +552,33 @@ namespace ShipCoreFramework
         }
         private void EnforceGridPunishment()
         {
-            //Assume if method is called without a specific block we neet to check ALL BLOCKS
-            var myGridLogic = Grid.GetMainGridLogic();
-            
+            //Assume if method is called without a specific block we neet to check ALL BLOCKS, INCLUDING FUCKING SUBGRIDS FOR CLASS LIMITS
+            List<IMyCubeGrid> subgrids;
+            var myGridLogic = (Grid as IMyCubeGrid).GetMainCubeGrid(out subgrids).GetMainGridLogic();
+            var myBlocksCount = subgrids.Sum(grid => (grid as MyCubeGrid).BlocksCount);
+            var myBlocksPCU = subgrids.Sum(grid => (grid as MyCubeGrid).BlocksPCU);
+            var myMaxMass = subgrids.Sum(grid => (grid as MyCubeGrid).Mass);
+            bool GridTypeNotAllowed = false;
+            if (Grid.GridSizeEnum == MyCubeSize.Small)
+            {
+                GridTypeNotAllowed = subgrids.Any(grid => grid.GridSizeEnum == MyCubeSize.Large);
+            }
+            else
+            {
+                if (!myGridLogic.ShipCore.LargeGridStatic && subgrids.Any(grid => grid.IsStatic))
+                    GridTypeNotAllowed = true;
+
+                if (!myGridLogic.ShipCore.LargeGridMobile && !myGridLogic.Grid.IsStatic)
+                    GridTypeNotAllowed = true;
+            }
+            if (GridTypeNotAllowed||((Grid as MyCubeGrid).BlocksCount > myGridLogic.ShipCore.MaxBlocks && ShipCore.MaxBlocks > 0)||((Grid as MyCubeGrid).BlocksPCU > myGridLogic.ShipCore.MaxPCU && myGridLogic.ShipCore.MaxPCU > 0)||((Grid as MyCubeGrid).Mass > myGridLogic.ShipCore.MaxMass && myGridLogic.ShipCore.MaxMass > 0f))
+            {
+                var fatTerminals = Grid.GetFatBlocks<IMyTerminalBlock>().ToList();
+                foreach(var block in fatTerminals)
+                {
+                    myGridLogic.WhackABlock(block,PunishmentType.ShutOff,myGridLogic.DamageTypeNoFlyZone);
+                }
+            }
             foreach (var block in myGridLogic._blocks.ToList())
             {
                 foreach (var limit in myGridLogic.ShipCore.BlockLimits)

@@ -246,6 +246,7 @@ namespace ShipCoreFramework
         public bool LargeGridStatic = false;
         [XmlElement("LargeGridMobile")]
         public bool LargeGridMobile = false;
+        [XmlElement("MaxBlocks")]
         public int MaxBlocks = -1;
         [XmlElement("MaxMass")]
         public float MaxMass = -1;

@@ -39,21 +39,32 @@ namespace ShipCoreFramework
 
         var maxAllowedGrids = Config.GetShipCoreByTypeId(coreType).MaxPerFaction;
         var minNeededPlayers = Config.GetShipCoreByTypeId(coreType).MinPlayers;
-        if (maxAllowedGrids < 0)
-        {
-            Utils.Log($"GridsPerFactionClass::IsGridWithinFactionLimits: No Faction Limit on Core: {coreType}", 3);
-            return true;
-        }
 
         if (factionId == -1 && minNeededPlayers > 1)
         {
-            Utils.Log($"GridsPerFactionClass::IsGridWithinFactionLimits: Player is not in Faction and therefore cannot build faction limited core: {coreType}", 3);
+            if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == gridLogic.Grid.BigOwners.FirstOrDefault())
+            {
+                Utils.ShowNotification($"Player is not in Faction and therefore cannot build faction limited core: {coreType}",10000, true);
+            }
             return false;
+        }
+
+        if (maxAllowedGrids < 0)
+        {
+            /*
+            if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == gridLogic.Grid.BigOwners.FirstOrDefault())
+            {
+                Utils.ShowNotification($"GridsPerFactionClass::IsGridWithinFactionLimits: No Faction Limit on Core: {coreType}",10000, true);
+            }*/
+            return true;
         }
 
         if (gridLogic.OwningFaction?.Members.Count < minNeededPlayers)
         {
-            Utils.Log($"GridsPerFactionClass::IsGridWithinFactionLimits: Faction does not have the minimum amount of players needed for core: {coreType}", 3);
+            if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == gridLogic.Grid.BigOwners.FirstOrDefault())
+            {
+                Utils.ShowNotification($"Faction does not have the minimum amount of players needed for core: {coreType}",10000, true);
+            }
             return false;
         }
 

@@ -86,6 +86,10 @@ namespace ShipCoreFramework
                 Utils.Log($"Other Core Exist: {CoreBlock.CubeGrid.CustomName}", 3);
                 //This crashes the game
                 CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock,true);
+                if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == CoreBlock.CubeGrid.BigOwners.FirstOrDefault())
+                {
+                    Utils.ShowNotification($"Other Core Type Exist On Grid",10000, true);
+                }
                 return;
             }
             var onlyCore = IsOnlyCoreOfThisTypeOnGrid();
@@ -198,7 +202,14 @@ namespace ShipCoreFramework
         {
             List<IMyCubeGrid> ignored;
             var actualMainGrid = arg1.GetMainCubeGrid(out ignored);
-            if (CoreBlock.CubeGrid.EntityId != actualMainGrid.EntityId) CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock,true);
+            if (CoreBlock.CubeGrid.EntityId != actualMainGrid.EntityId)
+            {
+                CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock,true);
+                if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == CoreBlock.CubeGrid.BigOwners.FirstOrDefault())
+                {
+                    Utils.ShowNotification($"Core Block Not on Main Grid",10000, true);
+                }
+            }
         }
         
         private static void CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controls)
@@ -268,7 +279,6 @@ namespace ShipCoreFramework
             var fatTerminals = CoreBlock.CubeGrid.GetFatBlocks<IMyTerminalBlock>();
             var coreSubtypeId = ModSessionManager.Config.ShipCores.Select(core => core.SubtypeId).ToList();
             coreSubtypeId.Remove(SubtypeId);
-            
             return fatTerminals.Any(terminal =>
             {
                 var subtype = Utils.GetBlockSubtypeId(terminal.SlimBlock);

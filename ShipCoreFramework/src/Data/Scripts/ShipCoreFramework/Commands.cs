@@ -101,7 +101,7 @@ namespace ShipCoreFramework
             {
                 MyVisualScriptLogicProvider.SendChatMessage(modMessage,"ShipCores: Server:", playerId, "Green");
             }
-            else //Is Client
+            else
             {
                 MyVisualScriptLogicProvider.SendChatMessage(modMessage,"ShipCores: LocalHost:", playerId, "Red");
             }
@@ -361,13 +361,21 @@ namespace ShipCoreFramework
             var body = $"Grid: {targetGrid.CustomName}\nShip Class: {shipCore.UniqueName}\n\n";
             if(gridLogic.ShipCore.MaxPerPlayer>0)
             {
-                body+=$"Per Player Limit:{GridsPerPlayerManager.PerPlayer[player.IdentityId][gridLogic.ShipCore.SubtypeId].Count}/{gridLogic.ShipCore.MaxPerPlayer}\n";
+                if(GridsPerPlayerManager.PerPlayer.ContainsKey(player.IdentityId) && GridsPerPlayerManager.PerPlayer[player.IdentityId].ContainsKey(gridLogic.ShipCore.SubtypeId))
+                {
+                    body+=$"Per Player Limit:{GridsPerPlayerManager.PerPlayer[player.IdentityId][gridLogic.ShipCore.SubtypeId].Count}/{gridLogic.ShipCore.MaxPerPlayer}\n";
+                }
+                
             }
             if(gridLogic.OwningFaction != null && (gridLogic.ShipCore.MaxPerFaction>0))
             {
-                if(gridLogic.OwningFaction!=null)
+                if(gridLogic.OwningFaction.FactionId!=null)
                 {
-                    body+=$"Per Faction Limit:{GridsPerFactionManager.PerFaction[gridLogic.OwningFaction.FactionId][gridLogic.ShipCore.SubtypeId].Count}/{gridLogic.ShipCore.MaxPerFaction}\n";
+                    if(GridsPerFactionManager.PerFaction.ContainsKey(gridLogic.OwningFaction.FactionId) && GridsPerFactionManager.PerFaction[gridLogic.OwningFaction.FactionId].ContainsKey(gridLogic.ShipCore.SubtypeId))
+                    {
+                        body+=$"Per Faction Limit:{GridsPerFactionManager.PerFaction[gridLogic.OwningFaction.FactionId][gridLogic.ShipCore.SubtypeId].Count}/{gridLogic.ShipCore.MaxPerFaction}\n";
+                    }
+                    
                 }
                 else
                 {
@@ -411,6 +419,7 @@ namespace ShipCoreFramework
                 body += "Block Limits:\n";
                 foreach (var blockLimit in shipCore.BlockLimits)
                 {
+                    
                     var usedBlocks = limits.ContainsKey(blockLimit) ? limits[blockLimit] : new List<KeyValuePair<IMyCubeBlock, double>>();
                     var totalWeight = usedBlocks.Sum(kvp => kvp.Value);
                     var percentage = blockLimit.MaxCount > 0 ? (totalWeight / blockLimit.MaxCount * 100) : 0;
