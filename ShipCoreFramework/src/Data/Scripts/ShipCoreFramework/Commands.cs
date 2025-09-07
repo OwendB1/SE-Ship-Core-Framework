@@ -20,13 +20,14 @@ namespace ShipCoreFramework
             var message = Encoding.UTF8.GetString(data);
             Utils.Log($"Server: Command received from {sender}: {message}");
             CommmandSwitch(Utils.GetPlayerIdFromSteamId(sender),message);
-            //MyVisualScriptLogicProvider.SendChatMessage($"Recieved Command:{message}","ShipCores: Server:", Utils.GetPlayerIdFromSteamId(sender), "Green");
         }
+        
         private static void ForwardToServer(string message)
         {
             var bytes = Encoding.UTF8.GetBytes(message);
             MyAPIGateway.Multiplayer.SendMessageToServer(Constants.CommandsSyncId, bytes);
         }
+        
         public static void OnChatCommand(ulong sender,string messageText, ref bool sendToOthers)
         {
             if (!messageText.StartsWith("/core", StringComparison.OrdinalIgnoreCase)) return;
@@ -35,6 +36,7 @@ namespace ShipCoreFramework
             if(!Constants.IsServer){ForwardToServer(messageText);}
             CommmandSwitch(MyAPIGateway.Session.Player.IdentityId,messageText);
         }
+        
         private static void CommmandSwitch(long playerId,string messageText)
         {
             var allArgs = messageText.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
@@ -342,7 +344,7 @@ namespace ShipCoreFramework
                     return;
                 }
             }
-            //            
+        
             var gridLogic = targetGrid.GetMainGridLogic();
             if (gridLogic?.ShipCore == null)
             {
@@ -367,21 +369,20 @@ namespace ShipCoreFramework
                 }
                 
             }
-            if(gridLogic.OwningFaction != null && (gridLogic.ShipCore.MaxPerFaction>0))
+            
+            if(gridLogic.ShipCore.MaxPerFaction > 0)
             {
-                if(gridLogic.OwningFaction.FactionId!=null)
+                if(gridLogic.OwningFaction?.FactionId != null)
                 {
                     if(GridsPerFactionManager.PerFaction.ContainsKey(gridLogic.OwningFaction.FactionId) && GridsPerFactionManager.PerFaction[gridLogic.OwningFaction.FactionId].ContainsKey(gridLogic.ShipCore.SubtypeId))
                     {
                         body+=$"Per Faction Limit:{GridsPerFactionManager.PerFaction[gridLogic.OwningFaction.FactionId][gridLogic.ShipCore.SubtypeId].Count}/{gridLogic.ShipCore.MaxPerFaction}\n";
                     }
-                    
                 }
                 else
                 {
-                    body+=$"Per Faction Limit: A Faction is required for this class\n";
+                    body += "Per Faction Limit: A Faction is required for this class\n";
                 }
-                
             }            
             // Grid Statistics
             body += "Grid Statistics:\n";

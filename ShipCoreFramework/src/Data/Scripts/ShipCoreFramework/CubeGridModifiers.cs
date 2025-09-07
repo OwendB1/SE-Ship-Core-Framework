@@ -18,45 +18,47 @@ namespace ShipCoreFramework
     {
         private static readonly MyStringHash EnergyDamageType = MyStringHash.GetOrCompute("Energy");
         private static readonly MyStringHash KineticDamageType = MyStringHash.GetOrCompute("Kinetic");
-        public static void AddModifiers(IMyCubeBlock CoreBlock)
+        
+        public static void AddModifiers(IMyCubeBlock coreBlock)
         {
-            CoreBlock.AddUpgradeValue("AssemblerSpeed", 1f);
-            CoreBlock.AddUpgradeValue("DrillHarvestMultiplier", 1f);
-            CoreBlock.AddUpgradeValue("GyroEfficiency", 1f);
-            CoreBlock.AddUpgradeValue("GyroForce", 1f);
-            CoreBlock.AddUpgradeValue("PowerProducersOutput", 1f);
-            CoreBlock.AddUpgradeValue("RefineEfficiency", 1f);
-            CoreBlock.AddUpgradeValue("RefineSpeed", 1f);
-            CoreBlock.AddUpgradeValue("ThrusterEfficiency", 1f);
-            CoreBlock.AddUpgradeValue("ThrusterForce", 1f);
+            coreBlock.AddUpgradeValue("AssemblerSpeed", 1f);
+            coreBlock.AddUpgradeValue("DrillHarvestMultiplier", 1f);
+            coreBlock.AddUpgradeValue("GyroEfficiency", 1f);
+            coreBlock.AddUpgradeValue("GyroForce", 1f);
+            coreBlock.AddUpgradeValue("PowerProducersOutput", 1f);
+            coreBlock.AddUpgradeValue("RefineEfficiency", 1f);
+            coreBlock.AddUpgradeValue("RefineSpeed", 1f);
+            coreBlock.AddUpgradeValue("ThrusterEfficiency", 1f);
+            coreBlock.AddUpgradeValue("ThrusterForce", 1f);
             /*
                     CoreBlock.AddUpgradeValue("MaxBlocks", 1f);
                     CoreBlock.AddUpgradeValue("MaxMass", 1f);
                     CoreBlock.AddUpgradeValue("MaxPCU", 1f);
                     */
-            CoreBlock.AddUpgradeValue("MaxSpeed", 1f);
-            CoreBlock.AddUpgradeValue("MaxBoost", 1f);
-            CoreBlock.AddUpgradeValue("BoostDuration", 1f);
-            CoreBlock.AddUpgradeValue("BoostCoolDown", 1f);
+            coreBlock.AddUpgradeValue("MaxSpeed", 1f);
+            coreBlock.AddUpgradeValue("MaxBoost", 1f);
+            coreBlock.AddUpgradeValue("BoostDuration", 1f);
+            coreBlock.AddUpgradeValue("BoostCoolDown", 1f);
 
-            CoreBlock.AddUpgradeValue("ReloadModifier", 1f);
+            coreBlock.AddUpgradeValue("ReloadModifier", 1f);
 
-            CoreBlock.AddUpgradeValue("PassiveBulletDamage", 1f);
-            CoreBlock.AddUpgradeValue("PassiveRocketDamage", 1f);
-            CoreBlock.AddUpgradeValue("PassiveExplosionDamage", 1f);
-            CoreBlock.AddUpgradeValue("PassiveEnvironmentDamage", 1f);
-            CoreBlock.AddUpgradeValue("PassiveEnergyDamage", 1f);
-            CoreBlock.AddUpgradeValue("PassiveKineticDamage", 1f);
+            coreBlock.AddUpgradeValue("PassiveBulletDamage", 1f);
+            coreBlock.AddUpgradeValue("PassiveRocketDamage", 1f);
+            coreBlock.AddUpgradeValue("PassiveExplosionDamage", 1f);
+            coreBlock.AddUpgradeValue("PassiveEnvironmentDamage", 1f);
+            coreBlock.AddUpgradeValue("PassiveEnergyDamage", 1f);
+            coreBlock.AddUpgradeValue("PassiveKineticDamage", 1f);
 
-            CoreBlock.AddUpgradeValue("ActiveBulletDamage", 1f);
-            CoreBlock.AddUpgradeValue("ActiveRocketDamage", 1f);
-            CoreBlock.AddUpgradeValue("ActiveExplosionDamage", 1f);
-            CoreBlock.AddUpgradeValue("ActiveEnvironmentDamage", 1f);
-            CoreBlock.AddUpgradeValue("ActiveEnergyDamage", 1f);
-            CoreBlock.AddUpgradeValue("ActiveKineticDamage", 1f);
-            CoreBlock.AddUpgradeValue("DurationDuration", 1f);
-            CoreBlock.AddUpgradeValue("DamageCooldown", 1f);
+            coreBlock.AddUpgradeValue("ActiveBulletDamage", 1f);
+            coreBlock.AddUpgradeValue("ActiveRocketDamage", 1f);
+            coreBlock.AddUpgradeValue("ActiveExplosionDamage", 1f);
+            coreBlock.AddUpgradeValue("ActiveEnvironmentDamage", 1f);
+            coreBlock.AddUpgradeValue("ActiveEnergyDamage", 1f);
+            coreBlock.AddUpgradeValue("ActiveKineticDamage", 1f);
+            coreBlock.AddUpgradeValue("DurationDuration", 1f);
+            coreBlock.AddUpgradeValue("DamageCooldown", 1f);
         }
+        
         public static GridModifiers GetActiveModifiers(GridLogic gridLogic)
         {
             var shipCore = gridLogic.ShipCore;
@@ -69,7 +71,7 @@ namespace ShipCoreFramework
             var myBlock = gridLogic.CoreBlock;
             if (myBlock == null)
             {
-                return (shipCore.Modifiers);
+                return shipCore.Modifiers;
             }
             enhancedModifiers.AssemblerSpeed = shipCore.Modifiers.AssemblerSpeed * myBlock.CoreBlock.UpgradeValues["AssemblerSpeed"];
             enhancedModifiers.DrillHarvestMultiplier = shipCore.Modifiers.DrillHarvestMultiplier * myBlock.CoreBlock.UpgradeValues["DrillHarvestMultiplier"];
@@ -86,6 +88,7 @@ namespace ShipCoreFramework
             enhancedModifiers.BoostCoolDown = shipCore.Modifiers.BoostCoolDown * myBlock.CoreBlock.UpgradeValues["BoostCoolDown"];
             return enhancedModifiers;
         }
+        
         public static void ApplyModifiers(IMyCubeBlock block, GridModifiers modifiers)
         {
             var thruster = block as IMyThrust;
@@ -178,9 +181,17 @@ namespace ShipCoreFramework
         {
             var myBlock = target as IMySlimBlock;
             if (myBlock == null) return;
+            
             var myGrid = myBlock.CubeGrid;
             var myGridLogic = myGrid.GetMainGridLogic();
+            
             if (myGridLogic == null) return;
+            if (myGridLogic.PunishModifiers)
+            {
+                damageInfo.Amount *= 2;
+                return;
+            }
+            
             if (myGridLogic.ActiveDefenseEnabled)
             {
                 if (damageInfo.Type == MyDamageType.Bullet) damageInfo.Amount *= myGridLogic.ShipCore.ActiveDefenseModifiers.Bullet;

@@ -202,19 +202,17 @@ namespace ShipCoreFramework
         {
             List<IMyCubeGrid> ignored;
             var actualMainGrid = arg1.GetMainCubeGrid(out ignored);
-            if (CoreBlock.CubeGrid.EntityId != actualMainGrid.EntityId)
+            if (CoreBlock.CubeGrid.EntityId == actualMainGrid.EntityId) return;
+            CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock,true);
+            if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == CoreBlock.CubeGrid.BigOwners.FirstOrDefault())
             {
-                CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock,true);
-                if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == CoreBlock.CubeGrid.BigOwners.FirstOrDefault())
-                {
-                    Utils.ShowNotification($"Core Block Not on Main Grid",10000, true);
-                }
+                Utils.ShowNotification($"Core Block Not on Main Grid",10000, true);
             }
         }
         
         private static void CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controls)
         {
-            if(Constants.LocalPlayer == null){return;}
+            if (Constants.LocalPlayer == null) return;
             var logic = block?.GameLogic?.GetAs<CoreLogic>();
             if (logic == null|| MyAPIGateway.TerminalControls == null) return;
 
@@ -318,9 +316,13 @@ namespace ShipCoreFramework
         private void TriggerBoostFromClient()
         {
             if (CoreBlock?.CubeGrid == null) return;
-            if (!SyncIsMainCore.Value) { Utils.ShowNotification("Only the main core can trigger boost.", 1000); return; }
+            if (!SyncIsMainCore.Value)
+            {
+                Utils.ShowNotification("Only the main core can trigger boost.", 1000); 
+                return;
+            }
             if (Constants.IsServer) CoreBlock.CubeGrid.GetMainGridLogic()?.ActivateBoost();
-            else _syncBoostReq.Value = _syncBoostReq.Value + 1;
+            else _syncBoostReq.Value += 1;
         }
 
         private void TriggerDefenseFromClient()
