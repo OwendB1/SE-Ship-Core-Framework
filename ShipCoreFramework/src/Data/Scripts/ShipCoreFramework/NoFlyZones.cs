@@ -32,7 +32,7 @@ namespace ShipCoreFramework
                 {
                     if(zone.ForceOff)
                     {
-                        gridLogic.WhackABlock(block,PunishmentType.ShutOff,gridLogic.DamageTypeNoFlyZone);
+                        Enforcement.WhackABlock(block,PunishmentType.ShutOff,gridLogic.DamageTypeNoFlyZone);
                     }
                     else
                     {                        
