@@ -90,7 +90,19 @@ namespace ShipCoreFramework
         if (!list.Remove(gridId)) return;
         if (!_suppressEvents) Changed?.Invoke(new PlayerChange { PlayerId = playerId, CoreType = coreType, GridId = gridId, Added = false });
     }
-
+    public static void RemoveCubeGrid(GridLogic g, string coreType)
+    {
+        if (!IsApplicableGrid(g)) return;
+        var playerId = g.MajorityOwningPlayerId;
+        Dictionary<string, List<long>> perGridClass;
+        List<long> list;
+        
+        if (!PerPlayer.TryGetValue(playerId, out perGridClass)) return;
+        if (!perGridClass.TryGetValue(coreType, out list)) return;
+        var gridId = g.Grid.EntityId;
+        if (!list.Remove(gridId)) return;
+        if (!_suppressEvents) Changed?.Invoke(new PlayerChange { PlayerId = playerId, CoreType = coreType, GridId = gridId, Added = false });
+    }
     public static void Reset()
     {
         foreach (var gridsEntry in PerPlayer.SelectMany(classesEntry => classesEntry.Value))

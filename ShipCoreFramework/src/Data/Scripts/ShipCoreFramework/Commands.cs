@@ -361,22 +361,30 @@ namespace ShipCoreFramework
             var concreteGrid = targetGrid as MyCubeGrid;
 
             var body = $"Grid: {targetGrid.CustomName}\nShip Class: {shipCore.UniqueName}\n\n";
-            if(gridLogic.ShipCore.MaxPerPlayer>0)
+            if (gridLogic.ShipCore.MaxPerPlayer > 0)
             {
-                if(GridsPerPlayerManager.PerPlayer.ContainsKey(player.IdentityId) && GridsPerPlayerManager.PerPlayer[player.IdentityId].ContainsKey(gridLogic.ShipCore.SubtypeId))
+                if (GridsPerPlayerManager.PerPlayer.ContainsKey(player.IdentityId) && GridsPerPlayerManager.PerPlayer[player.IdentityId].ContainsKey(gridLogic.ShipCore.SubtypeId))
                 {
-                    body+=$"Per Player Limit:{GridsPerPlayerManager.PerPlayer[player.IdentityId][gridLogic.ShipCore.SubtypeId].Count}/{gridLogic.ShipCore.MaxPerPlayer}\n";
+                    body += $"Per Player Limit:{GridsPerPlayerManager.PerPlayer[player.IdentityId][gridLogic.ShipCore.SubtypeId].Count}/{gridLogic.ShipCore.MaxPerPlayer}\n";
+                }
+                else
+                {
+                    body+=$"Per Player Limit: Data is not avalible, WTF?\n";
                 }
                 
             }
             
             if(gridLogic.ShipCore.MaxPerFaction > 0)
             {
-                if(gridLogic.OwningFaction?.FactionId != null)
+                if (gridLogic.OwningFaction?.FactionId != null)
                 {
-                    if(GridsPerFactionManager.PerFaction.ContainsKey(gridLogic.OwningFaction.FactionId) && GridsPerFactionManager.PerFaction[gridLogic.OwningFaction.FactionId].ContainsKey(gridLogic.ShipCore.SubtypeId))
+                    if (GridsPerFactionManager.PerFaction.ContainsKey(gridLogic.OwningFaction.FactionId) && GridsPerFactionManager.PerFaction[gridLogic.OwningFaction.FactionId].ContainsKey(gridLogic.ShipCore.SubtypeId))
                     {
-                        body+=$"Per Faction Limit:{GridsPerFactionManager.PerFaction[gridLogic.OwningFaction.FactionId][gridLogic.ShipCore.SubtypeId].Count}/{gridLogic.ShipCore.MaxPerFaction}\n";
+                        body += $"Per Faction Limit:{GridsPerFactionManager.PerFaction[gridLogic.OwningFaction.FactionId][gridLogic.ShipCore.SubtypeId].Count}/{gridLogic.ShipCore.MaxPerFaction}\n";
+                    }
+                    else
+                    {
+                        body+=$"Per Faction Limit: Data is not avalible, WTF?\n";
                     }
                 }
                 else

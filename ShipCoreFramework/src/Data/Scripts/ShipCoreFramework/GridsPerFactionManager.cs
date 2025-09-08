@@ -119,7 +119,19 @@ namespace ShipCoreFramework
         if (!list.Remove(gridId)) return;
         if (!_suppressEvents) Changed?.Invoke(new FactionChange { FactionId = factionId, CoreType = gridClassId, GridId = gridId, Added = false });
     }
-
+    public static void RemoveCubeGrid(GridLogic gridLogic,string gridClassId)
+    {
+        if (!IsApplicableGrid(gridLogic)) return;
+        var factionId = gridLogic.OwningFaction?.FactionId ?? -1;
+        Dictionary<string, List<long>> perGridClass;
+        List<long> list;
+        
+        if (!PerFaction.TryGetValue(factionId, out perGridClass)) return;
+        if (!perGridClass.TryGetValue(gridClassId, out list)) return;
+        var gridId = gridLogic.Grid.EntityId;
+        if (!list.Remove(gridId)) return;
+        if (!_suppressEvents) Changed?.Invoke(new FactionChange { FactionId = factionId, CoreType = gridClassId, GridId = gridId, Added = false });
+    }
     public static void Reset()
     {
         foreach (var gridsEntry in PerFaction.SelectMany(factionClassesEntry => factionClassesEntry.Value))

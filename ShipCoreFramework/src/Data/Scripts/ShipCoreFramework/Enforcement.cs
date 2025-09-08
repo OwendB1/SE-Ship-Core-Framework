@@ -104,7 +104,7 @@ namespace ShipCoreFramework
                         validDirection = IsValidDirection(gridLogic.CoreBlock.CoreBlock, block.SlimBlock, limit.AllowedDirections);
                     } else Utils.Log("Log Direction Check: CoreBlock is null"); 
                     if (countWeight <= limit.MaxCount && validDirection) continue;
-                    Enforcement.WhackABlock(block, limit.PunishmentType);
+                    WhackABlock(block, limit.PunishmentType);
                 }
             }
         }
@@ -154,7 +154,7 @@ namespace ShipCoreFramework
                     validDirection = IsValidDirection(myGridLogic.CoreBlock.CoreBlock, block.SlimBlock, limit.AllowedDirections);
                 } else Utils.Log("Log Direction Check: CoreBlock is null"); 
                 if (countWeight <= limit.MaxCount && validDirection) continue;
-                Enforcement.WhackABlock(block, limit.PunishmentType);
+                WhackABlock(block, limit.PunishmentType);
             }
         }
         

@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game;
@@ -35,8 +36,9 @@ namespace ShipCoreFramework
         private float _activeDefenseDurationTimer;
 
         private bool _needsSubgridsRedone;
+        public bool _NeedStaticCheck;
 
-        public CoreLogic CoreBlock => Utils.GetGridCore(Grid,ShipCore);
+        public CoreLogic CoreBlock => Utils.GetGridCore(Grid, ShipCore);
 
         private float BoostDuration => ShipCore.Modifiers.BoostDuration;
         private float BoostCoolDown => ShipCore.Modifiers.BoostCoolDown;
@@ -120,7 +122,7 @@ namespace ShipCoreFramework
         {
             base.UpdateAfterSimulation();
             List<IMyCubeGrid> subgrids;
-            var mainGrid = Grid.GetMainCubeGrid(out subgrids);
+            IMyCubeGrid mainGrid = Grid.GetMainCubeGrid(out subgrids);
             if (mainGrid != Grid) return;
             if (_needsSubgridsRedone)
             {
@@ -142,6 +144,12 @@ namespace ShipCoreFramework
                 Enforcement.UpdateLimitsAndApplyModifiers(BlocksPerLimit, ShipCore, Blocks, Modifiers);
                 Enforcement.EnforceGridPunishment(Grid);
                 _needsSubgridsRedone=false;
+            }
+            if (_NeedStaticCheck)
+            {
+                if (ShipCore.LargeGridStatic && !ShipCore.LargeGridMobile && !mainGrid.IsStatic) { MyVisualScriptLogicProvider.SetGridStatic(mainGrid.Name, true); }
+                if (!ShipCore.LargeGridStatic && mainGrid.IsStatic) { MyVisualScriptLogicProvider.SetGridStatic(mainGrid.Name, false); }
+                _NeedStaticCheck = false;
             }
             SpeedEnforcement.EnforceSpeedLimit(this, PunishSpeed);
             if (_shipCoreTypeId == string.Empty) return;
@@ -296,8 +304,8 @@ namespace ShipCoreFramework
 
         private void OnIsStaticChanged(IMyCubeGrid grid, bool isStatic)
         {
-            if (ShipCore.LargeGridStatic && !ShipCore.LargeGridMobile && !isStatic) grid.IsStatic = true;
-            if (!ShipCore.LargeGridStatic && isStatic) grid.IsStatic = false;
+            var mainLogic = grid.GetMainGridLogic();
+            mainLogic._NeedStaticCheck = true;
         }
 
         private void OnBlockAdded(IMySlimBlock obj) //Now tells player why
