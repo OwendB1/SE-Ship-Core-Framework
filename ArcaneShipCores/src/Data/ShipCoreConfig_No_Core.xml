@@ -1,15 +1,13 @@
 <?xml version="1.0" encoding="utf-16"?>
 <ShipCore xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <SubtypeId>NO-CORE</SubtypeId>
-  <UniqueName>DEFAULT-NO-CORE-ALL-GRID-TYPES</UniqueName>
-  <ForceBroadCast>false</ForceBroadCast>
-  <ForceBroadCastRange>0</ForceBroadCastRange>
+  <SubtypeId>ARCANE-NO-CORE</SubtypeId>
+  <UniqueName>Arcane</UniqueName>
   <LargeGridStatic>true</LargeGridStatic>
   <LargeGridMobile>true</LargeGridMobile>
   <SmallGrid>true</SmallGrid>
-  <MaxBlocks>30000</MaxBlocks>
+  <MaxBlocks>5000</MaxBlocks>
   <MaxMass>-1</MaxMass>
-  <MaxPCU>-1</MaxPCU>
+  <MaxPCU>2000</MaxPCU>
   <MaxPerFaction>-1</MaxPerFaction>
   <MaxPerPlayer>-1</MaxPerPlayer>
   <MinBlocks>-1</MinBlocks>

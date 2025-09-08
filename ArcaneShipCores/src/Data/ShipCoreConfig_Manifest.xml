@@ -2,6 +2,7 @@
 <CoreManifest>
   <ShipCoreFilenames>Data\Cores\Combat Grids\Frigate_Core.xml</ShipCoreFilenames>
   <ShipCoreFilenames>Data\Cores\Combat Grids\Cruiser_Core.xml</ShipCoreFilenames>
+  <ShipCoreFilenames>Data\Cores\Combat Grids\Destroyer_Core.xml</ShipCoreFilenames>
   <ShipCoreFilenames>Data\Cores\Combat Grids\Battleship_Core.xml</ShipCoreFilenames>
 
   <ShipCoreFilenames>Data\Cores\Combat Grids\Interceptor_Core.xml</ShipCoreFilenames>

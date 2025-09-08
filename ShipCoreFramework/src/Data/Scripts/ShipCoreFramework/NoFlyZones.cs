@@ -21,7 +21,7 @@ namespace ShipCoreFramework
                 if (!(distance <= zone.Radius * zone.Radius))
                 {
                     var humanReadableDistance = Vector3D.Distance(zone.Position, gridLogic.Grid.GetPosition());
-                    if ((Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == gridLogic.Grid.BigOwners.FirstOrDefault()) && humanReadableDistance < zone.Radius+5000.0)
+                    if ((Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == gridLogic.Grid.BigOwners.FirstOrDefault()) && humanReadableDistance < zone.Radius+1000.0)
                     {
                         Utils.ShowNotification($"{gridLogic.Grid.CustomName} is {humanReadableDistance}m from a no fly zone", 100, true);
                     }                    

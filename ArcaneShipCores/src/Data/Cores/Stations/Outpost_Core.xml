@@ -5,7 +5,7 @@
   <ForceBroadCast>true</ForceBroadCast>
   <ForceBroadCastRange>10000</ForceBroadCastRange>
   <LargeGridStatic>true</LargeGridStatic>
-  <LargeGridMobile>true</LargeGridMobile>
+  <LargeGridMobile>false</LargeGridMobile>
   <MaxBlocks>10000</MaxBlocks>
   <MaxMass>-1</MaxMass>
   <MaxPCU>60000</MaxPCU>

@@ -63,7 +63,7 @@ namespace ShipCoreFramework
         {
             if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == gridLogic.Grid.BigOwners.FirstOrDefault())
             {
-                Utils.ShowNotification($"Faction does not have the minimum amount of players needed for core: {coreType}",10000, true);
+                Utils.ShowNotification($"{gridLogic.OwningFaction?.Members.Count}/{minNeededPlayers} players needed to build: {coreType}",10000, true);
             }
             return false;
         }

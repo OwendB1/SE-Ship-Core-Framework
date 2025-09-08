@@ -90,6 +90,15 @@ namespace ShipCoreFramework
                 }
                 return;
             }
+            if (CoreBlock.OwnerId != CoreBlock.CubeGrid.BigOwners.FirstOrDefault())
+            {
+                if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == CoreBlock.OwnerId)
+                {
+                    Utils.ShowNotification("Cores can only be built by the grid owner!", 10000, true);
+                }
+                CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
+                return;
+            }
             var onlyCore = IsOnlyCoreOfThisTypeOnGrid();
             var mainGridLogic = CoreBlock.CubeGrid.GetMainGridLogic();
             Utils.Log($"Core Initial: {CoreBlock.CustomName}, SyncValue: {!SyncIsMainCore.Value}, onlyCore: {onlyCore}", 3);
@@ -101,10 +110,10 @@ namespace ShipCoreFramework
             }
             if (!GridsPerFactionManager.WillGridBeWithinFactionLimits(mainGridLogic, SubtypeId))
             {
-                if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == CoreBlock.CubeGrid.BigOwners.FirstOrDefault())
+                /*if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == CoreBlock.CubeGrid.BigOwners.FirstOrDefault())
                 {
                     Utils.ShowNotification("Per faction limit of this core has been hit!", 10000, true);
-                }
+                }*/
                 mainGridLogic.ResetCore();
                 CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
                 return;
@@ -208,11 +217,11 @@ namespace ShipCoreFramework
             }
             else
             {
-                // NO triggers on concealment
-                if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == grid.BigOwners.FirstOrDefault())
+                // NO! Don't send this triggers on concealment
+                /*if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == grid.BigOwners.FirstOrDefault())
                 {
                     Utils.ShowNotification($"Main core of grid {grid.CustomName} was destroyed!", 10000, true);
-                }
+                }*/
                 GridsPerFactionManager.RemoveCubeGrid(gridLogic,SubtypeId);
                 GridsPerPlayerManager.RemoveCubeGrid(gridLogic,SubtypeId);
                 gridLogic.ResetCore();

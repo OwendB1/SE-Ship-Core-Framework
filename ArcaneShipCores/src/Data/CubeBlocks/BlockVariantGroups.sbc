@@ -43,6 +43,7 @@
                 <Block Type="MyObjectBuilder_Beacon" Subtype="Harvester_Core" />               
             </Blocks>
         </BlockVariantGroup>
+        
         <BlockVariantGroup>
             <Id Type="MyObjectBuilder_BlockVariantGroup" Subtype="Core Upgrades" />
             <Icon>Textures\LargeGridCore.png</Icon>
