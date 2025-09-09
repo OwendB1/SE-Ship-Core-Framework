@@ -138,7 +138,7 @@ namespace ShipCoreFramework
                     grid.OnIsStaticChanged += OnIsStaticChanged;
                     grid.OnBlockAdded += OnBlockAdded;
                     grid.OnBlockRemoved += OnBlockRemoved;     
-                    var fatBlocks = grid.GetFatBlocks<MyCubeBlock>().Where(b => b.IsPreview == false);
+                    var fatBlocks = grid.GetFatBlocks<MyCubeBlock>().Where(b => !b.IsPreview);
                     Blocks.UnionWith(fatBlocks);
                 }
                 Enforcement.UpdateLimitsAndApplyModifiers(BlocksPerLimit, ShipCore, Blocks, Modifiers);
@@ -200,7 +200,6 @@ namespace ShipCoreFramework
                 return;
             }
             if (Grid?.Physics == null) return;
-            
             Grid.OnPhysicsChanged -= InitOnPhysicsChanged;
             NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
             NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
@@ -222,7 +221,11 @@ namespace ShipCoreFramework
                 NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
                 return;
             }
-            
+            //Forwhatever reason on load, the code does not know the difference between a projeced grid and a real one, so we're just going to turn off the projectors :)
+            var projectors = new List<IMyProjector>();//ProjectedGrid
+            MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(Grid).GetBlocksOfType(projectors);
+            projectors.ForEach(p => p.SetProjectedGrid(null));
+
             List<IMyCubeGrid> subgrids;
             var main = Grid.GetMainCubeGrid(out subgrids);
             
@@ -301,35 +304,33 @@ namespace ShipCoreFramework
             }
             Enforcement.EnforceGridPunishment(Grid);
         }
-
         private void OnIsStaticChanged(IMyCubeGrid grid, bool isStatic)
         {
             var mainLogic = grid.GetMainGridLogic();
             mainLogic._NeedStaticCheck = true;
         }
-
         private void OnBlockAdded(IMySlimBlock obj) //Now tells player why
         {
-            Utils.Log($"{Utils.GetBlockTypeId(obj)} | {Utils.GetBlockSubtypeId(obj)}");
             var concreteGrid = Grid as MyCubeGrid;
-             //MaxBlocks
+            Utils.Log($"{Grid.CustomName}: Block Added: {Utils.GetBlockTypeId(obj)} | {Utils.GetBlockSubtypeId(obj)}");
+            //MaxBlocks
             if (concreteGrid?.BlocksCount >= ShipCore.MaxBlocks && ShipCore.MaxBlocks > 0)
             {
                 if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == Grid.BigOwners.FirstOrDefault())
                 {
-                    Utils.ShowNotification($"{Utils.GetBlockSubtypeId(obj)} Violates MaxBlocks: {concreteGrid.BlocksCount > ShipCore.MaxBlocks}",10000, true);
+                    Utils.ShowNotification($"{Utils.GetBlockSubtypeId(obj)} Violates MaxBlocks: {concreteGrid.BlocksCount > ShipCore.MaxBlocks}", 10000, true);
                 }
-                Grid.RemoveBlock(obj);
+                Enforcement.RemoveAndRefund(obj);
                 return;
             }
             //Missing MaxPCU
-            if (concreteGrid?.BlocksPCU >= ShipCore.MaxPCU && ShipCore.MaxPCU > 0)
+            if (Blocks.Sum(b => b.BlockDefinition.PCU) >= ShipCore.MaxPCU && ShipCore.MaxPCU > 0)
             {
                 if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == Grid.BigOwners.FirstOrDefault())
                 {
-                    Utils.ShowNotification($"{Utils.GetBlockSubtypeId(obj)} Violates MaxPCU: {concreteGrid.BlocksCount > ShipCore.MaxPCU}",10000, true);
+                    Utils.ShowNotification($"{Utils.GetBlockSubtypeId(obj)} Violates MaxPCU: {concreteGrid.BlocksCount > ShipCore.MaxPCU}", 10000, true);
                 }
-                Grid.RemoveBlock(obj);
+                Enforcement.RemoveAndRefund(obj);
                 return;
             }
             // MaxMass, Currently WET MASS
@@ -337,40 +338,41 @@ namespace ShipCoreFramework
             {
                 if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == Grid.BigOwners.FirstOrDefault())
                 {
-                    Utils.ShowNotification($"{Utils.GetBlockSubtypeId(obj)} Violates MaxMass: {concreteGrid.BlocksCount > ShipCore.MaxMass}",10000, true);
+                    Utils.ShowNotification($"{Utils.GetBlockSubtypeId(obj)} Violates MaxMass: {concreteGrid.BlocksCount > ShipCore.MaxMass}", 10000, true);
                 }
-                Grid.RemoveBlock(obj);
+                Enforcement.RemoveAndRefund(obj);
                 return;
-            } 
-            
-            foreach(var limit in ShipCore.BlockLimits)
+            }
+
+            foreach (var limit in ShipCore.BlockLimits)
             {
                 var match = limit.BlockGroups
                     .SelectMany(g => g.BlockTypes)
-                    .Any(b => b.TypeId == Utils.GetBlockTypeId(obj) && (b.SubtypeId=="any" || b.SubtypeId == Utils.GetBlockSubtypeId(obj)));
+                    .Any(b => b.TypeId == Utils.GetBlockTypeId(obj) && (b.SubtypeId == "any" || b.SubtypeId == Utils.GetBlockSubtypeId(obj)));
 
                 if (!match) continue;
                 var limitBlocks = BlocksPerLimit[limit];
                 var countWeight = limitBlocks.Sum(b => b.Value);
-                var countForSpecificBlock = limit.BlockGroups.SelectMany(g => g.BlockTypes).First(b => b.TypeId == Utils.GetBlockTypeId(obj) && (b.SubtypeId=="any" || b.SubtypeId == Utils.GetBlockSubtypeId(obj))).CountWeight;
+                var countForSpecificBlock = limit.BlockGroups.SelectMany(g => g.BlockTypes).First(b => b.TypeId == Utils.GetBlockTypeId(obj) && (b.SubtypeId == "any" || b.SubtypeId == Utils.GetBlockSubtypeId(obj))).CountWeight;
 
                 Utils.Log($"{countWeight} | {countForSpecificBlock} | {limit.MaxCount}");
-                
-                var validDirection = true;
-                if (CoreBlock?.CoreBlock != null) validDirection=Enforcement.IsValidDirection(CoreBlock.CoreBlock, obj, limit.AllowedDirections); 
-                else Utils.Log("Log Direction Check: \nCoreBlock is null", 3); 
-                
-                if (countWeight + countForSpecificBlock > limit.MaxCount||!validDirection)
+                if (countWeight + countForSpecificBlock > limit.MaxCount)
                 {
                     if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == Grid.BigOwners.FirstOrDefault())
-                        Utils.ShowNotification($"{Utils.GetBlockSubtypeId(obj)} Violates Blocklimit {limit.Name}: {countWeight}/{limit.MaxCount}",10000, true);
-                    
-                    Grid.RemoveBlock(obj);
-                    List<IMyCubeGrid> subs;
-                    Grid.GetMainCubeGrid(out subs);
-                    foreach (var subgrid in subs) subgrid.RemoveBlock(obj);
+                        Utils.ShowNotification($"{Utils.GetBlockSubtypeId(obj)} Violates Blocklimit {limit.Name}: {countWeight + countForSpecificBlock}/{limit.MaxCount}", 10000, true);
+                    //Enhanced to remove it no matter what grid it's on :)
+                    Enforcement.RemoveAndRefund(obj);
                     return;
                 }
+                if (CoreBlock?.CoreBlock != null)
+                {
+                    if (!Enforcement.IsValidDirection(CoreBlock.CoreBlock, obj, limit.AllowedDirections))
+                    { 
+                        Enforcement.RemoveAndRefund(obj);
+                        return;
+                    }
+                }
+                else Utils.Log("Log Direction Check: \nCoreBlock is null", 3);
 
                 BlocksPerLimit[limit].Add(new KeyValuePair<IMyCubeBlock, double>(obj.FatBlock, countForSpecificBlock));
             }
@@ -434,10 +436,10 @@ namespace ShipCoreFramework
         public override void Close()
         {
             if (ModSessionManager.Config.SelectedNoCore != null)
-            {
-                GridsPerFactionManager.RemoveCubeGrid(this); 
-                GridsPerPlayerManager.RemoveCubeGrid(this);
-            }
+                {
+                    GridsPerFactionManager.RemoveCubeGrid(this);
+                    GridsPerPlayerManager.RemoveCubeGrid(this);
+                }
             base.Close();
         }
     }

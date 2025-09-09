@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.Utils;
+using Sandbox.Game;
 
 namespace ShipCoreFramework
 {
@@ -40,7 +42,51 @@ namespace ShipCoreFramework
                      where terminalBlock != null
                      select block) CubeGridModifiers.ApplyModifiers(block, modifiers);
         }
-        
+        public static void RemoveAndRefund(IMySlimBlock obj)
+        {
+            if (obj == null || obj.CubeGrid == null)
+                return;
+
+            var grid = obj.CubeGrid;
+
+            // Find cargo containers on the same grid
+            var cargoContainers = new List<IMyCargoContainer>();
+            MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(grid).GetBlocksOfType(cargoContainers);
+            if (cargoContainers.Count != 0)
+            {
+                IMyCargoContainer selectedCargo = null;
+                float maxAvailableVolume = -1.0f;
+                foreach (var cargo in cargoContainers)
+                {
+                    var inventory = cargo.GetInventory();
+                    if (inventory != null)
+                    {
+                        // Calculate the available space in cubic meters
+                        float availableVolume = (float)inventory.MaxVolume - (float)inventory.CurrentVolume;
+
+                        // Check if this container has more available space than the current maximum
+                        if (availableVolume > maxAvailableVolume)
+                        {
+                            maxAvailableVolume = availableVolume;
+                            selectedCargo = cargo;
+                        }
+                    }
+                }
+                if (selectedCargo != null)
+                {
+                    var cargoInventory = selectedCargo.GetInventory();
+                    obj.DecreaseMountLevel(obj.Integrity, cargoInventory, true);
+                    obj.MoveItemsFromConstructionStockpile(cargoInventory);
+                }  
+            }
+
+            grid.RemoveBlock(obj, updatePhysics: true);
+
+            var projectors = new List<IMyProjector>();
+            MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(grid).GetBlocksOfType(projectors);
+            projectors.ForEach(p => p.Enabled = false);
+        }
+
         public static void WhackABlock(IMyCubeBlock block, PunishmentType harm, MyStringHash? customDamageType = null)
         {
             if (block?.SlimBlock == null) return;
@@ -197,7 +243,13 @@ namespace ShipCoreFramework
                 xyDirection = DirectionType.Down;
             }
             Utils.Log($"Log Direction Check: Block {xyDirection}", 3);
-            return allowedDirections.Contains(xyDirection); //&& AllowedDirections.Contains(ZDirection)
+            bool isValid = allowedDirections.Contains(xyDirection);
+            if (!isValid)
+            { if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == myCore.CubeGrid.BigOwners.FirstOrDefault())
+                {Utils.ShowNotification($"{Utils.GetBlockSubtypeId(block)}: the direction {xyDirection} is invalid", 10000, true);}
+            }
+
+            return isValid; //&& AllowedDirections.Contains(ZDirection)
         }
     }
 }

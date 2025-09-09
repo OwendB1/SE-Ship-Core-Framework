@@ -217,7 +217,7 @@ namespace ShipCoreFramework
             }
             else
             {
-                // NO! Don't send this triggers on concealment
+                // NO! Don't send this  triggers on concealment
                 /*if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == grid.BigOwners.FirstOrDefault())
                 {
                     Utils.ShowNotification($"Main core of grid {grid.CustomName} was destroyed!", 10000, true);

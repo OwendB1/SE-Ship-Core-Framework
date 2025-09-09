@@ -140,7 +140,7 @@ namespace ShipCoreFramework
             }
 
             var biggestGrid = grids.OfType<MyCubeGrid>().MaxBy(concrete => concrete.BlocksCount);
-            subgrids = grids.Where(g => g.EntityId != biggestGrid.EntityId).ToList();
+            subgrids = grids.Where(g => (g.EntityId != biggestGrid.EntityId) && (!(g as MyCubeGrid).IsPreview)).ToList();
             return biggestGrid;
         }
         public static IMyCubeGrid GetLargestConnectedGrid(this IMyCubeGrid grid, out List<IMyCubeGrid> subgrids)
