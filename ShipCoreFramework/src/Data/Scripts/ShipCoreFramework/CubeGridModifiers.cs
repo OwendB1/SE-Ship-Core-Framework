@@ -16,6 +16,7 @@ namespace ShipCoreFramework
 {
     public static class CubeGridModifiers
     {
+        public static readonly Dictionary<long, GridDefenseModifiers> DefenseModifiers = new Dictionary<long, GridDefenseModifiers>();
         private static readonly MyStringHash EnergyDamageType = MyStringHash.GetOrCompute("Energy");
         private static readonly MyStringHash KineticDamageType = MyStringHash.GetOrCompute("Kinetic");
         
@@ -68,7 +69,7 @@ namespace ShipCoreFramework
             if (enhancedModifiers == null) throw new ArgumentNullException(nameof(enhancedModifiers));
             //MyCore._syncIsMainCore
 
-            var myBlock = gridLogic.CoreBlock;
+            var myBlock = gridLogic.CoreLogic;
             if (myBlock == null)
             {
                 return shipCore.Modifiers;
@@ -176,40 +177,21 @@ namespace ShipCoreFramework
             if (drill != null) drill.DrillHarvestMultiplier = modifiers.DrillHarvestMultiplier;
         }
 
-        public static void GridClassDamageHandler(object target, ref MyDamageInformation damageInfo)
-        //High overhead being reported mpt sure why
+        public static void GridCoreDamageHandler(object target, ref MyDamageInformation damageInfo)
         {
             var myBlock = target as IMySlimBlock;
             if (myBlock == null) return;
             
-            var myGrid = myBlock.CubeGrid;
-            var myGridLogic = myGrid.GetMainGridLogic();
+            GridDefenseModifiers modifiers;
+            var succeeded = DefenseModifiers.TryGetValue(myBlock.CubeGrid.EntityId, out modifiers);
+            if (!succeeded) return;
             
-            if (myGridLogic == null) return;
-            if (myGridLogic.PunishModifiers)
-            {
-                damageInfo.Amount *= 2;
-                return;
-            }
-            
-            if (myGridLogic.ActiveDefenseEnabled)
-            {
-                if (damageInfo.Type == MyDamageType.Bullet) damageInfo.Amount *= myGridLogic.ShipCore.ActiveDefenseModifiers.Bullet;
-                if (damageInfo.Type == MyDamageType.Rocket) damageInfo.Amount *= myGridLogic.ShipCore.ActiveDefenseModifiers.Rocket;
-                if (damageInfo.Type == MyDamageType.Explosion) damageInfo.Amount *= myGridLogic.ShipCore.ActiveDefenseModifiers.Explosion;
-                if (damageInfo.Type == MyDamageType.Environment) damageInfo.Amount *= myGridLogic.ShipCore.ActiveDefenseModifiers.Environment;
-                if (damageInfo.Type == EnergyDamageType) damageInfo.Amount *= myGridLogic.ShipCore.ActiveDefenseModifiers.Energy;
-                if (damageInfo.Type == KineticDamageType) damageInfo.Amount *= myGridLogic.ShipCore.ActiveDefenseModifiers.Kinetic;
-            }
-            else
-            {
-                if (damageInfo.Type == MyDamageType.Bullet) damageInfo.Amount *= myGridLogic.ShipCore.PassiveDefenseModifiers.Bullet;
-                if (damageInfo.Type == MyDamageType.Rocket) damageInfo.Amount *= myGridLogic.ShipCore.PassiveDefenseModifiers.Rocket;
-                if (damageInfo.Type == MyDamageType.Explosion) damageInfo.Amount *= myGridLogic.ShipCore.PassiveDefenseModifiers.Explosion;
-                if (damageInfo.Type == MyDamageType.Environment) damageInfo.Amount *= myGridLogic.ShipCore.PassiveDefenseModifiers.Environment;
-                if (damageInfo.Type == EnergyDamageType) damageInfo.Amount *= myGridLogic.ShipCore.PassiveDefenseModifiers.Energy;
-                if (damageInfo.Type == KineticDamageType) damageInfo.Amount *= myGridLogic.ShipCore.PassiveDefenseModifiers.Kinetic;
-            }
+            if (damageInfo.Type == MyDamageType.Bullet) damageInfo.Amount *= modifiers.Bullet;
+            if (damageInfo.Type == MyDamageType.Rocket) damageInfo.Amount *= modifiers.Rocket;
+            if (damageInfo.Type == MyDamageType.Explosion) damageInfo.Amount *= modifiers.Explosion;
+            if (damageInfo.Type == MyDamageType.Environment) damageInfo.Amount *= modifiers.Environment;
+            if (damageInfo.Type == EnergyDamageType) damageInfo.Amount *= modifiers.Energy;
+            if (damageInfo.Type == KineticDamageType) damageInfo.Amount *= modifiers.Kinetic;
         }
     }
 }

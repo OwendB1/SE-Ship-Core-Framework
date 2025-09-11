@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
-using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.Utils;
-using Sandbox.Game;
 
 namespace ShipCoreFramework
 {
@@ -44,9 +42,7 @@ namespace ShipCoreFramework
         }
         public static void RemoveAndRefund(IMySlimBlock obj)
         {
-            if (obj == null || obj.CubeGrid == null)
-                return;
-
+            if (obj?.CubeGrid == null) return;
             var grid = obj.CubeGrid;
 
             // Find cargo containers on the same grid
@@ -55,22 +51,19 @@ namespace ShipCoreFramework
             if (cargoContainers.Count != 0)
             {
                 IMyCargoContainer selectedCargo = null;
-                float maxAvailableVolume = -1.0f;
+                var maxAvailableVolume = -1.0f;
                 foreach (var cargo in cargoContainers)
                 {
                     var inventory = cargo.GetInventory();
-                    if (inventory != null)
-                    {
-                        // Calculate the available space in cubic meters
-                        float availableVolume = (float)inventory.MaxVolume - (float)inventory.CurrentVolume;
+                    if (inventory == null) continue;
+                    
+                    // Calculate the available space in cubic meters
+                    var availableVolume = (float)inventory.MaxVolume - (float)inventory.CurrentVolume;
 
-                        // Check if this container has more available space than the current maximum
-                        if (availableVolume > maxAvailableVolume)
-                        {
-                            maxAvailableVolume = availableVolume;
-                            selectedCargo = cargo;
-                        }
-                    }
+                    // Check if this container has more available space than the current maximum
+                    if (!(availableVolume > maxAvailableVolume)) continue;
+                    maxAvailableVolume = availableVolume;
+                    selectedCargo = cargo;
                 }
                 if (selectedCargo != null)
                 {
@@ -91,7 +84,9 @@ namespace ShipCoreFramework
         {
             if (block?.SlimBlock == null) return;
             var damageType = customDamageType ?? DamageTypeBlockLimit;
+            var func = block as IMyFunctionalBlock;
             double damageRequired;
+            
             switch (harm)
             {
                 //case PunishmentType.ShutOff:
@@ -104,6 +99,7 @@ namespace ShipCoreFramework
                     break;
 
                 case PunishmentType.Delete:
+                    if (func != null) func.Enabled = false;
                     block.CubeGrid.RemoveBlock(block.SlimBlock, true);
                     break;
                 case PunishmentType.Explode:
@@ -113,11 +109,7 @@ namespace ShipCoreFramework
 
                 default:
                     //Shut off, or whack if that's not possible
-                    var func = block as IMyFunctionalBlock;
-                    if (func != null)
-                    {
-                        func.Enabled = false;
-                    }
+                    if (func != null) func.Enabled = false;
                     else
                     {
                         damageRequired = block.SlimBlock.Integrity - (block.SlimBlock.MaxIntegrity * 0.2);
@@ -144,10 +136,10 @@ namespace ShipCoreFramework
                     var countWeight = limitBlocks.Sum(l => l.Value);
 
                     var validDirection = true;
-                    if (gridLogic.CoreBlock?.CoreBlock != null && block?.SlimBlock != null &&
+                    if (gridLogic.CoreLogic?.CoreBlock != null && block?.SlimBlock != null &&
                         limit.AllowedDirections != null)
                     {
-                        validDirection = IsValidDirection(gridLogic.CoreBlock.CoreBlock, block.SlimBlock, limit.AllowedDirections);
+                        validDirection = IsValidDirection(gridLogic.CoreLogic.CoreBlock, block.SlimBlock, limit.AllowedDirections);
                     } else Utils.Log("Log Direction Check: CoreBlock is null"); 
                     if (countWeight <= limit.MaxCount && validDirection) continue;
                     WhackABlock(block, limit.PunishmentType);
@@ -171,6 +163,7 @@ namespace ShipCoreFramework
             {
                 if (gridLogic.ShipCore.LargeGridMobile) gridLogic.PunishSpeed = true;
                 if (gridLogic.ShipCore.LargeGridStatic) gridLogic.PunishModifiers = true;
+                
             }
 
             if (myBlocksCount >= gridLogic.ShipCore.MaxBlocks || gridLogic.ShipCore.MaxBlocks <= 0 ||
@@ -194,10 +187,10 @@ namespace ShipCoreFramework
                 var countWeight = limitBlocks.Sum(l => l.Value);
 
                 var validDirection = true;
-                if (myGridLogic.CoreBlock?.CoreBlock != null && block.SlimBlock != null &&
+                if (myGridLogic.CoreLogic?.CoreBlock != null && block.SlimBlock != null &&
                     limit.AllowedDirections != null)
                 {
-                    validDirection = IsValidDirection(myGridLogic.CoreBlock.CoreBlock, block.SlimBlock, limit.AllowedDirections);
+                    validDirection = IsValidDirection(myGridLogic.CoreLogic.CoreBlock, block.SlimBlock, limit.AllowedDirections);
                 } else Utils.Log("Log Direction Check: CoreBlock is null"); 
                 if (countWeight <= limit.MaxCount && validDirection) continue;
                 WhackABlock(block, limit.PunishmentType);
@@ -243,12 +236,9 @@ namespace ShipCoreFramework
                 xyDirection = DirectionType.Down;
             }
             Utils.Log($"Log Direction Check: Block {xyDirection}", 3);
-            bool isValid = allowedDirections.Contains(xyDirection);
-            if (!isValid)
-            { if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == myCore.CubeGrid.BigOwners.FirstOrDefault())
-                {Utils.ShowNotification($"{Utils.GetBlockSubtypeId(block)}: the direction {xyDirection} is invalid", 10000, true);}
-            }
-
+            var isValid = allowedDirections.Contains(xyDirection);
+            if (!isValid && Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == myCore.CubeGrid.BigOwners.FirstOrDefault())
+                Utils.ShowNotification($"{Utils.GetBlockSubtypeId(block)}: the direction {xyDirection} is invalid", 10000, true);
             return isValid; //&& AllowedDirections.Contains(ZDirection)
         }
     }

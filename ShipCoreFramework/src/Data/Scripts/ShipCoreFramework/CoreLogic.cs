@@ -36,6 +36,8 @@ namespace ShipCoreFramework
         
         private static bool _actionsRegistered;
         
+        private readonly TickScheduler _tickScheduler = new TickScheduler();
+        
         #region Init methods
 
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
@@ -47,7 +49,7 @@ namespace ShipCoreFramework
             SyncIsMainCore.ValidateAndSet(false);
             CoreBlock.CubeGrid.OnPhysicsChanged += InitOnPhysicsChanged;
         }
-
+        
         private void InitOnPhysicsChanged(IMyEntity obj)
         {
             if (ModSessionManager.Config.SelectedNoCore == null)
@@ -70,6 +72,11 @@ namespace ShipCoreFramework
             NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
             NeedsUpdate |= MyEntityUpdateEnum.EACH_10TH_FRAME;
             NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
+            if (CoreBlock.CubeGrid != null)
+            {
+                CoreBlock.CubeGrid.OnBlockRemoved += OnGridBlockRemoved;
+                CoreBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged;
+            }
 
             Utils.Log($"Core Initial: {CoreBlock.CustomName}", 3);
         }
@@ -79,7 +86,7 @@ namespace ShipCoreFramework
         public override void UpdateOnceBeforeFrame()
         {
             base.UpdateOnceBeforeFrame();
-            //LimitRescheduler.ValidateOrSchedule(CoreBlock, CoreBlock.CubeGrid, SubtypeId);
+
             if (CheckIfCoreOfOtherTypeExists())
             {
                 Utils.Log($"Other Core Exist: {CoreBlock.CubeGrid.CustomName}", 3);
@@ -94,15 +101,15 @@ namespace ShipCoreFramework
             //MyRelationsBetweenPlayerAndBlock.FactionShare || MyRelationsBetweenPlayerAndBlock.Friends
             //IMyPlayer.GetRelationTo()
 
-            MyRelationsBetweenPlayerAndBlock Relationship = CoreBlock.GetUserRelationToOwner(CoreBlock.CubeGrid.BigOwners.FirstOrDefault());
-            if (Relationship == MyRelationsBetweenPlayerAndBlock.Neutral || Relationship == MyRelationsBetweenPlayerAndBlock.Enemies)
+            var relationship = CoreBlock.GetUserRelationToOwner(CoreBlock.CubeGrid.BigOwners.FirstOrDefault());
+            if (relationship == MyRelationsBetweenPlayerAndBlock.Neutral || relationship == MyRelationsBetweenPlayerAndBlock.Enemies)
             {
-                List<IMyPlayer> Players = new List<IMyPlayer>();
-                MyAPIGateway.Players.GetPlayers(Players);
-                if (Players.Count() > 0)
+                var players = new List<IMyPlayer>();
+                MyAPIGateway.Players.GetPlayers(players);
+                if (players.Count > 0)
                 {
-                    IMyPlayer MyPlayer = Players.FirstOrDefault(p => p.IdentityId == CoreBlock.OwnerId);
-                    if (MyPlayer != null && MyAPIGateway.Session.IsUserAdmin(MyPlayer.SteamUserId) && MyAPIGateway.Session.IsUserIgnorePCULimit(MyPlayer.SteamUserId))
+                    var myPlayer = players.FirstOrDefault(p => p.IdentityId == CoreBlock.OwnerId);
+                    if (myPlayer != null && MyAPIGateway.Session.IsUserAdmin(myPlayer.SteamUserId) && MyAPIGateway.Session.IsUserIgnorePCULimit(myPlayer.SteamUserId))
                     {
                         Utils.ShowNotification("WARNING CORE IS PLACED BY ADMIN NOT OWNED!");
                     }
@@ -127,46 +134,47 @@ namespace ShipCoreFramework
                 mainGridLogic.Activate(SubtypeId);
                 SaveCoreState();
             }
-            if (!GridsPerFactionManager.WillGridBeWithinFactionLimits(mainGridLogic, SubtypeId))
+
+            _tickScheduler.Schedule(() =>
             {
-                /*if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == CoreBlock.CubeGrid.BigOwners.FirstOrDefault())
+                if (GridsPerFactionManager.WillGridBeWithinFactionLimits(mainGridLogic, SubtypeId)) return;
+                if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == CoreBlock.CubeGrid.BigOwners.FirstOrDefault())
                 {
                     Utils.ShowNotification("Per faction limit of this core has been hit!", 10000, true);
-                }*/
+                }
                 mainGridLogic.ResetCore();
                 CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
-                return;
-            }
-            if (!GridsPerPlayerManager.WillGridBeWithinPlayerLimits(mainGridLogic, SubtypeId))
+            }, 300);
+            
+            _tickScheduler.Schedule(() =>
             {
+                if (GridsPerPlayerManager.WillGridBeWithinPlayerLimits(mainGridLogic, SubtypeId)) return;
                 if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == CoreBlock.CubeGrid.BigOwners.FirstOrDefault())
                 {
                     Utils.ShowNotification("Per player limit of this core has been hit!", 10000, true);
                 }
                 mainGridLogic.ResetCore();
                 CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
-                return;
-            }
-            //Best not to add it until you know it satisfies both conditions
+            }, 300);
+            
             GridsPerFactionManager.AddCubeGrid(mainGridLogic);
             GridsPerPlayerManager.AddCubeGrid(mainGridLogic);
-            mainGridLogic._NeedStaticCheck = true;
+            
+            mainGridLogic.NeedStaticCheck = true;
             if (MyAPIGateway.TerminalControls == null)
             {
                 if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == CoreBlock.CubeGrid.BigOwners.FirstOrDefault())
                 {
                     Utils.ShowNotification("WARNING: Terminal Controls Missing on Core", 10000, true);
                 }
-            }
-            MyAPIGateway.TerminalControls.CustomControlGetter += CustomControlGetter;
+            } else MyAPIGateway.TerminalControls.CustomControlGetter += CustomControlGetter;
             CoreBlock.CubeGrid.OnGridMerge += OnGridMerge;
             RegisterToolbarActionsOnce();
-            //LimitRescheduler.Tick(CoreBlock);
         }
         
         public override void UpdateAfterSimulation10()
         {
-            //LimitRescheduler.Tick(CoreBlock);
+            _tickScheduler.Update10();
             UpdateBeacon();
         }
         
@@ -201,18 +209,12 @@ namespace ShipCoreFramework
 
             MyAPIGateway.TerminalControls.CustomControlGetter -= CustomControlGetter;
             CoreBlock.CubeGrid.OnGridMerge -= OnGridMerge;
+            CoreBlock.CubeGrid.OnBlockRemoved -= OnGridBlockRemoved;
 
             var grid = CoreBlock.CubeGrid;
             var gridLogic = grid.GameLogic?.GetAs<GridLogic>();
             if (gridLogic == null)
             {
-                return;
-            }
-            // If this core is NOT the main core, nothing to reassign
-            if (!SyncIsMainCore.Value)
-            {
-                //Trigers on concealment, not cool you can delete this,k or move it ot OnDestroy
-                //if(Constants.LocalPlayer!=null && (Constants.LocalPlayer.PlayerID==grid.BigOwners.FirstOrDefault())){Utils.ShowNotification($"A backup core of grid {grid.CustomName} was destroyed!",10000, true);}
                 return;
             }
 
@@ -235,17 +237,11 @@ namespace ShipCoreFramework
             }
             else
             {
-                // NO! Don't send this  triggers on concealment
-                /*if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == grid.BigOwners.FirstOrDefault())
-                {
-                    Utils.ShowNotification($"Main core of grid {grid.CustomName} was destroyed!", 10000, true);
-                }*/
                 GridsPerFactionManager.RemoveCubeGrid(gridLogic, SubtypeId);
                 GridsPerPlayerManager.RemoveCubeGrid(gridLogic, SubtypeId);
                 try { gridLogic.ResetCore(); } catch(Exception e){ Utils.Log(e.ToString());}
                 
             }
-
             base.Close();
         }
 
@@ -253,10 +249,29 @@ namespace ShipCoreFramework
         
         private void OnUpgradeValuesChanged()
         {
-            var AssemblerSpeed = CoreBlock.UpgradeValues["AssemblerSpeed"];
-            var DrillHarvestMultiplier = CoreBlock.UpgradeValues["DrillHarvestMultiplier"];
-            //so on and so forth more of an example, you would likely want to call these in the modifiers file....
+            var logic = CoreBlock.CubeGrid.GetMainGridLogic();
+            logic.DefenseValuesChanged();
         }
+        
+        private void OnGridBlockRemoved(IMySlimBlock removed)
+        {
+            if (removed == null || CoreBlock == null) return;
+            if (!ReferenceEquals(removed, CoreBlock.SlimBlock)) return;
+            CoreBlock.CubeGrid.OnBlockRemoved -= OnGridBlockRemoved;
+
+            if (!Constants.IsServer) return;
+
+            var grid = CoreBlock.CubeGrid;
+            var gridLogic = grid?.GameLogic?.GetAs<GridLogic>();
+            if (gridLogic == null) return;
+            
+            if (Constants.LocalPlayer == null || Constants.LocalPlayer.IdentityId != grid.BigOwners.FirstOrDefault()) return;
+            Utils.ShowNotification(
+                SyncIsMainCore.Value
+                    ? $"Main core of grid {grid.CustomName} was destroyed!"
+                    : $"A backup core of grid {grid.CustomName} was destroyed!", 10000, true);
+        }
+        
         private void OnGridMerge(IMyCubeGrid arg1, IMyCubeGrid arg2)
         {
             List<IMyCubeGrid> ignored;

@@ -30,20 +30,20 @@ namespace ShipCoreFramework
         public bool BoostEnabled;
         private float _boostCooldownTimer;
         private float _boostDurationTimer;
-        
-        public bool ActiveDefenseEnabled;
+
+        private bool _activeDefenseEnabled;
         private float _activeDefenseCooldownTimer;
         private float _activeDefenseDurationTimer;
 
         private bool _needsSubgridsRedone;
-        public bool _NeedStaticCheck;
-
-        public CoreLogic CoreBlock => Utils.GetGridCore(Grid, ShipCore);
-
+        public bool NeedStaticCheck;
+        
+        public CoreLogic CoreLogic => Utils.GetGridCore(Grid, ShipCore);
+        
         private float BoostDuration => ShipCore.Modifiers.BoostDuration;
         private float BoostCoolDown => ShipCore.Modifiers.BoostCoolDown;
-        private float ActiveDefenseDuration => ShipCore.ActiveDefenseModifiers.Duration;
-        private float ActiveDefenseCoolDown => ShipCore.ActiveDefenseModifiers.Cooldown;
+        private float ActiveDefenseDuration => ShipCore.ActiveDefenseModifiers.Duration * CoreLogic.CoreBlock.UpgradeValues["DurationDuration"];
+        private float ActiveDefenseCoolDown => ShipCore.ActiveDefenseModifiers.Cooldown * CoreLogic.CoreBlock.UpgradeValues["DamageCooldown"];
         public GridModifiers Modifiers => PunishModifiers ? ModSessionManager.Config.SelectedNoCore.Modifiers : CubeGridModifiers.GetActiveModifiers(this);
 
         public IMyCubeGrid Grid;
@@ -86,7 +86,7 @@ namespace ShipCoreFramework
         
         public void ActivateDefense()
         {
-            if(ActiveDefenseEnabled)
+            if(_activeDefenseEnabled)
             {
                 Utils.ShowNotification($"Active Defense Time Remaining:{_activeDefenseDurationTimer/60f:0.0}", 1000);
                 return;
@@ -96,7 +96,8 @@ namespace ShipCoreFramework
                 Utils.ShowNotification($"Active Defense is cooling down! Cooldown Time:{_boostCooldownTimer/60f:0.0}", 1000);
                 return;
             }
-            ActiveDefenseEnabled = true;
+            _activeDefenseEnabled = true;
+            CubeGridModifiers.DefenseModifiers[Grid.EntityId] = GetActiveDefenseModifiers();
             _activeDefenseDurationTimer = ActiveDefenseDuration * 60f; // duration in seconds to ticks
             Utils.ShowNotification("Active Defense Engaged!", 1000);
         }
@@ -122,7 +123,7 @@ namespace ShipCoreFramework
         {
             base.UpdateAfterSimulation();
             List<IMyCubeGrid> subgrids;
-            IMyCubeGrid mainGrid = Grid.GetMainCubeGrid(out subgrids);
+            var mainGrid = Grid.GetMainCubeGrid(out subgrids);
             if (mainGrid != Grid) return;
             if (_needsSubgridsRedone)
             {
@@ -145,11 +146,11 @@ namespace ShipCoreFramework
                 Enforcement.EnforceGridPunishment(Grid);
                 _needsSubgridsRedone=false;
             }
-            if (_NeedStaticCheck)
+            if (NeedStaticCheck)
             {
                 if (ShipCore.LargeGridStatic && !ShipCore.LargeGridMobile && !mainGrid.IsStatic) { MyVisualScriptLogicProvider.SetGridStatic(mainGrid.Name, true); }
                 if (!ShipCore.LargeGridStatic && mainGrid.IsStatic) { MyVisualScriptLogicProvider.SetGridStatic(mainGrid.Name, false); }
-                _NeedStaticCheck = false;
+                NeedStaticCheck = false;
             }
             SpeedEnforcement.EnforceSpeedLimit(this, PunishSpeed);
             if (_shipCoreTypeId == string.Empty) return;
@@ -177,11 +178,12 @@ namespace ShipCoreFramework
 
         private void RunActiveDefenseTimerTick()
         {
-            if (ActiveDefenseEnabled)
+            if (_activeDefenseEnabled)
             {
                 _activeDefenseDurationTimer -= 1f;
                 if (!(_activeDefenseDurationTimer <= 0f)) return;
-                ActiveDefenseEnabled = false;
+                _activeDefenseEnabled = false;
+                CubeGridModifiers.DefenseModifiers[Grid.EntityId] = GetPassiveDefenseModifiers();
                 _activeDefenseCooldownTimer = ActiveDefenseCoolDown * 60f;
                 Utils.ShowNotification("Active Defense Disengaged! Cooldown started.", 1000);
             }
@@ -203,6 +205,7 @@ namespace ShipCoreFramework
             Grid.OnPhysicsChanged -= InitOnPhysicsChanged;
             NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
             NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
+            CubeGridModifiers.DefenseModifiers[Grid.EntityId] = GetPassiveDefenseModifiers();
         }
         
         public override void UpdateOnceBeforeFrame()
@@ -240,7 +243,7 @@ namespace ShipCoreFramework
                 mainLogic.Blocks.UnionWith(Grid.GetFatBlocks<MyCubeBlock>().Where(b => !b.IsPreview));
                 
                 Grid.OnBlockOwnershipChanged += mainLogic.OnBlockOwnershipChanged;
-                Grid.OnIsStaticChanged += mainLogic.OnIsStaticChanged;
+                Grid.OnIsStaticChanged += OnIsStaticChanged;
                 Grid.OnBlockAdded += mainLogic.OnBlockAdded;
                 Grid.OnBlockRemoved += mainLogic.OnBlockRemoved;
 
@@ -304,28 +307,30 @@ namespace ShipCoreFramework
             }
             Enforcement.EnforceGridPunishment(Grid);
         }
-        private void OnIsStaticChanged(IMyCubeGrid grid, bool isStatic)
+        
+        private static void OnIsStaticChanged(IMyCubeGrid grid, bool isStatic)
         {
             var mainLogic = grid.GetMainGridLogic();
-            mainLogic._NeedStaticCheck = true;
+            mainLogic.NeedStaticCheck = true;
         }
+        
         private void OnBlockAdded(IMySlimBlock obj) //Now tells player why
         {
-            long builderId = obj.BuiltBy;
+            var builderId = obj.BuiltBy;
             //Ignore core placement
             var blockDefinition = Utils.GetBlockSubtypeId(obj);
             if (blockDefinition !=null) { if (ModSessionManager.Config.IsValidCoreType(blockDefinition)) { return; } }
             
             //Ignore Admins with Ignore Limits
             
-            List<IMyPlayer> Players = new List<IMyPlayer>();
-            MyAPIGateway.Players.GetPlayers(Players);
-            if(Players.Count()>0)
+            var players = new List<IMyPlayer>();
+            MyAPIGateway.Players.GetPlayers(players);
+            if(players.Count > 0)
             {
-                IMyPlayer MyPlayer = Players.FirstOrDefault(p => p.IdentityId == builderId);
-                if (MyPlayer != null 
-                    && MyAPIGateway.Session.IsUserAdmin(MyPlayer.SteamUserId) 
-                    && MyAPIGateway.Session.IsUserIgnorePCULimit(MyPlayer.SteamUserId))
+                var myPlayer = players.FirstOrDefault(p => p.IdentityId == builderId);
+                if (myPlayer != null 
+                    && MyAPIGateway.Session.IsUserAdmin(myPlayer.SteamUserId) 
+                    && MyAPIGateway.Session.IsUserIgnorePCULimit(myPlayer.SteamUserId))
                 {
                     Utils.ShowNotification("Block Was Placed By Admin, Block limits NOT Applied.");
                     return;
@@ -387,9 +392,9 @@ namespace ShipCoreFramework
                     Enforcement.RemoveAndRefund(obj);
                     return;
                 }
-                if (CoreBlock?.CoreBlock != null)
+                if (CoreLogic?.CoreBlock != null)
                 {
-                    if (!Enforcement.IsValidDirection(CoreBlock.CoreBlock, obj, limit.AllowedDirections))
+                    if (!Enforcement.IsValidDirection(CoreLogic.CoreBlock, obj, limit.AllowedDirections))
                     { 
                         Enforcement.RemoveAndRefund(obj);
                         return;
@@ -421,7 +426,7 @@ namespace ShipCoreFramework
             Blocks.Remove(obj.FatBlock as MyCubeBlock);
             Enforcement.ApplyModifiers(Blocks, Modifiers);
         }
-        private void OnConnectionChangeCompleted(MyCubeGrid myGrid, GridLinkTypeEnum gridGroupTypeChanged)
+        private static void OnConnectionChangeCompleted(MyCubeGrid myGrid, GridLinkTypeEnum gridGroupTypeChanged)
         {
             Enforcement.EnforceOverCapacity(myGrid);
             if(gridGroupTypeChanged != GridLinkTypeEnum.Mechanical) return;
@@ -432,7 +437,7 @@ namespace ShipCoreFramework
             mainLogic._needsSubgridsRedone=true;
         }
         
-        private void OnGridMergeOrSplit(IMyCubeGrid main, IMyCubeGrid sub)
+        private static void OnGridMergeOrSplit(IMyCubeGrid main, IMyCubeGrid sub)
         {
             Utils.Log($"OnGridMergeOrSplit: {main.CustomName} Sub: {sub.CustomName})");
             List<IMyCubeGrid> mainSubgrids;
@@ -456,13 +461,44 @@ namespace ShipCoreFramework
             return Grid.BigOwners.FirstOrDefault();
         }
 
+        public void DefenseValuesChanged()
+        {
+            CubeGridModifiers.DefenseModifiers[Grid.EntityId] = GetPassiveDefenseModifiers();
+        }
+
+        private GridDefenseModifiers GetActiveDefenseModifiers()
+        {
+            return new GridDefenseModifiers
+            {
+                Bullet = ShipCore.ActiveDefenseModifiers.Bullet * CoreLogic.CoreBlock.UpgradeValues["ActiveBulletDamage"],
+                Rocket = ShipCore.ActiveDefenseModifiers.Rocket * CoreLogic.CoreBlock.UpgradeValues["ActiveRocketDamage"],
+                Explosion = ShipCore.ActiveDefenseModifiers.Explosion *  CoreLogic.CoreBlock.UpgradeValues["ActiveExplosionDamage"],
+                Environment = ShipCore.ActiveDefenseModifiers.Environment * CoreLogic.CoreBlock.UpgradeValues["ActiveEnvironmentDamage"],
+                Energy = ShipCore.ActiveDefenseModifiers.Energy * CoreLogic.CoreBlock.UpgradeValues["ActiveEnergyDamage"],
+                Kinetic = ShipCore.ActiveDefenseModifiers.Kinetic * CoreLogic.CoreBlock.UpgradeValues["ActiveKineticDamage"]
+            };
+        }
+        
+        private GridDefenseModifiers GetPassiveDefenseModifiers()
+        {
+            return new GridDefenseModifiers
+            {
+                Bullet = ShipCore.PassiveDefenseModifiers.Bullet * CoreLogic.CoreBlock.UpgradeValues["PassiveBulletDamage"],
+                Rocket = ShipCore.PassiveDefenseModifiers.Rocket * CoreLogic.CoreBlock.UpgradeValues["PassiveRocketDamage"],
+                Explosion = ShipCore.PassiveDefenseModifiers.Explosion *  CoreLogic.CoreBlock.UpgradeValues["PassiveExplosionDamage"],
+                Environment = ShipCore.PassiveDefenseModifiers.Environment * CoreLogic.CoreBlock.UpgradeValues["PassiveEnvironmentDamage"],
+                Energy = ShipCore.PassiveDefenseModifiers.Energy * CoreLogic.CoreBlock.UpgradeValues["PassiveEnergyDamage"],
+                Kinetic = ShipCore.PassiveDefenseModifiers.Kinetic * CoreLogic.CoreBlock.UpgradeValues["PassiveKineticDamage"]
+            };
+        }
+
         public override void Close()
         {
             if (ModSessionManager.Config.SelectedNoCore != null)
-                {
-                    GridsPerFactionManager.RemoveCubeGrid(this);
-                    GridsPerPlayerManager.RemoveCubeGrid(this);
-                }
+            {
+                GridsPerFactionManager.RemoveCubeGrid(this);
+                GridsPerPlayerManager.RemoveCubeGrid(this);
+            }
             base.Close();
         }
     }

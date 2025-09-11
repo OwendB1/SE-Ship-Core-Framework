@@ -130,8 +130,8 @@ namespace ShipCoreFramework
 
         private void SessionReady()
         {
-            if (Config.SelectedNoCore == null) return;
-            MyAPIGateway.Session.DamageSystem.RegisterBeforeDamageHandler(99, CubeGridModifiers.GridClassDamageHandler);
+            if (Config.SelectedNoCore == null || !Constants.IsServer) return;
+            MyAPIGateway.Session.DamageSystem.RegisterBeforeDamageHandler(99, CubeGridModifiers.GridCoreDamageHandler);
         }
         
         public override void UpdateAfterSimulation()
