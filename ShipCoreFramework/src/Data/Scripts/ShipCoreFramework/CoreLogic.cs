@@ -1,5 +1,5 @@
 #region
-
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -7,6 +7,7 @@ using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces.Terminal;
+using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
 using VRage.Game.ModAPI.Network;
@@ -90,15 +91,33 @@ namespace ShipCoreFramework
                 }
                 return;
             }
-            if (CoreBlock.OwnerId != CoreBlock.CubeGrid.BigOwners.FirstOrDefault())
+            //MyRelationsBetweenPlayerAndBlock.FactionShare || MyRelationsBetweenPlayerAndBlock.Friends
+            //IMyPlayer.GetRelationTo()
+
+            MyRelationsBetweenPlayerAndBlock Relationship = CoreBlock.GetUserRelationToOwner(CoreBlock.CubeGrid.BigOwners.FirstOrDefault());
+            if (Relationship == MyRelationsBetweenPlayerAndBlock.Neutral || Relationship == MyRelationsBetweenPlayerAndBlock.Enemies)
             {
-                if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == CoreBlock.OwnerId)
+                List<IMyPlayer> Players = new List<IMyPlayer>();
+                MyAPIGateway.Players.GetPlayers(Players);
+                if (Players.Count() > 0)
                 {
-                    Utils.ShowNotification("Cores can only be built by the grid owner!", 10000, true);
+                    IMyPlayer MyPlayer = Players.FirstOrDefault(p => p.IdentityId == CoreBlock.OwnerId);
+                    if (MyPlayer != null && MyAPIGateway.Session.IsUserAdmin(MyPlayer.SteamUserId) && MyAPIGateway.Session.IsUserIgnorePCULimit(MyPlayer.SteamUserId))
+                    {
+                        Utils.ShowNotification("WARNING CORE IS PLACED BY ADMIN NOT OWNED!");
+                    }
+                    else
+                    {
+                        if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == CoreBlock.OwnerId)
+                        {
+                            Utils.ShowNotification("Cores can only be built by the grid owner!", 10000, true);
+                        }
+                        CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
+                        return;
+                    }
                 }
-                CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
-                return;
             }
+
             var onlyCore = IsOnlyCoreOfThisTypeOnGrid();
             var mainGridLogic = CoreBlock.CubeGrid.GetMainGridLogic();
             Utils.Log($"Core Initial: {CoreBlock.CustomName}, SyncValue: {!SyncIsMainCore.Value}, onlyCore: {onlyCore}", 3);
@@ -169,7 +188,7 @@ namespace ShipCoreFramework
             if (core != null && core.SyncIsMainCore.Value)
                 CoreBlock.CubeGrid.GetMainGridLogic()?.ActivateDefense();
         }
-        
+
         public override void Close()
         {
             if (ModSessionManager.Config.SelectedNoCore == null) return;
@@ -177,13 +196,12 @@ namespace ShipCoreFramework
             Utils.Log(_hasPhysics.ToString(), 0, "Core Close");
             if (_hasPhysics == false)
             {
-                base.Close();
                 return;
             }
-            
+
             MyAPIGateway.TerminalControls.CustomControlGetter -= CustomControlGetter;
             CoreBlock.CubeGrid.OnGridMerge -= OnGridMerge;
-            
+
             var grid = CoreBlock.CubeGrid;
             var gridLogic = grid.GameLogic?.GetAs<GridLogic>();
             if (gridLogic == null)
@@ -197,7 +215,7 @@ namespace ShipCoreFramework
                 //if(Constants.LocalPlayer!=null && (Constants.LocalPlayer.PlayerID==grid.BigOwners.FirstOrDefault())){Utils.ShowNotification($"A backup core of grid {grid.CustomName} was destroyed!",10000, true);}
                 return;
             }
-            
+
             // Try to find another core of the same type on the grid
             var slimBlocks = new List<IMySlimBlock>();
             grid.GetBlocks(slimBlocks, b => b.FatBlock is IMyTerminalBlock);
@@ -222,11 +240,12 @@ namespace ShipCoreFramework
                 {
                     Utils.ShowNotification($"Main core of grid {grid.CustomName} was destroyed!", 10000, true);
                 }*/
-                GridsPerFactionManager.RemoveCubeGrid(gridLogic,SubtypeId);
-                GridsPerPlayerManager.RemoveCubeGrid(gridLogic,SubtypeId);
-                gridLogic.ResetCore();
+                GridsPerFactionManager.RemoveCubeGrid(gridLogic, SubtypeId);
+                GridsPerPlayerManager.RemoveCubeGrid(gridLogic, SubtypeId);
+                try { gridLogic.ResetCore(); } catch(Exception e){ Utils.Log(e.ToString());}
+                
             }
-            
+
             base.Close();
         }
 

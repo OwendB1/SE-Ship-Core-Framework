@@ -412,8 +412,8 @@ namespace ShipCoreFramework
             body += "\n";
             
             // PCU
-            var pcuStatus = shipCore.MaxPCU > 0 ? $"{gridLogic.Blocks.Sum(b => b.BlockDefinition.PCU)} / {shipCore.MaxPCU}" : gridLogic.Blocks.Sum(b => b.BlockDefinition.PCU).ToString();
-            var pcuPercent = shipCore.MaxPCU > 0 ? (gridLogic.Blocks.Sum(b => b.BlockDefinition.PCU) / (float)shipCore.MaxPCU * 100) : 0;
+            var pcuStatus = shipCore.MaxPCU > 0 ? $"{gridLogic.Blocks.Sum(b => b?.BlockDefinition?.PCU ?? 1)} / {shipCore.MaxPCU}" : gridLogic.Blocks.Sum(b => b.BlockDefinition.PCU).ToString();
+            var pcuPercent = shipCore.MaxPCU > 0 ? (gridLogic.Blocks.Sum(b => b?.BlockDefinition?.PCU ?? 1) / (float)shipCore.MaxPCU * 100) : 0;
             body += $"  PCU: {pcuStatus}";
             if (shipCore.MaxPCU > 0)
                 body += $" ({pcuPercent:F1}%)";

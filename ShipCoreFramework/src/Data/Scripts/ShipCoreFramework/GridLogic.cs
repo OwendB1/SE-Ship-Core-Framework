@@ -311,7 +311,29 @@ namespace ShipCoreFramework
         }
         private void OnBlockAdded(IMySlimBlock obj) //Now tells player why
         {
+            long builderId = obj.BuiltBy;
+            //Ignore core placement
+            var blockDefinition = Utils.GetBlockSubtypeId(obj);
+            if (blockDefinition !=null) { if (ModSessionManager.Config.IsValidCoreType(blockDefinition)) { return; } }
+            
+            //Ignore Admins with Ignore Limits
+            
+            List<IMyPlayer> Players = new List<IMyPlayer>();
+            MyAPIGateway.Players.GetPlayers(Players);
+            if(Players.Count()>0)
+            {
+                IMyPlayer MyPlayer = Players.FirstOrDefault(p => p.IdentityId == builderId);
+                if (MyPlayer != null 
+                    && MyAPIGateway.Session.IsUserAdmin(MyPlayer.SteamUserId) 
+                    && MyAPIGateway.Session.IsUserIgnorePCULimit(MyPlayer.SteamUserId))
+                {
+                    Utils.ShowNotification("Block Was Placed By Admin, Block limits NOT Applied.");
+                    return;
+                }
+            }
             var concreteGrid = Grid as MyCubeGrid;
+            
+            
             Utils.Log($"{Grid.CustomName}: Block Added: {Utils.GetBlockTypeId(obj)} | {Utils.GetBlockSubtypeId(obj)}");
             //MaxBlocks
             if (concreteGrid?.BlocksCount >= ShipCore.MaxBlocks && ShipCore.MaxBlocks > 0)
@@ -324,7 +346,7 @@ namespace ShipCoreFramework
                 return;
             }
             //Missing MaxPCU
-            if (Blocks.Sum(b => b.BlockDefinition.PCU) >= ShipCore.MaxPCU && ShipCore.MaxPCU > 0)
+            if (Blocks.Sum(b => b?.BlockDefinition?.PCU ?? 1) >= ShipCore.MaxPCU && ShipCore.MaxPCU > 0)
             {
                 if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == Grid.BigOwners.FirstOrDefault())
                 {
@@ -351,6 +373,7 @@ namespace ShipCoreFramework
                     .Any(b => b.TypeId == Utils.GetBlockTypeId(obj) && (b.SubtypeId == "any" || b.SubtypeId == Utils.GetBlockSubtypeId(obj)));
 
                 if (!match) continue;
+                if (!BlocksPerLimit.ContainsKey(limit)){continue;}
                 var limitBlocks = BlocksPerLimit[limit];
                 var countWeight = limitBlocks.Sum(b => b.Value);
                 var countForSpecificBlock = limit.BlockGroups.SelectMany(g => g.BlockTypes).First(b => b.TypeId == Utils.GetBlockTypeId(obj) && (b.SubtypeId == "any" || b.SubtypeId == Utils.GetBlockSubtypeId(obj))).CountWeight;

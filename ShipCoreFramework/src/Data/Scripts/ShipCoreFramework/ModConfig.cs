@@ -91,7 +91,8 @@ namespace ShipCoreFramework
                     var text = reader.ReadToEnd();
                     var import = MyAPIGateway.Utilities.SerializeFromXML<ModConfig>(text);
                     if (import == null) throw new Exception("Failed to load world config.");
-                    DebugMode = import.DebugMode;
+                    if (Constants.IsClient) { DebugMode = false; }
+                    else { DebugMode = import.DebugMode; }
                     CombatLogging = import.CombatLogging;
                     LogLevel = import.LogLevel;
                     ClientOutputLogLevel = import.ClientOutputLogLevel;
