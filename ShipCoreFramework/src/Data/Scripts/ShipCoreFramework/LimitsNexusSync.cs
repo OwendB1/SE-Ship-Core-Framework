@@ -191,38 +191,28 @@ namespace ShipCoreFramework
 
         private static void ApplyDiff(LimitsDiff diff)
         {
-            GridsPerFactionManager.BeginExternalUpdate();
-            GridsPerPlayerManager.BeginExternalUpdate();
-            try
+            if (diff.Faction != null)
             {
-                if (diff.Faction != null)
-                {
-                    if (!GridsPerFactionManager.PerFaction.ContainsKey(diff.Faction.Id))
-                        GridsPerFactionManager.PerFaction.Add(diff.Faction.Id, new Dictionary<string, List<long>>());
+                if (!GridsPerFactionManager.PerFaction.ContainsKey(diff.Faction.Id))
+                    GridsPerFactionManager.PerFaction.Add(diff.Faction.Id, new Dictionary<string, List<long>>());
 
-                    var dict = GridsPerFactionManager.PerFaction[diff.Faction.Id];
-                    if (!dict.ContainsKey(diff.CoreType)) dict[diff.CoreType] = new List<long>();
-                    var list = dict[diff.CoreType];
-                    if (diff.Added != null) foreach (var id in diff.Added.Where(id => !list.Contains(id))) list.Add(id);
-                    if (diff.Removed != null) foreach (var id in diff.Removed) list.Remove(id);
-                }
-
-                if (diff.Player != null)
-                {
-                    if (!GridsPerPlayerManager.PerPlayer.ContainsKey(diff.Player.Id))
-                        GridsPerPlayerManager.PerPlayer.Add(diff.Player.Id, new Dictionary<string, List<long>>());
-
-                    var dict = GridsPerPlayerManager.PerPlayer[diff.Player.Id];
-                    if (!dict.ContainsKey(diff.CoreType)) dict[diff.CoreType] = new List<long>();
-                    var list = dict[diff.CoreType];
-                    if (diff.Added != null) foreach (var id in diff.Added.Where(id => !list.Contains(id))) list.Add(id);
-                    if (diff.Removed != null) foreach (var id in diff.Removed) list.Remove(id);
-                }
+                var dict = GridsPerFactionManager.PerFaction[diff.Faction.Id];
+                if (!dict.ContainsKey(diff.CoreType)) dict[diff.CoreType] = new List<long>();
+                var list = dict[diff.CoreType];
+                if (diff.Added != null) foreach (var id in diff.Added.Where(id => !list.Contains(id))) list.Add(id);
+                if (diff.Removed != null) foreach (var id in diff.Removed) list.Remove(id);
             }
-            finally
+
+            if (diff.Player != null)
             {
-                GridsPerPlayerManager.EndExternalUpdate();
-                GridsPerFactionManager.EndExternalUpdate();
+                if (!GridsPerPlayerManager.PerPlayer.ContainsKey(diff.Player.Id))
+                    GridsPerPlayerManager.PerPlayer.Add(diff.Player.Id, new Dictionary<string, List<long>>());
+
+                var dict = GridsPerPlayerManager.PerPlayer[diff.Player.Id];
+                if (!dict.ContainsKey(diff.CoreType)) dict[diff.CoreType] = new List<long>();
+                var list = dict[diff.CoreType];
+                if (diff.Added != null) foreach (var id in diff.Added.Where(id => !list.Contains(id))) list.Add(id);
+                if (diff.Removed != null) foreach (var id in diff.Removed) list.Remove(id);
             }
         }
 
