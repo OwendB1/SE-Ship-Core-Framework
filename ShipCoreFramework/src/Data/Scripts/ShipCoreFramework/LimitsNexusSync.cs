@@ -27,8 +27,6 @@ namespace ShipCoreFramework
             _thisServerId = _nexus.CurrentServerID;
 
             MyAPIGateway.Utilities.RegisterMessageHandler(ChannelId, OnMessage);
-            GridsPerFactionManager.Changed += OnFactionChanged;
-            GridsPerPlayerManager.Changed += OnPlayerChanged;
 
             _started = true;
             BroadcastHello();
@@ -40,20 +38,18 @@ namespace ShipCoreFramework
             if (!_started) return;
             _started = false;
             try { MyAPIGateway.Utilities.UnregisterMessageHandler(ChannelId, OnMessage); } catch { }
-            GridsPerFactionManager.Changed -= OnFactionChanged;
-            GridsPerPlayerManager.Changed -= OnPlayerChanged;
         }
 
         private static bool Ready => _started && _nexus != null && _nexus.Enabled;
 
-        private static void OnFactionChanged(GridsPerFactionManager.FactionChange c)
+        public static void BroadcastFactionChange(GridsPerFactionManager.FactionChange c)
         {
             BroadcastDiff(factionId: c.FactionId, coreType: c.CoreType,
                 added: c.Added ? new[] { c.GridId } : null,
                 removed: !c.Added ? new[] { c.GridId } : null);
         }
 
-        private static void OnPlayerChanged(GridsPerPlayerManager.PlayerChange c)
+        public static void BroadcastPlayerChange(GridsPerPlayerManager.PlayerChange c)
         {
             BroadcastDiff(playerId: c.PlayerId, coreType: c.CoreType,
                 added: c.Added ? new[] { c.GridId } : null,
@@ -118,12 +114,6 @@ namespace ShipCoreFramework
                         SendSnapshotTo(hello.ServerId);
                         break;
 
-                    case EnvelopeKind.RequestSnapshot:
-                        var req = Deserialize<RequestSnapshot>(env.Payload);
-                        if (req == null) return;
-                        SendSnapshotTo(req.ServerId);
-                        break;
-
                     case EnvelopeKind.Snapshot:
                         var state = Deserialize<LimitsState>(env.Payload);
                         if (state == null) return;
@@ -175,10 +165,9 @@ namespace ShipCoreFramework
                 foreach (var f in state.Factions)
                 {
                     if (!GridsPerFactionManager.PerFaction.ContainsKey(f.FactionId))
-                        ((Dictionary<long, Dictionary<string, List<long>>>)GridsPerFactionManager.PerFaction)
-                            .Add(f.FactionId, new Dictionary<string, List<long>>());
+                        GridsPerFactionManager.PerFaction.Add(f.FactionId, new Dictionary<string, List<long>>());
 
-                    var dict = ((Dictionary<long, Dictionary<string, List<long>>>)GridsPerFactionManager.PerFaction)[f.FactionId];
+                    var dict = GridsPerFactionManager.PerFaction[f.FactionId];
                     foreach (var c in f.Cores)
                         dict[c.CoreType] = c.GridIds.Distinct().ToList();
                 }
@@ -186,10 +175,9 @@ namespace ShipCoreFramework
                 foreach (var p in state.Players)
                 {
                     if (!GridsPerPlayerManager.PerPlayer.ContainsKey(p.PlayerId))
-                        ((Dictionary<long, Dictionary<string, List<long>>>)GridsPerPlayerManager.PerPlayer)
-                            .Add(p.PlayerId, new Dictionary<string, List<long>>());
+                        GridsPerPlayerManager.PerPlayer.Add(p.PlayerId, new Dictionary<string, List<long>>());
 
-                    var dict = ((Dictionary<long, Dictionary<string, List<long>>>)GridsPerPlayerManager.PerPlayer)[p.PlayerId];
+                    var dict = GridsPerPlayerManager.PerPlayer[p.PlayerId];
                     foreach (var c in p.Cores)
                         dict[c.CoreType] = c.GridIds.Distinct().ToList();
                 }
@@ -210,26 +198,24 @@ namespace ShipCoreFramework
                 if (diff.Faction != null)
                 {
                     if (!GridsPerFactionManager.PerFaction.ContainsKey(diff.Faction.Id))
-                        ((Dictionary<long, Dictionary<string, List<long>>>)GridsPerFactionManager.PerFaction)
-                            .Add(diff.Faction.Id, new Dictionary<string, List<long>>());
+                        GridsPerFactionManager.PerFaction.Add(diff.Faction.Id, new Dictionary<string, List<long>>());
 
-                    var dict = ((Dictionary<long, Dictionary<string, List<long>>>)GridsPerFactionManager.PerFaction)[diff.Faction.Id];
+                    var dict = GridsPerFactionManager.PerFaction[diff.Faction.Id];
                     if (!dict.ContainsKey(diff.CoreType)) dict[diff.CoreType] = new List<long>();
                     var list = dict[diff.CoreType];
-                    if (diff.Added != null) foreach (var id in diff.Added) if (!list.Contains(id)) list.Add(id);
+                    if (diff.Added != null) foreach (var id in diff.Added.Where(id => !list.Contains(id))) list.Add(id);
                     if (diff.Removed != null) foreach (var id in diff.Removed) list.Remove(id);
                 }
 
                 if (diff.Player != null)
                 {
                     if (!GridsPerPlayerManager.PerPlayer.ContainsKey(diff.Player.Id))
-                        ((Dictionary<long, Dictionary<string, List<long>>>)GridsPerPlayerManager.PerPlayer)
-                            .Add(diff.Player.Id, new Dictionary<string, List<long>>());
+                        GridsPerPlayerManager.PerPlayer.Add(diff.Player.Id, new Dictionary<string, List<long>>());
 
-                    var dict = ((Dictionary<long, Dictionary<string, List<long>>>)GridsPerPlayerManager.PerPlayer)[diff.Player.Id];
+                    var dict = GridsPerPlayerManager.PerPlayer[diff.Player.Id];
                     if (!dict.ContainsKey(diff.CoreType)) dict[diff.CoreType] = new List<long>();
                     var list = dict[diff.CoreType];
-                    if (diff.Added != null) foreach (var id in diff.Added) if (!list.Contains(id)) list.Add(id);
+                    if (diff.Added != null) foreach (var id in diff.Added.Where(id => !list.Contains(id))) list.Add(id);
                     if (diff.Removed != null) foreach (var id in diff.Removed) list.Remove(id);
                 }
             }
@@ -253,9 +239,8 @@ namespace ShipCoreFramework
         private enum EnvelopeKind : byte
         {
             Hello = 1,
-            RequestSnapshot = 2,
-            Snapshot = 3,
-            Diff = 4
+            Snapshot = 2,
+            Diff = 3
         }
 
         [ProtoContract]
