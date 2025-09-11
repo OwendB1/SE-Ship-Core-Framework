@@ -170,6 +170,7 @@ namespace ShipCoreFramework
             } else MyAPIGateway.TerminalControls.CustomControlGetter += CustomControlGetter;
             CoreBlock.CubeGrid.OnGridMerge += OnGridMerge;
             RegisterToolbarActionsOnce();
+            mainGridLogic.DefenseValuesChanged();
         }
         
         public override void UpdateAfterSimulation10()

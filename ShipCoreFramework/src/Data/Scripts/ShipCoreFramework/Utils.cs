@@ -231,7 +231,7 @@ namespace ShipCoreFramework
 
     public static class TextUtils
     {
-        public static readonly float CharWidth = 20;
+        public static readonly float CharWidth = 26;
         public static readonly float BaseLineHeight = 30f;
 
         public static float GetLineHeight(float scale = 1f)

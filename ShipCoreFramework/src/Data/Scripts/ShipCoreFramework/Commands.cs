@@ -92,8 +92,8 @@ namespace ShipCoreFramework
                     if(!CheckIfAdmin(playerId)){return;}
                     modMessage+=IgnoreAi();
                     break;
-                case "limit":
-                    if(Constants.LocalPlayer!=null) ShipClassLimit(playerId);
+                case "info":
+                    if(Constants.LocalPlayer!=null) CoreInfo(playerId);
                     return;
                 default:
                     if(Constants.LocalPlayer!=null) ShowHelp();
@@ -318,7 +318,7 @@ namespace ShipCoreFramework
             return $"Removed ignored faction tag '{tag}'.";
         }
 
-        private static void ShipClassLimit(long playerId)
+        private static void CoreInfo(long playerId)
         {
             var targetGrid = Utils.RaycastForGrid();
             
@@ -397,7 +397,7 @@ namespace ShipCoreFramework
             
             // Block Count
             var blockCountStatus = shipCore.MaxBlocks > 0 ? $"{concreteGrid?.BlocksCount} / {shipCore.MaxBlocks}" : concreteGrid?.BlocksCount.ToString();
-            var blockCountPercent = shipCore.MaxBlocks > 0 ? (concreteGrid?.BlocksCount / (float)shipCore.MaxBlocks * 100) : 0;
+            var blockCountPercent = shipCore.MaxBlocks > 0 ? concreteGrid?.BlocksCount / (float)shipCore.MaxBlocks * 100 : 0;
             body += $"  Blocks: {blockCountStatus}";
             if (shipCore.MaxBlocks > 0)
                 body += $" ({blockCountPercent:F1}%)";
@@ -405,7 +405,7 @@ namespace ShipCoreFramework
             
             // Mass
             var massStatus = shipCore.MaxMass > 0 ? $"{concreteGrid?.Mass:F0} / {shipCore.MaxMass:F0} kg" : $"{concreteGrid?.Mass:F0} kg";
-            var massPercent = shipCore.MaxMass > 0 ? (concreteGrid?.Mass / shipCore.MaxMass * 100) : 0;
+            var massPercent = shipCore.MaxMass > 0 ? concreteGrid?.Mass / shipCore.MaxMass * 100 : 0;
             body += $"  Mass: {massStatus}";
             if (shipCore.MaxMass > 0)
                 body += $" ({massPercent:F1}%)";
@@ -413,11 +413,54 @@ namespace ShipCoreFramework
             
             // PCU
             var pcuStatus = shipCore.MaxPCU > 0 ? $"{gridLogic.Blocks.Sum(b => b?.BlockDefinition?.PCU ?? 1)} / {shipCore.MaxPCU}" : gridLogic.Blocks.Sum(b => b.BlockDefinition.PCU).ToString();
-            var pcuPercent = shipCore.MaxPCU > 0 ? (gridLogic.Blocks.Sum(b => b?.BlockDefinition?.PCU ?? 1) / (float)shipCore.MaxPCU * 100) : 0;
+            var pcuPercent = shipCore.MaxPCU > 0 ? gridLogic.Blocks.Sum(b => b?.BlockDefinition?.PCU ?? 1) / (float)shipCore.MaxPCU * 100 : 0;
             body += $"  PCU: {pcuStatus}";
             if (shipCore.MaxPCU > 0)
                 body += $" ({pcuPercent:F1}%)";
             body += "\n\n";
+            
+            body += "Modifiers:\n";
+
+            var gridMods = gridLogic.Modifiers;
+            foreach (var m in gridMods.GetModifierValues())
+            {
+                var n = m.Name.ToLowerInvariant();
+                if (n.Contains("duration") || n.Contains("cooldown"))
+                    body += $"  {m.Name}: {m.Value:F1}s\n";
+                else
+                    body += $"  {m.Name}: x{m.Value:F2}\n";
+            }
+
+            var passive = gridLogic.GetPassiveDefenseModifiers();
+            var active = gridLogic.GetPassiveDefenseModifiers();
+
+            if (passive != null)
+            {
+                body += "  Passive defense:\n";
+                body += $"    Bullet: x{passive.Bullet:F2}\n";
+                body += $"    Energy: x{passive.Energy:F2}\n";
+                body += $"    Kinetic: x{passive.Kinetic:F2}\n";
+                body += $"    Rocket: x{passive.Rocket:F2}\n";
+                body += $"    Explosion: x{passive.Explosion:F2}\n";
+                body += $"    Environment: x{passive.Environment:F2}\n";
+            }
+
+            if (active != null)
+            {
+                body += "  Active defense:\n";
+                body += $"    Bullet: x{active.Bullet:F2}\n";
+                body += $"    Energy: x{active.Energy:F2}\n";
+                body += $"    Kinetic: x{active.Kinetic:F2}\n";
+                body += $"    Rocket: x{active.Rocket:F2}\n";
+                body += $"    Explosion: x{active.Explosion:F2}\n";
+                body += $"    Environment: x{active.Environment:F2}\n";
+            }
+            
+            body += $"  Duration: {gridLogic.ActiveDefenseDuration:F1}s\n";
+            body += $"  Cooldown: {gridLogic.ActiveDefenseCoolDown:F1}s\n";
+
+            body += "\n";
+            
             
             if (shipCore.BlockLimits.Length == 0)
             {
@@ -504,8 +547,8 @@ Removes a tag from the ignored faction tags. (Admin Required)
 /core ignoreai 
 Toggles ignore of ai on or off. (Admin Required)
 
-/core limit
-Raycasts from crosshairs to find a grid and displays its ship class limits and current usage.";
+/core info
+Raycasts from crosshairs to find a grid and displays all its core information.";
 
             MyAPIGateway.Utilities.ShowMissionScreen(
                 "ShipCore Framework",

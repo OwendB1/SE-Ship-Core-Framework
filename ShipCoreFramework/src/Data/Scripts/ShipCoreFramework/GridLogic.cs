@@ -42,8 +42,8 @@ namespace ShipCoreFramework
         
         private float BoostDuration => ShipCore.Modifiers.BoostDuration;
         private float BoostCoolDown => ShipCore.Modifiers.BoostCoolDown;
-        private float ActiveDefenseDuration => ShipCore.ActiveDefenseModifiers.Duration * CoreLogic.CoreBlock.UpgradeValues["DurationDuration"];
-        private float ActiveDefenseCoolDown => ShipCore.ActiveDefenseModifiers.Cooldown * CoreLogic.CoreBlock.UpgradeValues["DamageCooldown"];
+        public float ActiveDefenseDuration => ShipCore.ActiveDefenseModifiers.Duration * CoreLogic.CoreBlock.UpgradeValues["DurationDuration"];
+        public float ActiveDefenseCoolDown => ShipCore.ActiveDefenseModifiers.Cooldown * CoreLogic.CoreBlock.UpgradeValues["DamageCooldown"];
         public GridModifiers Modifiers => PunishModifiers ? ModSessionManager.Config.SelectedNoCore.Modifiers : CubeGridModifiers.GetActiveModifiers(this);
 
         public IMyCubeGrid Grid;
@@ -205,7 +205,6 @@ namespace ShipCoreFramework
             Grid.OnPhysicsChanged -= InitOnPhysicsChanged;
             NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
             NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
-            CubeGridModifiers.DefenseModifiers[Grid.EntityId] = GetPassiveDefenseModifiers();
         }
         
         public override void UpdateOnceBeforeFrame()
@@ -466,7 +465,7 @@ namespace ShipCoreFramework
             CubeGridModifiers.DefenseModifiers[Grid.EntityId] = GetPassiveDefenseModifiers();
         }
 
-        private GridDefenseModifiers GetActiveDefenseModifiers()
+        public GridDefenseModifiers GetActiveDefenseModifiers()
         {
             return new GridDefenseModifiers
             {
@@ -479,7 +478,7 @@ namespace ShipCoreFramework
             };
         }
         
-        private GridDefenseModifiers GetPassiveDefenseModifiers()
+        public GridDefenseModifiers GetPassiveDefenseModifiers()
         {
             return new GridDefenseModifiers
             {

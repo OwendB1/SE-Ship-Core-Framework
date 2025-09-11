@@ -132,7 +132,6 @@ namespace ShipCoreFramework
             _headerTable.Rows.Add(new Row
             {
                 new Cell("Type:"),
-                new Cell(""),
                 new Cell(ShipCore.UniqueName)
             });
 
