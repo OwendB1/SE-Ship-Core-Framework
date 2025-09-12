@@ -432,7 +432,7 @@ namespace ShipCoreFramework
             }
 
             var passive = gridLogic.GetPassiveDefenseModifiers();
-            var active = gridLogic.GetPassiveDefenseModifiers();
+            var active = gridLogic.GetActiveDefenseModifiers();
 
             if (passive != null)
             {
