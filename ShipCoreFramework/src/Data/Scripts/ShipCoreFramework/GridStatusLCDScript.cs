@@ -132,7 +132,8 @@ namespace ShipCoreFramework
             _headerTable.Rows.Add(new Row
             {
                 new Cell("Type:"),
-                new Cell(ShipCore.UniqueName)
+                new Cell(ShipCore.UniqueName),
+                new Cell()
             });
 
             _headerTable.RenderToSprites(spritesToRender, screenTopLeft + padding, screenInnerWidth, new Vector2(15, 0), out currentPosition);
