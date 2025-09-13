@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ProtoBuf.WellKnownTypes;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -20,13 +21,13 @@ namespace ShipCoreFramework
     public class GridLogic : MyGameLogicComponent
     {
         public readonly HashSet<MyCubeBlock> Blocks = new HashSet<MyCubeBlock>();
-        
+
         public MyStringHash DamageTypeNoFlyZone = MyStringHash.GetOrCompute("NoFLyZoneViolation");
         public readonly Dictionary<BlockLimit, List<KeyValuePair<IMyCubeBlock, double>>> BlocksPerLimit = new Dictionary<BlockLimit, List<KeyValuePair<IMyCubeBlock, double>>>();
 
         public bool PunishModifiers;
         public bool PunishSpeed;
-        
+
         public bool BoostEnabled;
         private float _boostCooldownTimer;
         private float _boostDurationTimer;
@@ -37,15 +38,29 @@ namespace ShipCoreFramework
 
         private bool _needsSubgridsRedone;
         public bool NeedStaticCheck;
-        
+
         public CoreLogic CoreLogic => Utils.GetGridCore(Grid, ShipCore);
-        
+
         private float BoostDuration => ShipCore.Modifiers.BoostDuration;
         private float BoostCoolDown => ShipCore.Modifiers.BoostCoolDown;
 
-        // this will crash as some grids have no core
-        public float ActiveDefenseDuration => ShipCore.ActiveDefenseModifiers.Duration * CoreLogic.CoreBlock.UpgradeValues["DurationDuration"];
-        public float ActiveDefenseCoolDown => ShipCore.ActiveDefenseModifiers.Cooldown * CoreLogic.CoreBlock.UpgradeValues["DamageCooldown"];
+        public float ActiveDefenseDuration
+        {
+            get
+            {
+                if (CoreLogic.CoreBlock == null) { return ShipCore.ActiveDefenseModifiers.Duration; }
+                else { return CoreLogic.CoreBlock.UpgradeValues.GetValueOrDefault("DurationDuration"); }
+            }
+        }
+        public float ActiveDefenseCoolDown
+        {
+            get
+            {
+                if (CoreLogic.CoreBlock == null) { return ShipCore.ActiveDefenseModifiers.Cooldown; }
+                else { return CoreLogic.CoreBlock.UpgradeValues.GetValueOrDefault("DamageCooldown"); }
+            }
+        }
+
         public GridModifiers Modifiers => PunishModifiers ? ModSessionManager.Config.SelectedNoCore.Modifiers : CubeGridModifiers.GetActiveModifiers(this);
 
         public IMyCubeGrid Grid;
