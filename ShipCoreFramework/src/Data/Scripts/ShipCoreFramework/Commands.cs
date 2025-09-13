@@ -454,11 +454,9 @@ namespace ShipCoreFramework
                 body += $"    Rocket: x{active.Rocket:F2}\n";
                 body += $"    Explosion: x{active.Explosion:F2}\n";
                 body += $"    Environment: x{active.Environment:F2}\n";
+                body += $"  Duration: {gridLogic.ActiveDefenseDuration:F1}s\n";
+                body += $"  Cooldown: {gridLogic.ActiveDefenseCoolDown:F1}s\n";
             }
-            
-            body += $"  Duration: {gridLogic.ActiveDefenseDuration:F1}s\n";
-            body += $"  Cooldown: {gridLogic.ActiveDefenseCoolDown:F1}s\n";
-
             body += "\n";
             
             

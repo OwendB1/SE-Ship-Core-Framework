@@ -42,6 +42,8 @@ namespace ShipCoreFramework
         
         private float BoostDuration => ShipCore.Modifiers.BoostDuration;
         private float BoostCoolDown => ShipCore.Modifiers.BoostCoolDown;
+
+        // this will crash as some grids have no core
         public float ActiveDefenseDuration => ShipCore.ActiveDefenseModifiers.Duration * CoreLogic.CoreBlock.UpgradeValues["DurationDuration"];
         public float ActiveDefenseCoolDown => ShipCore.ActiveDefenseModifiers.Cooldown * CoreLogic.CoreBlock.UpgradeValues["DamageCooldown"];
         public GridModifiers Modifiers => PunishModifiers ? ModSessionManager.Config.SelectedNoCore.Modifiers : CubeGridModifiers.GetActiveModifiers(this);
@@ -467,7 +469,10 @@ namespace ShipCoreFramework
 
         public GridDefenseModifiers GetActiveDefenseModifiers()
         {
-            if (CoreLogic?.CoreBlock == null) { return null; }
+            if (CoreLogic?.CoreBlock == null)
+            {
+                return ShipCore.ActiveDefenseModifiers;
+            }
             return new GridDefenseModifiers
             {
                 Bullet = ShipCore.ActiveDefenseModifiers.Bullet * CoreLogic?.CoreBlock.UpgradeValues["ActiveBulletDamage"] ?? 1,
@@ -481,7 +486,10 @@ namespace ShipCoreFramework
         
         public GridDefenseModifiers GetPassiveDefenseModifiers()
         {
-            if (CoreLogic?.CoreBlock == null) { return null; }
+            if (CoreLogic?.CoreBlock == null)
+            {
+                return ShipCore.PassiveDefenseModifiers;
+            }
             return new GridDefenseModifiers
             {
                 Bullet = ShipCore.PassiveDefenseModifiers.Bullet * CoreLogic?.CoreBlock.UpgradeValues["PassiveBulletDamage"] ?? 1,
