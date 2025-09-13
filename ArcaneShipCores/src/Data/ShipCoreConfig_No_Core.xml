@@ -13,16 +13,16 @@
   <MinBlocks>-1</MinBlocks>
   <MinPlayers>-1</MinPlayers>
   <Modifiers>
-    <AssemblerSpeed>1</AssemblerSpeed>
-    <DrillHarvestMultiplier>1</DrillHarvestMultiplier>
+    <AssemblerSpeed>0</AssemblerSpeed>
+    <DrillHarvestMultiplier>0</DrillHarvestMultiplier>
     <GyroEfficiency>1</GyroEfficiency>
     <GyroForce>1</GyroForce>
     <PowerProducersOutput>1</PowerProducersOutput>
-    <RefineEfficiency>1</RefineEfficiency>
-    <RefineSpeed>1</RefineSpeed>
+    <RefineEfficiency>0</RefineEfficiency>
+    <RefineSpeed>0</RefineSpeed>
     <ThrusterEfficiency>1</ThrusterEfficiency>
     <ThrusterForce>1</ThrusterForce>
-    <MaxSpeed>100</MaxSpeed>
+    <MaxSpeed>0.1</MaxSpeed>
     <MaxBoost>1.2</MaxBoost>
     <BoostDuration>10</BoostDuration>
     <BoostCoolDown>60</BoostCoolDown>

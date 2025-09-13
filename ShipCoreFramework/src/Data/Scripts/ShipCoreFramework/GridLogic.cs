@@ -65,7 +65,7 @@ namespace ShipCoreFramework
             }
         }
 
-        public GridModifiers Modifiers => PunishModifiers ? ModSessionManager.Config.SelectedNoCore.Modifiers : CubeGridModifiers.GetActiveModifiers(this);
+        public GridModifiers Modifiers => CubeGridModifiers.GetActiveModifiers(this);
 
         public IMyCubeGrid Grid;
         
@@ -121,6 +121,11 @@ namespace ShipCoreFramework
         
         public void ActivateDefense()
         {
+            if (!ShipCore.EnableActiveDefenseModifiers)
+            {
+                Utils.ShowNotification("Active defense is not allowed on this grid!", 1000);
+                return;
+            }
             if(_activeDefenseEnabled)
             {
                 Utils.ShowNotification($"Active Defense Time Remaining:{_activeDefenseDurationTimer/60f:0.0}", 1000);
@@ -139,6 +144,11 @@ namespace ShipCoreFramework
         
         public void ActivateBoost()
         {
+            if (!ShipCore.SpeedBoostEnabled)
+            {
+                Utils.ShowNotification("Boosting is not allowed on this grid!", 1000);
+                return;
+            }
             if (BoostEnabled)
             {
                 Utils.ShowNotification($"Boost Time Remaining:{_boostDurationTimer/60f:0.0}", 1000);
@@ -157,6 +167,7 @@ namespace ShipCoreFramework
         public override void UpdateAfterSimulation100()
         {
             base.UpdateAfterSimulation100();
+            Enforcement.EnforceOverCapacity(Grid);
             List<IMyCubeGrid> subgrids;
             var mainGrid = Grid.GetMainCubeGrid(out subgrids);
             if (mainGrid != Grid) return;
@@ -307,11 +318,6 @@ namespace ShipCoreFramework
         {
             var func = obj as IMyFunctionalBlock;
             if (func == null) return;
-            if (HasFunctioningBeaconIfNeeded() == false)
-            {
-                foreach (var block in Blocks) CubeGridModifiers.ApplyModifiers(block, Modifiers);
-            }
-
             if (func.Enabled) Enforcement.EnforceBlockPunishment(func);
         }
 
@@ -439,7 +445,6 @@ namespace ShipCoreFramework
 
         private void OnBlockRemoved(IMySlimBlock obj)
         {
-            Enforcement.EnforceOverCapacity(obj.CubeGrid);
             //Can this be done anywhere else?    
             foreach (var limit in ShipCore.BlockLimits)
             {
@@ -452,7 +457,6 @@ namespace ShipCoreFramework
         }
         private static void OnConnectionChangeCompleted(MyCubeGrid myGrid, GridLinkTypeEnum gridGroupTypeChanged)
         {
-            Enforcement.EnforceOverCapacity(myGrid);
             if(gridGroupTypeChanged != GridLinkTypeEnum.Mechanical) return;
             Utils.Log($"Subgrid Status Changed: {(myGrid as IMyCubeGrid).CustomName})");
             List<IMyCubeGrid> subgrids;
@@ -469,13 +473,12 @@ namespace ShipCoreFramework
             var mainGrid = main.GetMainCubeGrid(out mainSubgrids);
             var mainLogic = mainGrid.GetMainGridLogic();
             
-            Enforcement.EnforceOverCapacity(mainGrid);
             mainLogic._needsSubgridsRedone=true;
             var subLogic = sub.GetMainCubeGrid(out subgrids).GetMainGridLogic();
             subLogic.Close();
         }
         
-        private bool HasFunctioningBeaconIfNeeded()
+        public bool HasFunctioningBeaconIfNeeded()
         {
             return ShipCore.ForceBroadCast == false || Blocks.OfType<IMyFunctionalBlock>().Any(block => block is IMyBeacon && block.Enabled);
         }

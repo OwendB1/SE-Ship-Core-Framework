@@ -20,7 +20,7 @@ namespace ShipCoreFramework
             if (punish) maxSpeed /= 4;
             if (gridLogic.ShipCore != null && gridLogic.BoostEnabled)
             {
-                maxSpeed = ModSessionManager.Config.MaxPossibleSpeedMetersPerSecond*gridLogic.Modifiers.MaxBoost;
+                maxSpeed = ModSessionManager.Config.MaxPossibleSpeedMetersPerSecond * gridLogic.Modifiers.MaxBoost;
             }
             var velocity = mainGrid.Physics.LinearVelocity;
             if (!(velocity.LengthSquared() > maxSpeed * maxSpeed)) return;

@@ -269,10 +269,6 @@ namespace ShipCoreFramework
         public bool EnableActiveDefenseModifiers = false;
         [XmlElement("ActiveDefenseModifiers")]
         public GridDefenseModifiers ActiveDefenseModifiers = new GridDefenseModifiers();
-        [XmlElement("EnableReloadModifier")]
-        public bool EnableReloadModifier = false;
-        [XmlElement("ReloadModifier")]
-        public float ReloadModifier = 1f;
         [XmlElement("BlockLimits")]
         public BlockLimit[] BlockLimits = Array.Empty<BlockLimit>();
     }

@@ -156,22 +156,23 @@ namespace ShipCoreFramework
             var myBlocksCount = subgrids.Sum(g => ((MyCubeGrid)g).BlocksCount) + ((MyCubeGrid)mainGrid).BlocksCount;
             var myBlocksPCU = subgrids.Sum(g => ((MyCubeGrid)g).BlocksPCU) + ((MyCubeGrid)mainGrid).BlocksPCU;
             var myMaxMass = subgrids.Sum(g => ((MyCubeGrid)g).Mass) + ((MyCubeGrid)mainGrid).Mass;
+            var shipCore = gridLogic.ShipCore;
             
-            if ((myBlocksCount > gridLogic.ShipCore.MaxBlocks && gridLogic.ShipCore.MaxBlocks > 0) ||
-                (myBlocksPCU > gridLogic.ShipCore.MaxPCU && gridLogic.ShipCore.MaxPCU > 0) ||
-                (myMaxMass > gridLogic.ShipCore.MaxMass && gridLogic.ShipCore.MaxMass > 0f))
+            if ((myBlocksCount > shipCore.MaxBlocks && shipCore.MaxBlocks > 0) ||
+                (myBlocksPCU > shipCore.MaxPCU && shipCore.MaxPCU > 0) ||
+                (myMaxMass > shipCore.MaxMass && shipCore.MaxMass > 0f))
             {
-                if (gridLogic.ShipCore.LargeGridMobile) gridLogic.PunishSpeed = true;
-                if (gridLogic.ShipCore.LargeGridStatic) gridLogic.PunishModifiers = true;
-                
+                if (shipCore.LargeGridMobile) gridLogic.PunishSpeed = true;
+                if (shipCore.LargeGridStatic) gridLogic.PunishModifiers = true;
             }
 
-            if (myBlocksCount >= gridLogic.ShipCore.MaxBlocks || gridLogic.ShipCore.MaxBlocks <= 0 ||
-                myBlocksPCU >= gridLogic.ShipCore.MaxPCU || gridLogic.ShipCore.MaxPCU <= 0 ||
-                !(myMaxMass < gridLogic.ShipCore.MaxMass) || !(gridLogic.ShipCore.MaxMass > 0f)) return;
+            if ((myBlocksCount >= shipCore.MaxBlocks && shipCore.MaxBlocks > 0) ||
+                (myBlocksPCU >= shipCore.MaxPCU && shipCore.MaxPCU > 0)||
+                (myMaxMass >= shipCore.MaxMass && shipCore.MaxMass > 0)) return;
             
-            if (gridLogic.ShipCore.LargeGridMobile) gridLogic.PunishSpeed = false;
-            if (gridLogic.ShipCore.LargeGridStatic) gridLogic.PunishModifiers = false;
+            if (shipCore.LargeGridMobile) gridLogic.PunishSpeed = false;
+            if (shipCore.LargeGridStatic) gridLogic.PunishModifiers = false;
+            if (!gridLogic.HasFunctioningBeaconIfNeeded()) gridLogic.PunishSpeed = true;
         }
         
         public static void EnforceBlockPunishment(IMyCubeBlock block)
