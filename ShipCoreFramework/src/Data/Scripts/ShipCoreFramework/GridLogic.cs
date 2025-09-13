@@ -48,12 +48,7 @@ namespace ShipCoreFramework
             {
                 if (CoreLogic?.CoreBlock != null)
                 {
-                    try
-                    {
-                        return ShipCore.ActiveDefenseModifiers.Duration* CoreLogic?.CoreBlock.UpgradeValues["DurationDuration"] ?? 1f; 
-                    }
-                    catch
-                    { return ShipCore.ActiveDefenseModifiers.Duration;}
+                    return ShipCore.ActiveDefenseModifiers.Duration* CoreLogic?.CoreBlock.UpgradeValues["DurationDuration"] ?? 1f; 
                 }
                 return ShipCore.ActiveDefenseModifiers.Duration; 
             }
@@ -64,12 +59,7 @@ namespace ShipCoreFramework
             {
                 if (CoreLogic?.CoreBlock != null)
                 {
-                    try
-                    {
-                        return ShipCore.ActiveDefenseModifiers.Cooldown* CoreLogic?.CoreBlock.UpgradeValues["DamageCooldown"] ?? 1f; 
-                    }
-                    catch
-                    { return ShipCore.ActiveDefenseModifiers.Cooldown;}
+                    return ShipCore.ActiveDefenseModifiers.Cooldown* CoreLogic?.CoreBlock.UpgradeValues["DamageCooldown"] ?? 1f; 
                 }
                 return ShipCore.ActiveDefenseModifiers.Cooldown; 
             }
