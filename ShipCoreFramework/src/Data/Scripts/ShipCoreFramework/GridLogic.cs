@@ -467,11 +467,12 @@ namespace ShipCoreFramework
 
         public GridDefenseModifiers GetActiveDefenseModifiers()
         {
+            if (CoreLogic?.CoreBlock == null) { return null; }
             return new GridDefenseModifiers
             {
                 Bullet = ShipCore.ActiveDefenseModifiers.Bullet * CoreLogic?.CoreBlock.UpgradeValues["ActiveBulletDamage"] ?? 1,
                 Rocket = ShipCore.ActiveDefenseModifiers.Rocket * CoreLogic?.CoreBlock.UpgradeValues["ActiveRocketDamage"] ?? 1,
-                Explosion = ShipCore.ActiveDefenseModifiers.Explosion *  CoreLogic?.CoreBlock.UpgradeValues["ActiveExplosionDamage"] ?? 1,
+                Explosion = ShipCore.ActiveDefenseModifiers.Explosion * CoreLogic?.CoreBlock.UpgradeValues["ActiveExplosionDamage"] ?? 1,
                 Environment = ShipCore.ActiveDefenseModifiers.Environment * CoreLogic?.CoreBlock.UpgradeValues["ActiveEnvironmentDamage"] ?? 1,
                 Energy = ShipCore.ActiveDefenseModifiers.Energy * CoreLogic?.CoreBlock.UpgradeValues["ActiveEnergyDamage"] ?? 1,
                 Kinetic = ShipCore.ActiveDefenseModifiers.Kinetic * CoreLogic?.CoreBlock.UpgradeValues["ActiveKineticDamage"] ?? 1
@@ -480,11 +481,12 @@ namespace ShipCoreFramework
         
         public GridDefenseModifiers GetPassiveDefenseModifiers()
         {
+            if (CoreLogic?.CoreBlock == null) { return null; }
             return new GridDefenseModifiers
             {
                 Bullet = ShipCore.PassiveDefenseModifiers.Bullet * CoreLogic?.CoreBlock.UpgradeValues["PassiveBulletDamage"] ?? 1,
                 Rocket = ShipCore.PassiveDefenseModifiers.Rocket * CoreLogic?.CoreBlock.UpgradeValues["PassiveRocketDamage"] ?? 1,
-                Explosion = ShipCore.PassiveDefenseModifiers.Explosion *  CoreLogic?.CoreBlock.UpgradeValues["PassiveExplosionDamage"] ?? 1,
+                Explosion = ShipCore.PassiveDefenseModifiers.Explosion * CoreLogic?.CoreBlock.UpgradeValues["PassiveExplosionDamage"] ?? 1,
                 Environment = ShipCore.PassiveDefenseModifiers.Environment * CoreLogic?.CoreBlock.UpgradeValues["PassiveEnvironmentDamage"] ?? 1,
                 Energy = ShipCore.PassiveDefenseModifiers.Energy * CoreLogic?.CoreBlock.UpgradeValues["PassiveEnergyDamage"] ?? 1,
                 Kinetic = ShipCore.PassiveDefenseModifiers.Kinetic * CoreLogic?.CoreBlock.UpgradeValues["PassiveKineticDamage"] ?? 1
