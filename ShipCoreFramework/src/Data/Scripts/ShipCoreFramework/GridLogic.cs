@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using ProtoBuf.WellKnownTypes;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -40,7 +39,6 @@ namespace ShipCoreFramework
         public bool NeedStaticCheck;
 
         public CoreLogic CoreLogic => Utils.GetGridCore(Grid, ShipCore);
-
         private float BoostDuration => ShipCore.Modifiers.BoostDuration;
         private float BoostCoolDown => ShipCore.Modifiers.BoostCoolDown;
 
@@ -48,16 +46,32 @@ namespace ShipCoreFramework
         {
             get
             {
-                if (CoreLogic.CoreBlock == null) { return ShipCore.ActiveDefenseModifiers.Duration; }
-                else { return CoreLogic.CoreBlock.UpgradeValues.GetValueOrDefault("DurationDuration"); }
+                if (CoreLogic?.CoreBlock != null)
+                {
+                    try
+                    {
+                        return ShipCore.ActiveDefenseModifiers.Duration* CoreLogic?.CoreBlock.UpgradeValues["DurationDuration"] ?? 1f; 
+                    }
+                    catch
+                    { return ShipCore.ActiveDefenseModifiers.Duration;}
+                }
+                return ShipCore.ActiveDefenseModifiers.Duration; 
             }
         }
         public float ActiveDefenseCoolDown
         {
             get
             {
-                if (CoreLogic.CoreBlock == null) { return ShipCore.ActiveDefenseModifiers.Cooldown; }
-                else { return CoreLogic.CoreBlock.UpgradeValues.GetValueOrDefault("DamageCooldown"); }
+                if (CoreLogic?.CoreBlock != null)
+                {
+                    try
+                    {
+                        return ShipCore.ActiveDefenseModifiers.Cooldown* CoreLogic?.CoreBlock.UpgradeValues["DamageCooldown"] ?? 1f; 
+                    }
+                    catch
+                    { return ShipCore.ActiveDefenseModifiers.Cooldown;}
+                }
+                return ShipCore.ActiveDefenseModifiers.Cooldown; 
             }
         }
 
