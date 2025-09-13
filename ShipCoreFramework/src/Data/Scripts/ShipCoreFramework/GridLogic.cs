@@ -83,6 +83,20 @@ namespace ShipCoreFramework
             Grid = (IMyCubeGrid)Entity;
             Grid.OnPhysicsChanged += InitOnPhysicsChanged;
         }
+        
+        private void InitOnPhysicsChanged(IMyEntity obj)
+        {
+            if (ModSessionManager.Config.SelectedNoCore == null)
+            {
+                Utils.Log("NOCORE is NULL for GRID");
+                return;
+            }
+            if (Grid?.Physics == null) return;
+            Grid.OnPhysicsChanged -= InitOnPhysicsChanged;
+            NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
+            NeedsUpdate |= MyEntityUpdateEnum.EACH_100TH_FRAME;
+            NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
+        }
 
         public void Activate(string shipCoreTypeId)
         {
@@ -140,9 +154,9 @@ namespace ShipCoreFramework
             Utils.ShowNotification("Boost Engaged!", 1000);
         }
 
-        public override void UpdateAfterSimulation()
+        public override void UpdateAfterSimulation100()
         {
-            base.UpdateAfterSimulation();
+            base.UpdateAfterSimulation100();
             List<IMyCubeGrid> subgrids;
             var mainGrid = Grid.GetMainCubeGrid(out subgrids);
             if (mainGrid != Grid) return;
@@ -173,9 +187,14 @@ namespace ShipCoreFramework
                 if (!ShipCore.LargeGridStatic && mainGrid.IsStatic) { MyVisualScriptLogicProvider.SetGridStatic(mainGrid.Name, false); }
                 NeedStaticCheck = false;
             }
+            NoFlyZones.EnforceNoFlyZones(this);
+        }
+
+        public override void UpdateAfterSimulation()
+        {
+            base.UpdateAfterSimulation();
             SpeedEnforcement.EnforceSpeedLimit(this, PunishSpeed);
             if (_shipCoreTypeId == string.Empty) return;
-            NoFlyZones.EnforceNoFlyZones(this);
             RunBoostTimerTick();
             RunActiveDefenseTimerTick();
         }
@@ -213,19 +232,6 @@ namespace ShipCoreFramework
                 _activeDefenseCooldownTimer -= 1f;
                 if (_activeDefenseCooldownTimer < 0f) _activeDefenseCooldownTimer = 0f;
             }
-        }
-
-        private void InitOnPhysicsChanged(IMyEntity obj)
-        {
-            if (ModSessionManager.Config.SelectedNoCore == null)
-            {
-                Utils.Log("NOCORE is NULL for GRID");
-                return;
-            }
-            if (Grid?.Physics == null) return;
-            Grid.OnPhysicsChanged -= InitOnPhysicsChanged;
-            NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
-            NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
         }
         
         public override void UpdateOnceBeforeFrame()
