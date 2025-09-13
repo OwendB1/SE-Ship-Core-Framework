@@ -117,14 +117,14 @@ namespace ShipCoreFramework
         {
             List<IMyCubeGrid> subgrids;
             var main = GetMainCubeGrid(grid, out subgrids);
-            return main?.GameLogic.GetAs<GridLogic>();
+            return main?.GameLogic?.GetAs<GridLogic>();
         }
 
         public static GridLogic GetMainGridLogic(this IMyTerminalBlock block)
         {
             List<IMyCubeGrid> subgrids;
             var main = GetMainCubeGrid(block.CubeGrid, out subgrids);
-            return main?.GameLogic.GetAs<GridLogic>();
+            return main?.GameLogic?.GetAs<GridLogic>();
         }
 
         public static IMyCubeGrid GetMainCubeGrid(this IMyCubeGrid grid, out List<IMyCubeGrid> subgrids)

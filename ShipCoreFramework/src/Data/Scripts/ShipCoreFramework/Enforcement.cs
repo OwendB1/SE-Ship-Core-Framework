@@ -123,6 +123,7 @@ namespace ShipCoreFramework
         public static void EnforceGridPunishment(IMyCubeGrid grid)
         {
             var gridLogic = grid.GetMainGridLogic();
+            if (gridLogic == null) {return;}
             EnforceOverCapacity(grid);
 
             foreach (var block in gridLogic.Blocks.ToList())
@@ -151,6 +152,7 @@ namespace ShipCoreFramework
         {
             List<IMyCubeGrid> subgrids;
             var mainGrid = grid.GetMainCubeGrid(out subgrids);
+            if (mainGrid == null) {return;}
             var gridLogic = grid.GetMainGridLogic();
             
             var myBlocksCount = subgrids.Sum(g => ((MyCubeGrid)g).BlocksCount) + ((MyCubeGrid)mainGrid).BlocksCount;
