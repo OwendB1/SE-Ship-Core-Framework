@@ -69,7 +69,9 @@ namespace ShipCoreFramework
             if (PerFaction.ContainsKey(factionId) && PerFaction[factionId].ContainsKey(coreType))
             {
                 var idx = PerFaction[factionId][coreType].Count + 1;
-                return idx <= maxAllowedGrids;
+                if (idx <= maxAllowedGrids) return true;
+                Utils.ShowNotification("Per faction limit of this core has been hit!", 10000, true);
+                return false;
             }
 
             Utils.Log("GridsPerFactionClass::IsGridWithinFactionLimits: Faction or class not found in faction limits data", 3);

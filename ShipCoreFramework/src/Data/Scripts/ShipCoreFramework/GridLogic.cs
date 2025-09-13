@@ -358,7 +358,6 @@ namespace ShipCoreFramework
             }
             var concreteGrid = Grid as MyCubeGrid;
             
-            
             Utils.Log($"{Grid.CustomName}: Block Added: {Utils.GetBlockTypeId(obj)} | {Utils.GetBlockSubtypeId(obj)}");
             //MaxBlocks
             if (concreteGrid?.BlocksCount >= ShipCore.MaxBlocks && ShipCore.MaxBlocks > 0)
@@ -375,7 +374,7 @@ namespace ShipCoreFramework
             {
                 if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == Grid.BigOwners.FirstOrDefault())
                 {
-                    Utils.ShowNotification($"{Utils.GetBlockSubtypeId(obj)} Violates MaxPCU: {concreteGrid.BlocksCount > ShipCore.MaxPCU}", 10000, true);
+                    Utils.ShowNotification($"{Utils.GetBlockSubtypeId(obj)} Violates MaxPCU: {concreteGrid?.BlocksCount > ShipCore.MaxPCU}", 10000, true);
                 }
                 Enforcement.RemoveAndRefund(obj);
                 return;
@@ -428,8 +427,7 @@ namespace ShipCoreFramework
             Blocks.Add(obj.FatBlock as MyCubeBlock);
 
             var funcBlock = obj.FatBlock as IMyFunctionalBlock;
-            if (funcBlock != null)
-                funcBlock.EnabledChanged += FuncBlockOnEnabledChanged;
+            if (funcBlock != null) funcBlock.EnabledChanged += FuncBlockOnEnabledChanged;
             Enforcement.ApplyModifiers(Blocks, Modifiers);
         }
 

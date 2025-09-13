@@ -38,10 +38,12 @@ namespace ShipCoreFramework
 
             if (PerPlayer.ContainsKey(playerId) && PerPlayer[playerId].ContainsKey(newCoreType))
             {
-                var numAllowedGrids = Config.GetShipCoreByTypeId(newCoreType).MaxPerPlayer;
-                if (numAllowedGrids < 0) return true;
+                var maxAllowedGrids = Config.GetShipCoreByTypeId(newCoreType).MaxPerPlayer;
+                if (maxAllowedGrids < 0) return true;
                 var idx = PerPlayer[playerId][newCoreType].Count + 1;
-                return idx <= numAllowedGrids;
+                if (idx <= maxAllowedGrids) return true;
+                Utils.ShowNotification("Per faction limit of this core has been hit!", 10000, true);
+                return false;
             }
 
             Utils.Log("GridsPerPlayerClass::IsGridWithinPlayerLimits: Faction or class not found in faction limits data", 2);

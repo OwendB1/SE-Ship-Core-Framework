@@ -128,7 +128,7 @@ namespace ShipCoreFramework
             var onlyCore = IsOnlyCoreOfThisTypeOnGrid();
             var mainGridLogic = CoreBlock.CubeGrid.GetMainGridLogic();
             Utils.Log($"Core Initial: {CoreBlock.CustomName}, SyncValue: {!SyncIsMainCore.Value}, onlyCore: {onlyCore}", 3);
-            if ((!SyncIsMainCore.Value && onlyCore) || (SyncIsMainCore.Value))
+            if ((!SyncIsMainCore.Value && onlyCore) || SyncIsMainCore.Value)
             {
                 SyncIsMainCore.ValidateAndSet(true);
                 mainGridLogic.Activate(SubtypeId);
@@ -138,13 +138,9 @@ namespace ShipCoreFramework
             _tickScheduler.Schedule(() =>
             {
                 if (GridsPerFactionManager.WillGridBeWithinFactionLimits(mainGridLogic, SubtypeId)) return;
-                if (Constants.LocalPlayer != null && Constants.LocalPlayer.IdentityId == CoreBlock.CubeGrid.BigOwners.FirstOrDefault())
-                {
-                    Utils.ShowNotification("Per faction limit of this core has been hit!", 10000, true);
-                }
                 mainGridLogic.ResetCore();
                 CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
-            }, 300);
+            }, 30);
             
             _tickScheduler.Schedule(() =>
             {
@@ -155,7 +151,7 @@ namespace ShipCoreFramework
                 }
                 mainGridLogic.ResetCore();
                 CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
-            }, 300);
+            }, 30);
             
             GridsPerFactionManager.AddCubeGrid(mainGridLogic);
             GridsPerPlayerManager.AddCubeGrid(mainGridLogic);
@@ -170,7 +166,7 @@ namespace ShipCoreFramework
             } else MyAPIGateway.TerminalControls.CustomControlGetter += CustomControlGetter;
             CoreBlock.CubeGrid.OnGridMerge += OnGridMerge;
             RegisterToolbarActionsOnce();
-            _tickScheduler.Schedule(mainGridLogic.DefenseValuesChanged, 60);
+            _tickScheduler.Schedule(mainGridLogic.DefenseValuesChanged, 30);
         }
         
         public override void UpdateAfterSimulation10()
