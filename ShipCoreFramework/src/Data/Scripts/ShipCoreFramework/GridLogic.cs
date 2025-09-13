@@ -20,13 +20,13 @@ namespace ShipCoreFramework
     public class GridLogic : MyGameLogicComponent
     {
         public readonly HashSet<MyCubeBlock> Blocks = new HashSet<MyCubeBlock>();
-        
+
         public MyStringHash DamageTypeNoFlyZone = MyStringHash.GetOrCompute("NoFLyZoneViolation");
         public readonly Dictionary<BlockLimit, List<KeyValuePair<IMyCubeBlock, double>>> BlocksPerLimit = new Dictionary<BlockLimit, List<KeyValuePair<IMyCubeBlock, double>>>();
 
         public bool PunishModifiers;
         public bool PunishSpeed;
-        
+
         public bool BoostEnabled;
         private float _boostCooldownTimer;
         private float _boostDurationTimer;
@@ -37,13 +37,34 @@ namespace ShipCoreFramework
 
         private bool _needsSubgridsRedone;
         public bool NeedStaticCheck;
-        
+
         public CoreLogic CoreLogic => Utils.GetGridCore(Grid, ShipCore);
-        
         private float BoostDuration => ShipCore.Modifiers.BoostDuration;
         private float BoostCoolDown => ShipCore.Modifiers.BoostCoolDown;
-        public float ActiveDefenseDuration => ShipCore.ActiveDefenseModifiers.Duration * CoreLogic.CoreBlock.UpgradeValues["DurationDuration"];
-        public float ActiveDefenseCoolDown => ShipCore.ActiveDefenseModifiers.Cooldown * CoreLogic.CoreBlock.UpgradeValues["DamageCooldown"];
+
+        public float ActiveDefenseDuration
+        {
+            get
+            {
+                if (CoreLogic?.CoreBlock != null)
+                {
+                    return ShipCore.ActiveDefenseModifiers.Duration* CoreLogic?.CoreBlock.UpgradeValues["DurationDuration"] ?? 1f; 
+                }
+                return ShipCore.ActiveDefenseModifiers.Duration; 
+            }
+        }
+        public float ActiveDefenseCoolDown
+        {
+            get
+            {
+                if (CoreLogic?.CoreBlock != null)
+                {
+                    return ShipCore.ActiveDefenseModifiers.Cooldown* CoreLogic?.CoreBlock.UpgradeValues["DamageCooldown"] ?? 1f; 
+                }
+                return ShipCore.ActiveDefenseModifiers.Cooldown; 
+            }
+        }
+
         public GridModifiers Modifiers => PunishModifiers ? ModSessionManager.Config.SelectedNoCore.Modifiers : CubeGridModifiers.GetActiveModifiers(this);
 
         public IMyCubeGrid Grid;
@@ -467,11 +488,15 @@ namespace ShipCoreFramework
 
         public GridDefenseModifiers GetActiveDefenseModifiers()
         {
+            if (CoreLogic?.CoreBlock == null)
+            {
+                return ShipCore.ActiveDefenseModifiers;
+            }
             return new GridDefenseModifiers
             {
                 Bullet = ShipCore.ActiveDefenseModifiers.Bullet * CoreLogic?.CoreBlock.UpgradeValues["ActiveBulletDamage"] ?? 1,
                 Rocket = ShipCore.ActiveDefenseModifiers.Rocket * CoreLogic?.CoreBlock.UpgradeValues["ActiveRocketDamage"] ?? 1,
-                Explosion = ShipCore.ActiveDefenseModifiers.Explosion *  CoreLogic?.CoreBlock.UpgradeValues["ActiveExplosionDamage"] ?? 1,
+                Explosion = ShipCore.ActiveDefenseModifiers.Explosion * CoreLogic?.CoreBlock.UpgradeValues["ActiveExplosionDamage"] ?? 1,
                 Environment = ShipCore.ActiveDefenseModifiers.Environment * CoreLogic?.CoreBlock.UpgradeValues["ActiveEnvironmentDamage"] ?? 1,
                 Energy = ShipCore.ActiveDefenseModifiers.Energy * CoreLogic?.CoreBlock.UpgradeValues["ActiveEnergyDamage"] ?? 1,
                 Kinetic = ShipCore.ActiveDefenseModifiers.Kinetic * CoreLogic?.CoreBlock.UpgradeValues["ActiveKineticDamage"] ?? 1
@@ -480,11 +505,15 @@ namespace ShipCoreFramework
         
         public GridDefenseModifiers GetPassiveDefenseModifiers()
         {
+            if (CoreLogic?.CoreBlock == null)
+            {
+                return ShipCore.PassiveDefenseModifiers;
+            }
             return new GridDefenseModifiers
             {
                 Bullet = ShipCore.PassiveDefenseModifiers.Bullet * CoreLogic?.CoreBlock.UpgradeValues["PassiveBulletDamage"] ?? 1,
                 Rocket = ShipCore.PassiveDefenseModifiers.Rocket * CoreLogic?.CoreBlock.UpgradeValues["PassiveRocketDamage"] ?? 1,
-                Explosion = ShipCore.PassiveDefenseModifiers.Explosion *  CoreLogic?.CoreBlock.UpgradeValues["PassiveExplosionDamage"] ?? 1,
+                Explosion = ShipCore.PassiveDefenseModifiers.Explosion * CoreLogic?.CoreBlock.UpgradeValues["PassiveExplosionDamage"] ?? 1,
                 Environment = ShipCore.PassiveDefenseModifiers.Environment * CoreLogic?.CoreBlock.UpgradeValues["PassiveEnvironmentDamage"] ?? 1,
                 Energy = ShipCore.PassiveDefenseModifiers.Energy * CoreLogic?.CoreBlock.UpgradeValues["PassiveEnergyDamage"] ?? 1,
                 Kinetic = ShipCore.PassiveDefenseModifiers.Kinetic * CoreLogic?.CoreBlock.UpgradeValues["PassiveKineticDamage"] ?? 1
