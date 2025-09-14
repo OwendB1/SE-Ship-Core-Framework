@@ -96,8 +96,8 @@ namespace ShipCoreFramework
                     if(Constants.LocalPlayer!=null) CoreInfo(playerId);
                     return;
                 default:
-                    if(Constants.LocalPlayer!=null) ShowHelp();
-                    return;
+                    modMessage += "The command you have typed was not recognized. Did you make a typo?";
+                    break;
             }
             if(Constants.IsServer)
             {
