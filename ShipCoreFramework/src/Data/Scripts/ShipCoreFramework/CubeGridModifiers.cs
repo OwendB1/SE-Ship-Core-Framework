@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Sandbox.Definitions;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game;
@@ -98,68 +99,76 @@ namespace ShipCoreFramework
                 gyro.PowerConsumptionMultiplier = 1f / modifiers.GyroEfficiency;
             }
 
+            var cube = block as MyCubeBlock;
+            if (cube == null) return;
+
+            var id = ((IMyTerminalBlock)block).BlockDefinition;
+            var cubeDef = MyDefinitionManager.Static.GetCubeBlockDefinition(id);
+
             var refinery = block as IMyRefinery;
             if (refinery != null)
             {
-                var rawRefinery = block as MyCubeBlock;
-                if (rawRefinery?.CurrentAttachedUpgradeModules != null)
+                var refDef = cubeDef as MyRefineryDefinition;
+                var baseSpeed = refDef?.RefineSpeed ?? 1f;
+                var baseYield = refDef?.MaterialEfficiency ?? 1f;
+
+                float prodSum = 0f, effSum = 0f;
+                var attachedR = cube.CurrentAttachedUpgradeModules;
+                if (attachedR != null)
                 {
-                    var productivity = refinery.UpgradeValues["Productivity"] > 0
-                        ? 2f * modifiers.RefineSpeed
-                        : modifiers.RefineSpeed;
-                    var effectiveness = 1f * modifiers.RefineEfficiency;
-                    foreach (var blockModule in rawRefinery.CurrentAttachedUpgradeModules.Select(module =>
-                                 module.Value.Block))
+                    foreach (var m in attachedR.Select(kv => kv.Value.Block).Where(m => m != null))
                     {
-                        List<MyUpgradeModuleInfo> upgrades;
-                        blockModule.GetUpgradeList(out upgrades);
-                        foreach (var upgrade in upgrades)
-                            switch (upgrade.UpgradeType)
+                        List<MyUpgradeModuleInfo> ups; m.GetUpgradeList(out ups);
+                        if (ups == null) continue;
+                        foreach (var up in ups)
+                        {
+                            switch (up.UpgradeType)
                             {
                                 case "Productivity":
-                                    productivity += upgrade.Modifier * modifiers.RefineSpeed;
+                                    prodSum += up.Modifier;
                                     break;
                                 case "Effectiveness":
-                                    effectiveness += upgrade.Modifier * modifiers.RefineEfficiency;
+                                    effSum += up.Modifier;
                                     break;
                             }
+                        }
                     }
+                }
 
-                    refinery.UpgradeValues["Productivity"] = productivity;
-                    refinery.UpgradeValues["Effectiveness"] = effectiveness;
-                }
-                else
-                {
-                    refinery.UpgradeValues["Productivity"] = refinery.UpgradeValues["Productivity"] > 0
-                        ? 2f * modifiers.RefineSpeed
-                        : modifiers.RefineSpeed;
-                    refinery.UpgradeValues["Effectiveness"] = modifiers.RefineEfficiency;
-                }
+                var targetSpeed = (baseSpeed + prodSum) * modifiers.RefineSpeed;
+                var prodValue = targetSpeed - baseSpeed;
+                if (prodValue < -baseSpeed) prodValue = -baseSpeed;
+                
+                var yieldValue = (baseYield + effSum) * modifiers.RefineEfficiency;
+                if (yieldValue < 0f) yieldValue = 0f;
+                
+                refinery.UpgradeValues["Productivity"]  = prodValue;
+                refinery.UpgradeValues["Effectiveness"] = yieldValue;
             }
 
             var assembler = block as IMyAssembler;
             if (assembler != null)
             {
-                assembler.UpgradeValues["Productivity"] *= modifiers.AssemblerSpeed;
-                var rawAssembler = block as MyCubeBlock;
-                if (rawAssembler?.CurrentAttachedUpgradeModules != null)
-                {
-                    var productivity = 1f * modifiers.AssemblerSpeed;
-                    foreach (var blockModule in rawAssembler.CurrentAttachedUpgradeModules.Select(module =>
-                                 module.Value.Block))
-                    {
-                        List<MyUpgradeModuleInfo> upgrades;
-                        blockModule.GetUpgradeList(out upgrades);
-                        if (blockModule.BlockDefinition.SubtypeId == "LargeProductivityModule")
-                            productivity += upgrades[0].Modifier * modifiers.AssemblerSpeed;
-                    }
+                var asmDef = cubeDef as MyAssemblerDefinition;
+                var baseSpeed = asmDef?.AssemblySpeed ?? 1f;
 
-                    assembler.UpgradeValues["Productivity"] = productivity;
-                }
-                else
+                var prodSum = 0f;
+                var attachedA = cube.CurrentAttachedUpgradeModules;
+                if (attachedA != null)
                 {
-                    assembler.UpgradeValues["Productivity"] = modifiers.AssemblerSpeed;
+                    foreach (var m in attachedA.Select(kv => kv.Value.Block).Where(m => m != null))
+                    {
+                        List<MyUpgradeModuleInfo> ups; m.GetUpgradeList(out ups);
+                        if (ups == null) continue;
+                        prodSum += ups.Where(t => t.UpgradeType == "Productivity").Sum(t => t.Modifier);
+                    }
                 }
+
+                var targetSpeed = (baseSpeed + prodSum) * modifiers.AssemblerSpeed;
+                var prodValue = targetSpeed - baseSpeed;
+                if (prodValue < -baseSpeed) prodValue = -baseSpeed;
+
+                assembler.UpgradeValues["Productivity"] = prodValue;
             }
 
             var reactor = block as IMyReactor;
