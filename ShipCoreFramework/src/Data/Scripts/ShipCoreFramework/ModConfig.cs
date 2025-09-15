@@ -152,17 +152,16 @@ namespace ShipCoreFramework
                         throw new Exception($"Failed to Load Classes from Mod: {mod.FriendlyName}");
 
                     //Go get ship cores
-                    foreach (var shipCoreFilename in coreManifest.ShipCoreFilenames)
-                        if (MyAPIGateway.Utilities.FileExistsInModLocation(shipCoreFilename, mod))
-                            using (var textReader = MyAPIGateway.Utilities.ReadFileInModLocation(shipCoreFilename, mod))
-                            {
-                                var modText = textReader.ReadToEnd();
-                                var newShipCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(modText);
+                    foreach (var shipCoreFilename in coreManifest.ShipCoreFilenames.Where(shipCoreFilename => MyAPIGateway.Utilities.FileExistsInModLocation(shipCoreFilename, mod)))
+                        using (var textReader = MyAPIGateway.Utilities.ReadFileInModLocation(shipCoreFilename, mod))
+                        {
+                            var modText = textReader.ReadToEnd();
+                            var newShipCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(modText);
 
-                                if (newShipCore == null){throw new Exception($"Failed to load ship core from file {shipCoreFilename} in Mod: {mod.FriendlyName}");}
-                                ShipCores.Add(newShipCore);
-                                Utils.Log($"Loaded Core {newShipCore.UniqueName} From: {mod.FriendlyName}", 0, "Ship Core Config");
-                            }
+                            if (newShipCore == null){throw new Exception($"Failed to load ship core from file {shipCoreFilename} in Mod: {mod.FriendlyName}");}
+                            ShipCores.Add(newShipCore);
+                            Utils.Log($"Loaded Core {newShipCore.UniqueName} From: {mod.FriendlyName}", 0, "Ship Core Config");
+                        }
                 }
             }
 
@@ -353,39 +352,41 @@ namespace ShipCoreFramework
     [XmlRoot("BlockLimit")]
     public class BlockLimit
     {
-        [XmlElement("Name")] public string Name = string.Empty;
-
-        [XmlElement("BlockGroups")] public string[] BlockGroupsShortHand = Array.Empty<string>();
-
-        [XmlIgnore]  public List<BlockGroup> BlockGroups = new List<BlockGroup>();
-
-        [XmlElement("MaxCount")] public float MaxCount;
-
-        [XmlElement("TurnedOffByNoFlyZone")] public bool TurnedOffByNoFlyZone;
-
-        [XmlElement("PunishmentType")] public PunishmentType PunishmentType = PunishmentType.ShutOff;
-
-        [XmlElement("AllowedDirections")] public List<DirectionType> AllowedDirections;// = new List<DirectionType>{DirectionType.Forward,DirectionType.Backward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right};
+        [XmlElement("Name")] 
+        public string Name = string.Empty;
+        [XmlElement("BlockGroups")] 
+        public string[] BlockGroupsShortHand = Array.Empty<string>();
+        [XmlIgnore]  
+        public List<BlockGroup> BlockGroups = new List<BlockGroup>();
+        [XmlElement("MaxCount")] 
+        public float MaxCount;
+        [XmlElement("TurnedOffByNoFlyZone")] 
+        public bool TurnedOffByNoFlyZone;
+        [XmlElement("PunishmentType")] 
+        public PunishmentType PunishmentType = PunishmentType.ShutOff;
+        [XmlElement("AllowedDirections")] 
+        public List<DirectionType> AllowedDirections;// = new List<DirectionType>{DirectionType.Forward,DirectionType.Backward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right};
     }
 
     [XmlRoot("BlockGroup")]
     public class BlockGroup
     {
-        [XmlElement("Name")] public string Name = string.Empty;
-
-        [XmlElement("BlockTypes")] public List<BlockType> BlockTypes = new List<BlockType>();
+        [XmlElement("Name")] 
+        public string Name = string.Empty;
+        [XmlElement("BlockTypes")] 
+        public List<BlockType> BlockTypes = new List<BlockType>();
     }
 
     [XmlRoot("BlockType")]
     public class BlockType
     {
-        [XmlElement("TypeId")] public string TypeId;
-
-        [XmlElement("SubtypeId")] public string SubtypeId;
-
-        [XmlElement("CountWeight")] public float CountWeight;
-
-
+        [XmlElement("TypeId")] 
+        public string TypeId;
+        [XmlElement("SubtypeId")] 
+        public string SubtypeId;
+        [XmlElement("CountWeight")] 
+        public float CountWeight;
+        
         public BlockType()
         {
             TypeId = string.Empty;
@@ -404,21 +405,20 @@ namespace ShipCoreFramework
     [XmlRoot("GridDefenseModifiers")]
     public class GridDefenseModifiers
     {
-        [XmlElement("Bullet")] public float Bullet = 1f;
-
-        [XmlElement("Energy")] public float Energy = 1f;
-
-        [XmlElement("Kinetic")] public float Kinetic = 1f;
-
-        [XmlElement("Duration")] public float Duration;
-
-        [XmlElement("Cooldown")] public float Cooldown;
-
-        [XmlElement("Rocket")] public float Rocket = 1f;
-
-        [XmlElement("Explosion")] public float Explosion = 1f;
-
-        [XmlElement("Environment")] public float Environment = 1f;
+        [XmlElement("Bullet")] 
+        public float Bullet = 1f;
+        [XmlElement("PostShield")] 
+        public float PostShield = 1f;
+        [XmlElement("Duration")] 
+        public float Duration;
+        [XmlElement("Cooldown")] 
+        public float Cooldown;
+        [XmlElement("Rocket")] 
+        public float Rocket = 1f;
+        [XmlElement("Explosion")] 
+        public float Explosion = 1f;
+        [XmlElement("Environment")] 
+        public float Environment = 1f;
     }
 
     [XmlRoot("PunishmentType")]

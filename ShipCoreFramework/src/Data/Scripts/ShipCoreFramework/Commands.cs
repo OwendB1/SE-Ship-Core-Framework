@@ -369,7 +369,7 @@ namespace ShipCoreFramework
                 }
                 else
                 {
-                    body+=$"Per Player Limit: Data is not avalible, WTF?\n";
+                    body+=$"Per Player Limit: Data is not available, WTF?\n";
                 }
                 
             }
@@ -384,7 +384,7 @@ namespace ShipCoreFramework
                     }
                     else
                     {
-                        body+=$"Per Faction Limit: Data is not avalible, WTF?\n";
+                        body+=$"Per Faction Limit: Data is not available, WTF?\n";
                     }
                 }
                 else
@@ -438,8 +438,7 @@ namespace ShipCoreFramework
             {
                 body += "  Passive defense:\n";
                 body += $"    Bullet: x{passive.Bullet:F2}\n";
-                body += $"    Energy: x{passive.Energy:F2}\n";
-                body += $"    Kinetic: x{passive.Kinetic:F2}\n";
+                body += $"    Post-shield: x{passive.PostShield:F2}\n";
                 body += $"    Rocket: x{passive.Rocket:F2}\n";
                 body += $"    Explosion: x{passive.Explosion:F2}\n";
                 body += $"    Environment: x{passive.Environment:F2}\n";
@@ -449,8 +448,7 @@ namespace ShipCoreFramework
             {
                 body += "  Active defense:\n";
                 body += $"    Bullet: x{active.Bullet:F2}\n";
-                body += $"    Energy: x{active.Energy:F2}\n";
-                body += $"    Kinetic: x{active.Kinetic:F2}\n";
+                body += $"    Post-shield: x{active.PostShield:F2}\n";
                 body += $"    Rocket: x{active.Rocket:F2}\n";
                 body += $"    Explosion: x{active.Explosion:F2}\n";
                 body += $"    Environment: x{active.Environment:F2}\n";

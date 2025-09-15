@@ -17,8 +17,6 @@ namespace ShipCoreFramework
     public static class CubeGridModifiers
     {
         public static readonly Dictionary<long, GridDefenseModifiers> DefenseModifiers = new Dictionary<long, GridDefenseModifiers>();
-        private static readonly MyStringHash EnergyDamageType = MyStringHash.GetOrCompute("Energy");
-        private static readonly MyStringHash KineticDamageType = MyStringHash.GetOrCompute("Kinetic");
         
         public static void AddModifiers(IMyCubeBlock coreBlock)
         {
@@ -41,15 +39,14 @@ namespace ShipCoreFramework
             coreBlock.AddUpgradeValue("PassiveRocketDamage", 1f);
             coreBlock.AddUpgradeValue("PassiveExplosionDamage", 1f);
             coreBlock.AddUpgradeValue("PassiveEnvironmentDamage", 1f);
-            coreBlock.AddUpgradeValue("PassiveEnergyDamage", 1f);
-            coreBlock.AddUpgradeValue("PassiveKineticDamage", 1f);
+            coreBlock.AddUpgradeValue("PassivePostShieldDamage", 1f);
 
             coreBlock.AddUpgradeValue("ActiveBulletDamage", 1f);
             coreBlock.AddUpgradeValue("ActiveRocketDamage", 1f);
             coreBlock.AddUpgradeValue("ActiveExplosionDamage", 1f);
             coreBlock.AddUpgradeValue("ActiveEnvironmentDamage", 1f);
-            coreBlock.AddUpgradeValue("ActiveEnergyDamage", 1f);
-            coreBlock.AddUpgradeValue("ActiveKineticDamage", 1f);
+            coreBlock.AddUpgradeValue("ActivePostShieldDamage", 1f);
+            
             coreBlock.AddUpgradeValue("DurationDuration", 1f);
             coreBlock.AddUpgradeValue("DamageCooldown", 1f);
         }
@@ -185,8 +182,7 @@ namespace ShipCoreFramework
             if (damageInfo.Type == MyDamageType.Rocket) damageInfo.Amount *= modifiers.Rocket;
             if (damageInfo.Type == MyDamageType.Explosion) damageInfo.Amount *= modifiers.Explosion;
             if (damageInfo.Type == MyDamageType.Environment) damageInfo.Amount *= modifiers.Environment;
-            if (damageInfo.Type == EnergyDamageType) damageInfo.Amount *= modifiers.Energy;
-            if (damageInfo.Type == KineticDamageType) damageInfo.Amount *= modifiers.Kinetic;
+            if (damageInfo.Type == MyDamageType.Drill) damageInfo.Amount *= modifiers.PostShield;
         }
     }
 }
