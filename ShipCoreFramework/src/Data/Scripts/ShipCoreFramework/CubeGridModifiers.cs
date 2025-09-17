@@ -18,7 +18,9 @@ namespace ShipCoreFramework
     public static class CubeGridModifiers
     {
         public static readonly Dictionary<long, GridDefenseModifiers> DefenseModifiers = new Dictionary<long, GridDefenseModifiers>();
-        
+        private static readonly MyStringHash EnergyDamageType = MyStringHash.GetOrCompute("Energy");
+        private static readonly MyStringHash KineticDamageType = MyStringHash.GetOrCompute("Kinetic");
+
         public static void AddModifiers(IMyCubeBlock coreBlock)
         {
             coreBlock.AddUpgradeValue("AssemblerSpeed", 1f);
@@ -41,12 +43,16 @@ namespace ShipCoreFramework
             coreBlock.AddUpgradeValue("PassiveExplosionDamage", 1f);
             coreBlock.AddUpgradeValue("PassiveEnvironmentDamage", 1f);
             coreBlock.AddUpgradeValue("PassivePostShieldDamage", 1f);
+            coreBlock.AddUpgradeValue("PassiveEnergyDamage", 1f);
+            coreBlock.AddUpgradeValue("PassiveKineticDamage", 1f);
 
             coreBlock.AddUpgradeValue("ActiveBulletDamage", 1f);
             coreBlock.AddUpgradeValue("ActiveRocketDamage", 1f);
             coreBlock.AddUpgradeValue("ActiveExplosionDamage", 1f);
             coreBlock.AddUpgradeValue("ActiveEnvironmentDamage", 1f);
             coreBlock.AddUpgradeValue("ActivePostShieldDamage", 1f);
+            coreBlock.AddUpgradeValue("ActiveEnergyDamage", 1f);
+            coreBlock.AddUpgradeValue("ActiveKineticDamage", 1f);
             
             coreBlock.AddUpgradeValue("DurationDuration", 1f);
             coreBlock.AddUpgradeValue("DamageCooldown", 1f);
@@ -186,8 +192,13 @@ namespace ShipCoreFramework
             GridDefenseModifiers modifiers;
             var succeeded = DefenseModifiers.TryGetValue(myBlock.CubeGrid.EntityId, out modifiers);
             if (!succeeded) return;
-            
-            if (damageInfo.Type == MyDamageType.Bullet) damageInfo.Amount *= modifiers.Bullet;
+
+            if (damageInfo.Type == MyDamageType.Bullet)
+            {
+                if(damageInfo.ExtraInfo == EnergyDamageType) damageInfo.Amount *= modifiers.Energy;
+                else if(damageInfo.ExtraInfo == KineticDamageType) damageInfo.Amount *= modifiers.Kinetic;
+                else damageInfo.Amount *= modifiers.PostShield;
+            }
             if (damageInfo.Type == MyDamageType.Rocket) damageInfo.Amount *= modifiers.Rocket;
             if (damageInfo.Type == MyDamageType.Explosion) damageInfo.Amount *= modifiers.Explosion;
             if (damageInfo.Type == MyDamageType.Environment) damageInfo.Amount *= modifiers.Environment;

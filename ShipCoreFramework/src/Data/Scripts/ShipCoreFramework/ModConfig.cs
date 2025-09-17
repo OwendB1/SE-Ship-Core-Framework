@@ -419,6 +419,10 @@ namespace ShipCoreFramework
         public float Explosion = 1f;
         [XmlElement("Environment")] 
         public float Environment = 1f;
+        [XmlElement("Energy")] 
+        public float Energy = 1f;
+        [XmlElement("Kinetic")] 
+        public float Kinetic = 1f;
     }
 
     [XmlRoot("PunishmentType")]

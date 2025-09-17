@@ -442,6 +442,9 @@ namespace ShipCoreFramework
                 body += $"    Rocket: x{passive.Rocket:F2}\n";
                 body += $"    Explosion: x{passive.Explosion:F2}\n";
                 body += $"    Environment: x{passive.Environment:F2}\n";
+                body += $"    Energy: x{passive.Energy:F2}\n";
+                body += $"    Kinetic: x{passive.Kinetic:F2}\n";
+
             }
 
             if (active != null)
@@ -452,6 +455,8 @@ namespace ShipCoreFramework
                 body += $"    Rocket: x{active.Rocket:F2}\n";
                 body += $"    Explosion: x{active.Explosion:F2}\n";
                 body += $"    Environment: x{active.Environment:F2}\n";
+                body += $"    Energy: x{passive.Energy:F2}\n";
+                body += $"    Kinetic: x{passive.Kinetic:F2}\n";
                 body += $"  Duration: {gridLogic.ActiveDefenseDuration:F1}s\n";
                 body += $"  Cooldown: {gridLogic.ActiveDefenseCoolDown:F1}s\n";
             }

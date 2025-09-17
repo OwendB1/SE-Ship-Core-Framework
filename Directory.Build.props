@@ -1,0 +1,9 @@
+<Project>
+    <PropertyGroup>
+        <!-- Allow override via env var SE_DIR or user-local props -->
+        <SpaceEngineersDir Condition="'$(SpaceEngineersDir)'=='' and '$(SE_DIR)'!=''">$(SE_DIR)</SpaceEngineersDir>
+        <SpaceEngineersDir Condition="'$(SpaceEngineersDir)'==''">
+      C:\Program Files (x86)\Steam\steamapps\common\SpaceEngineers
+        </SpaceEngineersDir>
+    </PropertyGroup>
+</Project>
