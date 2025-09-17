@@ -2,48 +2,33 @@
     <ItemGroup Condition="Exists('$(SpaceEngineersDir)\Bin64')">
         <Reference Include="VRage.Library">
             <HintPath>$(SpaceEngineersDir)\Bin64\VRage.Library.dll</HintPath>
-            <Private>false</Private>
         </Reference>
         <Reference Include="VRage.Math">
             <HintPath>$(SpaceEngineersDir)\Bin64\VRage.Math.dll</HintPath>
-            <Private>false</Private>
         </Reference>
         <Reference Include="VRage.Game">
             <HintPath>$(SpaceEngineersDir)\Bin64\VRage.Game.dll</HintPath>
-            <Private>false</Private>
         </Reference>
         <Reference Include="Sandbox.Common">
             <HintPath>$(SpaceEngineersDir)\Bin64\Sandbox.Common.dll</HintPath>
-            <Private>false</Private>
         </Reference>
         <Reference Include="Sandbox.Game">
             <HintPath>$(SpaceEngineersDir)\Bin64\Sandbox.Game.dll</HintPath>
-            <Private>false</Private>
         </Reference>
         <Reference Include="Sandbox.Graphics">
             <HintPath>$(SpaceEngineersDir)\Bin64\Sandbox.Graphics.dll</HintPath>
-            <Private>false</Private>
         </Reference>
         <Reference Include="SpaceEngineers.ObjectBuilders">
             <HintPath>$(SpaceEngineersDir)\Bin64\SpaceEngineers.ObjectBuilders.dll</HintPath>
-            <Private>false</Private>
         </Reference>
         <Reference Include="SpaceEngineers.Game">
             <HintPath>$(SpaceEngineersDir)\Bin64\SpaceEngineers.Game.dll</HintPath>
-            <Private>false</Private>
         </Reference>
         <Reference Include="ParallelTasks">
             <HintPath>$(SpaceEngineersDir)\Bin64\ParallelTasks.dll</HintPath>
-            <Private>false</Private>
         </Reference>
         <Reference Include="ProtoBuf">
             <HintPath>$(SpaceEngineersDir)\Bin64\ProtoBuf.Net.Core.dll</HintPath>
-            <Private>false</Private>
         </Reference>
     </ItemGroup>
-
-    <!-- Visible confirmation that the targets loaded -->
-    <Target Name="ReportSERefs" BeforeTargets="Build">
-        <Message Importance="High" Text="Space Engineers refs from: $(SpaceEngineersDir)" />
-    </Target>
 </Project>
