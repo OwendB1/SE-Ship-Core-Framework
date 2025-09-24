@@ -494,17 +494,14 @@ namespace ShipCoreFramework
             
             var oldMain = MainCoreComponent;
             var candidates = CoreDictionary.Values
-                .Where(c => c?.CoreBlock?.CubeGrid != null &&
-                            GridDictionary.ContainsKey((MyCubeGrid)c.CoreBlock.CubeGrid))
+                .Where(c => c?.CoreBlock?.CubeGrid != null && GridDictionary.ContainsKey((MyCubeGrid)c.CoreBlock.CubeGrid))
                 .OrderBy(c => c.CoreBlock.EntityId)
                 .ToList();
             
             var newMain = candidates.FirstOrDefault();
             if (newMain == null)
             {
-                if (oldMain != null) ResetCore();
-                GridsPerFactionManager.RemoveGridGroup(this);
-                GridsPerPlayerManager.RemoveGridGroup(this);
+                ResetCore();
                 return;
             }
 
