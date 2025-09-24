@@ -132,6 +132,32 @@ namespace ShipCoreFramework
             }
         }
         
+        internal void OnGridRemoved(IMyGridGroupData removedFrom, IMyCubeGrid grid, IMyGridGroupData addedTo)
+        {
+            if (addedTo != null) return; //If it's being added to a group, the new group will handle the removal/update
+            GridComponent gridComp;
+            if (!GridDictionary.TryGetValue((MyCubeGrid)grid, out gridComp)) return;
+            
+            gridComp.Clean();
+            GridDictionary.Remove((MyCubeGrid)grid);
+            
+            BlocksPerLimit.Clear();
+            CoreDictionary.Clear();
+
+            foreach (var comp in GridDictionary.Select(kvp => kvp.Value))
+            {
+                foreach (var entry in comp.BlocksPerLimit)
+                {
+                    BlocksPerLimit.Add(entry.Key, entry.Value);
+                }
+                
+                foreach (var entry in comp.CoreDictionary)
+                {
+                    CoreDictionary.Add(entry.Key, entry.Value);
+                }
+            }
+        }
+        
         private void EnforceGroupPunishment()
         {
             EnforceOverCapacity();
@@ -208,16 +234,6 @@ namespace ShipCoreFramework
                     if (func != null) func.Enabled = false;
                     break;
             }
-        }
-        
-        internal void OnGridRemoved(IMyGridGroupData removedFrom, IMyCubeGrid grid, IMyGridGroupData addedTo)
-        {
-            if (addedTo != null) return; //If it's being added to a group, the new group will handle the removal/update
-            GridComponent gridComp;
-            if (!GridDictionary.TryGetValue((MyCubeGrid)grid, out gridComp)) return;
-            
-            gridComp.Clean();
-            GridDictionary.Remove((MyCubeGrid)grid);
         }
         
         private void EnforceOverCapacity()

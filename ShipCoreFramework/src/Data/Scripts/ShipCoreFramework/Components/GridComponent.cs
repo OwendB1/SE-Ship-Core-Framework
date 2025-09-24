@@ -11,6 +11,9 @@ namespace ShipCoreFramework
         internal MyCubeGrid Grid;
         internal IMyGridGroupData GroupData;
         internal readonly List<MyCubeBlock> Blocks = new List<MyCubeBlock>();
+        internal readonly Dictionary<BlockLimit, Dictionary<MyCubeBlock, double>> BlocksPerLimit = new Dictionary<BlockLimit, Dictionary<MyCubeBlock, double>>();
+        internal readonly Dictionary<MyCubeBlock, CoreComponent> CoreDictionary = new Dictionary<MyCubeBlock, CoreComponent>();
+
         
         private GroupComponent GroupComponent => Session.GroupDict[GroupData];
 
@@ -124,6 +127,7 @@ namespace ShipCoreFramework
                 else Utils.Log("Log Direction Check: \nCoreBlock is null", 3);
                 
                 GroupComponent.BlocksPerLimit[limit].Add(block, countForSpecificBlock);
+                BlocksPerLimit[limit].Add(block, countForSpecificBlock);
             }
 
             return false;
@@ -136,12 +140,15 @@ namespace ShipCoreFramework
             {
                 GroupComponent.CoreDictionary[block].CoreDestroyed();
                 GroupComponent.CoreDictionary.Remove(block);
+                CoreDictionary.Remove(block);
             }
+            
             
             foreach (var limit in GroupComponent.ShipCore.BlockLimits)
             {
                 if (!GroupComponent.BlocksPerLimit.ContainsKey(limit)) return;
                 GroupComponent.BlocksPerLimit[limit].Remove(block);
+                BlocksPerLimit[limit].Remove(block);
             }
             
             Blocks.Remove(block);
@@ -218,6 +225,8 @@ namespace ShipCoreFramework
             {
                 func.EnabledChanged -= FuncBlockOnEnabledChanged;
             }
+            BlocksPerLimit.Clear();
+            CoreDictionary.Clear();
             Blocks.Clear();
         }
     }
