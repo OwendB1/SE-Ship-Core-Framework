@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.Entities;
@@ -24,9 +25,9 @@ namespace ShipCoreFramework
         internal Guid EntityId = Guid.NewGuid();
         internal IMyGridGroupData MyGroup;
         internal CoreComponent MainCoreComponent;
-        internal readonly Dictionary<BlockLimit, Dictionary<MyCubeBlock, double>> BlocksPerLimit = new Dictionary<BlockLimit, Dictionary<MyCubeBlock, double>>();
+        internal readonly ConcurrentDictionary<BlockLimit, Dictionary<MyCubeBlock, double>> BlocksPerLimit = new ConcurrentDictionary<BlockLimit, Dictionary<MyCubeBlock, double>>();
+        internal readonly ConcurrentDictionary<MyCubeBlock, CoreComponent> CoreDictionary = new ConcurrentDictionary<MyCubeBlock, CoreComponent>();
         internal readonly Dictionary<MyCubeGrid, GridComponent> GridDictionary = new Dictionary<MyCubeGrid, GridComponent>();
-        internal readonly Dictionary<MyCubeBlock, CoreComponent> CoreDictionary = new Dictionary<MyCubeBlock, CoreComponent>();
         
         internal bool PunishModifiers;
         internal bool PunishSpeed;
@@ -148,12 +149,12 @@ namespace ShipCoreFramework
             {
                 foreach (var entry in comp.BlocksPerLimit)
                 {
-                    BlocksPerLimit.Add(entry.Key, entry.Value);
+                    BlocksPerLimit.TryAdd(entry.Key, entry.Value);
                 }
                 
                 foreach (var entry in comp.CoreDictionary)
                 {
-                    CoreDictionary.Add(entry.Key, entry.Value);
+                    CoreDictionary.TryAdd(entry.Key, entry.Value);
                 }
             }
         }

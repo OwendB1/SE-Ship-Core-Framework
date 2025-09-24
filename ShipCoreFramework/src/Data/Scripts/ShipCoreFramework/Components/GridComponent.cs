@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.Entities;
@@ -11,8 +12,8 @@ namespace ShipCoreFramework
         internal MyCubeGrid Grid;
         internal IMyGridGroupData GroupData;
         internal readonly List<MyCubeBlock> Blocks = new List<MyCubeBlock>();
-        internal readonly Dictionary<BlockLimit, Dictionary<MyCubeBlock, double>> BlocksPerLimit = new Dictionary<BlockLimit, Dictionary<MyCubeBlock, double>>();
-        internal readonly Dictionary<MyCubeBlock, CoreComponent> CoreDictionary = new Dictionary<MyCubeBlock, CoreComponent>();
+        internal readonly ConcurrentDictionary<BlockLimit, Dictionary<MyCubeBlock, double>> BlocksPerLimit = new ConcurrentDictionary<BlockLimit, Dictionary<MyCubeBlock, double>>();
+        internal readonly ConcurrentDictionary<MyCubeBlock, CoreComponent> CoreDictionary = new ConcurrentDictionary<MyCubeBlock, CoreComponent>();
 
         
         private GroupComponent GroupComponent => Session.GroupDict[GroupData];
@@ -26,11 +27,8 @@ namespace ShipCoreFramework
             
             Grid.OnFatBlockAdded += FatBlockAdded;
             Grid.OnFatBlockRemoved += FatBlockRemoved;
-
-            foreach (var block in Grid.GetFatBlocks())
-            {
-                FatBlockAdded(block);
-            }
+            
+            MyAPIGateway.Parallel.ForEach(Grid.GetFatBlocks(), FatBlockAdded);
         }
         
         private void FatBlockAdded(MyCubeBlock block) //Now tells player why
@@ -87,8 +85,8 @@ namespace ShipCoreFramework
             {
                 var newCore = new CoreComponent();
                 newCore.Init(beacon, this, GroupComponent);
-                GroupComponent.CoreDictionary.Add(block, newCore);
-                CoreDictionary.Add(block, newCore);
+                GroupComponent.CoreDictionary.TryAdd(block, newCore);
+                CoreDictionary.TryAdd(block, newCore);
             }
 
             Blocks.Add(block);
@@ -111,8 +109,8 @@ namespace ShipCoreFramework
                 if (!success)
                 {
                     limitBlocks = new Dictionary<MyCubeBlock, double>();
-                    GroupComponent.BlocksPerLimit.Add(limit, limitBlocks);
-                    BlocksPerLimit.Add(limit, limitBlocks);
+                    GroupComponent.BlocksPerLimit.TryAdd(limit, limitBlocks);
+                    BlocksPerLimit.TryAdd(limit, limitBlocks);
                 }
                 var countWeight = limitBlocks.Sum(b => b.Value);
                 var countForSpecificBlock = limit.BlockGroups.SelectMany(g => g.BlockTypes).First(b => b.TypeId == Utils.GetBlockTypeId(block) && (b.SubtypeId == "any" || b.SubtypeId == Utils.GetBlockSubtypeId(block))).CountWeight;
