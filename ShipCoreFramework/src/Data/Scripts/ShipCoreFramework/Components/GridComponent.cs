@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.Entities;
@@ -12,16 +11,13 @@ namespace ShipCoreFramework
         internal MyCubeGrid Grid;
         internal IMyGridGroupData GroupData;
         internal readonly List<MyCubeBlock> Blocks = new List<MyCubeBlock>();
-        internal readonly ConcurrentDictionary<BlockLimit, Dictionary<MyCubeBlock, double>> BlocksPerLimit = new ConcurrentDictionary<BlockLimit, Dictionary<MyCubeBlock, double>>();
-        internal readonly ConcurrentDictionary<MyCubeBlock, CoreComponent> CoreDictionary = new ConcurrentDictionary<MyCubeBlock, CoreComponent>();
-
+        internal readonly Dictionary<BlockLimit, Dictionary<MyCubeBlock, double>> BlocksPerLimit = new Dictionary<BlockLimit, Dictionary<MyCubeBlock, double>>();
+        internal readonly Dictionary<MyCubeBlock, CoreComponent> CoreDictionary = new Dictionary<MyCubeBlock, CoreComponent>();
         
         private GroupComponent GroupComponent => Session.GroupDict[GroupData];
 
         internal void Init(MyCubeGrid grid, IMyGridGroupData groupData)
         {
-            if (grid.IsPreview) return;
-            
             Grid = grid;
             GroupData = groupData;
             
@@ -86,7 +82,7 @@ namespace ShipCoreFramework
                 var newCore = new CoreComponent();
                 newCore.Init(beacon, this, GroupComponent);
                 GroupComponent.CoreDictionary.TryAdd(block, newCore);
-                CoreDictionary.TryAdd(block, newCore);
+                CoreDictionary.Add(block, newCore);
             }
 
             Blocks.Add(block);
@@ -97,47 +93,54 @@ namespace ShipCoreFramework
 
         private bool PopulateBlocksPerLimit(MyCubeBlock block)
         {
+            var typeId = Utils.GetBlockTypeId(block);
+            var subtypeId = Utils.GetBlockSubtypeId(block);
+
             foreach (var limit in GroupComponent.ShipCore.BlockLimits)
             {
-                var match = limit.BlockGroups
+                var matchedType = limit.BlockGroups
                     .SelectMany(g => g.BlockTypes)
-                    .Any(b => b.TypeId == Utils.GetBlockTypeId(block) && (b.SubtypeId == "any" || b.SubtypeId == Utils.GetBlockSubtypeId(block)));
-                
-                if (!match) continue;
+                    .FirstOrDefault(b => b.TypeId == typeId && (b.SubtypeId == "any" || b.SubtypeId == subtypeId));
+
+                if (matchedType == null) continue;
+
+                // Get-or-create the inner dictionary once
                 Dictionary<MyCubeBlock, double> limitBlocks;
-                var success = GroupComponent.BlocksPerLimit.TryGetValue(limit, out limitBlocks);
-                if (!success)
+                if (!GroupComponent.BlocksPerLimit.TryGetValue(limit, out limitBlocks))
                 {
                     limitBlocks = new Dictionary<MyCubeBlock, double>();
-                    GroupComponent.BlocksPerLimit.TryAdd(limit, limitBlocks);
-                    BlocksPerLimit.TryAdd(limit, limitBlocks);
+                    GroupComponent.BlocksPerLimit[limit] = limitBlocks;
+                    BlocksPerLimit[limit] = limitBlocks;
                 }
-                var countWeight = limitBlocks.Sum(b => b.Value);
-                var countForSpecificBlock = limit.BlockGroups.SelectMany(g => g.BlockTypes).First(b => b.TypeId == Utils.GetBlockTypeId(block) && (b.SubtypeId == "any" || b.SubtypeId == Utils.GetBlockSubtypeId(block))).CountWeight;
+
+                var countWeight = limitBlocks.Count == 0 ? 0 : limitBlocks.Values.Sum();
+                var countForSpecificBlock = matchedType.CountWeight;
 
                 Utils.Log($"{countWeight} | {countForSpecificBlock} | {limit.MaxCount}");
                 if (countWeight + countForSpecificBlock > limit.MaxCount)
                 {
-                    Utils.ShowNotification($"{Utils.GetBlockSubtypeId(block)} violates Blocklimit {limit.Name}: {countWeight + countForSpecificBlock}/{limit.MaxCount}");
+                    Utils.ShowNotification($"{subtypeId} violates Blocklimit {limit.Name}: {countWeight + countForSpecificBlock}/{limit.MaxCount}");
                     RemoveAndRefund(block.SlimBlock);
                     return true;
                 }
-                
+
                 if (GroupComponent.MainCoreComponent?.CoreBlock != null)
                 {
                     if (!GroupComponent.IsValidDirection(GroupComponent.MainCoreComponent.CoreBlock, block.SlimBlock, limit.AllowedDirections))
-                    { 
-                        Utils.ShowNotification($"{Utils.GetBlockSubtypeId(block)} violated directional locking!");
+                    {
+                        Utils.ShowNotification($"{subtypeId} violated directional locking!");
                         RemoveAndRefund(block.SlimBlock);
                         return true;
                     }
                 }
-                else Utils.Log("Log Direction Check: \nCoreBlock is null", 3);
+                else
+                {
+                    Utils.Log("Log Direction Check: \nCoreBlock is null", 3);
+                }
                 
-                GroupComponent.BlocksPerLimit[limit].Add(block, countForSpecificBlock);
-                BlocksPerLimit[limit].Add(block, countForSpecificBlock);
+                if (!limitBlocks.ContainsKey(block))
+                    limitBlocks[block] = countForSpecificBlock;
             }
-
             return false;
         }
 

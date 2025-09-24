@@ -117,6 +117,11 @@ namespace ShipCoreFramework
             Config.SaveConfig();
             Networking?.Unregister();
             Networking = null;
+            
+            foreach (var kvp in GroupDict)
+            {
+                kvp.Value.Clean();
+            }
             GroupDict.Clear();
         }
         

@@ -100,6 +100,7 @@ namespace ShipCoreFramework
             MyGroup.GetGrids(tempGridList);
             MyAPIGateway.Parallel.ForEach(tempGridList, myCubeGrid =>
             {
+                Utils.Log("ADDED IN INIT");
                 var startGrid = (MyCubeGrid)myCubeGrid;
                 if (startGrid.IsPreview) return;
                 var gridComp = new GridComponent();
@@ -131,6 +132,7 @@ namespace ShipCoreFramework
                 gridComp.Init((MyCubeGrid)grid, MyGroup);
                 GridDictionary.Add((MyCubeGrid)grid, gridComp);
             }
+            EnforceGroupPunishment();
         }
         
         internal void OnGridRemoved(IMyGridGroupData removedFrom, IMyCubeGrid grid, IMyGridGroupData addedTo)
@@ -447,6 +449,10 @@ namespace ShipCoreFramework
         
         internal void Clean()
         {
+            foreach (var kvp in GridDictionary)
+            {
+                kvp.Value.Clean();
+            }
             GridDictionary.Clear();
             CoreDictionary.Clear();
             BlocksPerLimit.Clear();
