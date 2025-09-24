@@ -26,8 +26,11 @@ namespace ShipCoreFramework
             
             Grid.OnFatBlockAdded += FatBlockAdded;
             Grid.OnFatBlockRemoved += FatBlockRemoved;
-            
-            MyAPIGateway.Parallel.ForEach(Grid.GetFatBlocks(), FatBlockAdded);
+
+            foreach (var block in Grid.GetFatBlocks())
+            {
+                FatBlockAdded(block);
+            }
         }
         
         private void FatBlockAdded(MyCubeBlock block) //Now tells player why
@@ -85,6 +88,7 @@ namespace ShipCoreFramework
                 var newCore = new CoreComponent();
                 newCore.Init(beacon, this, GroupComponent);
                 GroupComponent.CoreDictionary.Add(block, newCore);
+                CoreDictionary.Add(block, newCore);
             }
 
             Blocks.Add(block);
@@ -104,7 +108,12 @@ namespace ShipCoreFramework
                 if (!match) continue;
                 Dictionary<MyCubeBlock, double> limitBlocks;
                 var success = GroupComponent.BlocksPerLimit.TryGetValue(limit, out limitBlocks);
-                if (!success) limitBlocks = new Dictionary<MyCubeBlock, double>();
+                if (!success)
+                {
+                    limitBlocks = new Dictionary<MyCubeBlock, double>();
+                    GroupComponent.BlocksPerLimit.Add(limit, limitBlocks);
+                    BlocksPerLimit.Add(limit, limitBlocks);
+                }
                 var countWeight = limitBlocks.Sum(b => b.Value);
                 var countForSpecificBlock = limit.BlockGroups.SelectMany(g => g.BlockTypes).First(b => b.TypeId == Utils.GetBlockTypeId(block) && (b.SubtypeId == "any" || b.SubtypeId == Utils.GetBlockSubtypeId(block))).CountWeight;
 
