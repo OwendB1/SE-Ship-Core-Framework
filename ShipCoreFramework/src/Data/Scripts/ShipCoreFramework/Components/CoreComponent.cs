@@ -30,13 +30,13 @@ namespace ShipCoreFramework
             GridComponent = gridComponent;
             _groupComponent = groupComponent;
             SubtypeId = CoreBlock.BlockDefinition.SubtypeId;
-            if (CoreBlock.Storage != null && CoreBlock.Storage.ContainsKey(Session.CoreStateStorageGUID))
-            {
-                var syncVar = CoreBlock.Storage[Session.CoreStateStorageGUID] == "1";
-                IsMainCore = syncVar;
-            }
+            
+            var persistedMain = CoreBlock.Storage != null
+                                && CoreBlock.Storage.ContainsKey(Session.CoreStateStorageGUID)
+                                && CoreBlock.Storage[Session.CoreStateStorageGUID] == "1";
+            var groupHasMain = groupComponent.MainCoreComponent != null;
+            
             CoreBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged;
-            Utils.Log("3");
             Utils.Log($"Core Initial: {CoreBlock.CustomName}", 3);
             if (CheckIfCoreOfOtherTypeExists())
             {
@@ -68,12 +68,19 @@ namespace ShipCoreFramework
             }
             
             var onlyCore = IsOnlyCoreOfThisTypeOnGrid();
-            Utils.Log($"Core Initial: {CoreBlock.CustomName}, Value: {IsMainCore}, onlyCore: {onlyCore}", 3);
-            if ((!IsMainCore && onlyCore) || IsMainCore)
+            Utils.Log($"Core Initial: {CoreBlock.CustomName}, PersistedMain: {persistedMain}, onlyCore: {onlyCore}", 3);
+
+            if (!groupHasMain && (persistedMain || onlyCore))
             {
                 IsMainCore = true;
                 _groupComponent.Activate(this);
-                SaveCoreState();
+                SaveCoreState();        // writes "1"
+            }
+            else
+            {
+                // sanitize stale blueprint bit so this core doesn't keep claiming main later
+                IsMainCore = false;
+                SaveCoreState();        // writes "0"
             }
             
             Session.TickScheduler.Schedule(() =>
@@ -117,7 +124,7 @@ namespace ShipCoreFramework
             return _groupComponent.CoreDictionary.Count(b => ((IMyCubeBlock)b.Key).BlockDefinition.SubtypeId == SubtypeId) == 0;
         }
         
-        private void SaveCoreState()
+        internal void SaveCoreState()
         {
             if (CoreBlock.Storage == null) CoreBlock.Storage = new MyModStorageComponent();
             CoreBlock.Storage[Session.CoreStateStorageGUID] = IsMainCore ? "1" : "0";
@@ -126,33 +133,14 @@ namespace ShipCoreFramework
         internal void CoreDestroyed()
         {
             var grid = CoreBlock.CubeGrid;
-            
             Utils.ShowNotification(
                 IsMainCore
                     ? $"Main core of grid {grid.CustomName} was destroyed!"
-                    : $"A backup core of grid {grid.CustomName} was destroyed!", 10000, grid.BigOwners.FirstOrDefault(), true);
+                    : $"A backup core of grid {grid.CustomName} was destroyed!",
+                10000, grid.BigOwners.FirstOrDefault(), true);
 
-            var newMainCore = _groupComponent.CoreDictionary.FirstOrDefault(kvp => kvp.Value != this).Value;
-            if (newMainCore != null)
-            {
-                newMainCore.IsMainCore = true;
-                newMainCore.SaveCoreState();
-                newMainCore.CoreBlock.RefreshCustomInfo();
-                _groupComponent.MainCoreComponent = newMainCore;
-            }
-            else
-            {
-                GridsPerFactionManager.RemoveGridGroup(_groupComponent);
-                GridsPerPlayerManager.RemoveGridGroup(_groupComponent);
-                try
-                {
-                    _groupComponent.ResetCore();
-                }
-                catch (Exception e)
-                {
-                    Utils.Log(e.ToString());
-                }
-            }
+            // Delegate to group to handle removal + failover deterministically
+            _groupComponent.OnCoreRemoved(this);
         }
     }
 }

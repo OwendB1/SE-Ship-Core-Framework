@@ -154,12 +154,14 @@ namespace ShipCoreFramework
                 CoreDictionary.Remove(block);
             }
             
-            
             foreach (var limit in GroupComponent.ShipCore.BlockLimits)
             {
-                if (!GroupComponent.BlocksPerLimit.ContainsKey(limit)) return;
-                GroupComponent.BlocksPerLimit[limit].Remove(block);
-                BlocksPerLimit[limit].Remove(block);
+                Dictionary<MyCubeBlock, double> dict1;
+                if (GroupComponent.BlocksPerLimit.TryGetValue(limit, out dict1)) dict1.Remove(block); 
+
+                Dictionary<MyCubeBlock, double> dict2;
+                if (!BlocksPerLimit.TryGetValue(limit, out dict2)) continue;
+                if (!ReferenceEquals(dict1, dict2)) dict2.Remove(block);
             }
             
             Blocks.Remove(block);

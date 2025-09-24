@@ -183,6 +183,19 @@ namespace ShipCoreFramework
 
             return hits.Select(hit => hit.HitEntity).OfType<IMyCubeGrid>().FirstOrDefault();
         }
+        
+        internal static bool TryFindByGridId(long gridEntityId, out GroupComponent group)
+        {
+            foreach (var gc in Session.GroupDict.Select(kv => kv.Value)
+                         .Where(gc => gc.GridDictionary.Keys
+                             .Any(g => g != null && g.EntityId == gridEntityId)))
+            {
+                group = gc;
+                return true;
+            }
+            group = null;
+            return false;
+        }
     }
 
     internal static class TextUtils

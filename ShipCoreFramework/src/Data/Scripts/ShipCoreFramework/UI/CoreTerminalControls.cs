@@ -3,6 +3,7 @@ using System.Text;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces.Terminal;
+using VRage.Game.Entity;
 using VRage.Utils;
 
 namespace ShipCoreFramework
@@ -31,48 +32,39 @@ namespace ShipCoreFramework
             checkbox.Tooltip = MyStringId.GetOrCompute("Mark this core as the main core for the grid.");
             checkbox.SupportsMultipleBlocks = false;
 
-            checkbox.Getter = b => b.GetGroupComponent()?.MainCoreComponent?.IsMainCore ?? false;
-
-            checkbox.Setter = delegate(IMyTerminalBlock b, bool val)
-            {
-                if (!val) return; // Unchecking not supported
-
-                var groupComp = b.GetGroupComponent();
-                if (groupComp == null)
-                {
-                    Utils.ShowMessage("Could not sync box, main grid group match was not found??");
-                    return;
-                }
-                
-                CoreComponent coreComp;
-                var getCoreComp = groupComp.CoreDictionary.TryGetValue((MyCubeBlock)b, out coreComp);
-                if (!getCoreComp)
-                {
-                    Utils.ShowMessage("Could not sync box, main core component match was not found??");
-                    return;
-                }
-                
-                foreach (var kvp in groupComp.CoreDictionary.Where(kvp => kvp.Value.IsMainCore))
-                {
-                    kvp.Value.IsMainCore = false;
-                    kvp.Value.CoreBlock.RefreshCustomInfo();
-                }
-
-                coreComp.IsMainCore = true;
-                b.RefreshCustomInfo();
+            checkbox.Getter = b => {
+                var group = b.GetGroupComponent();
+                CoreComponent cc;
+                return group != null
+                       && group.CoreDictionary.TryGetValue((MyCubeBlock)b, out cc)
+                       && cc.IsMainCore;
             };
 
-            checkbox.Enabled = delegate(IMyTerminalBlock b)
+            checkbox.Enabled = b => {
+                var group = b.GetGroupComponent();
+                if (group == null) return false;
+                CoreComponent cc;
+                return group.CoreDictionary.TryGetValue((MyCubeBlock)b, out cc) && !cc.IsMainCore;
+            };
+
+            checkbox.Setter = (b, val) =>
             {
+                if (!val) return;
                 var groupComp = b.GetGroupComponent();
                 if (groupComp == null)
                 {
-                    Utils.ShowMessage("Could not sync box, main grid group match was not found??");
-                    return false;
+                    Utils.ShowMessage("Could not set main core: group not found.");
+                    return;
                 }
-                CoreComponent coreComp;
-                var succeed = groupComp.CoreDictionary.TryGetValue((MyCubeBlock)b, out coreComp);
-                return succeed && coreComp.IsMainCore;
+                
+                Session.Networking.SendToServer(new PacketSetMainCore
+                {
+                    actionData = new SetMainCoreAction
+                    {
+                        CubegridEntityId = b.CubeGrid.EntityId,
+                        BlockEntityId = b.EntityId
+                    }
+                });
             };
 
             MyAPIGateway.TerminalControls.AddControl<IMyBeacon>(checkbox);

@@ -98,67 +98,66 @@ namespace ShipCoreFramework
         {
             var tempGridList = new List<IMyCubeGrid>();
             MyGroup.GetGrids(tempGridList);
-            MyAPIGateway.Parallel.ForEach(tempGridList, myCubeGrid =>
+            
+            foreach (var myCubeGrid in tempGridList)
             {
-                Utils.Log("ADDED IN INIT");
                 var startGrid = (MyCubeGrid)myCubeGrid;
-                if (startGrid.IsPreview) return;
+                if (startGrid.IsPreview) continue;
+
                 var gridComp = new GridComponent();
                 gridComp.Init(startGrid, MyGroup);
-                GridDictionary.Add(startGrid, gridComp);
-            });
+                GridDictionary[startGrid] = gridComp;
+            }
+            
             EnforceGroupPunishment();
         }
         
         internal void OnGridAdded(IMyGridGroupData addedTo, IMyCubeGrid grid, IMyGridGroupData removedFrom)
         {
-            var gridCast = grid as MyCubeGrid;
-            if (gridCast == null || gridCast.IsPreview) return;
-            
-            if (removedFrom != null) //Existing comp, transfer over and update fields
-            {
-                var oldGroup = Session.GroupDict[removedFrom];
-                var oldComp = oldGroup.GridDictionary[(MyCubeGrid)grid];
-                //Update old
-                oldGroup.GridDictionary.Remove((MyCubeGrid)grid);
+            var g = grid as MyCubeGrid;
+            if (g == null || g.IsPreview) return;
 
-                //Update new
-                oldComp.GroupData = addedTo;
-                GridDictionary.Add((MyCubeGrid)grid, oldComp);
-            }
-            else //New comp
+            if (removedFrom != null)
             {
-                var gridComp = new GridComponent();
-                gridComp.Init((MyCubeGrid)grid, MyGroup);
-                GridDictionary.Add((MyCubeGrid)grid, gridComp);
+                GroupComponent src;
+                GridComponent moved;
+                if (Session.GroupDict.TryGetValue(removedFrom, out src) &&
+                    src.GridDictionary.TryGetValue(g, out moved))
+                {
+                    src.GridDictionary.Remove(g);
+                    moved.GroupData = addedTo;
+                    GridDictionary[g] = moved;
+                }
+                else
+                {
+                    var gc = new GridComponent();
+                    gc.Init(g, MyGroup);
+                    GridDictionary[g] = gc;
+                }
             }
-            EnforceGroupPunishment();
+            else
+            {
+                var gc = new GridComponent();
+                gc.Init(g, MyGroup);
+                GridDictionary[g] = gc;
+            }
+
+            RebuildGroupState();
         }
-        
+
         internal void OnGridRemoved(IMyGridGroupData removedFrom, IMyCubeGrid grid, IMyGridGroupData addedTo)
         {
-            if (addedTo != null) return; //If it's being added to a group, the new group will handle the removal/update
-            GridComponent gridComp;
-            if (!GridDictionary.TryGetValue((MyCubeGrid)grid, out gridComp)) return;
-            
-            gridComp.Clean();
-            GridDictionary.Remove((MyCubeGrid)grid);
-            
-            BlocksPerLimit.Clear();
-            CoreDictionary.Clear();
+            var g = grid as MyCubeGrid;
+            if (g == null) return;
 
-            foreach (var comp in GridDictionary.Select(kvp => kvp.Value))
+            GridComponent comp;
+            if (GridDictionary.TryGetValue(g, out comp))
             {
-                foreach (var entry in comp.BlocksPerLimit)
-                {
-                    BlocksPerLimit.TryAdd(entry.Key, entry.Value);
-                }
-                
-                foreach (var entry in comp.CoreDictionary)
-                {
-                    CoreDictionary.TryAdd(entry.Key, entry.Value);
-                }
+                comp.Clean();
+                GridDictionary.Remove(g);
             }
+
+            RebuildGroupState();
         }
         
         private void EnforceGroupPunishment()
@@ -324,7 +323,7 @@ namespace ShipCoreFramework
             }
         }
         
-        private void RunBoostTimerTick()
+        internal void RunBoostTimerTick()
         {
             if (BoostEnabled)
             {
@@ -341,7 +340,7 @@ namespace ShipCoreFramework
             }
         }
 
-        private void RunActiveDefenseTimerTick()
+        internal void RunActiveDefenseTimerTick()
         {
             if (_activeDefenseEnabled)
             {
@@ -445,6 +444,73 @@ namespace ShipCoreFramework
                 Kinetic = ShipCore.PassiveDefenseModifiers.Kinetic * MainCoreComponent.CoreBlock.UpgradeValues["PassiveKineticDamage"],
                 Energy = ShipCore.PassiveDefenseModifiers.Energy * MainCoreComponent.CoreBlock.UpgradeValues["PassiveEnergyDamage"]
             };
+        }
+        
+        internal void OnCoreRemoved(CoreComponent lost)
+        {
+            CoreDictionary.Remove((MyCubeBlock)lost.CoreBlock);
+            RebuildGroupState();
+        }
+        
+        private void RebuildGroupState()
+        {
+            var comps = GridDictionary.Values.ToList();
+            
+            BlocksPerLimit.Clear();
+            CoreDictionary.Clear();
+
+            foreach (var comp in comps)
+            {
+                foreach (var kv in comp.BlocksPerLimit)
+                {
+                    Dictionary<MyCubeBlock, double> groupInner;
+
+                    if (!BlocksPerLimit.TryGetValue(kv.Key, out groupInner))
+                    {
+                        groupInner = kv.Value;
+                        BlocksPerLimit[kv.Key] = groupInner;
+                    }
+                    else
+                    {
+                        if (ReferenceEquals(groupInner, kv.Value)) continue;
+                        foreach (var entry in kv.Value.Where(entry => !groupInner.ContainsKey(entry.Key)))
+                        {
+                            groupInner[entry.Key] = entry.Value;
+                        }
+                    }
+                }
+                
+                foreach (var coreKvp in comp.CoreDictionary)
+                {
+                    CoreDictionary[coreKvp.Key] = coreKvp.Value;
+                }
+            }
+            
+            var oldMain = MainCoreComponent;
+            var candidates = CoreDictionary.Values
+                .Where(c => c?.CoreBlock?.CubeGrid != null &&
+                            GridDictionary.ContainsKey((MyCubeGrid)c.CoreBlock.CubeGrid))
+                .OrderBy(c => c.CoreBlock.EntityId)
+                .ToList();
+            
+            var newMain = candidates.FirstOrDefault();
+            if (newMain == null)
+            {
+                if (oldMain != null) ResetCore();
+                GridsPerFactionManager.RemoveGridGroup(this);
+                GridsPerPlayerManager.RemoveGridGroup(this);
+                return;
+            }
+
+            if (!ReferenceEquals(newMain, oldMain))
+            {
+                if (oldMain != null) ResetCore();
+                Activate(newMain);
+                return;
+            }
+            
+            ApplyModifiers(Modifiers);
+            EnforceGroupPunishment();
         }
         
         internal void Clean()

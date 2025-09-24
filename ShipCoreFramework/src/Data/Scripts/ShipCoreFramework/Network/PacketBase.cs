@@ -1,12 +1,16 @@
-using System.Linq;
+using System;
+using System.Collections.Generic;
 using ProtoBuf;
+using Sandbox.Game.Entities;
+using Sandbox.ModAPI;
+using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
 {
     [ProtoInclude(1000, typeof(PacketAction))]
-    //[ProtoInclude(2000, typeof(PacketActionResponse))]
-    // [ProtoInclude(3000, typeof(PacketStatsRequest))]
+    [ProtoInclude(2000, typeof(PacketSetMainCore))]
+    [ProtoInclude(3000, typeof(PacketSetMainCoreSync))]
     // [ProtoInclude(4000, typeof(PacketStatsSend))]
     // [ProtoInclude(5000, typeof(PacketRequestSettings))]
     // [ProtoInclude(6000, typeof(PacketSendSettings))]
@@ -43,39 +47,117 @@ namespace ShipCoreFramework
     }
     
     [ProtoContract]
-    internal class PacketMainCore : PacketBase
+    internal class PacketSetMainCore : PacketBase
     {
         [ProtoMember(200)]
-        internal CheckboxMainCore data;
-        internal PacketMainCore() { } // Empty constructor required for deserialization
-        internal PacketMainCore(CheckboxMainCore data)
+        internal SetMainCoreAction actionData;
+
+        internal PacketSetMainCore() { } // for deserialization
+        internal PacketSetMainCore(SetMainCoreAction actionData)
         {
-            this.data = data;
+            this.actionData = actionData;
         }
-        
+
         internal override void Received()
         {
-            var group = Session.GroupDict[data.Group];
-            var core= group.CoreDictionary.FirstOrDefault(kvp => kvp.Key.EntityId == data.BlockId);
+            GroupComponent group;
+            if (!Utils.TryFindByGridId(actionData.CubegridEntityId, out group)) return;
+
+            MyEntity ent;
+            if (!MyEntities.TryGetEntityById(actionData.BlockEntityId, out ent))
+                return;
+
+            var block = ent as MyCubeBlock;
+            if (block == null)
+                return;
+
+            CoreComponent newMain;
+            if (!group.CoreDictionary.TryGetValue(block, out newMain))
+                return;
+
+            var old = group.MainCoreComponent;
+            if (!ReferenceEquals(old, newMain))
+            {
+                if (old != null)
+                {
+                    old.IsMainCore = false;
+                    old.SaveCoreState();
+                    old.CoreBlock?.RefreshCustomInfo();
+                }
+
+                newMain.IsMainCore = true;
+                newMain.SaveCoreState();
+                newMain.CoreBlock?.RefreshCustomInfo();
+
+                group.Activate(newMain);
+            }
+            
+            var players = new List<IMyPlayer>();
+            MyAPIGateway.Players.GetPlayers(players);
+            var sync = new PacketSetMainCoreSync(new SetMainCoreAction {
+                CubegridEntityId = actionData.CubegridEntityId,
+                BlockEntityId = actionData.BlockEntityId
+            });
+            foreach (var p in players)
+                Session.Networking.SendToPlayer(sync, p.SteamUserId);
         }
     }
-
-
+    
     [ProtoContract]
-    internal class ButtonAction
+    internal class PacketSetMainCoreSync : PacketBase
+    {
+        [ProtoMember(300)]
+        internal SetMainCoreAction actionData;
+
+        internal PacketSetMainCoreSync() { } // for deserialization
+        internal PacketSetMainCoreSync(SetMainCoreAction actionData)
+        {
+            this.actionData = actionData;
+        }
+
+        internal override void Received()
+        {
+            GroupComponent group;
+            if (!Utils.TryFindByGridId(actionData.CubegridEntityId, out group)) return;
+
+            MyEntity ent;
+            if (!MyEntities.TryGetEntityById(actionData.BlockEntityId, out ent))
+                return;
+
+            var block = ent as MyCubeBlock;
+            if (block == null)
+                return;
+
+            foreach (var kv in group.CoreDictionary)
+            {
+                var isMain = kv.Key == block;
+                kv.Value.IsMainCore = isMain;
+                kv.Value.SaveCoreState();
+                var terminal = kv.Key as IMyTerminalBlock;
+                terminal?.RefreshCustomInfo();
+            }
+
+            CoreComponent newMain;
+            if (group.CoreDictionary.TryGetValue(block, out newMain))
+                group.Activate(newMain);
+        }
+    }
+    
+    [ProtoContract]
+    internal struct ButtonAction
     {
         [ProtoMember(1)]
         internal IMyGridGroupData Group;
         [ProtoMember(2)]
         internal bool IsBoost;
     }
-    
+
     [ProtoContract]
-    internal class CheckboxMainCore
+    internal struct SetMainCoreAction
     {
-        [ProtoMember(1)]
-        internal IMyGridGroupData Group;
-        [ProtoMember(2)]
-        internal long BlockId;
+        [ProtoMember(1)] 
+        internal long CubegridEntityId;
+        [ProtoMember(2)] 
+        internal long BlockEntityId;
     }
 }
