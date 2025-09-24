@@ -31,7 +31,6 @@ namespace ShipCoreFramework
         
         public void Init(IMyBeacon beacon, GridComponent gridComponent, GroupComponent groupComponent)
         {   
-            Utils.Log("Init");
             CoreBlock = beacon;
             if (Session.Config.SelectedNoCore == null)
             {

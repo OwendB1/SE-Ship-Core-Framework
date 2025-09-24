@@ -6,6 +6,7 @@ using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.Utils;
+using VRageMath;
 
 namespace ShipCoreFramework
 {
@@ -41,9 +42,6 @@ namespace ShipCoreFramework
         private float _activeDefenseDurationTimer;
         
         private static readonly MyStringHash DamageTypeBlockLimit = MyStringHash.GetOrCompute("BlockLimitsViolation");
-        private static readonly Dictionary<string, string> OppositeDirections = new Dictionary<string, string>{{ "Forward", "Backward" },{ "Backward", "Forward" },{ "Left", "Right" },{ "Right", "Left" },{ "Up", "Down" },{ "Down", "Up" }};
-        private static readonly Dictionary<string, string> RotateLeftXY = new Dictionary<string, string>{{ "Forward", "Right" },{ "Right", "Backward" },{ "Backward", "Left" },{ "Left", "Forward" },{ "Up", "Up" },{ "Down", "Down" }};
-        private static readonly Dictionary<string, string> RotateRightXY = new Dictionary<string, string>{{ "Forward", "Left" },{ "Left", "Backward"},{ "Backward", "Right" },{ "Right", "Forward" },{ "Up", "Up" },{ "Down", "Down" }};
         
         internal float ActiveDefenseDuration
         {
@@ -273,58 +271,55 @@ namespace ShipCoreFramework
         
         internal void ApplyModifiers(GridModifiers modifiers)
         {
-            foreach (var block in GridDictionary.Select(kvp => kvp.Value.Blocks)
-                         .SelectMany(blocks => 
-                         from block in blocks
-                         let terminalBlock = block as IMyTerminalBlock
-                         where terminalBlock != null
-                         select block))
-            {
-                CubeGridModifiers.ApplyModifiers(block, modifiers);
-            }
+            foreach (var kv in GridDictionary)
+            foreach (var blk in kv.Value.Blocks)
+                if (blk is IMyTerminalBlock) CubeGridModifiers.ApplyModifiers(blk, modifiers);
         }
         
         internal static bool IsValidDirection(IMyCubeBlock myCore, IMySlimBlock block, List<DirectionType> allowedDirections)
         {
-            if (myCore?.Orientation == null || block?.Orientation == null || allowedDirections.Count < 1) return true;
-            //if grid is on subgrid, ignore directional locking
-            if (myCore.CubeGrid != block.CubeGrid) return true;
-            var myCoreDirection = Convert.ToString(myCore.Orientation).Replace("[", "").Replace("]", "").Split(new [] { ',', ':' }, StringSplitOptions.RemoveEmptyEntries).ToList();
-            var blockDirection = Convert.ToString(block.Orientation).Replace("[", "").Replace("]", "").Split(new [] { ',', ':' }, StringSplitOptions.RemoveEmptyEntries).ToList();
-            myCoreDirection.RemoveAt(2);
-            blockDirection.RemoveAt(2);
-            myCoreDirection.RemoveAt(0);
-            blockDirection.RemoveAt(0);
-            Utils.Log($"Log Direction Check: \nCoreBlock:{myCoreDirection[0]}:{myCoreDirection[1]}\nBlockToCheck:{blockDirection[0]}:{blockDirection[1]}", 3);
-            //XY Axis
-            DirectionType xyDirection;
-            if (myCoreDirection[0] == blockDirection[0])
-            {
-                xyDirection = DirectionType.Forward;
-            }
-            else if (myCoreDirection[0] == OppositeDirections[blockDirection[0]])
-            {
-                xyDirection = DirectionType.Backward;
-            }
-            else if (myCoreDirection[0] == RotateLeftXY[blockDirection[0]])
-            {
-                xyDirection = DirectionType.Left;
-            }
-            else if (myCoreDirection[0] == RotateRightXY[blockDirection[0]])
-            {
-                xyDirection = DirectionType.Right;
-            }
-            else if (myCoreDirection[1] == blockDirection[0])
-            {
-                xyDirection = DirectionType.Up;
-            }
-            else
-            { 
-                xyDirection = DirectionType.Down;
-            }
-            Utils.Log($"Log Direction Check: Block {xyDirection}", 3);
+            // basic guards
+            if (myCore?.Orientation == null || block?.Orientation == null || allowedDirections == null || allowedDirections.Count == 0)
+                return true;
+
+            // different subgrids -> ignore locking (matches your original)
+            if (myCore.CubeGrid != block.CubeGrid)
+                return true;
+
+            // core axes as Base6Directions
+            var coreFDir = myCore.Orientation.Forward;
+            var coreUDir = myCore.Orientation.Up;
+
+            // convert to Vector3I
+            var F = Base6Directions.GetVector(coreFDir);
+            var U = Base6Directions.GetVector(coreUDir);
+
+            // derive opposite directions as vectors
+            var B = Base6Directions.GetVector(Base6Directions.GetOppositeDirection(coreFDir)); // backward
+            var D = Base6Directions.GetVector(Base6Directions.GetOppositeDirection(coreUDir)); // down
+
+            // derive left/right via cross products (note the ref/in/out form)
+            Vector3 L, R;
+            Vector3.Cross(ref U, ref F, out L); // left  = U × F
+            Vector3.Cross(ref F, ref U, out R); // right = F × U
+
+            // block forward vector
+            var BF = Base6Directions.GetVector(block.Orientation.Forward);
+
+            // classify relative direction exactly like your original logic
+            var xyDirection =
+                BF == F ? DirectionType.Forward :
+                BF == B ? DirectionType.Backward :
+                BF == L ? DirectionType.Left :
+                BF == R ? DirectionType.Right :
+                BF == U ? DirectionType.Up :
+                DirectionType.Down; // must be opposite of U
+
             var isValid = allowedDirections.Contains(xyDirection);
-            if (!isValid) Utils.ShowNotification($"{Utils.GetBlockSubtypeId(block)}: the direction {xyDirection} is invalid", 10000, myCore.CubeGrid.BigOwners.FirstOrDefault(),true);
+            if (!isValid)
+                Utils.ShowNotification($"{Utils.GetBlockSubtypeId(block)}: the direction {xyDirection} is invalid",
+                    10000, myCore.CubeGrid.BigOwners.FirstOrDefault(), true);
+
             return isValid;
         }
         
