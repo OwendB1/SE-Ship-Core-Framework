@@ -283,36 +283,34 @@ namespace ShipCoreFramework
                 return true;
 
             // different subgrids -> ignore locking (matches your original)
-            if (myCore.CubeGrid != block.CubeGrid)
-                return true;
+            if (myCore.CubeGrid != block.CubeGrid) return true;
 
             // core axes as Base6Directions
             var coreFDir = myCore.Orientation.Forward;
             var coreUDir = myCore.Orientation.Up;
 
             // convert to Vector3I
-            var F = Base6Directions.GetVector(coreFDir);
-            var U = Base6Directions.GetVector(coreUDir);
+            var f = Base6Directions.GetVector(coreFDir);
+            var u = Base6Directions.GetVector(coreUDir);
 
             // derive opposite directions as vectors
-            var B = Base6Directions.GetVector(Base6Directions.GetOppositeDirection(coreFDir)); // backward
-            var D = Base6Directions.GetVector(Base6Directions.GetOppositeDirection(coreUDir)); // down
+            var b = Base6Directions.GetVector(Base6Directions.GetOppositeDirection(coreFDir));
 
             // derive left/right via cross products (note the ref/in/out form)
-            Vector3 L, R;
-            Vector3.Cross(ref U, ref F, out L); // left  = U × F
-            Vector3.Cross(ref F, ref U, out R); // right = F × U
+            Vector3 l, r;
+            Vector3.Cross(ref u, ref f, out l); // left  = U × F
+            Vector3.Cross(ref f, ref u, out r); // right = F × U
 
             // block forward vector
-            var BF = Base6Directions.GetVector(block.Orientation.Forward);
+            var bf = Base6Directions.GetVector(block.Orientation.Forward);
 
             // classify relative direction exactly like your original logic
             var xyDirection =
-                BF == F ? DirectionType.Forward :
-                BF == B ? DirectionType.Backward :
-                BF == L ? DirectionType.Left :
-                BF == R ? DirectionType.Right :
-                BF == U ? DirectionType.Up :
+                bf == f ? DirectionType.Forward :
+                bf == b ? DirectionType.Backward :
+                bf == l ? DirectionType.Left :
+                bf == r ? DirectionType.Right :
+                bf == u ? DirectionType.Up :
                 DirectionType.Down; // must be opposite of U
 
             var isValid = allowedDirections.Contains(xyDirection);
