@@ -67,9 +67,9 @@ namespace ShipCoreFramework
 
         public override ScriptUpdate NeedsUpdate => ScriptUpdate.Update10; // frequency that Run() is called.
 
-        private GridLogic GridLogic => _terminalBlock?.GetMainGridLogic();
+        private GroupComponent GroupComponent => _terminalBlock?.GetGroupComponent();
         private MyCubeGrid Grid => _terminalBlock?.CubeGrid as MyCubeGrid;
-        private ShipCore ShipCore => GridLogic.ShipCore;
+        private ShipCore ShipCore => GroupComponent?.ShipCore;
 
         public override void Dispose()
         {
@@ -84,12 +84,12 @@ namespace ShipCoreFramework
         
         public override void Run()
         {
-            if (ModSessionManager.Config.SelectedNoCore == null) return;
+            if (Session.Config.SelectedNoCore == null) return;
             try
             {
                 base.Run(); // do not remove
                 _gridResultsTable.Clear();
-                if (!Constants.IsClient) return;
+                if (!Session.IsClient) return;
 
                 Draw();
             }
@@ -101,8 +101,9 @@ namespace ShipCoreFramework
 
         private void Draw()
         {
-            if (!Constants.IsClient) return;
-
+            if (!Session.IsClient) return;
+            if (GroupComponent == null) return;
+            
             var screenSize = Surface.SurfaceSize;
             var screenTopLeft = (Surface.TextureSize - screenSize) * 0.5f;
             var padding = new Vector2(10, 10);
@@ -178,7 +179,7 @@ namespace ShipCoreFramework
                 });
 
             if (ShipCore.BlockLimits != null)
-                foreach (var blockLimit in GridLogic.BlocksPerLimit)
+                foreach (var blockLimit in GroupComponent.BlocksPerLimit)
                 {
                     var countWeight = blockLimit.Value.Sum(l => l.Value);
                     _gridResultsTable.Rows.Add(new Row
@@ -205,7 +206,7 @@ namespace ShipCoreFramework
 
             var appliedModifiersTableTopLeft = currentPosition + new Vector2(0, 5);
 
-            foreach (var modifierValue in GridLogic.Modifiers.GetModifierValues())
+            foreach (var modifierValue in GroupComponent.Modifiers.GetModifierValues())
                 _appliedModifiersTable.Rows.Add(new Row
                 {
                     new Cell($"{modifierValue.Name}:"),

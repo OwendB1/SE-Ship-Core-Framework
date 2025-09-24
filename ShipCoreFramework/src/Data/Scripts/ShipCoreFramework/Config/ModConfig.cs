@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Xml.Serialization;
 using Sandbox.ModAPI;
 using VRageMath;
@@ -31,8 +30,8 @@ namespace ShipCoreFramework
         
         [XmlElement("DebugMode")] public bool DebugMode = false;
         [XmlElement("CombatLogging")] public bool CombatLogging = true;
-        [XmlElement("LOG_LEVEL")]public int LogLevel = 0; //messages with logPriority >= this will get logged, less than will be ignored
-        [XmlElement("CLIENT_OUTPUT_LOG_LEVEL")]public int ClientOutputLogLevel = 0; //messages with logPriority >= this will get output to clients
+        [XmlElement("LOG_LEVEL")]public int LogLevel = 2; //messages with logPriority >= this will get logged, less than will be ignored
+        [XmlElement("CLIENT_OUTPUT_LOG_LEVEL")]public int ClientOutputLogLevel = 2; //messages with logPriority >= this will get output to clients
 
         [XmlElement("MaxPossibleSpeedMetersPerSecond")] public float MaxPossibleSpeedMetersPerSecond = 300;
         [XmlElement("NoFlyZones")] public List<Zones> NoFlyZones = new List<Zones>();
@@ -57,13 +56,6 @@ namespace ShipCoreFramework
                 globalConfigWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this));
                 globalConfigWriter.Close();
                 Utils.Log($"Save Config: Saved {GlobalConfigFileName}", showInChat ? 3 : 0);
-
-                /* NOT READ FROM World Storage, so does not need saved in world storage.
-                var blockGroupsWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage("ShipCoreConfig_Groups.xml", typeof(BlockGroup[]));
-                blockGroupsWriter.Write(MyAPIGateway.Utilities.SerializeToXML(BlockGroups));
-                blockGroupsWriter.Close();
-                Utils.Log($"Save Config: Saved {BlockGroupsFileName}", showInChat ? 3 : 0);
-                */
                 Utils.SaveToSandbox(IgnoreAiKey, IgnoreAiFactions);
                 Utils.Log($"Stored Data In World Config: Saved {IgnoreAiKey}", showInChat ? 3 : 0);
                 Utils.SaveToSandbox(IgnoredFactionsKey, IgnoredFactionTags);
@@ -91,8 +83,7 @@ namespace ShipCoreFramework
                     var text = reader.ReadToEnd();
                     var import = MyAPIGateway.Utilities.SerializeFromXML<ModConfig>(text);
                     if (import == null) throw new Exception("Failed to load world config.");
-                    if (Constants.IsClient) { DebugMode = false; }
-                    else { DebugMode = import.DebugMode; }
+                    DebugMode = !Session.IsClient && import.DebugMode;
                     CombatLogging = import.CombatLogging;
                     LogLevel = import.LogLevel;
                     ClientOutputLogLevel = import.ClientOutputLogLevel;

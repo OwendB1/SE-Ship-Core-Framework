@@ -1,5 +1,3 @@
-#region
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,8 +6,6 @@ using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
-
-#endregion
 
 namespace ShipCoreFramework
 {
@@ -25,7 +21,7 @@ namespace ShipCoreFramework
         private static void ForwardToServer(string message)
         {
             var bytes = Encoding.UTF8.GetBytes(message);
-            MyAPIGateway.Multiplayer.SendMessageToServer(Constants.CommandsSyncId, bytes);
+            MyAPIGateway.Multiplayer.SendMessageToServer(Session.CommandsSyncId, bytes);
         }
         
         public static void OnChatCommand(ulong sender,string messageText, ref bool sendToOthers)
@@ -33,17 +29,17 @@ namespace ShipCoreFramework
             if (!messageText.StartsWith("/core", StringComparison.OrdinalIgnoreCase)) return;
 
             sendToOthers = false;
-            if(!Constants.IsServer){ForwardToServer(messageText);}
+            if(!Session.IsServer) ForwardToServer(messageText);
             CommmandSwitch(MyAPIGateway.Session.Player.IdentityId,messageText);
         }
         
-        private static void CommmandSwitch(long playerId,string messageText)
+        private static void CommmandSwitch(long playerId, string messageText)
         {
             var allArgs = messageText.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
             if (allArgs.Length < 2 || allArgs[1].Equals("help", StringComparison.OrdinalIgnoreCase))
             {
-                if(Constants.LocalPlayer!=null) ShowHelp();
+                if(Session.LocalPlayer != null) ShowHelp();
                 return;
             }
 
@@ -93,13 +89,13 @@ namespace ShipCoreFramework
                     modMessage+=IgnoreAi();
                     break;
                 case "info":
-                    if(Constants.LocalPlayer!=null) CoreInfo(playerId);
+                    if(Session.LocalPlayer!=null) CoreInfo(playerId);
                     return;
                 default:
                     modMessage += "The command you have typed was not recognized. Did you make a typo?";
                     break;
             }
-            if(Constants.IsServer)
+            if(Session.IsServer)
             {
                 MyVisualScriptLogicProvider.SendChatMessage(modMessage,"ShipCores: Server:", playerId, "Green");
             }
@@ -110,16 +106,16 @@ namespace ShipCoreFramework
         }
         private static string ReloadConfig()
         {
-            ModSessionManager.Config = null;
-            ModSessionManager.Config = new ModConfig();
-            ModSessionManager.Config.LoadConfig();
+            Session.Config = null;
+            Session.Config = new ModConfig();
+            Session.Config.LoadConfig();
             return "Config reloaded from disk.";
         }
 
         private static string ListCores()
         {
-            return ModSessionManager.Config.ShipCores.Count == 0 ? "No ship cores defined." : 
-                ModSessionManager.Config.ShipCores.Aggregate("", (current, core) => current + $"{core.UniqueName} (SubtypeId: {core.SubtypeId})");
+            return Session.Config.ShipCores.Count == 0 ? "No ship cores defined." : 
+                Session.Config.ShipCores.Aggregate("", (current, core) => current + $"{core.UniqueName} (SubtypeId: {core.SubtypeId})");
         }
 
         private static string CoreInfo(string[] args)
@@ -129,7 +125,7 @@ namespace ShipCoreFramework
                 return "Usage: /core coreinfo <uniquename>";
             }
             var infoName = string.Join(" ", args.Skip(1));
-            var infoCore = ModSessionManager.Config.ShipCores.FirstOrDefault(
+            var infoCore = Session.Config.ShipCores.FirstOrDefault(
                 c => c.UniqueName.Equals(infoName, StringComparison.OrdinalIgnoreCase));
             if (infoCore == null)
             {
@@ -140,20 +136,20 @@ namespace ShipCoreFramework
 
         private static string ListNoCores()
         {
-            return ModSessionManager.Config.NoCoreConfigs.Count == 0 ? "No 'no core' configs available." : 
-                ModSessionManager.Config.NoCoreConfigs.Aggregate("", (current, nc) => current + $"{nc.UniqueName} (SubtypeId: {nc.SubtypeId})");
+            return Session.Config.NoCoreConfigs.Count == 0 ? "No 'no core' configs available." : 
+                Session.Config.NoCoreConfigs.Aggregate("", (current, nc) => current + $"{nc.UniqueName} (SubtypeId: {nc.SubtypeId})");
         }
 
         private static string ListNoFlyZones()
         {
             var modMessage = "";
-            if (ModSessionManager.Config.NoFlyZones.Count == 0)
+            if (Session.Config.NoFlyZones.Count == 0)
             {
                 modMessage+="No NoFlyZones defined.";
                 return modMessage;
             }
             
-            foreach (var zone in ModSessionManager.Config.NoFlyZones)
+            foreach (var zone in Session.Config.NoFlyZones)
             {
                 var allowed = string.Join(", ", zone.AllowedCoresSubtype);
                 modMessage+=$"Zone {zone.Id}: Center={zone.Position}, Radius={zone.Radius}, AllowedCores=[{allowed}]";
@@ -165,22 +161,22 @@ namespace ShipCoreFramework
         {
             if (args.Length < 2)
             {
-                return $"Debug mode is {(ModSessionManager.Config.DebugMode ? "ON" : "OFF")}";
+                return $"Debug mode is {(Session.Config.DebugMode ? "ON" : "OFF")}";
             }
             var debugVal = args[1].ToLower();
-            ModSessionManager.Config.DebugMode = (debugVal == "on");
-            return $"Debug mode set to {(ModSessionManager.Config.DebugMode ? "ON" : "OFF")}";
+            Session.Config.DebugMode = (debugVal == "on");
+            return $"Debug mode set to {(Session.Config.DebugMode ? "ON" : "OFF")}";
         }
 
         private static string CombatLog(string[] args)
         {
             if (args.Length < 2)
             {
-                return $"Combat logging is {(ModSessionManager.Config.CombatLogging ? "ON" : "OFF")}";
+                return $"Combat logging is {(Session.Config.CombatLogging ? "ON" : "OFF")}";
             }
             var clVal = args[1].ToLower();
-            ModSessionManager.Config.CombatLogging = (clVal == "on");
-            return $"Combat logging set to {(ModSessionManager.Config.CombatLogging ? "ON" : "OFF")}";
+            Session.Config.CombatLogging = (clVal == "on");
+            return $"Combat logging set to {(Session.Config.CombatLogging ? "ON" : "OFF")}";
         }
 
         private static string Select(string[] args)
@@ -191,7 +187,7 @@ namespace ShipCoreFramework
             }
 
             var key = string.Join(" ", args.Skip(1));
-            var found = ModSessionManager.Config.NoCoreConfigs.FirstOrDefault(
+            var found = Session.Config.NoCoreConfigs.FirstOrDefault(
                 c => c.UniqueName.Equals(key, StringComparison.OrdinalIgnoreCase) ||
                      c.SubtypeId.Equals(key, StringComparison.OrdinalIgnoreCase));
 
@@ -200,8 +196,8 @@ namespace ShipCoreFramework
                 return $"No 'no core' config found matching '{key}'. Use /core listnocores.";
             }
 
-            ModSessionManager.Config.SelectedNoCore = found;
-            ModSessionManager.Config.SaveConfig(true);
+            Session.Config.SelectedNoCore = found;
+            Session.Config.SaveConfig(true);
             return $"Selected 'no core' config: {found.UniqueName} ({found.SubtypeId})";
         }
 
@@ -209,7 +205,7 @@ namespace ShipCoreFramework
         {
             if (args.Length == 1)
             {
-                return $"Current world speed limit: {ModSessionManager.Config.MaxPossibleSpeedMetersPerSecond} m/s";
+                return $"Current world speed limit: {Session.Config.MaxPossibleSpeedMetersPerSecond} m/s";
             }
 
             float newSpeed;
@@ -218,7 +214,7 @@ namespace ShipCoreFramework
                 return "Usage: /core setworldspeed <positive number>";
             }
 
-            ModSessionManager.Config.MaxPossibleSpeedMetersPerSecond = newSpeed;
+            Session.Config.MaxPossibleSpeedMetersPerSecond = newSpeed;
             return $"World speed limit set to {newSpeed} m/s (session config only).";
         }
 
@@ -253,14 +249,14 @@ namespace ShipCoreFramework
 
         private static string IgnoreAi()
         {
-            ModSessionManager.Config.IgnoreAiFactions = !ModSessionManager.Config.IgnoreAiFactions;
-            ModSessionManager.Config.SaveConfig(true);
-            return $"Set AI factions ignore to {ModSessionManager.Config.IgnoreAiFactions}.";
+            Session.Config.IgnoreAiFactions = !Session.Config.IgnoreAiFactions;
+            Session.Config.SaveConfig(true);
+            return $"Set AI factions ignore to {Session.Config.IgnoreAiFactions}.";
         }
 
         private static string ListIgnoredTags()
         {
-            var tags = ModSessionManager.Config.IgnoredFactionTags ?? (ModSessionManager.Config.IgnoredFactionTags = new List<string>());
+            var tags = Session.Config.IgnoredFactionTags ?? (Session.Config.IgnoredFactionTags = new List<string>());
             if (tags.Count == 0)
             {
                 return "No ignored faction tags.";
@@ -281,7 +277,7 @@ namespace ShipCoreFramework
                return "Tag cannot be empty.";
             }
 
-            var tags = ModSessionManager.Config.IgnoredFactionTags ?? (ModSessionManager.Config.IgnoredFactionTags = new List<string>());
+            var tags = Session.Config.IgnoredFactionTags ?? (Session.Config.IgnoredFactionTags = new List<string>());
             if (tags.Any(t => t.Equals(tag, StringComparison.OrdinalIgnoreCase)))
             {
                 return $"Tag '{tag}' is already ignored.";
@@ -289,7 +285,7 @@ namespace ShipCoreFramework
             }
 
             tags.Add(tag);
-            ModSessionManager.Config.SaveConfig(true);
+            Session.Config.SaveConfig(true);
             return $"Added ignored faction tag '{tag}'.";
         }
 
@@ -307,14 +303,14 @@ namespace ShipCoreFramework
 
             }
 
-            var tags = ModSessionManager.Config.IgnoredFactionTags ?? (ModSessionManager.Config.IgnoredFactionTags = new List<string>());
+            var tags = Session.Config.IgnoredFactionTags ?? (Session.Config.IgnoredFactionTags = new List<string>());
             var removed = tags.RemoveAll(t => t.Equals(tag, StringComparison.OrdinalIgnoreCase));
             if (removed == 0)
             {
                 return $"Tag '{tag}' was not in the ignore list.";
             }
 
-            ModSessionManager.Config.SaveConfig(true);
+            Session.Config.SaveConfig(true);
             return $"Removed ignored faction tag '{tag}'.";
         }
 
@@ -345,27 +341,28 @@ namespace ShipCoreFramework
                 }
             }
         
-            var gridLogic = targetGrid.GetMainGridLogic();
-            if (gridLogic?.ShipCore == null)
+            var gridGroup = Session.GroupDict.FirstOrDefault(groupKvp => groupKvp.Value.GridDictionary.Any(kvp => kvp.Key == targetGrid));
+            if (gridGroup.Value == null)
             {
                 Utils.ShowMessage($"Grid '{targetGrid.CustomName}' has no ship core or configuration.");
                 return;
             }
-            var shipCore = gridLogic.ShipCore;
-            if (gridLogic.OwningFaction != null &&(ModSessionManager.Config.IgnoreAiFactions && gridLogic.OwningFaction.IsEveryoneNpc() || ModSessionManager.Config.IgnoredFactionTags.Contains(gridLogic.OwningFaction.Tag)))
+            
+            var shipCore = gridGroup.Value.ShipCore;
+            if (gridGroup.Value.OwningFaction != null &&(Session.Config.IgnoreAiFactions && gridGroup.Value.OwningFaction.IsEveryoneNpc() || Session.Config.IgnoredFactionTags.Contains(gridGroup.Value.OwningFaction.Tag)))
             {
                 Utils.ShowMessage($"Grid '{targetGrid.CustomName}' is ignored.");
                 return;
             }
-            var limits = gridLogic.BlocksPerLimit;
+            var limits = gridGroup.Value.BlocksPerLimit;
             var concreteGrid = targetGrid as MyCubeGrid;
 
             var body = $"Grid: {targetGrid.CustomName}\nShip Class: {shipCore.UniqueName}\n\n";
-            if (gridLogic.ShipCore.MaxPerPlayer > 0)
+            if (gridGroup.Value.ShipCore.MaxPerPlayer > 0)
             {
-                if (GridsPerPlayerManager.PerPlayer.ContainsKey(player.IdentityId) && GridsPerPlayerManager.PerPlayer[player.IdentityId].ContainsKey(gridLogic.ShipCore.SubtypeId))
+                if (GridsPerPlayerManager.PerPlayer.ContainsKey(player.IdentityId) && GridsPerPlayerManager.PerPlayer[player.IdentityId].ContainsKey(gridGroup.Value.ShipCore.SubtypeId))
                 {
-                    body += $"Per Player Limit:{GridsPerPlayerManager.PerPlayer[player.IdentityId][gridLogic.ShipCore.SubtypeId].Count}/{gridLogic.ShipCore.MaxPerPlayer}\n";
+                    body += $"Per Player Limit:{GridsPerPlayerManager.PerPlayer[player.IdentityId][gridGroup.Value.ShipCore.SubtypeId].Count}/{gridGroup.Value.ShipCore.MaxPerPlayer}\n";
                 }
                 else
                 {
@@ -374,13 +371,13 @@ namespace ShipCoreFramework
                 
             }
             
-            if(gridLogic.ShipCore.MaxPerFaction > 0)
+            if(gridGroup.Value.ShipCore.MaxPerFaction > 0)
             {
-                if (gridLogic.OwningFaction?.FactionId != null)
+                if (gridGroup.Value.OwningFaction?.FactionId != null)
                 {
-                    if (GridsPerFactionManager.PerFaction.ContainsKey(gridLogic.OwningFaction.FactionId) && GridsPerFactionManager.PerFaction[gridLogic.OwningFaction.FactionId].ContainsKey(gridLogic.ShipCore.SubtypeId))
+                    if (GridsPerFactionManager.PerFaction.ContainsKey(gridGroup.Value.OwningFaction.FactionId) && GridsPerFactionManager.PerFaction[gridGroup.Value.OwningFaction.FactionId].ContainsKey(gridGroup.Value.ShipCore.SubtypeId))
                     {
-                        body += $"Per Faction Limit:{GridsPerFactionManager.PerFaction[gridLogic.OwningFaction.FactionId][gridLogic.ShipCore.SubtypeId].Count}/{gridLogic.ShipCore.MaxPerFaction}\n";
+                        body += $"Per Faction Limit:{GridsPerFactionManager.PerFaction[gridGroup.Value.OwningFaction.FactionId][gridGroup.Value.ShipCore.SubtypeId].Count}/{gridGroup.Value.ShipCore.MaxPerFaction}\n";
                     }
                     else
                     {
@@ -396,24 +393,24 @@ namespace ShipCoreFramework
             body += "Grid Statistics:\n";
             
             // Block Count
-            var blockCountStatus = shipCore.MaxBlocks > 0 ? $"{concreteGrid?.BlocksCount} / {shipCore.MaxBlocks}" : concreteGrid?.BlocksCount.ToString();
-            var blockCountPercent = shipCore.MaxBlocks > 0 ? concreteGrid?.BlocksCount / (float)shipCore.MaxBlocks * 100 : 0;
+            var blockCountStatus = shipCore.MaxBlocks > 0 ? $"{gridGroup.Value.GroupBlocksCount} / {shipCore.MaxBlocks}" : gridGroup.Value.GroupBlocksCount.ToString();
+            var blockCountPercent = shipCore.MaxBlocks > 0 ? gridGroup.Value.GroupBlocksCount / (float)shipCore.MaxBlocks * 100 : -1;
             body += $"  Blocks: {blockCountStatus}";
             if (shipCore.MaxBlocks > 0)
                 body += $" ({blockCountPercent:F1}%)";
             body += "\n";
             
             // Mass
-            var massStatus = shipCore.MaxMass > 0 ? $"{concreteGrid?.Mass:F0} / {shipCore.MaxMass:F0} kg" : $"{concreteGrid?.Mass:F0} kg";
-            var massPercent = shipCore.MaxMass > 0 ? concreteGrid?.Mass / shipCore.MaxMass * 100 : 0;
+            var massStatus = shipCore.MaxMass > 0 ? $"{gridGroup.Value.GroupMass:F0} / {shipCore.MaxMass:F0} kg" : $"{gridGroup.Value.GroupMass:F0} kg";
+            var massPercent = shipCore.MaxMass > 0 ? gridGroup.Value.GroupMass / shipCore.MaxMass * 100 : -1;
             body += $"  Mass: {massStatus}";
             if (shipCore.MaxMass > 0)
                 body += $" ({massPercent:F1}%)";
             body += "\n";
             
             // PCU
-            var pcuStatus = shipCore.MaxPCU > 0 ? $"{gridLogic.Blocks.Sum(b => b?.BlockDefinition?.PCU ?? 1)} / {shipCore.MaxPCU}" : gridLogic.Blocks.Sum(b => b.BlockDefinition.PCU).ToString();
-            var pcuPercent = shipCore.MaxPCU > 0 ? gridLogic.Blocks.Sum(b => b?.BlockDefinition?.PCU ?? 1) / (float)shipCore.MaxPCU * 100 : 0;
+            var pcuStatus = shipCore.MaxPCU > 0 ? $"{gridGroup.Value.GroupPCU} / {shipCore.MaxPCU}" : gridGroup.Value.GroupPCU.ToString();
+            var pcuPercent = shipCore.MaxPCU > 0 ? gridGroup.Value.GroupPCU / (float)shipCore.MaxPCU * 100 : -1;
             body += $"  PCU: {pcuStatus}";
             if (shipCore.MaxPCU > 0)
                 body += $" ({pcuPercent:F1}%)";
@@ -421,7 +418,7 @@ namespace ShipCoreFramework
             
             body += "Modifiers:\n";
 
-            var gridMods = gridLogic.Modifiers;
+            var gridMods = gridGroup.Value.Modifiers;
             foreach (var m in gridMods.GetModifierValues())
             {
                 var n = m.Name.ToLowerInvariant();
@@ -431,8 +428,8 @@ namespace ShipCoreFramework
                     body += $"  {m.Name}: x{m.Value:F2}\n";
             }
 
-            var passive = gridLogic.GetPassiveDefenseModifiers();
-            var active = gridLogic.GetActiveDefenseModifiers();
+            var passive = gridGroup.Value.GetPassiveDefenseModifiers();
+            var active = gridGroup.Value.GetActiveDefenseModifiers();
 
             if (passive != null)
             {
@@ -457,8 +454,8 @@ namespace ShipCoreFramework
                 body += $"    Environment: x{active.Environment:F2}\n";
                 body += $"    Energy: x{passive.Energy:F2}\n";
                 body += $"    Kinetic: x{passive.Kinetic:F2}\n";
-                body += $"  Duration: {gridLogic.ActiveDefenseDuration:F1}s\n";
-                body += $"  Cooldown: {gridLogic.ActiveDefenseCoolDown:F1}s\n";
+                body += $"  Duration: {gridGroup.Value.ActiveDefenseDuration:F1}s\n";
+                body += $"  Cooldown: {gridGroup.Value.ActiveDefenseCoolDown:F1}s\n";
             }
             body += "\n";
             
@@ -472,10 +469,9 @@ namespace ShipCoreFramework
                 body += "Block Limits:\n";
                 foreach (var blockLimit in shipCore.BlockLimits)
                 {
-                    
-                    var usedBlocks = limits.ContainsKey(blockLimit) ? limits[blockLimit] : new List<KeyValuePair<IMyCubeBlock, double>>();
+                    var usedBlocks = limits.ContainsKey(blockLimit) ? limits[blockLimit] : new Dictionary<MyCubeBlock, double>();
                     var totalWeight = usedBlocks.Sum(kvp => kvp.Value);
-                    var percentage = blockLimit.MaxCount > 0 ? (totalWeight / blockLimit.MaxCount * 100) : 0;
+                    var percentage = blockLimit.MaxCount > 0 ? totalWeight / blockLimit.MaxCount * 100 : 0;
                     
                     body += $"\n{blockLimit.Name}:\n";
                     body += $"  Used: {totalWeight:F1} / {blockLimit.MaxCount} ({percentage:F1}%)\n";
@@ -561,7 +557,7 @@ Raycasts from crosshairs to find a grid and displays all its core information.";
 
         private static bool CheckIfAdmin(long playerId)
         {
-            if(!Constants.IsMultiplayer){return true;}
+            if(!Session.MPActive) return true;
             var players = new List<IMyPlayer>();
             MyAPIGateway.Players.GetPlayers(players);
             return (from player in players where player.IdentityId == playerId 
