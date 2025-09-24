@@ -70,23 +70,36 @@ namespace ShipCoreFramework
         
         internal void Activate(CoreComponent coreComponent)
         {
+            var old = MainCoreComponent;
+            if (!ReferenceEquals(old, coreComponent))
+            {
+                if (old != null) old.IsMainCore = false;
+                coreComponent.IsMainCore = true;
+            }
+
             MainCoreComponent = coreComponent;
+
             var grid = MainCoreComponent.GridComponent.Grid;
             Utils.Log($"Activate: Activating logic for {((IMyCubeGrid)grid).CustomName} (group id: {EntityId})!");
-            
+
             GridsPerFactionManager.AddGridGroup(this);
             GridsPerPlayerManager.AddGridGroup(this);
-            
+
             ApplyModifiers(Modifiers);
             EnforceGroupPunishment();
         }
 
         internal void ResetCore()
         {
-            var grid = MainCoreComponent.GridComponent.Grid;
-            Utils.Log($"Reset: Resetting logic for {((IMyCubeGrid)grid).CustomName} (group id: {EntityId})!");
+            var old = MainCoreComponent;
+            if (old != null)
+            {
+                var grid = old.GridComponent.Grid;
+                Utils.Log($"Reset: Resetting logic for {((IMyCubeGrid)grid).CustomName} (group id: {EntityId})!");
+                old.IsMainCore = false;
+            }
             MainCoreComponent = null;
-            
+
             GridsPerFactionManager.RemoveGridGroup(this);
             GridsPerPlayerManager.RemoveGridGroup(this);
 

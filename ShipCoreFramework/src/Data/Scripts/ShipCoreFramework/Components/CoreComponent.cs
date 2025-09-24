@@ -10,11 +10,24 @@ namespace ShipCoreFramework
 {
     internal class CoreComponent
     {
+        private GroupComponent _groupComponent;
+        private bool _isMainCore;
+        
         internal string SubtypeId;
         internal IMyBeacon CoreBlock;
-        internal bool IsMainCore;
         internal GridComponent GridComponent;
-        private GroupComponent _groupComponent;
+        internal bool IsMainCore
+        {
+            get { return _isMainCore; }
+            set
+            {
+                if (_isMainCore == value) return;
+                _isMainCore = value;
+                
+                SaveCoreState();
+                CoreBlock?.RefreshCustomInfo();
+            }
+        }
         
         public void Init(IMyBeacon beacon, GridComponent gridComponent, GroupComponent groupComponent)
         {   
@@ -74,13 +87,10 @@ namespace ShipCoreFramework
             {
                 IsMainCore = true;
                 _groupComponent.Activate(this);
-                SaveCoreState();        // writes "1"
             }
             else
             {
-                // sanitize stale blueprint bit so this core doesn't keep claiming main later
                 IsMainCore = false;
-                SaveCoreState();        // writes "0"
             }
             
             Session.TickScheduler.Schedule(() =>
