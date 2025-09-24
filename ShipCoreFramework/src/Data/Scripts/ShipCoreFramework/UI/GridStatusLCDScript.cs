@@ -179,17 +179,19 @@ namespace ShipCoreFramework
                 });
 
             if (ShipCore.BlockLimits != null)
-                foreach (var blockLimit in GroupComponent.BlocksPerLimit)
+                foreach (var blockLimit in GroupComponent.ShipCore.BlockLimits)
                 {
-                    var countWeight = blockLimit.Value.Sum(l => l.Value);
+                    var usedBlocks = GroupComponent.BlocksPerLimit.ContainsKey(blockLimit) ? GroupComponent.BlocksPerLimit[blockLimit] : new Dictionary<MyCubeBlock, double>();
+                    var totalWeight = usedBlocks.Sum(kvp => kvp.Value);
+                    
                     _gridResultsTable.Rows.Add(new Row
                     {
-                        new Cell($"{blockLimit.Key.Name}:"),
-                        new Cell(countWeight.ToString(CultureInfo.InvariantCulture)),
+                        new Cell($"{blockLimit.Name}:"),
+                        new Cell(totalWeight.ToString(CultureInfo.InvariantCulture)),
                         new Cell("/"),
-                        new Cell(blockLimit.Key.MaxCount.ToString(CultureInfo.InvariantCulture),
-                            countWeight <= blockLimit.Key.MaxCount ? successColor : failColor),
-                        countWeight <= blockLimit.Key.MaxCount ? new Cell() : new Cell("X", failColor)
+                        new Cell(blockLimit.MaxCount.ToString(CultureInfo.InvariantCulture),
+                            totalWeight <= blockLimit.MaxCount ? successColor : failColor),
+                        totalWeight <= blockLimit.MaxCount ? new Cell() : new Cell("X", failColor)
                     });
                 }
 

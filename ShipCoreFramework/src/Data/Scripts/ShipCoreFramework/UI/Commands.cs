@@ -341,28 +341,27 @@ namespace ShipCoreFramework
                 }
             }
         
-            var gridGroup = Session.GroupDict.FirstOrDefault(groupKvp => groupKvp.Value.GridDictionary.Any(kvp => kvp.Key == targetGrid));
-            if (gridGroup.Value == null)
+            var groupKvp = Session.GroupDict.FirstOrDefault(gk => gk.Value.GridDictionary.Any(kvp => kvp.Key == targetGrid));
+            if (groupKvp.Value == null)
             {
                 Utils.ShowMessage($"Grid '{targetGrid.CustomName}' has no ship core or configuration.");
                 return;
             }
             
-            var shipCore = gridGroup.Value.ShipCore;
-            if (gridGroup.Value.OwningFaction != null &&(Session.Config.IgnoreAiFactions && gridGroup.Value.OwningFaction.IsEveryoneNpc() || Session.Config.IgnoredFactionTags.Contains(gridGroup.Value.OwningFaction.Tag)))
+            var shipCore = groupKvp.Value.ShipCore;
+            if (groupKvp.Value.OwningFaction != null &&(Session.Config.IgnoreAiFactions && groupKvp.Value.OwningFaction.IsEveryoneNpc() || Session.Config.IgnoredFactionTags.Contains(groupKvp.Value.OwningFaction.Tag)))
             {
                 Utils.ShowMessage($"Grid '{targetGrid.CustomName}' is ignored.");
                 return;
             }
-            var limits = gridGroup.Value.BlocksPerLimit;
-            var concreteGrid = targetGrid as MyCubeGrid;
+            var limits = groupKvp.Value.BlocksPerLimit;
 
             var body = $"Grid: {targetGrid.CustomName}\nShip Class: {shipCore.UniqueName}\n\n";
-            if (gridGroup.Value.ShipCore.MaxPerPlayer > 0)
+            if (groupKvp.Value.ShipCore.MaxPerPlayer > 0)
             {
-                if (GridsPerPlayerManager.PerPlayer.ContainsKey(player.IdentityId) && GridsPerPlayerManager.PerPlayer[player.IdentityId].ContainsKey(gridGroup.Value.ShipCore.SubtypeId))
+                if (GridsPerPlayerManager.PerPlayer.ContainsKey(player.IdentityId) && GridsPerPlayerManager.PerPlayer[player.IdentityId].ContainsKey(groupKvp.Value.ShipCore.SubtypeId))
                 {
-                    body += $"Per Player Limit:{GridsPerPlayerManager.PerPlayer[player.IdentityId][gridGroup.Value.ShipCore.SubtypeId].Count}/{gridGroup.Value.ShipCore.MaxPerPlayer}\n";
+                    body += $"Per Player Limit:{GridsPerPlayerManager.PerPlayer[player.IdentityId][groupKvp.Value.ShipCore.SubtypeId].Count}/{groupKvp.Value.ShipCore.MaxPerPlayer}\n";
                 }
                 else
                 {
@@ -371,13 +370,13 @@ namespace ShipCoreFramework
                 
             }
             
-            if(gridGroup.Value.ShipCore.MaxPerFaction > 0)
+            if(groupKvp.Value.ShipCore.MaxPerFaction > 0)
             {
-                if (gridGroup.Value.OwningFaction?.FactionId != null)
+                if (groupKvp.Value.OwningFaction?.FactionId != null)
                 {
-                    if (GridsPerFactionManager.PerFaction.ContainsKey(gridGroup.Value.OwningFaction.FactionId) && GridsPerFactionManager.PerFaction[gridGroup.Value.OwningFaction.FactionId].ContainsKey(gridGroup.Value.ShipCore.SubtypeId))
+                    if (GridsPerFactionManager.PerFaction.ContainsKey(groupKvp.Value.OwningFaction.FactionId) && GridsPerFactionManager.PerFaction[groupKvp.Value.OwningFaction.FactionId].ContainsKey(groupKvp.Value.ShipCore.SubtypeId))
                     {
-                        body += $"Per Faction Limit:{GridsPerFactionManager.PerFaction[gridGroup.Value.OwningFaction.FactionId][gridGroup.Value.ShipCore.SubtypeId].Count}/{gridGroup.Value.ShipCore.MaxPerFaction}\n";
+                        body += $"Per Faction Limit:{GridsPerFactionManager.PerFaction[groupKvp.Value.OwningFaction.FactionId][groupKvp.Value.ShipCore.SubtypeId].Count}/{groupKvp.Value.ShipCore.MaxPerFaction}\n";
                     }
                     else
                     {
@@ -393,24 +392,24 @@ namespace ShipCoreFramework
             body += "Grid Statistics:\n";
             
             // Block Count
-            var blockCountStatus = shipCore.MaxBlocks > 0 ? $"{gridGroup.Value.GroupBlocksCount} / {shipCore.MaxBlocks}" : gridGroup.Value.GroupBlocksCount.ToString();
-            var blockCountPercent = shipCore.MaxBlocks > 0 ? gridGroup.Value.GroupBlocksCount / (float)shipCore.MaxBlocks * 100 : -1;
+            var blockCountStatus = shipCore.MaxBlocks > 0 ? $"{groupKvp.Value.GroupBlocksCount} / {shipCore.MaxBlocks}" : groupKvp.Value.GroupBlocksCount.ToString();
+            var blockCountPercent = shipCore.MaxBlocks > 0 ? groupKvp.Value.GroupBlocksCount / (float)shipCore.MaxBlocks * 100 : -1;
             body += $"  Blocks: {blockCountStatus}";
             if (shipCore.MaxBlocks > 0)
                 body += $" ({blockCountPercent:F1}%)";
             body += "\n";
             
             // Mass
-            var massStatus = shipCore.MaxMass > 0 ? $"{gridGroup.Value.GroupMass:F0} / {shipCore.MaxMass:F0} kg" : $"{gridGroup.Value.GroupMass:F0} kg";
-            var massPercent = shipCore.MaxMass > 0 ? gridGroup.Value.GroupMass / shipCore.MaxMass * 100 : -1;
+            var massStatus = shipCore.MaxMass > 0 ? $"{groupKvp.Value.GroupMass:F0} / {shipCore.MaxMass:F0} kg" : $"{groupKvp.Value.GroupMass:F0} kg";
+            var massPercent = shipCore.MaxMass > 0 ? groupKvp.Value.GroupMass / shipCore.MaxMass * 100 : -1;
             body += $"  Mass: {massStatus}";
             if (shipCore.MaxMass > 0)
                 body += $" ({massPercent:F1}%)";
             body += "\n";
             
             // PCU
-            var pcuStatus = shipCore.MaxPCU > 0 ? $"{gridGroup.Value.GroupPCU} / {shipCore.MaxPCU}" : gridGroup.Value.GroupPCU.ToString();
-            var pcuPercent = shipCore.MaxPCU > 0 ? gridGroup.Value.GroupPCU / (float)shipCore.MaxPCU * 100 : -1;
+            var pcuStatus = shipCore.MaxPCU > 0 ? $"{groupKvp.Value.GroupPCU} / {shipCore.MaxPCU}" : groupKvp.Value.GroupPCU.ToString();
+            var pcuPercent = shipCore.MaxPCU > 0 ? groupKvp.Value.GroupPCU / (float)shipCore.MaxPCU * 100 : -1;
             body += $"  PCU: {pcuStatus}";
             if (shipCore.MaxPCU > 0)
                 body += $" ({pcuPercent:F1}%)";
@@ -418,7 +417,7 @@ namespace ShipCoreFramework
             
             body += "Modifiers:\n";
 
-            var gridMods = gridGroup.Value.Modifiers;
+            var gridMods = groupKvp.Value.Modifiers;
             foreach (var m in gridMods.GetModifierValues())
             {
                 var n = m.Name.ToLowerInvariant();
@@ -428,8 +427,8 @@ namespace ShipCoreFramework
                     body += $"  {m.Name}: x{m.Value:F2}\n";
             }
 
-            var passive = gridGroup.Value.GetPassiveDefenseModifiers();
-            var active = gridGroup.Value.GetActiveDefenseModifiers();
+            var passive = groupKvp.Value.GetPassiveDefenseModifiers();
+            var active = groupKvp.Value.GetActiveDefenseModifiers();
 
             if (passive != null)
             {
@@ -452,10 +451,10 @@ namespace ShipCoreFramework
                 body += $"    Rocket: x{active.Rocket:F2}\n";
                 body += $"    Explosion: x{active.Explosion:F2}\n";
                 body += $"    Environment: x{active.Environment:F2}\n";
-                body += $"    Energy: x{passive.Energy:F2}\n";
-                body += $"    Kinetic: x{passive.Kinetic:F2}\n";
-                body += $"  Duration: {gridGroup.Value.ActiveDefenseDuration:F1}s\n";
-                body += $"  Cooldown: {gridGroup.Value.ActiveDefenseCoolDown:F1}s\n";
+                body += $"    Energy: x{active.Energy:F2}\n";
+                body += $"    Kinetic: x{active.Kinetic:F2}\n";
+                body += $"  Duration: {groupKvp.Value.ActiveDefenseDuration:F1}s\n";
+                body += $"  Cooldown: {groupKvp.Value.ActiveDefenseCoolDown:F1}s\n";
             }
             body += "\n";
             

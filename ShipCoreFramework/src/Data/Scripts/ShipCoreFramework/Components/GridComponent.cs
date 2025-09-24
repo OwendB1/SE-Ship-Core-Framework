@@ -100,10 +100,11 @@ namespace ShipCoreFramework
                 var match = limit.BlockGroups
                     .SelectMany(g => g.BlockTypes)
                     .Any(b => b.TypeId == Utils.GetBlockTypeId(block) && (b.SubtypeId == "any" || b.SubtypeId == Utils.GetBlockSubtypeId(block)));
-
+                
                 if (!match) continue;
-                if (!GroupComponent.BlocksPerLimit.ContainsKey(limit)) continue;
-                var limitBlocks = GroupComponent.BlocksPerLimit[limit];
+                Dictionary<MyCubeBlock, double> limitBlocks;
+                var success = GroupComponent.BlocksPerLimit.TryGetValue(limit, out limitBlocks);
+                if (!success) limitBlocks = new Dictionary<MyCubeBlock, double>();
                 var countWeight = limitBlocks.Sum(b => b.Value);
                 var countForSpecificBlock = limit.BlockGroups.SelectMany(g => g.BlockTypes).First(b => b.TypeId == Utils.GetBlockTypeId(block) && (b.SubtypeId == "any" || b.SubtypeId == Utils.GetBlockSubtypeId(block))).CountWeight;
 
