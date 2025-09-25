@@ -320,7 +320,7 @@ namespace ShipCoreFramework
             
             if (targetGrid == null)
             {
-                Utils.ShowMessage("No grid found within 50m of crosshairs.");
+                Utils.ShowChatMessage("No grid found within 50m of crosshairs.");
                 return;
             }
 
@@ -332,11 +332,11 @@ namespace ShipCoreFramework
             {
                 if(CheckIfAdmin(playerId))
                 {
-                    Utils.ShowMessage($"This Grid is owned by: {player.DisplayName}");
+                    Utils.ShowChatMessage($"This Grid is owned by: {player.DisplayName}");
                 }
                 else
                 {
-                    Utils.ShowMessage("You don't own this grid.");
+                    Utils.ShowChatMessage("You don't own this grid.");
                     return;
                 }
             }
@@ -344,14 +344,14 @@ namespace ShipCoreFramework
             var groupKvp = Session.GroupDict.FirstOrDefault(gk => gk.Value.GridDictionary.Any(kvp => kvp.Key == targetGrid));
             if (groupKvp.Value == null)
             {
-                Utils.ShowMessage($"Grid '{targetGrid.CustomName}' has no ship core or configuration.");
+                Utils.ShowChatMessage($"Grid '{targetGrid.CustomName}' has no ship core or configuration.");
                 return;
             }
             
             var shipCore = groupKvp.Value.ShipCore;
             if (groupKvp.Value.OwningFaction != null &&(Session.Config.IgnoreAiFactions && groupKvp.Value.OwningFaction.IsEveryoneNpc() || Session.Config.IgnoredFactionTags.Contains(groupKvp.Value.OwningFaction.Tag)))
             {
-                Utils.ShowMessage($"Grid '{targetGrid.CustomName}' is ignored.");
+                Utils.ShowChatMessage($"Grid '{targetGrid.CustomName}' is ignored.");
                 return;
             }
             var limits = groupKvp.Value.BlocksPerLimit;

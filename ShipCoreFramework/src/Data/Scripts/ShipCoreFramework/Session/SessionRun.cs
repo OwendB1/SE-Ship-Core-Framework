@@ -75,23 +75,22 @@ namespace ShipCoreFramework
             MyAPIGateway.Session.Factions.FactionStateChanged -= FactionStateChanged;
             MyAPIGateway.Utilities.MessageEnteredSender -= Commands.OnChatCommand;
             var speedDifferential = Config.MaxPossibleSpeedMetersPerSecond - 100.0f;
-            if(IsServer)
+            MyAPIGateway.Multiplayer.UnregisterSecureMessageHandler(CommandsSyncId, Commands.ServerMessageHandler);
+            
+            try //Because this throws a NRE in keen code if you alt-F4
             {
-                MyAPIGateway.Multiplayer.UnregisterSecureMessageHandler(CommandsSyncId, Commands.ServerMessageHandler);
-                
-                try //Because this throws a NRE in keen code if you alt-F4
-                {
-                    MyAPIGateway.GridGroups.OnGridGroupCreated -= GridGroupsOnOnGridGroupCreated;
-                    MyAPIGateway.GridGroups.OnGridGroupDestroyed -= GridGroupsOnOnGridGroupDestroyed;
-                }
-                catch { /**/ }
+                MyAPIGateway.GridGroups.OnGridGroupCreated -= GridGroupsOnOnGridGroupCreated;
+                MyAPIGateway.GridGroups.OnGridGroupDestroyed -= GridGroupsOnOnGridGroupDestroyed;
             }
+            catch { /**/ }
+            
             var ammoDefinitions = new List<string>
             {
                 "Missile", "LargeCalibreShell", "MediumCalibreShell", "LargeCaliber", "AutocannonShell",
                 "LargeRailgunSlug", "SmallRailgunSlug", "SmallCaliber", "PistolCaliber", "Flare", "FireworkBlue",
                 "FireworkGreen", "FireworkRed", "FireworkPink", "FireworkYellow", "FireworkRainbow", "Shrapnel"
             };
+            
             foreach (var ammoId in ammoDefinitions)
                 try
                 {
@@ -137,7 +136,6 @@ namespace ShipCoreFramework
         public override void UpdateAfterSimulation()
         {
             TickScheduler.Update1();
-            Utils.ProcessUiQueue();
             CoreTerminalControls.RegisterOnce(); 
             MyAPIGateway.Parallel.StartBackground(() =>
             {

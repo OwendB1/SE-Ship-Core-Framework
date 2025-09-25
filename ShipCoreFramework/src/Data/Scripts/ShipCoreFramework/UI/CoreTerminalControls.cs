@@ -53,7 +53,7 @@ namespace ShipCoreFramework
                 var groupComp = b.GetGroupComponent();
                 if (groupComp == null)
                 {
-                    Utils.ShowMessage("Could not set main core: group not found.");
+                    Utils.ShowChatMessage("Could not set main core: group not found.");
                     return;
                 }
                 
@@ -81,7 +81,7 @@ namespace ShipCoreFramework
             {
                 var groupComp = b.GetGroupComponent();
                 if (groupComp != null) return groupComp.MainCoreComponent.IsMainCore;
-                Utils.ShowMessage("Could not sync box, main grid group match was not found??");
+                Utils.ShowChatMessage("Could not sync box, main grid group match was not found??");
                 return false;
             };
             
@@ -90,7 +90,7 @@ namespace ShipCoreFramework
                 var groupComp = b.GetGroupComponent();
                 if (groupComp == null)
                 {
-                    Utils.ShowMessage("Could not trigger boost, main grid group match was not found??");
+                    Utils.ShowChatMessage("Could not trigger boost, main grid group match was not found??");
                     return;
                 }
                 Session.Networking.SendToServer(new PacketAction{actionData = new ButtonAction {Group = groupComp.MyGroup, IsBoost = true }});
@@ -106,7 +106,7 @@ namespace ShipCoreFramework
             {
                 var groupComp = b.GetGroupComponent();
                 if (groupComp != null) return groupComp.MainCoreComponent.IsMainCore;
-                Utils.ShowMessage("Could not sync box, main grid group match was not found??");
+                Utils.ShowChatMessage("Could not sync box, main grid group match was not found??");
                 return false;
             };
             
@@ -115,7 +115,7 @@ namespace ShipCoreFramework
                 var groupComp = b.GetGroupComponent();
                 if (groupComp == null)
                 {
-                    Utils.ShowMessage("Could not trigger defense, main grid group match was not found??");
+                    Utils.ShowChatMessage("Could not trigger defense, main grid group match was not found??");
                     return;
                 }
                 Session.Networking.SendToServer(new PacketAction{actionData = new ButtonAction {Group = groupComp.MyGroup, IsBoost = false }});

@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Sandbox.Game;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.ModAPI;
@@ -15,50 +16,40 @@ namespace ShipCoreFramework
 {
     internal static class Utils
     {
-        private struct PendingNotify
-        {
-            internal readonly string Msg;
-            internal readonly int Time;
-            internal readonly string Font;
-            internal readonly bool IsCombat;
-
-            internal PendingNotify(string msg, int time, string font, bool isCombat)
-            {
-                Msg = msg;
-                Time = time;
-                Font = font;
-                IsCombat = isCombat;
-            }
-        }
         internal static long GetPlayerIdFromSteamId(ulong steamId)
         {
             var players = new List<IMyPlayer>();
             MyAPIGateway.Players.GetPlayers(players);
-            return (from player in players where player.SteamUserId == steamId select player.IdentityId).FirstOrDefault();
+            return (from player in players where player.SteamUserId == steamId select player.IdentityId)
+                .FirstOrDefault();
         }
-        
-        private static readonly Queue<PendingNotify> PendingNotifications = new Queue<PendingNotify>();
-        
+
         internal static void ShowNotification(string msg, int disappearTime = 10000, long playerEntityId = 0, bool isCombatLog = false, string font = MyFontEnum.Red)
         {
-            if (Session.IsServer) return;
-            if (playerEntityId != 0 && MyAPIGateway.Session.LocalHumanPlayer?.IdentityId != playerEntityId) return;
-            MyAPIGateway.Utilities.ShowMessage("[Ship Cores]: ", msg);
-            PendingNotifications.Enqueue(new PendingNotify(msg, disappearTime, font, isCombatLog));
+            if (isCombatLog)
+            {
+                if (!Session.Config.CombatLogging) return;
+                var players = new List<IMyPlayer>();
+                MyAPIGateway.Players.GetPlayers(players);
+                foreach (var p in players)
+                {
+                    Session.Networking.SendToPlayer(new PacketNotify(msg, disappearTime, font), p.SteamUserId);
+                }
+            }
+            else
+            {
+                if (playerEntityId != 0 && MyAPIGateway.Session.LocalHumanPlayer?.IdentityId != playerEntityId) return;
+                var steamUserId = MyAPIGateway.Players.TryGetSteamId(playerEntityId);
+                MyAPIGateway.Utilities.ShowMessage("[Ship Cores]: ", msg);
+                Session.Networking.SendToPlayer(new PacketNotify(msg, disappearTime, font), steamUserId);
+            }
             Log(msg);
         }
         
-        internal static void ProcessUiQueue()
+        internal static void ShowChatMessage(string msg, string tooltip = "[Ship Cores]", long playerEntityId = 0)
         {
-            if (PendingNotifications.Count <= 0) return;
-            var n = PendingNotifications.Dequeue();
-            if (n.IsCombat && Session.Config.CombatLogging == false) return;
-            MyAPIGateway.Utilities.ShowNotification(n.Msg, n.Time, n.Font);
-        }
-        
-        internal static void ShowMessage(string msg, string tooltip = "[Ship Cores]: ")
-        {
-            MyAPIGateway.Utilities.ShowMessage(tooltip, msg);
+            var userId = playerEntityId == 0 ? MyAPIGateway.Session.LocalHumanPlayer?.IdentityId : playerEntityId;
+            if (userId != null) MyVisualScriptLogicProvider.SendChatMessage(msg, tooltip, (long)userId);
         }
 
         internal static void Log(string msg, int logPriority = 0, string tooltip = "Ship Cores")

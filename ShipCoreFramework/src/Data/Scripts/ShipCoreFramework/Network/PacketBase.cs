@@ -11,7 +11,7 @@ namespace ShipCoreFramework
     [ProtoInclude(1000, typeof(PacketAction))]
     [ProtoInclude(2000, typeof(PacketSetMainCore))]
     [ProtoInclude(3000, typeof(PacketSetMainCoreSync))]
-    // [ProtoInclude(4000, typeof(PacketStatsSend))]
+    [ProtoInclude(4000, typeof(PacketNotify))]
     // [ProtoInclude(5000, typeof(PacketRequestSettings))]
     // [ProtoInclude(6000, typeof(PacketSendSettings))]
     [ProtoContract]
@@ -140,6 +140,24 @@ namespace ShipCoreFramework
             CoreComponent newMain;
             if (group.CoreDictionary.TryGetValue(block, out newMain))
                 group.Activate(newMain);
+        }
+    }
+    
+    [ProtoContract]
+    internal class PacketNotify : PacketBase {
+        [ProtoMember(400)] internal string Text;
+        [ProtoMember(401)] internal int TimeMs;
+        [ProtoMember(402)] internal string Font;
+
+        internal PacketNotify() {}  // for deserialization
+        internal PacketNotify(string text, int timeMs = 2000, string font = "Red") {
+            Text = text; TimeMs = timeMs; Font = font;
+        }
+
+        internal override void Received() {
+            // Runs on the client that received it
+            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+                MyAPIGateway.Utilities.ShowNotification(Text, TimeMs, Font));
         }
     }
     
