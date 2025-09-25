@@ -454,8 +454,11 @@ namespace ShipCoreFramework
         
         internal void OnCoreRemoved(CoreComponent lost)
         {
-            CoreDictionary.Remove((MyCubeBlock)lost.CoreBlock);
-            RebuildGroupState();
+            var blk = (MyCubeBlock)lost.CoreBlock;
+            var gc = lost.GridComponent;
+            gc?.CoreDictionary.Remove(blk);
+            CoreDictionary.Remove(blk);
+            MyAPIGateway.Utilities.InvokeOnGameThread(RebuildGroupState);
         }
         
         private void RebuildGroupState()
