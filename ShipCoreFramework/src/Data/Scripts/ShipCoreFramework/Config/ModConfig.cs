@@ -28,7 +28,7 @@ namespace ShipCoreFramework
         [XmlIgnore] public ShipCore SelectedNoCore;
         [XmlIgnore] public bool IgnoreAiFactions;
         
-        [XmlElement("DebugMode")] public bool DebugMode = false;
+        [XmlElement("DebugMode")] public bool DebugMode;
         [XmlElement("CombatLogging")] public bool CombatLogging = true;
         [XmlElement("LOG_LEVEL")]public int LogLevel = 2; //messages with logPriority >= this will get logged, less than will be ignored
         [XmlElement("CLIENT_OUTPUT_LOG_LEVEL")]public int ClientOutputLogLevel = 2; //messages with logPriority >= this will get output to clients
@@ -213,7 +213,7 @@ namespace ShipCoreFramework
         [XmlElement("AllowedCoresSubtype")]
         public List<string> AllowedCoresSubtype = new List<string>();
         [XmlElement("OverideBlockLimitsForceShutOff")]
-        public bool ForceOff = false;
+        public bool ForceOff;
     }
     
     [XmlRoot("CoreManifest")]
@@ -230,13 +230,13 @@ namespace ShipCoreFramework
         [XmlElement("UniqueName")]
         public string UniqueName = string.Empty;
         [XmlElement("ForceBroadCast")]
-        public bool ForceBroadCast = false;
+        public bool ForceBroadCast;
         [XmlElement("ForceBroadCastRange")]
-        public float ForceBroadCastRange = 0;
+        public float ForceBroadCastRange;
         [XmlElement("LargeGridStatic")]
-        public bool LargeGridStatic = false;
+        public bool LargeGridStatic;
         [XmlElement("LargeGridMobile")]
-        public bool LargeGridMobile = false;
+        public bool LargeGridMobile;
         [XmlElement("MaxBlocks")]
         public int MaxBlocks = -1;
         [XmlElement("MaxMass")]
@@ -254,9 +254,9 @@ namespace ShipCoreFramework
         [XmlElement("PassiveDefenseModifiers")]
         public GridDefenseModifiers PassiveDefenseModifiers = new GridDefenseModifiers();
         [XmlElement("SpeedBoostEnabled")]
-        public bool SpeedBoostEnabled = false;
+        public bool SpeedBoostEnabled;
         [XmlElement("EnableActiveDefenseModifiers")]
-        public bool EnableActiveDefenseModifiers = false;
+        public bool EnableActiveDefenseModifiers;
         [XmlElement("ActiveDefenseModifiers")]
         public GridDefenseModifiers ActiveDefenseModifiers = new GridDefenseModifiers();
         [XmlElement("BlockLimits")]

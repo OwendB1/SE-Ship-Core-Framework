@@ -59,7 +59,7 @@ namespace ShipCoreFramework
                 
                 Session.Networking.SendToServer(new PacketSetMainCore
                 {
-                    actionData = new SetMainCoreAction
+                    ActionData = new SetMainCoreAction
                     {
                         CubegridEntityId = b.CubeGrid.EntityId,
                         BlockEntityId = b.EntityId
@@ -93,7 +93,7 @@ namespace ShipCoreFramework
                     Utils.ShowChatMessage("Could not trigger boost, main grid group match was not found??");
                     return;
                 }
-                Session.Networking.SendToServer(new PacketAction{actionData = new ButtonAction {Group = groupComp.MyGroup, IsBoost = true }});
+                Session.Networking.SendToServer(new PacketAction{ActionData = new ButtonAction {Group = groupComp.MyGroup, IsBoost = true }});
             };
             MyAPIGateway.TerminalControls.AddAction<IMyBeacon>(boost);
 
@@ -118,7 +118,7 @@ namespace ShipCoreFramework
                     Utils.ShowChatMessage("Could not trigger defense, main grid group match was not found??");
                     return;
                 }
-                Session.Networking.SendToServer(new PacketAction{actionData = new ButtonAction {Group = groupComp.MyGroup, IsBoost = false }});
+                Session.Networking.SendToServer(new PacketAction{ActionData = new ButtonAction {Group = groupComp.MyGroup, IsBoost = false }});
             };
             MyAPIGateway.TerminalControls.AddAction<IMyBeacon>(defense);
         }

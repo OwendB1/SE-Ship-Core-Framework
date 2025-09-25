@@ -241,12 +241,6 @@ namespace ShipCoreFramework
         }
 
         [ProtoContract]
-        private class RequestSnapshot
-        {
-            [ProtoMember(1)] internal byte ServerId { get; set; }
-        }
-
-        [ProtoContract]
         private class LimitsState
         {
             [ProtoMember(1)] internal List<FactionEntry> Factions { get; } = new List<FactionEntry>();

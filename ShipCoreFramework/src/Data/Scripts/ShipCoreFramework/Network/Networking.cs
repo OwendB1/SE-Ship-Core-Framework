@@ -4,22 +4,22 @@ namespace ShipCoreFramework
 {
     internal class Networking
     {
-        internal readonly ushort ChannelId;
+        private readonly ushort _channelId;
         internal Networking(ushort channelId)
         {
-            ChannelId = channelId;
+            _channelId = channelId;
         }
         internal void Register()
         {
-            MyAPIGateway.Multiplayer.RegisterSecureMessageHandler(ChannelId, ReceivedPacket);
+            MyAPIGateway.Multiplayer.RegisterSecureMessageHandler(_channelId, ReceivedPacket);
         }
 
         internal void Unregister()
         {
-            MyAPIGateway.Multiplayer.UnregisterSecureMessageHandler(ChannelId, ReceivedPacket);
+            MyAPIGateway.Multiplayer.UnregisterSecureMessageHandler(_channelId, ReceivedPacket);
         }
 
-        private void ReceivedPacket(ushort handlerID, byte[] rawData, ulong ID, bool server)
+        private static void ReceivedPacket(ushort handlerId, byte[] rawData, ulong id, bool server)
         {
             var packet = MyAPIGateway.Utilities.SerializeFromBinary<PacketBase>(rawData);
             packet.Received();
@@ -30,7 +30,7 @@ namespace ShipCoreFramework
             if (!MyAPIGateway.Multiplayer.IsServer)
                 return;
             var bytes = MyAPIGateway.Utilities.SerializeToBinary(packet);
-            MyAPIGateway.Multiplayer.SendMessageTo(ChannelId, bytes, steamId);
+            MyAPIGateway.Multiplayer.SendMessageTo(_channelId, bytes, steamId);
         }
         
         internal void SendToServer(PacketBase packet)
@@ -41,7 +41,7 @@ namespace ShipCoreFramework
                 return;
             }
             var bytes = MyAPIGateway.Utilities.SerializeToBinary(packet);
-            MyAPIGateway.Multiplayer.SendMessageToServer(ChannelId, bytes);
+            MyAPIGateway.Multiplayer.SendMessageToServer(_channelId, bytes);
         }
     }
 }

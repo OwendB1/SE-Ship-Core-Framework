@@ -556,7 +556,7 @@ Raycasts from crosshairs to find a grid and displays all its core information.";
 
         private static bool CheckIfAdmin(long playerId)
         {
-            if(!Session.MPActive) return true;
+            if(!Session.MpActive) return true;
             var players = new List<IMyPlayer>();
             MyAPIGateway.Players.GetPlayers(players);
             return (from player in players where player.IdentityId == playerId 

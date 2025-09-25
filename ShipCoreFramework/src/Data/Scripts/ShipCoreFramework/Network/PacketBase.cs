@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using ProtoBuf;
 using Sandbox.Game.Entities;
@@ -25,17 +24,17 @@ namespace ShipCoreFramework
     internal class PacketAction : PacketBase
     {
         [ProtoMember(100)]
-        internal ButtonAction actionData;
+        internal ButtonAction ActionData;
         internal PacketAction() { } // Empty constructor required for deserialization
         internal PacketAction(ButtonAction actionData)
         {
-            this.actionData = actionData;
+            this.ActionData = actionData;
         }
         
         internal override void Received()
         {
-            var group = Session.GroupDict[actionData.Group];
-            if (actionData.IsBoost)
+            var group = Session.GroupDict[ActionData.Group];
+            if (ActionData.IsBoost)
             {
                 group.ActivateBoost();
             }
@@ -50,21 +49,21 @@ namespace ShipCoreFramework
     internal class PacketSetMainCore : PacketBase
     {
         [ProtoMember(200)]
-        internal SetMainCoreAction actionData;
+        internal SetMainCoreAction ActionData;
 
         internal PacketSetMainCore() { } // for deserialization
         internal PacketSetMainCore(SetMainCoreAction actionData)
         {
-            this.actionData = actionData;
+            this.ActionData = actionData;
         }
 
         internal override void Received()
         {
             GroupComponent group;
-            if (!Utils.TryFindByGridId(actionData.CubegridEntityId, out group)) return;
+            if (!Utils.TryFindByGridId(ActionData.CubegridEntityId, out group)) return;
 
             MyEntity ent;
-            if (!MyEntities.TryGetEntityById(actionData.BlockEntityId, out ent))
+            if (!MyEntities.TryGetEntityById(ActionData.BlockEntityId, out ent))
                 return;
 
             var block = ent as MyCubeBlock;
@@ -95,8 +94,8 @@ namespace ShipCoreFramework
             var players = new List<IMyPlayer>();
             MyAPIGateway.Players.GetPlayers(players);
             var sync = new PacketSetMainCoreSync(new SetMainCoreAction {
-                CubegridEntityId = actionData.CubegridEntityId,
-                BlockEntityId = actionData.BlockEntityId
+                CubegridEntityId = ActionData.CubegridEntityId,
+                BlockEntityId = ActionData.BlockEntityId
             });
             foreach (var p in players)
                 Session.Networking.SendToPlayer(sync, p.SteamUserId);
@@ -107,21 +106,21 @@ namespace ShipCoreFramework
     internal class PacketSetMainCoreSync : PacketBase
     {
         [ProtoMember(300)]
-        internal SetMainCoreAction actionData;
+        internal SetMainCoreAction ActionData;
 
         internal PacketSetMainCoreSync() { } // for deserialization
         internal PacketSetMainCoreSync(SetMainCoreAction actionData)
         {
-            this.actionData = actionData;
+            this.ActionData = actionData;
         }
 
         internal override void Received()
         {
             GroupComponent group;
-            if (!Utils.TryFindByGridId(actionData.CubegridEntityId, out group)) return;
+            if (!Utils.TryFindByGridId(ActionData.CubegridEntityId, out group)) return;
 
             MyEntity ent;
-            if (!MyEntities.TryGetEntityById(actionData.BlockEntityId, out ent))
+            if (!MyEntities.TryGetEntityById(ActionData.BlockEntityId, out ent))
                 return;
 
             var block = ent as MyCubeBlock;

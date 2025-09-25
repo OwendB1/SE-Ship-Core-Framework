@@ -15,12 +15,12 @@ namespace ShipCoreFramework
             Modifiers = new GridModifiers(), // Use default modifiers
             PassiveDefenseModifiers = new GridDefenseModifiers(),
             ActiveDefenseModifiers = new GridDefenseModifiers(),
-            BlockLimits = new BlockLimit[]
+            BlockLimits = new []
             {
                 new BlockLimit
                 {
                     Name = "Ship Tools",
-                    BlockGroupsShortHand = new string[]{"Drills","Welders","Grinders"},
+                    BlockGroupsShortHand = new []{"Drills","Welders","Grinders"},
                     MaxCount = 10f,
                     TurnedOffByNoFlyZone = true,
                     PunishmentType = PunishmentType.Delete,
@@ -29,7 +29,7 @@ namespace ShipCoreFramework
                 new BlockLimit
                 {
                     Name = "Weapons",
-                    BlockGroupsShortHand = new string[]{"Weaponry"},
+                    BlockGroupsShortHand = new []{"Weaponry"},
                     MaxCount = 1f,
                     TurnedOffByNoFlyZone = true,
                     PunishmentType = PunishmentType.Delete,
@@ -38,7 +38,7 @@ namespace ShipCoreFramework
                 new BlockLimit
                 {
                     Name = "Production",
-                    BlockGroupsShortHand = new string[]{"Production"},
+                    BlockGroupsShortHand = new []{"Production"},
                     MaxCount = 10f,
                     TurnedOffByNoFlyZone = true,
                     PunishmentType = PunishmentType.Delete,

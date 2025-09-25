@@ -7,7 +7,7 @@ using VRage.ModAPI;
 
 namespace ShipCoreFramework
 {
-    public partial class Session : MySessionComponentBase
+    public partial class Session
     {
         private void GridGroupsOnOnGridGroupCreated(IMyGridGroupData group)
         {

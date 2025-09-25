@@ -7,7 +7,7 @@ using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
 {
-    public partial class Session : MySessionComponentBase
+    public partial class Session
     {
         private static NexusAPI _myNexusApi;
         private bool _started;
@@ -15,7 +15,7 @@ namespace ShipCoreFramework
         internal const ushort CommandsSyncId = 32123;
         internal static bool IsClient;
         internal static bool IsServer;
-        internal static bool MPActive;
+        internal static bool MpActive;
         internal static ModConfig Config = new ModConfig();
         internal static Networking Networking = new Networking(32124);
         internal static readonly Dictionary<IMyGridGroupData, GroupComponent> GroupDict = new Dictionary<IMyGridGroupData, GroupComponent>();

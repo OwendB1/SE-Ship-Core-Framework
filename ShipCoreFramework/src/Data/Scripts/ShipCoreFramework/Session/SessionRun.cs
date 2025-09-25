@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using NexusModAPI;
-using ParallelTasks;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using VRage.Game;
@@ -32,9 +31,9 @@ namespace ShipCoreFramework
         
         public override void LoadData()
         {
-            MPActive = MyAPIGateway.Multiplayer.MultiplayerActive;
-            IsServer = (MPActive && MyAPIGateway.Multiplayer.IsServer) || !MPActive;
-            IsClient = (MPActive && !MyAPIGateway.Utilities.IsDedicated) || !MPActive;
+            MpActive = MyAPIGateway.Multiplayer.MultiplayerActive;
+            IsServer = (MpActive && MyAPIGateway.Multiplayer.IsServer) || !MpActive;
+            IsClient = (MpActive && !MyAPIGateway.Utilities.IsDedicated) || !MpActive;
             
             Config.LoadConfig();
             _myNexusApi = new NexusAPI(OnNexusEnabled);
