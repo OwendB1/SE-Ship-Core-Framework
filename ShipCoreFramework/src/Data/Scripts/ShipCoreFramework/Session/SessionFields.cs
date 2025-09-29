@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using NexusModAPI;
 using Sandbox.ModAPI;
-using VRage.Game.Components;
 using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
@@ -10,12 +9,14 @@ namespace ShipCoreFramework
     public partial class Session
     {
         private static NexusAPI _myNexusApi;
-        private bool _started;
+        private bool _startedNexus;
         
         internal const ushort CommandsSyncId = 32123;
         internal static bool IsClient;
         internal static bool IsServer;
         internal static bool MpActive;
+        internal static bool HasStarted;
+        internal static bool IsShuttingDown;
         internal static ModConfig Config = new ModConfig();
         internal static Networking Networking = new Networking(32124);
         internal static readonly Dictionary<IMyGridGroupData, GroupComponent> GroupDict = new Dictionary<IMyGridGroupData, GroupComponent>();

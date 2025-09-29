@@ -140,6 +140,26 @@ namespace ShipCoreFramework
             _headerTable.RenderToSprites(spritesToRender, screenTopLeft + padding, screenInnerWidth, new Vector2(15, 0), out currentPosition);
 
             //Render the results checklist
+
+            var punishModifiers = GroupComponent.PunishModifiers;
+            _gridResultsTable.Rows.Add(new Row
+            {
+                new Cell("Modifiers punished: "),
+                new Cell(""),
+                new Cell(""),
+                new Cell(punishModifiers ? "Yes" : "No", punishModifiers ? failColor : successColor),
+                punishModifiers ? new Cell("X", failColor) : new Cell()
+            });
+            
+            var punishSpeed = GroupComponent.PunishSpeed;
+            _gridResultsTable.Rows.Add(new Row
+            {
+                new Cell("Speed punished: "),
+                new Cell(""),
+                new Cell(""),
+                new Cell(punishSpeed ? "Yes" : "No", punishSpeed ? failColor : successColor),
+                punishSpeed ? new Cell("X", failColor) : new Cell()
+            });
             
             if (ShipCore.MaxBlocks > 1 )
             {

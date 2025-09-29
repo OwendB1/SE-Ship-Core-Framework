@@ -11,22 +11,21 @@ namespace ShipCoreFramework
     {
         internal static void EnforceSpeedLimit(GroupComponent groupComponent)
         {
-            
             MyAPIGateway.Parallel.ForEach(groupComponent.GridDictionary, kvp =>
             {
-                var gridComponent = kvp.Value;
+                if(kvp.Key.IsStatic) return;
+                if (kvp.Key?.Physics == null) return;
                 var maxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.Modifiers.MaxSpeed;
                 if (groupComponent.PunishSpeed) maxSpeed /= 4;
                 if (groupComponent.ShipCore != null && groupComponent.BoostEnabled)
                 {
                     maxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.Modifiers.MaxBoost;
                 }
-
-                if (gridComponent.Grid?.Physics == null) return;
-                var velocity = gridComponent.Grid.Physics.LinearVelocity;
+                
+                var velocity = kvp.Key.Physics.LinearVelocity;
                 if (velocity.LengthSquared() <= maxSpeed * maxSpeed) return;
                 velocity = Vector3.Normalize(velocity) * maxSpeed;
-                MyAPIGateway.Utilities.InvokeOnGameThread(() => gridComponent.Grid.Physics.SetSpeeds(velocity, gridComponent.Grid.Physics.AngularVelocity));
+                MyAPIGateway.Utilities.InvokeOnGameThread(() => kvp.Key.Physics.SetSpeeds(velocity, kvp.Key.Physics.AngularVelocity));
             });
         }
     }

@@ -70,6 +70,7 @@ namespace ShipCoreFramework
 
         protected override void UnloadData()
         {
+            IsShuttingDown = true;
             MyAPIGateway.Session.OnSessionReady -= SessionReady;
             MyAPIGateway.Session.Factions.FactionStateChanged -= FactionStateChanged;
             MyAPIGateway.Utilities.MessageEnteredSender -= Commands.OnChatCommand;
@@ -125,9 +126,9 @@ namespace ShipCoreFramework
         
         private void OnNexusEnabled()
         {
-            if (_started) return;
+            if (_startedNexus) return;
             if (!IsServer) return;
-            _started = true;
+            _startedNexus = true;
             LimitsNexusSync.Start(_myNexusApi);
             LimitsNexusSync.BroadcastSnapshot();
         }
@@ -135,6 +136,7 @@ namespace ShipCoreFramework
         public override void UpdateAfterSimulation()
         {
             TickScheduler.Update1();
+            if(!HasStarted) HasStarted = true;
             CoreTerminalControls.RegisterOnce(); 
             MyAPIGateway.Parallel.StartBackground(() =>
             {
