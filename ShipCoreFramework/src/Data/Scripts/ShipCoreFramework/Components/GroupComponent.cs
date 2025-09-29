@@ -82,9 +82,13 @@ namespace ShipCoreFramework
 
             GridsPerFactionManager.AddGridGroup(this);
             GridsPerPlayerManager.AddGridGroup(this);
-
-            ApplyModifiers(Modifiers);
-            EnforceGroupPunishment();
+            
+            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+            {
+                RebuildGroupState();
+                ApplyModifiers(Modifiers);
+                EnforceGroupPunishment();
+            });
         }
 
         internal void ResetCore()
@@ -100,9 +104,13 @@ namespace ShipCoreFramework
 
             GridsPerFactionManager.RemoveGridGroup(this);
             GridsPerPlayerManager.RemoveGridGroup(this);
-
-            ApplyModifiers(Modifiers);
-            EnforceGroupPunishment();
+            
+            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+            {
+                RebuildGroupState();
+                ApplyModifiers(Modifiers);
+                EnforceGroupPunishment();
+            });
         }
         
         internal void InitGrids()
@@ -253,20 +261,24 @@ namespace ShipCoreFramework
         {
             if ((GroupBlocksCount > ShipCore.MaxBlocks && ShipCore.MaxBlocks > 0) ||
                 (GroupPCU > ShipCore.MaxPCU && ShipCore.MaxPCU > 0) ||
-                (GroupMass > ShipCore.MaxMass && ShipCore.MaxMass > 0f))
+                (GroupMass > ShipCore.MaxMass && ShipCore.MaxMass > 0))
             {
                 if (ShipCore.LargeGridMobile) PunishSpeed = true;
                 if (ShipCore.LargeGridStatic) PunishModifiers = true;
             }
 
             if ((GroupBlocksCount >= ShipCore.MaxBlocks && ShipCore.MaxBlocks > 0) ||
-                (GroupPCU >= ShipCore.MaxPCU && ShipCore.MaxPCU > 0)||
+                (GroupPCU >= ShipCore.MaxPCU && ShipCore.MaxPCU > 0) ||
                 (GroupMass >= ShipCore.MaxMass && ShipCore.MaxMass > 0)) return;
             
             if (ShipCore.LargeGridMobile) PunishSpeed = false;
             if (ShipCore.LargeGridStatic) PunishModifiers = false;
+
+            if (!ShipCore.ForceBroadCast || CoreDictionary.Select(kvp => kvp.Key as IMyFunctionalBlock)
+                    .Any(func => func != null && func.Enabled)) return;
             
-            if (!ShipCore.ForceBroadCast == false || GridDictionary.Any(dict => dict.Value.Blocks.OfType<IMyFunctionalBlock>().Any(block => block.Enabled))) PunishSpeed = true;
+            if (ShipCore.LargeGridMobile) PunishSpeed = true;
+            if (ShipCore.LargeGridStatic) PunishModifiers = true;
         }
         
         internal void ApplyModifiers(GridModifiers modifiers)
@@ -278,33 +290,24 @@ namespace ShipCoreFramework
         
         internal static bool IsValidDirection(IMyCubeBlock myCore, IMySlimBlock block, List<DirectionType> allowedDirections)
         {
-            // basic guards
             if (myCore?.Orientation == null || block?.Orientation == null || allowedDirections == null || allowedDirections.Count == 0)
                 return true;
-
-            // different subgrids -> ignore locking (matches your original)
+            
             if (myCore.CubeGrid != block.CubeGrid) return true;
-
-            // core axes as Base6Directions
+            
             var coreFDir = myCore.Orientation.Forward;
             var coreUDir = myCore.Orientation.Up;
-
-            // convert to Vector3I
+            
             var f = Base6Directions.GetVector(coreFDir);
             var u = Base6Directions.GetVector(coreUDir);
-
-            // derive opposite directions as vectors
             var b = Base6Directions.GetVector(Base6Directions.GetOppositeDirection(coreFDir));
 
-            // derive left/right via cross products (note the ref/in/out form)
+            // derive left/right via cross products
             Vector3 l, r;
             Vector3.Cross(ref u, ref f, out l); // left  = U × F
             Vector3.Cross(ref f, ref u, out r); // right = F × U
-
-            // block forward vector
+            
             var bf = Base6Directions.GetVector(block.Orientation.Forward);
-
-            // classify relative direction exactly like your original logic
             var xyDirection =
                 bf == f ? DirectionType.Forward :
                 bf == b ? DirectionType.Backward :
@@ -463,6 +466,7 @@ namespace ShipCoreFramework
         
         private void RebuildGroupState()
         {
+            if (!Session.HasStarted || Session.IsShuttingDown) return;
             var comps = GridDictionary.Values.ToList();
             
             BlocksPerLimit.Clear();

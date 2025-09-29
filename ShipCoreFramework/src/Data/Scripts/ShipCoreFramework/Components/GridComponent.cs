@@ -14,6 +14,9 @@ namespace ShipCoreFramework
         internal readonly Dictionary<BlockLimit, Dictionary<MyCubeBlock, double>> BlocksPerLimit = new Dictionary<BlockLimit, Dictionary<MyCubeBlock, double>>();
         internal readonly Dictionary<MyCubeBlock, CoreComponent> CoreDictionary = new Dictionary<MyCubeBlock, CoreComponent>();
         
+        // public readonly Dictionary<MyCubeBlock, double> Blocks = new Dictionary<MyCubeBlock, double>(64);
+        // public double TotalWeight;
+        
         private GroupComponent GroupComponent => Session.GroupDict[GroupData];
 
         internal void Init(MyCubeGrid grid, IMyGridGroupData groupData)
@@ -109,8 +112,6 @@ namespace ShipCoreFramework
                 if (!GroupComponent.BlocksPerLimit.TryGetValue(limit, out limitBlocks))
                 {
                     limitBlocks = new Dictionary<MyCubeBlock, double>();
-                    GroupComponent.BlocksPerLimit[limit] = limitBlocks;
-                    BlocksPerLimit[limit] = limitBlocks;
                 }
 
                 var countWeight = limitBlocks.Count == 0 ? 0 : limitBlocks.Values.Sum();
@@ -120,7 +121,7 @@ namespace ShipCoreFramework
                 if (countWeight + countForSpecificBlock > limit.MaxCount)
                 {
                     Utils.ShowNotification($"{subtypeId} violates Blocklimit {limit.Name}: {countWeight + countForSpecificBlock}/{limit.MaxCount}");
-                    RemoveAndRefund(block.SlimBlock);
+                    GroupComponent.WhackABlock(block, limit.PunishmentType);
                     return true;
                 }
 
@@ -129,7 +130,7 @@ namespace ShipCoreFramework
                     if (!GroupComponent.IsValidDirection(GroupComponent.MainCoreComponent.CoreBlock, block.SlimBlock, limit.AllowedDirections))
                     {
                         Utils.ShowNotification($"{subtypeId} violated directional locking!");
-                        RemoveAndRefund(block.SlimBlock);
+                        GroupComponent.WhackABlock(block, limit.PunishmentType);
                         return true;
                     }
                 }
@@ -138,8 +139,11 @@ namespace ShipCoreFramework
                     Utils.Log("Log Direction Check: \nCoreBlock is null", 3);
                 }
                 
-                if (!limitBlocks.ContainsKey(block))
-                    limitBlocks[block] = countForSpecificBlock;
+                if (!limitBlocks.ContainsKey(block)) limitBlocks[block] = countForSpecificBlock;
+                else limitBlocks[block] += countForSpecificBlock;
+                
+                GroupComponent.BlocksPerLimit[limit] = limitBlocks;
+                BlocksPerLimit[limit] = limitBlocks;
             }
             return false;
         }
@@ -175,16 +179,18 @@ namespace ShipCoreFramework
             var func = obj as IMyFunctionalBlock;
             if (func == null) return;
             if (!func.Enabled) return;
-
-            foreach (var blockLimit in GroupComponent.BlocksPerLimit)
+            
+            foreach (var kvp in GroupComponent.BlocksPerLimit.Where(kvp => kvp.Key.BlockGroups.Any(group =>
+                         group.BlockTypes.Any(blockType => blockType.TypeId == Utils.GetBlockTypeId(obj) && 
+                                                           blockType.SubtypeId == Utils.GetBlockSubtypeId(obj)))))
             {
-                var maxCount = blockLimit.Key.MaxCount;
-                var countWeight = blockLimit.Value.Sum(kvp => kvp.Value);
+                var maxCount = kvp.Key.MaxCount;
+                var countWeight = kvp.Value.Sum(dict => dict.Value);
 
                 if (countWeight <= maxCount) continue;
                 var over = countWeight - maxCount;
 
-                foreach (var entry in blockLimit.Value.OrderByDescending(e => e.Value))
+                foreach (var entry in kvp.Value.OrderByDescending(e => e.Value))
                 {
                     if (over <= 0d) break;
                     GroupComponent.WhackABlock(entry.Key, PunishmentType.ShutOff);
