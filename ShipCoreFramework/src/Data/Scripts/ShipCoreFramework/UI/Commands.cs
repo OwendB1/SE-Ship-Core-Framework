@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using Sandbox.Game;
@@ -354,7 +355,6 @@ namespace ShipCoreFramework
                 Utils.ShowChatMessage($"Grid '{targetGrid.CustomName}' is ignored.");
                 return;
             }
-            var limits = groupKvp.Value.BlocksPerLimit;
 
             var body = $"Grid: {targetGrid.CustomName}\nShip Class: {shipCore.UniqueName}\n\n";
             if (groupKvp.Value.ShipCore.MaxPerPlayer > 0)
@@ -468,24 +468,81 @@ namespace ShipCoreFramework
                 body += "Block Limits:\n";
                 foreach (var blockLimit in shipCore.BlockLimits)
                 {
-                    var usedBlocks = limits.ContainsKey(blockLimit) ? limits[blockLimit] : new Dictionary<MyCubeBlock, double>();
-                    var totalWeight = usedBlocks.Sum(kvp => kvp.Value);
-                    var percentage = blockLimit.MaxCount > 0 ? totalWeight / blockLimit.MaxCount * 100 : 0;
-                    
-                    body += $"\n{blockLimit.Name}:\n";
-                    body += $"  Used: {totalWeight:F1} / {blockLimit.MaxCount} ({percentage:F1}%)\n";
-                    body += $"  Punishment: {blockLimit.PunishmentType}\n";
+                    double totalWeight;
+                    if (!groupKvp.Value.CountPerLimit.TryGetValue(blockLimit, out totalWeight))
+                        totalWeight = 0d;
 
-                    if (usedBlocks.Count <= 0 || usedBlocks.Count > 10) continue; // Show individual blocks if not too many
-                    body += "  Blocks:\n";
-                    foreach (var block in usedBlocks.Take(10))
+                    var percentage = blockLimit.MaxCount > 0
+                        ? (totalWeight / blockLimit.MaxCount) * 100d
+                        : 0d;
+
+                    body += "\n" + blockLimit.Name + ":\n";
+                    body += "  Used: " + totalWeight.ToString("F1", CultureInfo.InvariantCulture)
+                         + " / " + blockLimit.MaxCount.ToString(CultureInfo.InvariantCulture)
+                         + " (" + percentage.ToString("F1", CultureInfo.InvariantCulture) + "%)\n";
+                    body += "  Punishment: " + blockLimit.PunishmentType + "\n";
+
+                    LimitWeightMap map;
+                    if (!groupKvp.Value.WeightMaps.TryGetValue(blockLimit, out map))
+                        continue;
+
+                    var sample = new List<KeyValuePair<MyCubeBlock, double>>(10);
+                    var totalCount = 0;
+
+                    foreach (var gridKvp in groupKvp.Value.GridDictionary)
                     {
-                        var blockName = block.Key.DisplayNameText ?? block.Key.DefinitionDisplayNameText;
-                        body += $"    - {blockName} (Weight: {block.Value})\n";
+                        var gridComp = gridKvp.Value;
+                        LimitBucket bucket;
+                        if (!gridComp.Limits.TryGetValue(blockLimit, out bucket))
+                            continue;
+
+                        foreach (var blk in bucket.Members)
+                        {
+                            if (blk == null || blk.Closed || blk.CubeGrid == null) continue;
+
+                            var w = map.Get(blk, GridComponent.KeyOf);
+                            if (w <= 0d) continue;
+
+                            totalCount++;
+
+                            // Keep 'sample' as the 10 least-heavy items (ascending by weight)
+                            if (sample.Count == 0)
+                            {
+                                sample.Add(new KeyValuePair<MyCubeBlock, double>(blk, w));
+                            }
+                            else
+                            {
+                                var inserted = false;
+                                for (var si = 0; si < sample.Count; si++)
+                                {
+                                    if (!(w < sample[si].Value)) continue;
+                                    sample.Insert(si, new KeyValuePair<MyCubeBlock, double>(blk, w));
+                                    inserted = true;
+                                    break;
+                                }
+                                if (!inserted)
+                                {
+                                    sample.Add(new KeyValuePair<MyCubeBlock, double>(blk, w));
+                                }
+                                if (sample.Count > 10)
+                                {
+                                    sample.RemoveAt(sample.Count - 1);
+                                }
+                            }
+                        }
                     }
-                    if (usedBlocks.Count > 10)
+
+                    if (totalCount <= 0) continue;
+                    body += "  Blocks:\n";
+                    foreach (var kv in sample)
                     {
-                        body += $"    ... and {usedBlocks.Count - 10} more\n";
+                        var b = kv.Key;
+                        var blockName = b.DisplayNameText ?? b.DefinitionDisplayNameText;
+                        body += "    - " + blockName + " (Weight: " + kv.Value.ToString("F1", CultureInfo.InvariantCulture) + ")\n";
+                    }
+                    if (totalCount > 10)
+                    {
+                        body += "    ... and " + (totalCount - 10) + " more\n";
                     }
                 }
             }

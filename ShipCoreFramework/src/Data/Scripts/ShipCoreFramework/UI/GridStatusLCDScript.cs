@@ -198,22 +198,24 @@ namespace ShipCoreFramework
                     Grid.BlocksPCU <= ShipCore.MaxPCU ? new Cell() : new Cell("X", failColor)
                 });
 
-            if (ShipCore.BlockLimits != null)
+            if (GroupComponent.ShipCore.BlockLimits != null)
+            {
                 foreach (var blockLimit in GroupComponent.ShipCore.BlockLimits)
                 {
-                    var usedBlocks = GroupComponent.BlocksPerLimit.ContainsKey(blockLimit) ? GroupComponent.BlocksPerLimit[blockLimit] : new Dictionary<MyCubeBlock, double>();
-                    var totalWeight = usedBlocks.Sum(kvp => kvp.Value);
-                    
+                    double totalWeight;
+                    if (!GroupComponent.CountPerLimit.TryGetValue(blockLimit, out totalWeight)) totalWeight = 0d;
+                    var isOk = totalWeight <= blockLimit.MaxCount;
+
                     _gridResultsTable.Rows.Add(new Row
                     {
-                        new Cell($"{blockLimit.Name}:"),
+                        new Cell(blockLimit.Name + ":"),
                         new Cell(totalWeight.ToString(CultureInfo.InvariantCulture)),
                         new Cell("/"),
-                        new Cell(blockLimit.MaxCount.ToString(CultureInfo.InvariantCulture),
-                            totalWeight <= blockLimit.MaxCount ? successColor : failColor),
-                        totalWeight <= blockLimit.MaxCount ? new Cell() : new Cell("X", failColor)
+                        new Cell(blockLimit.MaxCount.ToString(CultureInfo.InvariantCulture), isOk ? successColor : failColor),
+                        isOk ? new Cell() : new Cell("X", failColor)
                     });
                 }
+            }
 
             var gridResultsTableTopLeft = currentPosition + new Vector2(0, 5);
 

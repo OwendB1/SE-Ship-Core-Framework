@@ -49,7 +49,7 @@ namespace ShipCoreFramework
                                     .SelectMany(g => g.BlockTypes)
                                     .Any(b => b.TypeId == Utils.GetBlockTypeId(block) && (b.SubtypeId=="any" || b.SubtypeId == Utils.GetBlockSubtypeId(block)));
 
-                                if (!match){continue;}
+                                if (!match) continue;
                                 if(limit.TurnedOffByNoFlyZone)
                                 {
                                     groupComponent.WhackABlock(block, limit.PunishmentType, DamageTypeNoFlyZone);
