@@ -39,7 +39,6 @@ namespace ShipCoreFramework
             {
                 if (playerEntityId != 0 && MyAPIGateway.Session.LocalHumanPlayer?.IdentityId != playerEntityId) return;
                 var steamUserId = MyAPIGateway.Players.TryGetSteamId(playerEntityId);
-                MyAPIGateway.Utilities.ShowMessage("[Ship Cores]: ", msg);
                 Session.Networking.SendToPlayer(new PacketNotify(msg, disappearTime, font), steamUserId);
             }
             Log(msg);

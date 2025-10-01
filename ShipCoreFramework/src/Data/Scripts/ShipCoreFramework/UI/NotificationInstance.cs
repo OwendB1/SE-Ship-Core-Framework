@@ -5,21 +5,29 @@ namespace ShipCoreFramework
 {
     public static class NotificationInstance
     {
-        private static IMyHudNotification _noot;
+        private static IMyHudNotification _notification;
+        private static int _baseMs;
+        private static string _font;
 
         public static void ShowNotification(string text, int ms = 1000, string font = "Red")
         {
-            if (_noot == null) _noot = MyAPIGateway.Utilities.CreateNotification("", ms, font);
-            if (_noot.Text == text && _noot.AliveTime == ms) return;
+            if (_notification == null || _font != font || _baseMs != ms)
+            {
+                _notification = MyAPIGateway.Utilities.CreateNotification(text, ms, font);
+                _font = font;
+                _baseMs = ms;
+            }
             
-            _noot.Text = text;
-            _noot.AliveTime = ms;   // reset lifetime
-            _noot.Show();           // redraws the SAME notification line
+            _notification.Text = text;
+            
+            _notification.ResetAliveTime();
+            _notification.Hide();
+            _notification.Show();
         }
 
-        public static void HideNfzWarning()
+        public static void Hide()
         {
-            _noot?.Hide();
+            _notification?.Hide();
         }
     }
 }
