@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using NexusModAPI;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
+using VRage.Utils;
 
 namespace ShipCoreFramework
 {
@@ -11,6 +12,8 @@ namespace ShipCoreFramework
         private static NexusAPI _myNexusApi;
         private bool _startedNexus;
         private int _tick;
+        private static readonly MyStringId MatSphere = MyStringId.GetOrCompute("GizmoDrawSphere");
+        private static readonly MyStringId MatLine   = MyStringId.GetOrCompute("GizmoDrawLine");
         
         internal const ushort CommandsSyncId = 32123;
         internal static bool IsClient;

@@ -10,7 +10,7 @@ namespace ShipCoreFramework
         public static void ShowNotification(string text, int ms = 1000, string font = "Red")
         {
             if (_noot == null) _noot = MyAPIGateway.Utilities.CreateNotification("", ms, font);
-            if (_noot.Text == text) return;
+            if (_noot.Text == text && _noot.AliveTime == ms) return;
             
             _noot.Text = text;
             _noot.AliveTime = ms;   // reset lifetime

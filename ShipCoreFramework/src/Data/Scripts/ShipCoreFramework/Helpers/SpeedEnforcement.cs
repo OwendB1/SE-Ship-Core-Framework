@@ -1,5 +1,6 @@
 ﻿#region
 
+using System;
 using Sandbox.ModAPI;
 using VRageMath;
 
@@ -11,22 +12,29 @@ namespace ShipCoreFramework
     {
         internal static void EnforceSpeedLimit(GroupComponent groupComponent)
         {
-            MyAPIGateway.Parallel.ForEach(groupComponent.GridDictionary, kvp =>
+            try
             {
-                if(kvp.Key.IsStatic) return;
-                if (kvp.Key?.Physics == null) return;
-                var maxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.Modifiers.MaxSpeed;
-                if (groupComponent.PunishSpeed) maxSpeed /= 4;
-                if (groupComponent.ShipCore != null && groupComponent.BoostEnabled)
+                foreach (var kvp in groupComponent.GridDictionary)
                 {
-                    maxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.Modifiers.MaxBoost;
-                }
+                    if(kvp.Key.IsStatic) return;
+                    if (kvp.Key?.Physics == null) return;
+                    var maxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.Modifiers.MaxSpeed;
+                    if (groupComponent.PunishSpeed) maxSpeed /= 4;
+                    if (groupComponent.ShipCore != null && groupComponent.BoostEnabled)
+                    {
+                        maxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.Modifiers.MaxBoost;
+                    }
                 
-                var velocity = kvp.Key.Physics.LinearVelocity;
-                if (velocity.LengthSquared() <= maxSpeed * maxSpeed) return;
-                velocity = Vector3.Normalize(velocity) * maxSpeed;
-                MyAPIGateway.Utilities.InvokeOnGameThread(() => kvp.Key.Physics.SetSpeeds(velocity, kvp.Key.Physics.AngularVelocity));
-            });
+                    var velocity = kvp.Key.Physics.LinearVelocity;
+                    if (velocity.LengthSquared() <= maxSpeed * maxSpeed) return;
+                    velocity = Vector3.Normalize(velocity) * maxSpeed;
+                    MyAPIGateway.Utilities.InvokeOnGameThread(() => kvp.Key.Physics.SetSpeeds(velocity, kvp.Key.Physics.AngularVelocity));
+                }
+            }
+            catch (Exception)
+            {
+                //ignore
+            }
         }
     }
 }

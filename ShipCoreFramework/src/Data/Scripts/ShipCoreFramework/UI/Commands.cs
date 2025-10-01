@@ -236,8 +236,6 @@ namespace ShipCoreFramework
             return "Created NoFlyZone with ID " + nextId + 
                    " at the chosen center (ForceOff=" + forceOff + "); please reconnect to resync from server config!";
         }
-
-
         
         private static string DeleteNoFlyZone(string[] args)
         {

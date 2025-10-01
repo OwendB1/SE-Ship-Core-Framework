@@ -1,11 +1,12 @@
+using System;
 using System.Collections.Generic;
 using NexusModAPI;
-using ParallelTasks;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
+using VRageMath;
 
 namespace ShipCoreFramework
 {
@@ -133,7 +134,30 @@ namespace ShipCoreFramework
             LimitsNexusSync.Start(_myNexusApi);
             LimitsNexusSync.BroadcastSnapshot();
         }
-        
+
+        public override void Draw()
+        {
+            var camPos = MyAPIGateway.Session.Camera.WorldMatrix.Translation;
+            const double edgeProximity = 20000.0;
+
+            var zones = Config.NoFlyZones;
+            if (zones == null || zones.Count == 0) return;
+
+            foreach (var z in zones)
+            {
+                var dist = Vector3D.Distance(z.Position, camPos);
+                if (Math.Abs(dist - z.Radius) > edgeProximity) continue;
+
+                var world = MatrixD.CreateTranslation(z.Position);
+                var color = z.ForceOff ? new Color(1f, 0.2f, 0.2f, 0.15f) : new Color(0.2f, 0.6f, 1f, 0.12f);
+                var edge = z.ForceOff ? new Color(1f, 0.1f, 0.1f, 0.9f) : new Color(0.3f, 0.7f, 1f, 0.9f);
+
+                MySimpleObjectDraw.DrawTransparentSphere(ref world, (float)z.Radius, ref color, MySimpleObjectRasterizer.Solid,32, MatSphere, MatLine, 1f);
+                MySimpleObjectDraw.DrawTransparentSphere(ref world, (float)z.Radius, ref edge, MySimpleObjectRasterizer.Wireframe,64, MatSphere, MatLine, 0.75f);
+            }
+
+        }
+
         public override void UpdateAfterSimulation()
         {
             TickScheduler.Update1();
