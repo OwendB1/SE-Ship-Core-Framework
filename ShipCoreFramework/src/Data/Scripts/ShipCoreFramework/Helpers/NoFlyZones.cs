@@ -27,7 +27,7 @@ namespace ShipCoreFramework
                     if (!(distanceSq <= zone.Radius * zone.Radius))
                     {
                         var humanReadableDistance = Vector3D.Distance(zone.Position, grid.GetPosition());
-                        if (humanReadableDistance < zone.Radius + 1000.0)
+                        if (humanReadableDistance < zone.Radius + 2000.0)
                             Utils.ShowNotification($"{grid.CustomName} is {humanReadableDistance - zone.Radius:F0}m from a no fly zone", 1000, ((MyCubeGrid)grid).BigOwners.FirstOrDefault());
 
                         continue;
