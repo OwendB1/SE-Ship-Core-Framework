@@ -1,0 +1,729 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Text;
+using Sandbox.Game;
+using Sandbox.Game.Entities;
+using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
+using VRageMath;
+
+namespace ShipCoreFramework
+{
+    public static class Commands
+    {
+        public static void ServerMessageHandler(ushort id, byte[] data, ulong sender, bool fromServer)
+        {
+            var message = Encoding.UTF8.GetString(data);
+            Utils.Log($"Server: Command received from {sender}: {message}");
+            CommmandSwitch(Utils.GetPlayerIdFromSteamId(sender),message);
+        }
+        
+        private static void ForwardToServer(string message)
+        {
+            var bytes = Encoding.UTF8.GetBytes(message);
+            MyAPIGateway.Multiplayer.SendMessageToServer(Session.CommandsSyncId, bytes);
+        }
+        
+        public static void OnChatCommand(ulong sender,string messageText, ref bool sendToOthers)
+        {
+            if (!messageText.StartsWith("/core", StringComparison.OrdinalIgnoreCase)) return;
+
+            sendToOthers = false;
+            if(!Session.IsServer) ForwardToServer(messageText);
+            CommmandSwitch(MyAPIGateway.Session.Player.IdentityId,messageText);
+        }
+        
+        private static void CommmandSwitch(long playerId, string messageText)
+        {
+            var allArgs = messageText.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+            if (allArgs.Length < 2 || allArgs[1].Equals("help", StringComparison.OrdinalIgnoreCase))
+            {
+                if(Session.LocalPlayer != null) ShowHelp();
+                return;
+            }
+
+            var args = allArgs.Skip(1).ToArray();
+            var sub = args[0].ToLower();
+            var modMessage ="";
+            switch (sub)
+            {
+                case "reloadconfig":
+                    if(!CheckIfAdmin(playerId)) return;
+                    modMessage+=ReloadConfig();
+                    break;
+                case "listcores":
+                    modMessage+=ListCores();
+                    break;
+                case "coreinfo":
+                    modMessage+=CoreInfo(args);
+                    break;
+                case "listnocores":
+                    modMessage+=ListNoCores();
+                    break;
+                case "listnfzs":
+                    ListNoFlyZones();
+                    return;
+                case "createnfz":
+                    if(!CheckIfAdmin(playerId)) return;
+                    modMessage+=CreateNoFlyZone(args);
+                    break;
+                case "deletenfz":
+                    if(!CheckIfAdmin(playerId)) return;
+                    modMessage+=DeleteNoFlyZone(args);
+                    break;
+                case "debug":
+                    if(!CheckIfAdmin(playerId)) return;
+                    modMessage+=Debug(args);
+                    break;
+                case "combatlog":
+                    if(!CheckIfAdmin(playerId)) return;
+                    modMessage+=CombatLog(args);
+                    break;
+                case "select":
+                    if(!CheckIfAdmin(playerId))return;
+                    modMessage+=Select(args);
+                    break;
+                case "setworldspeed":
+                    if(!CheckIfAdmin(playerId)) return;
+                    modMessage+=SetWorldSpeed(args);
+                    break;
+                case "ignoretags":
+                case "ignoretag":
+                    modMessage+=IgnoreTags(playerId,args);
+                    break;
+                case "ignoreai":
+                    if(!CheckIfAdmin(playerId)) return;
+                    modMessage+=IgnoreAi();
+                    break;
+                case "info":
+                    if(Session.LocalPlayer!=null) CoreInfo(playerId);
+                    return;
+                default:
+                    modMessage += "The command you have typed was not recognized. Did you make a typo?";
+                    break;
+            }
+            if(Session.IsServer)
+            {
+                MyVisualScriptLogicProvider.SendChatMessage(modMessage,"ShipCores: Server:", playerId, "Green");
+            }
+            else
+            {
+                MyVisualScriptLogicProvider.SendChatMessage(modMessage,"ShipCores: LocalHost:", playerId, "Red");
+            }
+        }
+        private static string ReloadConfig()
+        {
+            Session.Config = null;
+            Session.Config = new ModConfig();
+            Session.Config.LoadConfig();
+            return "Config reloaded from disk.";
+        }
+
+        private static string ListCores()
+        {
+            return Session.Config.ShipCores.Count == 0 ? "No ship cores defined." : 
+                Session.Config.ShipCores.Aggregate("", (current, core) => current + $"{core.UniqueName} (SubtypeId: {core.SubtypeId})");
+        }
+
+        private static string CoreInfo(string[] args)
+        {
+            if (args.Length < 2)
+            {
+                return "Usage: /core coreinfo <uniquename>";
+            }
+            var infoName = string.Join(" ", args.Skip(1));
+            var infoCore = Session.Config.ShipCores.FirstOrDefault(
+                c => c.UniqueName.Equals(infoName, StringComparison.OrdinalIgnoreCase));
+            if (infoCore == null)
+            {
+                return $"No core found with name '{infoName}'.";
+            }
+            return $"Core: {infoCore.UniqueName}\nSubtype: {infoCore.SubtypeId}\nMaxBlocks: {infoCore.MaxBlocks}\nModifiers: {infoCore.Modifiers}";
+        }
+
+        private static string ListNoCores()
+        {
+            return Session.Config.NoCoreConfigs.Count == 0 ? "No 'no core' configs available." : 
+                Session.Config.NoCoreConfigs.Aggregate("", (current, nc) => current + $"{nc.UniqueName} (SubtypeId: {nc.SubtypeId})");
+        }
+
+        private static void ListNoFlyZones()
+        {
+            var body = "";
+            if (Session.Config.NoFlyZones == null || Session.Config.NoFlyZones.Count == 0)
+            {
+                body = "No NoFlyZones defined.";
+            }
+            else
+            {
+                for (var i = 0; i < Session.Config.NoFlyZones.Count; i++)
+                {
+                    var zone = Session.Config.NoFlyZones[i];
+                    var allowed = zone.AllowedCoresSubtype != null && zone.AllowedCoresSubtype.Count > 0
+                        ? string.Join(", ", zone.AllowedCoresSubtype)
+                        : "None";
+                    var p = zone.Position;
+                    body += "#" + (i + 1) + ":\n";
+                    body += "  Center: (" + p.X.ToString("F1", CultureInfo.InvariantCulture) + ", " +
+                            p.Y.ToString("F1", CultureInfo.InvariantCulture) + ", " +
+                            p.Z.ToString("F1", CultureInfo.InvariantCulture) + ")\n";
+                    body += "  Radius: " + zone.Radius.ToString("F1", CultureInfo.InvariantCulture) + " m\n";
+                    body += "  AllowedCores: [" + allowed + "]\n\n";
+                }
+            }
+
+            MyAPIGateway.Utilities.ShowMissionScreen(
+                "ShipCore Framework",
+                "/core listnoflyzones",
+                "No-Fly Zones",
+                body
+            );
+        }
+        
+        private static string CreateNoFlyZone(string[] args)
+        {
+            if (args.Length < 3) 
+                return "Usage: /core createnfz <radius> <forceoff:true|false> [GPS:...] [allowedSubtype1 allowedSubtype2 ...]";
+
+            double radius;
+            if (!double.TryParse(args[1], NumberStyles.Float, CultureInfo.InvariantCulture, out radius) || radius <= 0d)
+                return "Radius must be a positive number.";
+
+            bool forceOff;
+            var forceArg = args[2].Trim();
+            if (!forceArg.StartsWith("forceoff:", StringComparison.OrdinalIgnoreCase) ||
+                !bool.TryParse(forceArg.Substring("forceoff:".Length), out forceOff))
+            {
+                return "Second argument must be 'forceoff:true' or 'forceoff:false'.";
+            }
+
+            Vector3D center;
+            if (!Utils.TryParseGpsFromArgs(args.Skip(3).ToArray(), out center))
+            {
+                var player = MyAPIGateway.Session == null ? null : MyAPIGateway.Session.Player;
+                if (player == null) return "Player not found.";
+                center = player.GetPosition();
+            }
+
+            var allowed = new List<string>();
+            foreach (var arg in args.Skip(3))
+            {
+                if (arg.StartsWith("GPS:", StringComparison.OrdinalIgnoreCase)) continue;
+                if (arg.StartsWith("forceoff:", StringComparison.OrdinalIgnoreCase)) continue;
+                if (!string.IsNullOrWhiteSpace(arg)) allowed.Add(arg.Trim());
+            }
+
+            if (Session.Config.NoFlyZones == null) Session.Config.NoFlyZones = new List<Zones>();
+
+            var nextId = 1;
+            if (Session.Config.NoFlyZones.Count > 0)
+                nextId = Session.Config.NoFlyZones.Max(z => z.Id) + 1;
+
+            var newZone = new Zones
+            {
+                Id = nextId,
+                Position = center,
+                Radius = radius,
+                AllowedCoresSubtype = allowed,
+                ForceOff = forceOff
+            };
+
+            Session.Config.NoFlyZones.Add(newZone);
+            Session.Config.SaveConfig();
+            return "Created NoFlyZone with ID " + nextId + 
+                   " at the chosen center (ForceOff=" + forceOff + "); please reconnect to resync from server config!";
+        }
+        
+        private static string DeleteNoFlyZone(string[] args)
+        {
+            if (args.Length < 2) return "Usage: /core deletenfz <id>";
+
+            int id;
+            if (!int.TryParse(args[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out id))
+                return "Invalid id.";
+
+            if (Session.Config.NoFlyZones == null || Session.Config.NoFlyZones.Count == 0)
+                return "No NoFlyZones defined.";
+
+            var zone = Session.Config.NoFlyZones.FirstOrDefault(z => z.Id == id);
+            if (zone == null) return "NoFlyZone with ID " + id + " not found.";
+
+            Session.Config.NoFlyZones.Remove(zone);
+            Session.Config.SaveConfig();
+            return "Deleted NoFlyZone ID " + id + "; please reconnect to resync from server config!";
+        }
+
+        private static string Debug(string[] args)
+        {
+            if (args.Length < 2)
+            {
+                return $"Debug mode is {(Session.Config.DebugMode ? "ON" : "OFF")}";
+            }
+            var debugVal = args[1].ToLower();
+            Session.Config.DebugMode = (debugVal == "on");
+            return $"Debug mode set to {(Session.Config.DebugMode ? "ON" : "OFF")}";
+        }
+
+        private static string CombatLog(string[] args)
+        {
+            if (args.Length < 2)
+            {
+                return $"Combat logging is {(Session.Config.CombatLogging ? "ON" : "OFF")}";
+            }
+            var clVal = args[1].ToLower();
+            Session.Config.CombatLogging = (clVal == "on");
+            return $"Combat logging set to {(Session.Config.CombatLogging ? "ON" : "OFF")}";
+        }
+
+        private static string Select(string[] args)
+        {
+            if (args.Length < 2)
+            {
+                return "Usage: /core select <NoCoreName|Subtype>";
+            }
+
+            var key = string.Join(" ", args.Skip(1));
+            var found = Session.Config.NoCoreConfigs.FirstOrDefault(
+                c => c.UniqueName.Equals(key, StringComparison.OrdinalIgnoreCase) ||
+                     c.SubtypeId.Equals(key, StringComparison.OrdinalIgnoreCase));
+
+            if (found == null)
+            {
+                return $"No 'no core' config found matching '{key}'. Use /core listnocores.";
+            }
+
+            Session.Config.SelectedNoCore = found;
+            Session.Config.SaveConfig(true);
+            return $"Selected 'no core' config: {found.UniqueName} ({found.SubtypeId})";
+        }
+
+        private static string SetWorldSpeed(string[] args)
+        {
+            if (args.Length == 1)
+            {
+                return $"Current world speed limit: {Session.Config.MaxPossibleSpeedMetersPerSecond} m/s";
+            }
+
+            float newSpeed;
+            if (!float.TryParse(args[1], out newSpeed) || newSpeed <= 0)
+            {
+                return "Usage: /core setworldspeed <positive number>";
+            }
+
+            Session.Config.MaxPossibleSpeedMetersPerSecond = newSpeed;
+            return $"World speed limit set to {newSpeed} m/s (session config only).";
+        }
+
+        private static string IgnoreTags(long playerId, string[] args)
+        {
+            if (args.Length < 2)
+            {
+                return "Usage: /core ignoretags list|add <tag>|remove <tag>";
+            }
+
+            var action = args[1].ToLower();
+            var modMessage ="";
+            switch (action)
+            {
+                case "list":
+                    modMessage += ListIgnoredTags();
+                    break;
+                case "add":
+                    if (!CheckIfAdmin(playerId)) return "You are not Admin";
+                    modMessage += AddIgnoredTag(args);
+                    break;
+                case "remove":
+                    if (!CheckIfAdmin(playerId)) return "You are not Admin";
+                    modMessage += RemoveIgnoredTag(args);
+                    break;
+                default:
+                    modMessage+="Usage: /core ignoretags list|add <tag>|remove <tag>";
+                    break;
+            }
+            return modMessage;
+        }
+
+        private static string IgnoreAi()
+        {
+            Session.Config.IgnoreAiFactions = !Session.Config.IgnoreAiFactions;
+            Session.Config.SaveConfig(true);
+            return $"Set AI factions ignore to {Session.Config.IgnoreAiFactions}.";
+        }
+
+        private static string ListIgnoredTags()
+        {
+            var tags = Session.Config.IgnoredFactionTags ?? (Session.Config.IgnoredFactionTags = new List<string>());
+            if (tags.Count == 0)
+            {
+                return "No ignored faction tags.";
+            }
+            return "Ignored faction tags: " + string.Join(", ", tags);
+        }
+
+        private static string AddIgnoredTag(string[] args)
+        {
+            if (args.Length < 3)
+            {
+                return "Usage: /core ignoretags add <tag>";
+            }
+
+            var tag = string.Join(" ", args.Skip(2)).Trim();
+            if (string.IsNullOrWhiteSpace(tag))
+            {
+               return "Tag cannot be empty.";
+            }
+
+            var tags = Session.Config.IgnoredFactionTags ?? (Session.Config.IgnoredFactionTags = new List<string>());
+            if (tags.Any(t => t.Equals(tag, StringComparison.OrdinalIgnoreCase)))
+            {
+                return $"Tag '{tag}' is already ignored.";
+
+            }
+
+            tags.Add(tag);
+            Session.Config.SaveConfig(true);
+            return $"Added ignored faction tag '{tag}'.";
+        }
+
+        private static string RemoveIgnoredTag(string[] args)
+        {
+            if (args.Length < 3)
+            {
+                return "Usage: /core ignoretags remove <tag>";
+            }
+
+            var tag = string.Join(" ", args.Skip(2)).Trim();
+            if (string.IsNullOrWhiteSpace(tag))
+            {
+                return "Tag cannot be empty.";
+
+            }
+
+            var tags = Session.Config.IgnoredFactionTags ?? (Session.Config.IgnoredFactionTags = new List<string>());
+            var removed = tags.RemoveAll(t => t.Equals(tag, StringComparison.OrdinalIgnoreCase));
+            if (removed == 0)
+            {
+                return $"Tag '{tag}' was not in the ignore list.";
+            }
+
+            Session.Config.SaveConfig(true);
+            return $"Removed ignored faction tag '{tag}'.";
+        }
+
+        private static void CoreInfo(long playerId)
+        {
+            var targetGrid = Utils.RaycastForGrid();
+            
+            if (targetGrid == null)
+            {
+                Utils.ShowChatMessage("No grid found within 50m of crosshairs.");
+                return;
+            }
+
+            var player = MyAPIGateway.Session?.Player;
+            if (player == null) return;
+
+            // Check if player owns the grid
+            if (!targetGrid.BigOwners.Contains(player.IdentityId))
+            {
+                if(CheckIfAdmin(playerId))
+                {
+                    Utils.ShowChatMessage($"This Grid is owned by: {player.DisplayName}");
+                }
+                else
+                {
+                    Utils.ShowChatMessage("You don't own this grid.");
+                    return;
+                }
+            }
+        
+            var groupKvp = Session.GroupDict.FirstOrDefault(gk => gk.Value.GridDictionary.Any(kvp => kvp.Key == targetGrid));
+            if (groupKvp.Value == null)
+            {
+                Utils.ShowChatMessage($"Grid '{targetGrid.CustomName}' has no ship core or configuration.");
+                return;
+            }
+            
+            var shipCore = groupKvp.Value.ShipCore;
+            if (groupKvp.Value.OwningFaction != null &&(Session.Config.IgnoreAiFactions && groupKvp.Value.OwningFaction.IsEveryoneNpc() || Session.Config.IgnoredFactionTags.Contains(groupKvp.Value.OwningFaction.Tag)))
+            {
+                Utils.ShowChatMessage($"Grid '{targetGrid.CustomName}' is ignored.");
+                return;
+            }
+
+            var body = $"Grid: {targetGrid.CustomName}\nShip Class: {shipCore.UniqueName}\n\n";
+            if (groupKvp.Value.ShipCore.MaxPerPlayer > 0)
+            {
+                if (GridsPerPlayerManager.PerPlayer.ContainsKey(player.IdentityId) && GridsPerPlayerManager.PerPlayer[player.IdentityId].ContainsKey(groupKvp.Value.ShipCore.SubtypeId))
+                {
+                    body += $"Per Player Limit:{GridsPerPlayerManager.PerPlayer[player.IdentityId][groupKvp.Value.ShipCore.SubtypeId].Count}/{groupKvp.Value.ShipCore.MaxPerPlayer}\n";
+                }
+                else
+                {
+                    body+=$"Per Player Limit: Data is not available, WTF?\n";
+                }
+                
+            }
+            
+            if(groupKvp.Value.ShipCore.MaxPerFaction > 0)
+            {
+                if (groupKvp.Value.OwningFaction?.FactionId != null)
+                {
+                    if (GridsPerFactionManager.PerFaction.ContainsKey(groupKvp.Value.OwningFaction.FactionId) && GridsPerFactionManager.PerFaction[groupKvp.Value.OwningFaction.FactionId].ContainsKey(groupKvp.Value.ShipCore.SubtypeId))
+                    {
+                        body += $"Per Faction Limit:{GridsPerFactionManager.PerFaction[groupKvp.Value.OwningFaction.FactionId][groupKvp.Value.ShipCore.SubtypeId].Count}/{groupKvp.Value.ShipCore.MaxPerFaction}\n";
+                    }
+                    else
+                    {
+                        body+=$"Per Faction Limit: Data is not available, WTF?\n";
+                    }
+                }
+                else
+                {
+                    body += "Per Faction Limit: A Faction is required for this class\n";
+                }
+            }            
+            // Grid Statistics
+            body += "Grid Statistics:\n";
+            
+            // Block Count
+            var blockCountStatus = shipCore.MaxBlocks > 0 ? $"{groupKvp.Value.GroupBlocksCount} / {shipCore.MaxBlocks}" : groupKvp.Value.GroupBlocksCount.ToString();
+            var blockCountPercent = shipCore.MaxBlocks > 0 ? groupKvp.Value.GroupBlocksCount / (float)shipCore.MaxBlocks * 100 : -1;
+            body += $"  Blocks: {blockCountStatus}";
+            if (shipCore.MaxBlocks > 0)
+                body += $" ({blockCountPercent:F1}%)";
+            body += "\n";
+            
+            // Mass
+            var massStatus = shipCore.MaxMass > 0 ? $"{groupKvp.Value.GroupMass:F0} / {shipCore.MaxMass:F0} kg" : $"{groupKvp.Value.GroupMass:F0} kg";
+            var massPercent = shipCore.MaxMass > 0 ? groupKvp.Value.GroupMass / shipCore.MaxMass * 100 : -1;
+            body += $"  Mass: {massStatus}";
+            if (shipCore.MaxMass > 0)
+                body += $" ({massPercent:F1}%)";
+            body += "\n";
+            
+            // PCU
+            var pcuStatus = shipCore.MaxPCU > 0 ? $"{groupKvp.Value.GroupPCU} / {shipCore.MaxPCU}" : groupKvp.Value.GroupPCU.ToString();
+            var pcuPercent = shipCore.MaxPCU > 0 ? groupKvp.Value.GroupPCU / (float)shipCore.MaxPCU * 100 : -1;
+            body += $"  PCU: {pcuStatus}";
+            if (shipCore.MaxPCU > 0)
+                body += $" ({pcuPercent:F1}%)";
+            body += "\n\n";
+            
+            body += "Modifiers:\n";
+
+            var gridMods = groupKvp.Value.Modifiers;
+            foreach (var m in gridMods.GetModifierValues())
+            {
+                var n = m.Name.ToLowerInvariant();
+                if (n.Contains("duration") || n.Contains("cooldown"))
+                    body += $"  {m.Name}: {m.Value:F1}s\n";
+                else
+                    body += $"  {m.Name}: x{m.Value:F2}\n";
+            }
+
+            var passive = groupKvp.Value.GetPassiveDefenseModifiers();
+            var active = groupKvp.Value.GetActiveDefenseModifiers();
+
+            if (passive != null)
+            {
+                body += "  Passive defense:\n";
+                body += $"    Bullet: x{passive.Bullet:F2}\n";
+                body += $"    Post-shield: x{passive.PostShield:F2}\n";
+                body += $"    Rocket: x{passive.Rocket:F2}\n";
+                body += $"    Explosion: x{passive.Explosion:F2}\n";
+                body += $"    Environment: x{passive.Environment:F2}\n";
+                body += $"    Energy: x{passive.Energy:F2}\n";
+                body += $"    Kinetic: x{passive.Kinetic:F2}\n";
+
+            }
+
+            if (active != null)
+            {
+                body += "  Active defense:\n";
+                body += $"    Bullet: x{active.Bullet:F2}\n";
+                body += $"    Post-shield: x{active.PostShield:F2}\n";
+                body += $"    Rocket: x{active.Rocket:F2}\n";
+                body += $"    Explosion: x{active.Explosion:F2}\n";
+                body += $"    Environment: x{active.Environment:F2}\n";
+                body += $"    Energy: x{active.Energy:F2}\n";
+                body += $"    Kinetic: x{active.Kinetic:F2}\n";
+                body += $"  Duration: {groupKvp.Value.ActiveDefenseDuration:F1}s\n";
+                body += $"  Cooldown: {groupKvp.Value.ActiveDefenseCoolDown:F1}s\n";
+            }
+            body += "\n";
+            
+            
+            if (shipCore.BlockLimits.Length == 0)
+            {
+                body += "No block limits configured for this ship class.";
+            }
+            else
+            {
+                body += "Block Limits:\n";
+                foreach (var blockLimit in shipCore.BlockLimits)
+                {
+                    double totalWeight;
+                    if (!groupKvp.Value.CountPerLimit.TryGetValue(blockLimit, out totalWeight))
+                        totalWeight = 0d;
+
+                    var percentage = blockLimit.MaxCount > 0
+                        ? (totalWeight / blockLimit.MaxCount) * 100d
+                        : 0d;
+
+                    body += "\n" + blockLimit.Name + ":\n";
+                    body += "  Used: " + totalWeight.ToString("F1", CultureInfo.InvariantCulture)
+                         + " / " + blockLimit.MaxCount.ToString(CultureInfo.InvariantCulture)
+                         + " (" + percentage.ToString("F1", CultureInfo.InvariantCulture) + "%)\n";
+                    body += "  Punishment: " + blockLimit.PunishmentType + "\n";
+
+                    LimitWeightMap map;
+                    if (!groupKvp.Value.WeightMaps.TryGetValue(blockLimit, out map))
+                        continue;
+
+                    var sample = new List<KeyValuePair<MyCubeBlock, double>>(10);
+                    var totalCount = 0;
+
+                    foreach (var gridKvp in groupKvp.Value.GridDictionary)
+                    {
+                        var gridComp = gridKvp.Value;
+                        LimitBucket bucket;
+                        if (!gridComp.Limits.TryGetValue(blockLimit, out bucket))
+                            continue;
+
+                        foreach (var blk in bucket.Members)
+                        {
+                            if (blk == null || blk.Closed || blk.CubeGrid == null) continue;
+
+                            var w = map.Get(blk, GridComponent.KeyOf);
+                            if (w <= 0d) continue;
+
+                            totalCount++;
+
+                            // Keep 'sample' as the 10 least-heavy items (ascending by weight)
+                            if (sample.Count == 0)
+                            {
+                                sample.Add(new KeyValuePair<MyCubeBlock, double>(blk, w));
+                            }
+                            else
+                            {
+                                var inserted = false;
+                                for (var si = 0; si < sample.Count; si++)
+                                {
+                                    if (!(w < sample[si].Value)) continue;
+                                    sample.Insert(si, new KeyValuePair<MyCubeBlock, double>(blk, w));
+                                    inserted = true;
+                                    break;
+                                }
+                                if (!inserted)
+                                {
+                                    sample.Add(new KeyValuePair<MyCubeBlock, double>(blk, w));
+                                }
+                                if (sample.Count > 10)
+                                {
+                                    sample.RemoveAt(sample.Count - 1);
+                                }
+                            }
+                        }
+                    }
+
+                    if (totalCount <= 0) continue;
+                    body += "  Blocks:\n";
+                    foreach (var kv in sample)
+                    {
+                        var b = kv.Key;
+                        var blockName = b.DisplayNameText ?? b.DefinitionDisplayNameText;
+                        body += "    - " + blockName + " (Weight: " + kv.Value.ToString("F1", CultureInfo.InvariantCulture) + ")\n";
+                    }
+                    if (totalCount > 10)
+                    {
+                        body += "    ... and " + (totalCount - 10) + " more\n";
+                    }
+                }
+            }
+
+            MyAPIGateway.Utilities.ShowMissionScreen(
+                "Ship Core Framework",
+                $"Ship Class Limits - {targetGrid.CustomName}",
+                "Block Limits & Usage",
+                body
+            );
+        }
+
+        private static void ShowHelp()
+        {
+            const string body = @"Commands
+/core help
+Shows this help screen.
+
+/core select <NoCoreName|Subtype>
+Selects the NoCore configuration for this world and saves it.
+
+/core listnocores
+Lists available NoCore configs.
+
+/core listcores
+Lists available ship cores.
+
+/core coreinfo <UniqueName>
+Shows details for a core by UniqueName.
+
+/core reloadconfig
+Reloads configuration from disk.
+
+/core listnfzs
+Lists defined NoFlyZones with their IDs.
+
+/core createnfz <radius> forceoff:true|false [GPS:...] [allowedSubtype1 allowedSubtype2 ...]
+Creates a new NoFlyZone.
+If a GPS is provided, it will be used as the center. Otherwise, your current position is used.
+The 'forceoff' flag determines whether block limits are overridden and forced shutoff is applied in this zone.
+
+/core deletenfz <id>
+Deletes a NoFlyZone by its ID.
+
+/core debug on|off
+Toggles debug mode (Local Client)
+
+/core combatlog on|off
+Toggles combat logging (Admin Required)
+
+/core setworldspeed <m/s>
+Sets the session max possible speed in m/s. (Admin Required)
+
+/core ignoretags list
+Lists the current ignored faction tags.
+
+/core ignoretags add <tag>
+Adds a tag to the ignored faction tags. (Admin Required)
+
+/core ignoretags remove <tag>
+Removes a tag from the ignored faction tags. (Admin Required)
+
+/core ignoreai 
+Toggles ignore of ai on or off. (Admin Required)
+
+/core info
+Raycasts from crosshairs to find a grid and displays all its core information.";
+
+            MyAPIGateway.Utilities.ShowMissionScreen(
+                "ShipCore Framework",
+                "/core help",
+                "Command Reference",
+                body
+            );
+        }
+
+        private static bool CheckIfAdmin(long playerId)
+        {
+            if(!Session.MpActive) return true;
+            var players = new List<IMyPlayer>();
+            MyAPIGateway.Players.GetPlayers(players);
+            return (from player in players where player.IdentityId == playerId 
+                select player.PromoteLevel == MyPromoteLevel.Admin || player.PromoteLevel == MyPromoteLevel.Owner).FirstOrDefault();
+        }
+    }
+}

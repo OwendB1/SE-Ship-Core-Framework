@@ -1,6 +1,3 @@
-#region
-
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Definitions;
@@ -10,8 +7,6 @@ using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.Game.ObjectBuilders.Definitions;
 using VRage.Utils;
-
-#endregion
 
 namespace ShipCoreFramework
 {
@@ -58,15 +53,15 @@ namespace ShipCoreFramework
             coreBlock.AddUpgradeValue("DamageCooldown", 1f);
         }
         
-        public static GridModifiers GetActiveModifiers(GridLogic gridLogic)
+        internal static GridModifiers GetActiveModifiers(GroupComponent gridGroupComponentLogic)
         {
-            if (gridLogic.PunishModifiers) return ModSessionManager.Config.SelectedNoCore.Modifiers;
-            var shipCore = gridLogic.ShipCore;
+            if (gridGroupComponentLogic.PunishModifiers) return Session.Config.SelectedNoCore.Modifiers;
+            var shipCore = gridGroupComponentLogic.ShipCore;
             
-            if (shipCore.SubtypeId == ModSessionManager.Config.SelectedNoCore.SubtypeId) return shipCore.Modifiers;
+            if (shipCore.SubtypeId == Session.Config.SelectedNoCore.SubtypeId) return shipCore.Modifiers;
             var enhancedModifiers = new GridModifiers();
             
-            var myBlock = gridLogic.CoreLogic;
+            var myBlock = gridGroupComponentLogic.MainCoreComponent;
             if (myBlock == null)
             {
                 return shipCore.Modifiers;
@@ -89,7 +84,7 @@ namespace ShipCoreFramework
             return enhancedModifiers;
         }
         
-        public static void ApplyModifiers(IMyCubeBlock block, GridModifiers modifiers)
+        public static void ApplyModifiers(MyCubeBlock block, GridModifiers modifiers)
         {
             var thruster = block as IMyThrust;
             if (thruster != null)
@@ -105,9 +100,6 @@ namespace ShipCoreFramework
                 gyro.PowerConsumptionMultiplier = 1f / modifiers.GyroEfficiency;
             }
 
-            var cube = block as MyCubeBlock;
-            if (cube == null) return;
-
             var id = ((IMyTerminalBlock)block).BlockDefinition;
             var cubeDef = MyDefinitionManager.Static.GetCubeBlockDefinition(id);
 
@@ -119,13 +111,14 @@ namespace ShipCoreFramework
                 var baseYield = refDef?.MaterialEfficiency ?? 1f;
 
                 float prodSum = 0f, effSum = 0f;
-                var attachedR = cube.CurrentAttachedUpgradeModules;
+                var attachedR = block.CurrentAttachedUpgradeModules;
                 if (attachedR != null)
                 {
                     foreach (var m in attachedR.Select(kv => kv.Value.Block).Where(m => m != null))
                     {
-                        List<MyUpgradeModuleInfo> ups; m.GetUpgradeList(out ups);
-                        if (ups == null) continue;
+                        var ups = new List<MyUpgradeModuleInfo>(); 
+                        m.FillUpgradeList(ups);
+                        if (ups.Count == 0) continue;
                         foreach (var up in ups)
                         {
                             switch (up.UpgradeType)
@@ -159,13 +152,14 @@ namespace ShipCoreFramework
                 var baseSpeed = asmDef?.AssemblySpeed ?? 1f;
 
                 var prodSum = 0f;
-                var attachedA = cube.CurrentAttachedUpgradeModules;
+                var attachedA = block.CurrentAttachedUpgradeModules;
                 if (attachedA != null)
                 {
                     foreach (var m in attachedA.Select(kv => kv.Value.Block).Where(m => m != null))
                     {
-                        List<MyUpgradeModuleInfo> ups; m.GetUpgradeList(out ups);
-                        if (ups == null) continue;
+                        var ups = new List<MyUpgradeModuleInfo>(); 
+                        m.FillUpgradeList(ups);
+                        if (ups.Count == 0) continue;
                         prodSum += ups.Where(t => t.UpgradeType == "Productivity").Sum(t => t.Modifier);
                     }
                 }

@@ -67,9 +67,9 @@ namespace ShipCoreFramework
 
         public override ScriptUpdate NeedsUpdate => ScriptUpdate.Update10; // frequency that Run() is called.
 
-        private GridLogic GridLogic => _terminalBlock?.GetMainGridLogic();
+        private GroupComponent GroupComponent => _terminalBlock?.GetGroupComponent();
         private MyCubeGrid Grid => _terminalBlock?.CubeGrid as MyCubeGrid;
-        private ShipCore ShipCore => GridLogic.ShipCore;
+        private ShipCore ShipCore => GroupComponent?.ShipCore;
 
         public override void Dispose()
         {
@@ -84,12 +84,12 @@ namespace ShipCoreFramework
         
         public override void Run()
         {
-            if (ModSessionManager.Config.SelectedNoCore == null) return;
+            if (Session.Config.SelectedNoCore == null) return;
             try
             {
                 base.Run(); // do not remove
                 _gridResultsTable.Clear();
-                if (!Constants.IsClient) return;
+                if (!Session.IsClient) return;
 
                 Draw();
             }
@@ -101,8 +101,9 @@ namespace ShipCoreFramework
 
         private void Draw()
         {
-            if (!Constants.IsClient) return;
-
+            if (!Session.IsClient) return;
+            if (GroupComponent == null) return;
+            
             var screenSize = Surface.SurfaceSize;
             var screenTopLeft = (Surface.TextureSize - screenSize) * 0.5f;
             var padding = new Vector2(10, 10);
@@ -139,6 +140,26 @@ namespace ShipCoreFramework
             _headerTable.RenderToSprites(spritesToRender, screenTopLeft + padding, screenInnerWidth, new Vector2(15, 0), out currentPosition);
 
             //Render the results checklist
+
+            var punishModifiers = GroupComponent.PunishModifiers;
+            _gridResultsTable.Rows.Add(new Row
+            {
+                new Cell("Modifiers punished: "),
+                new Cell(""),
+                new Cell(""),
+                new Cell(punishModifiers ? "Yes" : "No", punishModifiers ? failColor : successColor),
+                punishModifiers ? new Cell("X", failColor) : new Cell()
+            });
+            
+            var punishSpeed = GroupComponent.PunishSpeed;
+            _gridResultsTable.Rows.Add(new Row
+            {
+                new Cell("Speed punished: "),
+                new Cell(""),
+                new Cell(""),
+                new Cell(punishSpeed ? "Yes" : "No", punishSpeed ? failColor : successColor),
+                punishSpeed ? new Cell("X", failColor) : new Cell()
+            });
             
             if (ShipCore.MaxBlocks > 1 )
             {
@@ -177,20 +198,24 @@ namespace ShipCoreFramework
                     Grid.BlocksPCU <= ShipCore.MaxPCU ? new Cell() : new Cell("X", failColor)
                 });
 
-            if (ShipCore.BlockLimits != null)
-                foreach (var blockLimit in GridLogic.BlocksPerLimit)
+            if (GroupComponent.ShipCore.BlockLimits != null)
+            {
+                foreach (var blockLimit in GroupComponent.ShipCore.BlockLimits)
                 {
-                    var countWeight = blockLimit.Value.Sum(l => l.Value);
+                    double totalWeight;
+                    if (!GroupComponent.CountPerLimit.TryGetValue(blockLimit, out totalWeight)) totalWeight = 0d;
+                    var isOk = totalWeight <= blockLimit.MaxCount;
+
                     _gridResultsTable.Rows.Add(new Row
                     {
-                        new Cell($"{blockLimit.Key.Name}:"),
-                        new Cell(countWeight.ToString(CultureInfo.InvariantCulture)),
+                        new Cell(blockLimit.Name + ":"),
+                        new Cell(totalWeight.ToString(CultureInfo.InvariantCulture)),
                         new Cell("/"),
-                        new Cell(blockLimit.Key.MaxCount.ToString(CultureInfo.InvariantCulture),
-                            countWeight <= blockLimit.Key.MaxCount ? successColor : failColor),
-                        countWeight <= blockLimit.Key.MaxCount ? new Cell() : new Cell("X", failColor)
+                        new Cell(blockLimit.MaxCount.ToString(CultureInfo.InvariantCulture), isOk ? successColor : failColor),
+                        isOk ? new Cell() : new Cell("X", failColor)
                     });
                 }
+            }
 
             var gridResultsTableTopLeft = currentPosition + new Vector2(0, 5);
 
@@ -205,7 +230,7 @@ namespace ShipCoreFramework
 
             var appliedModifiersTableTopLeft = currentPosition + new Vector2(0, 5);
 
-            foreach (var modifierValue in GridLogic.Modifiers.GetModifierValues())
+            foreach (var modifierValue in GroupComponent.Modifiers.GetModifierValues())
                 _appliedModifiersTable.Rows.Add(new Row
                 {
                     new Cell($"{modifierValue.Name}:"),

@@ -1,5 +1,6 @@
 #region
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NexusModAPI;
@@ -11,15 +12,15 @@ using static NexusModAPI.NexusAPI;
 
 namespace ShipCoreFramework
 {
-    public static class LimitsNexusSync
+    internal static class LimitsNexusSync
     {
-        public const long ChannelId = 9876543210L;
+        private const long ChannelId = 9876543210L;
 
         private static NexusAPI _nexus;
         private static bool _started;
         private static byte _thisServerId;
 
-        public static void Start(NexusAPI nexus)
+        internal static void Start(NexusAPI nexus)
         {
             if (_started) return;
             _nexus = nexus;
@@ -33,37 +34,37 @@ namespace ShipCoreFramework
             BroadcastSnapshot();
         }
 
-        public static void Stop()
+        internal static void Stop()
         {
             if (!_started) return;
             _started = false;
-            try { MyAPIGateway.Utilities.UnregisterMessageHandler(ChannelId, OnMessage); } catch { }
+            try { MyAPIGateway.Utilities.UnregisterMessageHandler(ChannelId, OnMessage); } catch { /**/ }
         }
 
         private static bool Ready => _started && _nexus != null && _nexus.Enabled;
 
-        public static void BroadcastFactionChange(GridsPerFactionManager.FactionChange c)
+        internal static void BroadcastFactionChange(GridsPerFactionManager.FactionChange c)
         {
             BroadcastDiff(factionId: c.FactionId, coreType: c.CoreType,
-                added: c.Added ? new[] { c.GridId } : null,
-                removed: !c.Added ? new[] { c.GridId } : null);
+                added: c.Added ? new[] { c.GroupId } : null,
+                removed: !c.Added ? new[] { c.GroupId } : null);
         }
 
-        public static void BroadcastPlayerChange(GridsPerPlayerManager.PlayerChange c)
+        internal static void BroadcastPlayerChange(GridsPerPlayerManager.PlayerChange c)
         {
             BroadcastDiff(playerId: c.PlayerId, coreType: c.CoreType,
-                added: c.Added ? new[] { c.GridId } : null,
-                removed: !c.Added ? new[] { c.GridId } : null);
+                added: c.Added ? new[] { c.GroupId } : null,
+                removed: !c.Added ? new[] { c.GroupId } : null);
         }
 
-        public static void BroadcastSnapshot()
+        internal static void BroadcastSnapshot()
         {
             if (!Ready) return;
             var env = new Envelope { Kind = EnvelopeKind.Snapshot, Payload = Serialize(BuildSnapshot()) };
             _nexus.SendModMsgToAllServers(Serialize(env), ChannelId);
         }
 
-        private static void BroadcastDiff(long? factionId = null, long? playerId = null, string coreType = null, IEnumerable<long> added = null, IEnumerable<long> removed = null)
+        private static void BroadcastDiff(long? factionId = null, long? playerId = null, string coreType = null, IEnumerable<Guid> added = null, IEnumerable<Guid> removed = null)
         {
             if (!Ready) return;
             if ((factionId == null && playerId == null) || string.IsNullOrEmpty(coreType)) return;
@@ -73,8 +74,8 @@ namespace ShipCoreFramework
                 Faction = factionId.HasValue ? new TargetFaction { Id = factionId.Value } : null,
                 Player = playerId.HasValue ? new TargetPlayer { Id = playerId.Value } : null,
                 CoreType = coreType,
-                Added = added?.ToList() ?? new List<long>(),
-                Removed = removed?.ToList() ?? new List<long>()
+                Added = added?.ToList() ?? new List<Guid>(),
+                Removed = removed?.ToList() ?? new List<Guid>()
             };
 
             var env = new Envelope { Kind = EnvelopeKind.Diff, Payload = Serialize(diff) };
@@ -127,7 +128,7 @@ namespace ShipCoreFramework
                         break;
                 }
             }
-            catch { }
+            catch { /**/ }
         }
 
         private static LimitsState BuildSnapshot()
@@ -138,7 +139,7 @@ namespace ShipCoreFramework
             {
                 var fe = new FactionEntry { FactionId = f.Key };
                 foreach (var kv in f.Value)
-                    fe.Cores.Add(new CoreEntry { CoreType = kv.Key, GridIds = kv.Value.ToList() });
+                    fe.Cores.Add(new CoreEntry { CoreType = kv.Key, GroupIds = kv.Value.ToList() });
                 s.Factions.Add(fe);
             }
 
@@ -146,7 +147,7 @@ namespace ShipCoreFramework
             {
                 var pe = new PlayerEntry { PlayerId = p.Key };
                 foreach (var kv in p.Value)
-                    pe.Cores.Add(new CoreEntry { CoreType = kv.Key, GridIds = kv.Value.ToList() });
+                    pe.Cores.Add(new CoreEntry { CoreType = kv.Key, GroupIds = kv.Value.ToList() });
                 s.Players.Add(pe);
             }
 
@@ -165,21 +166,21 @@ namespace ShipCoreFramework
                 foreach (var f in state.Factions)
                 {
                     if (!GridsPerFactionManager.PerFaction.ContainsKey(f.FactionId))
-                        GridsPerFactionManager.PerFaction.Add(f.FactionId, new Dictionary<string, List<long>>());
+                        GridsPerFactionManager.PerFaction.Add(f.FactionId, new Dictionary<string, List<Guid>>());
 
                     var dict = GridsPerFactionManager.PerFaction[f.FactionId];
                     foreach (var c in f.Cores)
-                        dict[c.CoreType] = c.GridIds.Distinct().ToList();
+                        dict[c.CoreType] = c.GroupIds.Distinct().ToList();
                 }
 
                 foreach (var p in state.Players)
                 {
                     if (!GridsPerPlayerManager.PerPlayer.ContainsKey(p.PlayerId))
-                        GridsPerPlayerManager.PerPlayer.Add(p.PlayerId, new Dictionary<string, List<long>>());
+                        GridsPerPlayerManager.PerPlayer.Add(p.PlayerId, new Dictionary<string, List<Guid>>());
 
                     var dict = GridsPerPlayerManager.PerPlayer[p.PlayerId];
                     foreach (var c in p.Cores)
-                        dict[c.CoreType] = c.GridIds.Distinct().ToList();
+                        dict[c.CoreType] = c.GroupIds.Distinct().ToList();
                 }
             }
             finally
@@ -194,10 +195,10 @@ namespace ShipCoreFramework
             if (diff.Faction != null)
             {
                 if (!GridsPerFactionManager.PerFaction.ContainsKey(diff.Faction.Id))
-                    GridsPerFactionManager.PerFaction.Add(diff.Faction.Id, new Dictionary<string, List<long>>());
+                    GridsPerFactionManager.PerFaction.Add(diff.Faction.Id, new Dictionary<string, List<Guid>>());
 
                 var dict = GridsPerFactionManager.PerFaction[diff.Faction.Id];
-                if (!dict.ContainsKey(diff.CoreType)) dict[diff.CoreType] = new List<long>();
+                if (!dict.ContainsKey(diff.CoreType)) dict[diff.CoreType] = new List<Guid>();
                 var list = dict[diff.CoreType];
                 if (diff.Added != null) foreach (var id in diff.Added.Where(id => !list.Contains(id))) list.Add(id);
                 if (diff.Removed != null) foreach (var id in diff.Removed) list.Remove(id);
@@ -206,10 +207,10 @@ namespace ShipCoreFramework
             if (diff.Player != null)
             {
                 if (!GridsPerPlayerManager.PerPlayer.ContainsKey(diff.Player.Id))
-                    GridsPerPlayerManager.PerPlayer.Add(diff.Player.Id, new Dictionary<string, List<long>>());
+                    GridsPerPlayerManager.PerPlayer.Add(diff.Player.Id, new Dictionary<string, List<Guid>>());
 
                 var dict = GridsPerPlayerManager.PerPlayer[diff.Player.Id];
-                if (!dict.ContainsKey(diff.CoreType)) dict[diff.CoreType] = new List<long>();
+                if (!dict.ContainsKey(diff.CoreType)) dict[diff.CoreType] = new List<Guid>();
                 var list = dict[diff.CoreType];
                 if (diff.Added != null) foreach (var id in diff.Added.Where(id => !list.Contains(id))) list.Add(id);
                 if (diff.Removed != null) foreach (var id in diff.Removed) list.Remove(id);
@@ -222,8 +223,8 @@ namespace ShipCoreFramework
         [ProtoContract]
         private class Envelope
         {
-            [ProtoMember(1)] public EnvelopeKind Kind { get; set; }
-            [ProtoMember(2)] public byte[] Payload { get; set; }
+            [ProtoMember(1)] internal EnvelopeKind Kind { get; set; }
+            [ProtoMember(2)] internal byte[] Payload { get; set; }
         }
 
         private enum EnvelopeKind : byte
@@ -236,63 +237,57 @@ namespace ShipCoreFramework
         [ProtoContract]
         private class Hello
         {
-            [ProtoMember(1)] public byte ServerId { get; set; }
-        }
-
-        [ProtoContract]
-        private class RequestSnapshot
-        {
-            [ProtoMember(1)] public byte ServerId { get; set; }
+            [ProtoMember(1)] internal byte ServerId { get; set; }
         }
 
         [ProtoContract]
         private class LimitsState
         {
-            [ProtoMember(1)] public List<FactionEntry> Factions { get; set; } = new List<FactionEntry>();
-            [ProtoMember(2)] public List<PlayerEntry> Players { get; set; } = new List<PlayerEntry>();
+            [ProtoMember(1)] internal List<FactionEntry> Factions { get; } = new List<FactionEntry>();
+            [ProtoMember(2)] internal List<PlayerEntry> Players { get; } = new List<PlayerEntry>();
         }
 
         [ProtoContract]
         private class FactionEntry
         {
-            [ProtoMember(1)] public long FactionId { get; set; }
-            [ProtoMember(2)] public List<CoreEntry> Cores { get; set; } = new List<CoreEntry>();
+            [ProtoMember(1)] internal long FactionId { get; set; }
+            [ProtoMember(2)] internal List<CoreEntry> Cores { get; } = new List<CoreEntry>();
         }
 
         [ProtoContract]
         private class PlayerEntry
         {
-            [ProtoMember(1)] public long PlayerId { get; set; }
-            [ProtoMember(2)] public List<CoreEntry> Cores { get; set; } = new List<CoreEntry>();
+            [ProtoMember(1)] internal long PlayerId { get; set; }
+            [ProtoMember(2)] internal List<CoreEntry> Cores { get; } = new List<CoreEntry>();
         }
 
         [ProtoContract]
         private class CoreEntry
         {
-            [ProtoMember(1)] public string CoreType { get; set; }
-            [ProtoMember(2)] public List<long> GridIds { get; set; } = new List<long>();
+            [ProtoMember(1)] internal string CoreType { get; set; }
+            [ProtoMember(2)] internal List<Guid> GroupIds { get; set; } = new List<Guid>();
         }
 
         [ProtoContract]
         private class LimitsDiff
         {
-            [ProtoMember(1)] public TargetFaction Faction { get; set; }
-            [ProtoMember(2)] public TargetPlayer Player { get; set; }
-            [ProtoMember(3)] public string CoreType { get; set; }
-            [ProtoMember(4)] public List<long> Added { get; set; } = new List<long>();
-            [ProtoMember(5)] public List<long> Removed { get; set; } = new List<long>();
+            [ProtoMember(1)] internal TargetFaction Faction { get; set; }
+            [ProtoMember(2)] internal TargetPlayer Player { get; set; }
+            [ProtoMember(3)] internal string CoreType { get; set; }
+            [ProtoMember(4)] internal List<Guid> Added { get; set; } = new List<Guid>();
+            [ProtoMember(5)] internal List<Guid> Removed { get; set; } = new List<Guid>();
         }
 
         [ProtoContract]
         private class TargetFaction
         {
-            [ProtoMember(1)] public long Id { get; set; }
+            [ProtoMember(1)] internal long Id { get; set; }
         }
 
         [ProtoContract]
         private class TargetPlayer
         {
-            [ProtoMember(1)] public long Id { get; set; }
+            [ProtoMember(1)] internal long Id { get; set; }
         }
     }
 }

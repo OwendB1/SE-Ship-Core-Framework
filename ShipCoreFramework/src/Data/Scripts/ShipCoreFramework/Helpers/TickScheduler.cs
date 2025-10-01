@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace ShipCoreFramework
 {
-    public sealed class TickScheduler
+    internal sealed class TickScheduler
     {
         private long _tick;
         private int _nextId = 1;
@@ -12,13 +12,13 @@ namespace ShipCoreFramework
         private readonly Dictionary<int, Scheduled> _items = new Dictionary<int, Scheduled>(128);
         private readonly Action<Exception> _onError;
 
-        public TickScheduler(Action<Exception> onError = null) { _onError = onError; }
+        internal TickScheduler(Action<Exception> onError = null) { _onError = onError; }
 
-        public long Now => _tick;
+        internal long Now => _tick;
 
-        public struct Handle { internal int Id; public bool IsValid => Id != 0; }
+        internal struct Handle { internal int Id; internal bool IsValid => Id != 0; }
 
-        public Handle? Schedule(Action action, long delayTicks)
+        internal Handle? Schedule(Action action, long delayTicks)
         {
             if (action == null || delayTicks < 0) return null;
             var id = _nextId++;
@@ -28,7 +28,7 @@ namespace ShipCoreFramework
             return new Handle { Id = id };
         }
 
-        public Handle? ScheduleEvery(Action action, long intervalTicks, bool runImmediately = false)
+        internal Handle? ScheduleEvery(Action action, long intervalTicks, bool runImmediately = false)
         {
             if (action == null || intervalTicks < 0) return null;
             var id = _nextId++;
@@ -38,7 +38,7 @@ namespace ShipCoreFramework
             return new Handle { Id = id };
         }
 
-        public bool Cancel(Handle handle)
+        internal bool Cancel(Handle handle)
         {
             if (handle.Id == 0) return false;
             Scheduled s;
@@ -49,7 +49,7 @@ namespace ShipCoreFramework
             return true;
         }
 
-        public void Clear()
+        internal void Clear()
         {
             _items.Clear();
             _byDueTick.Clear();
@@ -58,13 +58,17 @@ namespace ShipCoreFramework
         }
 
         // Call these from SE update hooks
-        public void Update1(int maxActions = int.MaxValue)   => Advance(1,   maxActions);
-        public void Update10(int maxActions = int.MaxValue)  => Advance(10,  maxActions);
-        public void Update100(int maxActions = int.MaxValue) => Advance(100, maxActions);
+        internal void Update1(int maxActions = int.MaxValue)   => Advance(1,   maxActions);
+        internal void Update10(int maxActions = int.MaxValue)  => Advance(10,  maxActions);
+        internal void Update100(int maxActions = int.MaxValue) => Advance(100, maxActions);
 
         private void Advance(long ticks, int maxActions = int.MaxValue)
         {
-            if (ticks <= 0 || maxActions <= 0) { _tick += Math.Max(0, ticks); return; }
+            if (ticks <= 0 || maxActions <= 0)
+            {
+                _tick += Math.Max(0, ticks); 
+                return;
+            }
 
             _tick += ticks;
             var executed = 0;
@@ -120,10 +124,10 @@ namespace ShipCoreFramework
 
         private struct Scheduled
         {
-            public Action Action;
-            public long Due;
-            public long Interval;
-            public bool Active;
+            internal Action Action;
+            internal long Due;
+            internal long Interval;
+            internal bool Active;
         }
     }
 }
