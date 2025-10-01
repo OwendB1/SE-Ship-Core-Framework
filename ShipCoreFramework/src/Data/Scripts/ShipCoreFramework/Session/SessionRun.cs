@@ -149,11 +149,11 @@ namespace ShipCoreFramework
                 if (Math.Abs(dist - z.Radius) > edgeProximity) continue;
 
                 var world = MatrixD.CreateTranslation(z.Position);
-                var color = z.ForceOff ? new Color(1f, 0.2f, 0.2f, 0.15f) : new Color(0.2f, 0.6f, 1f, 0.12f);
-                var edge = z.ForceOff ? new Color(1f, 0.1f, 0.1f, 0.9f) : new Color(0.3f, 0.7f, 1f, 0.9f);
+                var color = z.ForceOff ? new Color(1f, 0.2f, 0.2f, 0.05f) : new Color(0.2f, 0.6f, 1f, 0.05f);
+                var edge = z.ForceOff ? new Color(1f, 0.1f, 0.1f, 1f) : new Color(0.3f, 0.7f, 1f, 1f);
 
-                MySimpleObjectDraw.DrawTransparentSphere(ref world, (float)z.Radius, ref color, MySimpleObjectRasterizer.Solid,32, MatSphere, MatLine, 1f);
-                MySimpleObjectDraw.DrawTransparentSphere(ref world, (float)z.Radius, ref edge, MySimpleObjectRasterizer.Wireframe,64, MatSphere, MatLine, 0.75f);
+                MySimpleObjectDraw.DrawTransparentSphere(ref world, (float)z.Radius, ref color, MySimpleObjectRasterizer.Solid,24, MatSphere, null, 1f);
+                MySimpleObjectDraw.DrawTransparentSphere(ref world, (float)z.Radius, ref edge, MySimpleObjectRasterizer.Wireframe,64, null, MatLine, 0.75f);
             }
 
         }

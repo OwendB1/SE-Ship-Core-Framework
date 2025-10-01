@@ -12,7 +12,7 @@ namespace ShipCoreFramework
         private static NexusAPI _myNexusApi;
         private bool _startedNexus;
         private int _tick;
-        private static readonly MyStringId MatSphere = MyStringId.GetOrCompute("GizmoDrawSphere");
+        private static readonly MyStringId MatSphere = MyStringId.GetOrCompute("HighlightArea");
         private static readonly MyStringId MatLine   = MyStringId.GetOrCompute("GizmoDrawLine");
         
         internal const ushort CommandsSyncId = 32123;
