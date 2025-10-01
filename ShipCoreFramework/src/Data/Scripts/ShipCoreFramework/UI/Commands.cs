@@ -7,6 +7,7 @@ using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
+using VRageMath;
 
 namespace ShipCoreFramework
 {
@@ -50,7 +51,7 @@ namespace ShipCoreFramework
             switch (sub)
             {
                 case "reloadconfig":
-                    if(!CheckIfAdmin(playerId)){return;}
+                    if(!CheckIfAdmin(playerId)) return;
                     modMessage+=ReloadConfig();
                     break;
                 case "listcores":
@@ -62,23 +63,31 @@ namespace ShipCoreFramework
                 case "listnocores":
                     modMessage+=ListNoCores();
                     break;
-                case "listnoflyzones":
-                    modMessage+=ListNoFlyZones();
+                case "listnfzs":
+                    ListNoFlyZones();
+                    break;
+                case "createnfz":
+                    if(!CheckIfAdmin(playerId)) return;
+                    modMessage+=CreateNoFlyZone(args);
+                    break;
+                case "deletenfz":
+                    if(!CheckIfAdmin(playerId)) return;
+                    modMessage+=DeleteNoFlyZone(args);
                     break;
                 case "debug":
-                    if(!CheckIfAdmin(playerId)){return;}
+                    if(!CheckIfAdmin(playerId)) return;
                     modMessage+=Debug(args);
                     break;
                 case "combatlog":
-                    if(!CheckIfAdmin(playerId)){return;}
+                    if(!CheckIfAdmin(playerId)) return;
                     modMessage+=CombatLog(args);
                     break;
                 case "select":
-                    if(!CheckIfAdmin(playerId)){return;}
+                    if(!CheckIfAdmin(playerId))return;
                     modMessage+=Select(args);
                     break;
                 case "setworldspeed":
-                    if(!CheckIfAdmin(playerId)){return;}
+                    if(!CheckIfAdmin(playerId)) return;
                     modMessage+=SetWorldSpeed(args);
                     break;
                 case "ignoretags":
@@ -86,7 +95,7 @@ namespace ShipCoreFramework
                     modMessage+=IgnoreTags(playerId,args);
                     break;
                 case "ignoreai":
-                    if(!CheckIfAdmin(playerId)){return;}
+                    if(!CheckIfAdmin(playerId)) return;
                     modMessage+=IgnoreAi();
                     break;
                 case "info":
@@ -141,21 +150,112 @@ namespace ShipCoreFramework
                 Session.Config.NoCoreConfigs.Aggregate("", (current, nc) => current + $"{nc.UniqueName} (SubtypeId: {nc.SubtypeId})");
         }
 
-        private static string ListNoFlyZones()
+        private static void ListNoFlyZones()
         {
-            var modMessage = "";
-            if (Session.Config.NoFlyZones.Count == 0)
+            var body = "";
+            if (Session.Config.NoFlyZones == null || Session.Config.NoFlyZones.Count == 0)
             {
-                modMessage+="No NoFlyZones defined.";
-                return modMessage;
+                body = "No NoFlyZones defined.";
             }
-            
-            foreach (var zone in Session.Config.NoFlyZones)
+            else
             {
-                var allowed = string.Join(", ", zone.AllowedCoresSubtype);
-                modMessage+=$"Zone {zone.Id}: Center={zone.Position}, Radius={zone.Radius}, AllowedCores=[{allowed}]";
+                for (var i = 0; i < Session.Config.NoFlyZones.Count; i++)
+                {
+                    var zone = Session.Config.NoFlyZones[i];
+                    var allowed = zone.AllowedCoresSubtype != null && zone.AllowedCoresSubtype.Count > 0
+                        ? string.Join(", ", zone.AllowedCoresSubtype)
+                        : "None";
+                    var p = zone.Position;
+                    body += "#" + (i + 1) + ":\n";
+                    body += "  Center: (" + p.X.ToString("F1", CultureInfo.InvariantCulture) + ", " +
+                            p.Y.ToString("F1", CultureInfo.InvariantCulture) + ", " +
+                            p.Z.ToString("F1", CultureInfo.InvariantCulture) + ")\n";
+                    body += "  Radius: " + zone.Radius.ToString("F1", CultureInfo.InvariantCulture) + " m\n";
+                    body += "  AllowedCores: [" + allowed + "]\n\n";
+                }
             }
-            return modMessage;
+
+            MyAPIGateway.Utilities.ShowMissionScreen(
+                "ShipCore Framework",
+                "/core listnoflyzones",
+                "No-Fly Zones",
+                body
+            );
+        }
+        
+        private static string CreateNoFlyZone(string[] args)
+        {
+            if (args.Length < 3) 
+                return "Usage: /core createnfz <radius> <forceoff:true|false> [GPS:...] [allowedSubtype1 allowedSubtype2 ...]";
+
+            double radius;
+            if (!double.TryParse(args[1], NumberStyles.Float, CultureInfo.InvariantCulture, out radius) || radius <= 0d)
+                return "Radius must be a positive number.";
+
+            bool forceOff;
+            var forceArg = args[2].Trim();
+            if (!forceArg.StartsWith("forceoff:", StringComparison.OrdinalIgnoreCase) ||
+                !bool.TryParse(forceArg.Substring("forceoff:".Length), out forceOff))
+            {
+                return "Second argument must be 'forceoff:true' or 'forceoff:false'.";
+            }
+
+            Vector3D center;
+            if (!Utils.TryParseGpsFromArgs(args.Skip(3).ToArray(), out center))
+            {
+                var player = MyAPIGateway.Session == null ? null : MyAPIGateway.Session.Player;
+                if (player == null) return "Player not found.";
+                center = player.GetPosition();
+            }
+
+            var allowed = new List<string>();
+            foreach (var arg in args.Skip(3))
+            {
+                if (arg.StartsWith("GPS:", StringComparison.OrdinalIgnoreCase)) continue;
+                if (arg.StartsWith("forceoff:", StringComparison.OrdinalIgnoreCase)) continue;
+                if (!string.IsNullOrWhiteSpace(arg)) allowed.Add(arg.Trim());
+            }
+
+            if (Session.Config.NoFlyZones == null) Session.Config.NoFlyZones = new List<Zones>();
+
+            var nextId = 1;
+            if (Session.Config.NoFlyZones.Count > 0)
+                nextId = Session.Config.NoFlyZones.Max(z => z.Id) + 1;
+
+            var newZone = new Zones
+            {
+                Id = nextId,
+                Position = center,
+                Radius = radius,
+                AllowedCoresSubtype = allowed,
+                ForceOff = forceOff
+            };
+
+            Session.Config.NoFlyZones.Add(newZone);
+
+            return "Created NoFlyZone with ID " + nextId + 
+                   " at the chosen center (ForceOff=" + forceOff + "); make sure to save the world!";
+        }
+
+
+        
+        private static string DeleteNoFlyZone(string[] args)
+        {
+            if (args.Length < 2) return "Usage: /core deletenfz <id>";
+
+            int id;
+            if (!int.TryParse(args[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out id))
+                return "Invalid id.";
+
+            if (Session.Config.NoFlyZones == null || Session.Config.NoFlyZones.Count == 0)
+                return "No NoFlyZones defined.";
+
+            var zone = Session.Config.NoFlyZones.FirstOrDefault(z => z.Id == id);
+            if (zone == null) return "NoFlyZone with ID " + id + " not found.";
+
+            Session.Config.NoFlyZones.Remove(zone);
+
+            return "Deleted NoFlyZone ID " + id + "; make sure to save the world!";
         }
 
         private static string Debug(string[] args)
@@ -576,8 +676,16 @@ Shows details for a core by UniqueName.
 /core reloadconfig
 Reloads configuration from disk.
 
-/core listnoflyzones
-Lists defined NoFlyZones.
+/core listnfzs
+Lists defined NoFlyZones with their IDs.
+
+/core createnfz <radius> forceoff:true|false [GPS:...] [allowedSubtype1 allowedSubtype2 ...]
+Creates a new NoFlyZone.
+If a GPS is provided, it will be used as the center. Otherwise, your current position is used.
+The 'forceoff' flag determines whether block limits are overridden and forced shutoff is applied in this zone.
+
+/core deletenfz <id>
+Deletes a NoFlyZone by its ID.
 
 /core debug on|off
 Toggles debug mode (Local Client)
@@ -586,7 +694,7 @@ Toggles debug mode (Local Client)
 Toggles combat logging (Admin Required)
 
 /core setworldspeed <m/s>
-Sets the session max possible speed in m/s.(Admin Required)
+Sets the session max possible speed in m/s. (Admin Required)
 
 /core ignoretags list
 Lists the current ignored faction tags.

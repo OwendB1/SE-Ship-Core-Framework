@@ -10,6 +10,7 @@ namespace ShipCoreFramework
     {
         private static NexusAPI _myNexusApi;
         private bool _startedNexus;
+        private int _tick;
         
         internal const ushort CommandsSyncId = 32123;
         internal static bool IsClient;

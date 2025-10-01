@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using NexusModAPI;
+using ParallelTasks;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using VRage.Game;
@@ -137,7 +138,12 @@ namespace ShipCoreFramework
         {
             TickScheduler.Update1();
             if(!HasStarted) HasStarted = true;
-            CoreTerminalControls.RegisterOnce(); 
+            CoreTerminalControls.RegisterOnce();
+
+            _tick++;
+            var runNfz = _tick % 10 == 0;
+            var doPunish = _tick % 60 == 0;
+
             MyAPIGateway.Parallel.StartBackground(() =>
             {
                 MyAPIGateway.Parallel.ForEach(GroupDict, kvp =>
@@ -145,7 +151,8 @@ namespace ShipCoreFramework
                     kvp.Value.RunBoostTimerTick();
                     kvp.Value.RunActiveDefenseTimerTick();
                     SpeedEnforcement.EnforceSpeedLimit(kvp.Value);
-                    NoFlyZones.EnforceNoFlyZones(kvp.Value);
+                    
+                    if (runNfz) NoFlyZones.EnforceNoFlyZones(kvp.Value, doPunish);
                 });
             });
         }

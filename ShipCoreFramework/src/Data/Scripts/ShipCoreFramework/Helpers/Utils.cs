@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using Sandbox.Game;
 using Sandbox.ModAPI;
 using VRage.Game;
+using VRage.Game.Entities;
 using VRage.Game.ModAPI;
 using VRage.Utils;
+using VRageMath;
 
 namespace ShipCoreFramework
 {
@@ -169,6 +172,28 @@ namespace ShipCoreFramework
             MyAPIGateway.Physics.CastRay(startPos, endPos, hits);
 
             return hits.Select(hit => hit.HitEntity).OfType<IMyCubeGrid>().FirstOrDefault();
+        }
+        
+        internal static bool TryParseGpsFromArgs(string[] args, out Vector3D position)
+        {
+            position = new Vector3D();
+            if (args == null || args.Length == 0) return false;
+
+            var joined = string.Join(" ", args);
+            var idx = joined.IndexOf("GPS:", StringComparison.OrdinalIgnoreCase);
+            if (idx < 0) return false;
+
+            var tail = joined.Substring(idx);
+            var parts = tail.Split(':');
+            if (parts.Length < 5) return false;
+
+            double x, y, z;
+            if (!double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out x)) return false;
+            if (!double.TryParse(parts[3], NumberStyles.Float, CultureInfo.InvariantCulture, out y)) return false;
+            if (!double.TryParse(parts[4], NumberStyles.Float, CultureInfo.InvariantCulture, out z)) return false;
+
+            position = new Vector3D(x, y, z);
+            return true;
         }
         
         internal static bool TryFindByGridId(long gridEntityId, out GroupComponent group)

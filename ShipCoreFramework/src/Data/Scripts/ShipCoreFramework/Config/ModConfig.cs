@@ -351,8 +351,8 @@ namespace ShipCoreFramework
         public List<BlockGroup> BlockGroups = new List<BlockGroup>();
         [XmlElement("MaxCount")] 
         public float MaxCount;
-        [XmlElement("TurnedOffByNoFlyZone")] 
-        public bool TurnedOffByNoFlyZone;
+        [XmlElement("PunishByNoFlyZone")] 
+        public bool PunishByNoFlyZone;
         [XmlElement("PunishmentType")] 
         public PunishmentType PunishmentType = PunishmentType.ShutOff;
         [XmlElement("AllowedDirections")] 
