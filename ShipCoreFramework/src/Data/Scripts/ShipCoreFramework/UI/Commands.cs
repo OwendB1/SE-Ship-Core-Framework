@@ -65,7 +65,7 @@ namespace ShipCoreFramework
                     break;
                 case "listnfzs":
                     ListNoFlyZones();
-                    break;
+                    return;
                 case "createnfz":
                     if(!CheckIfAdmin(playerId)) return;
                     modMessage+=CreateNoFlyZone(args);
@@ -232,9 +232,9 @@ namespace ShipCoreFramework
             };
 
             Session.Config.NoFlyZones.Add(newZone);
-
+            Session.Config.SaveConfig();
             return "Created NoFlyZone with ID " + nextId + 
-                   " at the chosen center (ForceOff=" + forceOff + "); make sure to save the world!";
+                   " at the chosen center (ForceOff=" + forceOff + "); please reconnect to resync from server config!";
         }
 
 
@@ -254,8 +254,8 @@ namespace ShipCoreFramework
             if (zone == null) return "NoFlyZone with ID " + id + " not found.";
 
             Session.Config.NoFlyZones.Remove(zone);
-
-            return "Deleted NoFlyZone ID " + id + "; make sure to save the world!";
+            Session.Config.SaveConfig();
+            return "Deleted NoFlyZone ID " + id + "; please reconnect to resync from server config!";
         }
 
         private static string Debug(string[] args)

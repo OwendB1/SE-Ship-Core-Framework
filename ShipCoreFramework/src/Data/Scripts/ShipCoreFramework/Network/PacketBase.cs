@@ -156,7 +156,7 @@ namespace ShipCoreFramework
         internal override void Received() {
             // Runs on the client that received it
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
-                MyAPIGateway.Utilities.ShowNotification(Text, TimeMs, Font));
+                NotificationInstance.ShowNotification(Text, TimeMs, Font));
         }
     }
     

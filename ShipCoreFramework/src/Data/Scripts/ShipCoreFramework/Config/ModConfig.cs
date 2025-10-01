@@ -88,6 +88,7 @@ namespace ShipCoreFramework
                     LogLevel = import.LogLevel;
                     ClientOutputLogLevel = import.ClientOutputLogLevel;
                     MaxPossibleSpeedMetersPerSecond = import.MaxPossibleSpeedMetersPerSecond;
+                    NoFlyZones = import.NoFlyZones;
                 }
             }
             else
