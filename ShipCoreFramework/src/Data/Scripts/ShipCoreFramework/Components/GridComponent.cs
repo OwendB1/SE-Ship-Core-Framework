@@ -95,25 +95,16 @@ namespace ShipCoreFramework
 
         private bool TryApplyLimitsOnAdd(MyCubeBlock block)
         {
-            if (GroupComponent == null)
-                return false;
-
             GroupComponent.EnsureWeightMaps();
-
             var firstOwner = Grid.BigOwners.FirstOrDefault();
-            var limits = GroupComponent.ShipCore.BlockLimits;
 
-            //may need to create limits if they don't exist not sure about this
-            if (Limits == null) { return false; }
+            var limits = GroupComponent.ShipCore.BlockLimits;
+            if (limits == null) return false;
 
             foreach (var limit in limits)
             {
-                if (GroupComponent.WeightMaps == null)
-                    continue;
-
                 LimitWeightMap map;
-                if (!GroupComponent.WeightMaps.TryGetValue(limit, out map))
-                    continue;
+                if (!GroupComponent.WeightMaps.TryGetValue(limit, out map)) continue;
 
                 var w = map.Get(block, KeyOf);
                 if (w <= 0d) continue;
@@ -128,11 +119,14 @@ namespace ShipCoreFramework
                     }
                 }
 
-                double cur = 0d;
-                if (!GroupComponent.CountPerLimit.TryGetValue(limit, out cur))
+                double cur = GroupComponent.CountPerLimit.GetOrAdd(limit, 0d);
+                if (cur + w > limit.MaxCount)
                 {
-                    cur = 0d;
+                    Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates Blocklimit " + limit.Name + ": " + (cur + w) + "/" + limit.MaxCount, 10000, firstOwner);
+                    GroupComponent.WhackABlock(block, limit.PunishmentType);
+                    return true;
                 }
+
                 LimitBucket bucket;
                 if (!Limits.TryGetValue(limit, out bucket))
                 {
@@ -142,23 +136,9 @@ namespace ShipCoreFramework
 
                 bucket.TotalWeight += w;
                 bucket.Members.Add(block);
-                GroupComponent.CountPerLimit.AddOrUpdate(limit, w, (key, oldVal) => oldVal + w);
 
-                //Ok so funny story the block was added so, if it is removed, on removed is triggered and then the values are adjusted so even if you remove the block on add, it was added so if you don't add the count you create a negative tally issue
-                if (cur + w > limit.MaxCount)
-                {
-                    Utils.ShowNotification(
-                        Utils.GetBlockSubtypeId(block) + " violates Blocklimit " + limit.Name + ": " + (cur + w) + "/" + limit.MaxCount,
-                        10000,
-                        firstOwner
-                    );
-
-                    GroupComponent.WhackABlock(block, limit.PunishmentType);
-                    return true;
-                }
-
+                GroupComponent.CountPerLimit.AddOrUpdate(limit, w, (_, oldVal) => oldVal + w);
             }
-
             return false;
         }
 
@@ -174,7 +154,7 @@ namespace ShipCoreFramework
 
             GroupComponent.EnsureWeightMaps();
 
-            var limits = GroupComponent.ShipCore?.BlockLimits;
+            var limits = GroupComponent.ShipCore.BlockLimits;
             if (limits != null)
             {
                 foreach (var limit in limits)
@@ -262,15 +242,7 @@ namespace ShipCoreFramework
                 if (!Limits.TryGetValue(limit, out bucket))
                 {
                     bucket = new LimitBucket(0d);
-                    if (!Limits.ContainsKey(limit))
-                    {
-                        Limits.Add(limit, bucket);
-                    }
-                    else
-                    {
-                        Limits[limit] = bucket;
-                    }
-                    
+                    Limits[limit] = bucket;
                 }
 
                 foreach (var block in Blocks)
