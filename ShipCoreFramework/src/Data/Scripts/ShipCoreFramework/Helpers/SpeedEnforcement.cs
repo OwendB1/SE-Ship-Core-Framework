@@ -12,32 +12,39 @@ namespace ShipCoreFramework
     {
         internal static void EnforceSpeedLimit(GroupComponent groupComponent)
         {
-            foreach (var kvp in groupComponent.GridDictionary)
+            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
-                if(kvp.Key.IsStatic) return;
-                if (kvp.Key?.Physics == null) return;
-                var maxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.Modifiers.MaxSpeed;
-                if (groupComponent.PunishSpeed) maxSpeed /= 4;
-                if (groupComponent.ShipCore != null && groupComponent.BoostEnabled)
+                foreach (var kvp in groupComponent.GridDictionary)
                 {
-                    maxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.Modifiers.MaxBoost;
-                }
-            
-                var velocity = kvp.Key.Physics.LinearVelocity;
-                if (velocity.LengthSquared() <= maxSpeed * maxSpeed) return;
-                velocity = Vector3.Normalize(velocity) * maxSpeed;
-                MyAPIGateway.Utilities.InvokeOnGameThread(() =>
-                {
-                    try
+                    if (kvp.Key.IsStatic) return;
+                    if (kvp.Key?.Physics == null) return;
+                    var maxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.Modifiers.MaxSpeed;
+                    if (groupComponent.PunishSpeed) maxSpeed /= 4;
+                    if (groupComponent.ShipCore != null && groupComponent.BoostEnabled)
                     {
-                        kvp.Key.Physics.SetSpeeds(velocity, kvp.Key.Physics.AngularVelocity);
+                        maxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.Modifiers.MaxBoost;
                     }
-                    catch (Exception)
+
+                    var velocity = kvp.Key.Physics.LinearVelocity;
+                    if (velocity.LengthSquared() <= maxSpeed * maxSpeed) return;
+                    velocity = Vector3.Normalize(velocity) * maxSpeed;
+                    kvp.Key.Physics.SetSpeeds(velocity, kvp.Key.Physics.AngularVelocity);
+                    // Sets speeds of subgrids at a different point than the main grid resulting in what can best be destribed as directional subgrid drift
+                    /*
+                    MyAPIGateway.Utilities.InvokeOnGameThread(() =>
                     {
-                        // do nothing
-                    } 
-                });
-            }
+                        try
+                        {
+                            kvp.Key.Physics.SetSpeeds(velocity, kvp.Key.Physics.AngularVelocity);
+                        }
+                        catch (Exception)
+                        {
+                            // do nothing
+                        } 
+                    });
+                    */
+                }
+            });
         }
     }
 }

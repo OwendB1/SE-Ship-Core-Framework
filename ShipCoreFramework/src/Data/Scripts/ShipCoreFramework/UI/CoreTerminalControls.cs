@@ -80,9 +80,13 @@ namespace ShipCoreFramework
             boost.Enabled = delegate(IMyTerminalBlock b)
             {
                 var groupComp = b.GetGroupComponent();
-                if (groupComp != null) return groupComp.MainCoreComponent.IsMainCore;
-                Utils.ShowChatMessage("Could not sync box, main grid group match was not found??");
-                return false;
+                if (groupComp == null || groupComp.MainCoreComponent == null)
+                {
+                    Utils.ShowChatMessage("Could not sync box, main core component not found.");
+                    return false;
+                }
+
+                return groupComp.MainCoreComponent.IsMainCore;
             };
             
             boost.Action = b =>
@@ -95,7 +99,7 @@ namespace ShipCoreFramework
                 }
                 Session.Networking.SendToServer(new PacketAction{ActionData = new ButtonAction {Group = groupComp.MyGroup, IsBoost = true }});
             };
-            MyAPIGateway.TerminalControls.AddAction<IMyBeacon>(boost);
+            //MyAPIGateway.TerminalControls.AddAction<IMyBeacon>(boost);
 
             var defense = MyAPIGateway.TerminalControls.CreateAction<IMyBeacon>("ShipCore_ActivateDefense");
             defense.Name = new StringBuilder("Activate Defense");
@@ -105,9 +109,13 @@ namespace ShipCoreFramework
             defense.Enabled = delegate(IMyTerminalBlock b)
             {
                 var groupComp = b.GetGroupComponent();
-                if (groupComp != null) return groupComp.MainCoreComponent.IsMainCore;
-                Utils.ShowChatMessage("Could not sync box, main grid group match was not found??");
-                return false;
+                if (groupComp == null || groupComp.MainCoreComponent == null)
+                {
+                    Utils.ShowChatMessage("Could not sync box, main core component not found.");
+                    return false;
+                }
+
+                return groupComp.MainCoreComponent.IsMainCore;
             };
             
             defense.Action = b =>
@@ -120,7 +128,7 @@ namespace ShipCoreFramework
                 }
                 Session.Networking.SendToServer(new PacketAction{ActionData = new ButtonAction {Group = groupComp.MyGroup, IsBoost = false }});
             };
-            MyAPIGateway.TerminalControls.AddAction<IMyBeacon>(defense);
+            //MyAPIGateway.TerminalControls.AddAction<IMyBeacon>(defense);
         }
     }
 }

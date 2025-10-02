@@ -102,7 +102,15 @@ namespace ShipCoreFramework
                         }
                     }
                 }
-                WeightMaps[limit] = map;
+                if (!WeightMaps.ContainsKey(limit))
+                {   
+                    WeightMaps.Add(limit,map);
+                }
+                else
+                {
+                    WeightMaps[limit] = map;
+                }    
+                
             }
         }
         
@@ -190,6 +198,7 @@ namespace ShipCoreFramework
                 if (startGrid.IsPreview) continue;
 
                 var gridComp = new GridComponent();
+                //Is my group ever defined?
                 gridComp.Init(startGrid, MyGroup);
                 GridDictionary[startGrid] = gridComp;
             }
@@ -317,8 +326,12 @@ namespace ShipCoreFramework
                     break;
                 case PunishmentType.Delete:
                     if (func != null) func.Enabled = false;
-                    var gridComponent = GridDictionary[(MyCubeGrid)block.CubeGrid];
-                    gridComponent.RemoveAndRefund(block.SlimBlock);
+                    //I hate myself - Blues
+                    if (GridDictionary.ContainsKey((MyCubeGrid)block.CubeGrid))
+                    {
+                        var gridComponent = GridDictionary[(MyCubeGrid)block.CubeGrid];
+                        gridComponent.RemoveAndRefund(block.SlimBlock);
+                    }
                     break;
                 case PunishmentType.Explode:
                     block.SlimBlock.DoDamage(block.SlimBlock.Integrity, damageType, true);
