@@ -30,7 +30,8 @@ namespace ShipCoreFramework
                 {
                     try
                     {
-                        kvp.Key.Physics.SetSpeeds(velocity, kvp.Key.Physics.AngularVelocity);
+                        if (kvp.Key?.Physics != null)
+                            kvp.Key.Physics.SetSpeeds(velocity, kvp.Key.Physics.AngularVelocity);
                     }
                     catch (Exception)
                     {

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Definitions;
@@ -12,7 +13,7 @@ namespace ShipCoreFramework
 {
     public static class CubeGridModifiers
     {
-        public static readonly Dictionary<long, GridDefenseModifiers> DefenseModifiers = new Dictionary<long, GridDefenseModifiers>();
+        public static readonly ConcurrentDictionary<long, GridDefenseModifiers> DefenseModifiers = new ConcurrentDictionary<long, GridDefenseModifiers>();
         private static readonly MyStringHash EnergyDamageType = MyStringHash.GetOrCompute("Energy");
         private static readonly MyStringHash KineticDamageType = MyStringHash.GetOrCompute("Kinetic");
 
@@ -182,10 +183,9 @@ namespace ShipCoreFramework
         {
             var myBlock = target as IMySlimBlock;
             if (myBlock == null) return;
-            
+
             GridDefenseModifiers modifiers;
-            var succeeded = DefenseModifiers.TryGetValue(myBlock.CubeGrid.EntityId, out modifiers);
-            if (!succeeded) return;
+            if (!DefenseModifiers.TryGetValue(myBlock.CubeGrid.EntityId, out modifiers)) return;
 
             if (damageInfo.Type == MyDamageType.Bullet)
             {

@@ -25,6 +25,7 @@ namespace ShipCoreFramework
         private float BoostCoolDown => ShipCore.Modifiers.BoostCoolDown;
         
         private string _weightMapsBuiltForSubtypeId;
+        private readonly object _weightMapsLock = new object();
 
         internal Guid EntityId = Guid.NewGuid();
         internal IMyGridGroupData MyGroup;
@@ -79,31 +80,37 @@ namespace ShipCoreFramework
             if (_weightMapsBuiltForSubtypeId == currentSubtype && WeightMaps.Count != 0)
                 return;
 
-            WeightMaps.Clear();
-            _weightMapsBuiltForSubtypeId = currentSubtype;
-
-            var limits = ShipCore.BlockLimits;
-            if (limits == null) return;
-
-            foreach (var limit in limits)
+            lock (_weightMapsLock)
             {
-                if (limit == null) continue;
+                if (_weightMapsBuiltForSubtypeId == currentSubtype && WeightMaps.Count != 0)
+                    return;
 
-                var map = new LimitWeightMap();
-                var groups = limit.BlockGroups;
-                if (groups != null)
+                WeightMaps.Clear();
+                _weightMapsBuiltForSubtypeId = currentSubtype;
+
+                var limits = ShipCore.BlockLimits;
+                if (limits == null) return;
+
+                foreach (var limit in limits)
                 {
-                    foreach (var grp in groups)
+                    if (limit == null) continue;
+
+                    var map = new LimitWeightMap();
+                    var groups = limit.BlockGroups;
+                    if (groups != null)
                     {
-                        var btList = grp.BlockTypes;
-                        if (btList == null) continue;
-                        foreach (var bt in btList)
+                        foreach (var grp in groups)
                         {
-                            map.Add(bt.TypeId, bt.SubtypeId, bt.CountWeight);
+                            var btList = grp.BlockTypes;
+                            if (btList == null) continue;
+                            foreach (var bt in btList)
+                            {
+                                map.Add(bt.TypeId, bt.SubtypeId, bt.CountWeight);
+                            }
                         }
                     }
+                    WeightMaps[limit] = map;
                 }
-                WeightMaps[limit] = map;
             }
         }
         
@@ -257,6 +264,8 @@ namespace ShipCoreFramework
             foreach (var kv in CountPerLimit)
             {
                 var limit = kv.Key;
+                if (limit == null) continue;
+
                 var total = kv.Value;
                 if (total <= limit.MaxCount) continue;
 
@@ -269,10 +278,13 @@ namespace ShipCoreFramework
 
                 foreach (var grid in GridDictionary.Values)
                 {
-                    LimitBucket bucket;
-                    if (!grid.Limits.TryGetValue(limit, out bucket)) continue;
+                    if (grid == null) continue;
 
-                    foreach (var blk in bucket.Members)
+                    LimitBucket bucket;
+                    if (!grid.Limits.TryGetValue(limit, out bucket) || bucket == null) continue;
+
+                    var membersCopy = new List<IMySlimBlock>(bucket.Members);
+                    foreach (var blk in membersCopy)
                     {
                         if (blk == null || blk.IsMovedBySplit || blk.CubeGrid == null) continue;
 
@@ -295,6 +307,8 @@ namespace ShipCoreFramework
                 foreach (var t in candidates)
                 {
                     if (over <= 0d) break;
+                    if (t.Key == null) continue;
+
                     WhackABlock(t.Key, limit.PunishmentType);
                     over -= t.Value;
 
@@ -359,12 +373,17 @@ namespace ShipCoreFramework
         internal void ApplyModifiers(GridModifiers modifiers)
         {
             foreach (var kv in GridDictionary)
-            foreach (var bl in kv.Value.Blocks)
             {
-                var fatBlock = bl?.FatBlock;
-                var terminalBlock = fatBlock as IMyTerminalBlock;
-                if (terminalBlock != null)
-                    CubeGridModifiers.ApplyModifiers(terminalBlock, modifiers);
+                var blocksCopy = new List<IMySlimBlock>(kv.Value.Blocks);
+                foreach (var bl in blocksCopy)
+                {
+                    if (bl == null) continue;
+                    var fatBlock = bl.FatBlock;
+                    if (fatBlock == null) continue;
+                    var terminalBlock = fatBlock as IMyTerminalBlock;
+                    if (terminalBlock != null)
+                        CubeGridModifiers.ApplyModifiers(terminalBlock, modifiers);
+                }
             }
         }
 

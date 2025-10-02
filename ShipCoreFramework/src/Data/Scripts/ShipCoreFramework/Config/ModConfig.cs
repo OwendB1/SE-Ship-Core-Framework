@@ -83,11 +83,22 @@ namespace ShipCoreFramework
                     var text = reader.ReadToEnd();
                     var import = MyAPIGateway.Utilities.SerializeFromXML<ModConfig>(text);
                     if (import == null) throw new Exception("Failed to load world config.");
+
                     DebugMode = !Session.IsClient && import.DebugMode;
                     CombatLogging = import.CombatLogging;
                     LogLevel = import.LogLevel;
                     ClientOutputLogLevel = import.ClientOutputLogLevel;
-                    MaxPossibleSpeedMetersPerSecond = import.MaxPossibleSpeedMetersPerSecond;
+
+                    if (import.MaxPossibleSpeedMetersPerSecond <= 0 || import.MaxPossibleSpeedMetersPerSecond > 10000)
+                    {
+                        Utils.Log("MaxPossibleSpeedMetersPerSecond validation failed - using default 300", 0, "Config Validation");
+                        MaxPossibleSpeedMetersPerSecond = 300;
+                    }
+                    else
+                    {
+                        MaxPossibleSpeedMetersPerSecond = import.MaxPossibleSpeedMetersPerSecond;
+                    }
+
                     NoFlyZones = import.NoFlyZones;
                 }
             }

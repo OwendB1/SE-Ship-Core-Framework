@@ -56,7 +56,7 @@ namespace ShipCoreFramework
             Dictionary<string, List<Guid>> perGridClass;
             if (!PerPlayer.TryGetValue(playerId, out perGridClass))
             {
-                perGridClass = GetDefaultPLayerGridsSet();
+                perGridClass = GetDefaultPlayerGridsSet();
                 PerPlayer[playerId] = perGridClass;
             }
 
@@ -102,7 +102,7 @@ namespace ShipCoreFramework
             return Config.IgnoredFactionTags == null || group.OwningFaction == null || !Config.IgnoredFactionTags.Contains(group.OwningFaction.Tag);
         }
 
-        private static Dictionary<string, List<Guid>> GetDefaultPLayerGridsSet()
+        private static Dictionary<string, List<Guid>> GetDefaultPlayerGridsSet()
         {
             var set = new Dictionary<string, List<Guid>>();
             foreach (var core in Config.ShipCores) set[core.UniqueName] = new List<Guid>();

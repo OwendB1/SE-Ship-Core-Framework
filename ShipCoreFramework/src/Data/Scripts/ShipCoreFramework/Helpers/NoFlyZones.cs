@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
@@ -35,16 +36,24 @@ namespace ShipCoreFramework
 
                     if (!doPunish) continue;
 
-                    foreach (var block in kvp.Value.Blocks)
+                    var blocksCopy = new List<IMySlimBlock>(kvp.Value.Blocks);
+                    foreach (var block in blocksCopy)
                     {
+                        if (block?.CubeGrid == null) continue;
+
                         if (zone.ForceOff)
                         {
                             MyAPIGateway.Utilities.InvokeOnGameThread(() => groupComponent.WhackABlock(block, PunishmentType.ShutOff, DamageTypeNoFlyZone));
                         }
                         else
                         {
-                            foreach (var limit in groupComponent.ShipCore.BlockLimits)
+                            var blockLimits = groupComponent.ShipCore.BlockLimits;
+                            if (blockLimits == null) continue;
+
+                            foreach (var limit in blockLimits)
                             {
+                                if (limit == null || limit.BlockGroups == null) continue;
+
                                 var match = limit.BlockGroups
                                     .SelectMany(g => g.BlockTypes)
                                     .Any(b => b.TypeId == Utils.GetBlockTypeId(block) &&

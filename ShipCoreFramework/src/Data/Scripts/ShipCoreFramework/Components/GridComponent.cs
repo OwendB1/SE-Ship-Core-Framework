@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.Entities;
-using Sandbox.Game.Entities.Cube;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 
@@ -54,7 +53,7 @@ namespace ShipCoreFramework
             Utils.Log(((IMyCubeGrid)Grid).CustomName + ": Block Added: " + Utils.GetBlockTypeId(block) + " | " + Utils.GetBlockSubtypeId(block));
             
             var beacon = block.FatBlock as IMyBeacon;
-            if (beacon != null && Session.Config.ShipCores.Any(core => core.SubtypeId == ((IMyCubeBlock)block.FatBlock).BlockDefinition.SubtypeId))
+            if (beacon != null && Session.Config.ShipCores.Any(core => core.SubtypeId == block.FatBlock.BlockDefinition.SubtypeId))
             {
                 var newCore = new CoreComponent();
                 newCore.Init(beacon, this, GroupComponent);
@@ -112,7 +111,7 @@ namespace ShipCoreFramework
                 var w = map.Get(block, KeyOf);
                 if (w <= 0d) continue;
 
-                if (GroupComponent.MainCoreComponent != null && GroupComponent.MainCoreComponent.CoreBlock != null)
+                if (GroupComponent.MainCoreComponent?.CoreBlock != null)
                 {
                     if (!GroupComponent.IsValidDirection(GroupComponent.MainCoreComponent.CoreBlock, block, limit.AllowedDirections))
                     {
@@ -125,7 +124,7 @@ namespace ShipCoreFramework
                 var cur = GroupComponent.CountPerLimit.GetOrAdd(limit, 0d);
                 if (cur + w > limit.MaxCount)
                 {
-                    Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates Blocklimit " + limit.Name + ": " + (cur + w) + "/" + limit.MaxCount, 10000, firstOwner);
+                    Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates Block limit " + limit.Name + ": " + (cur + w) + "/" + limit.MaxCount, 10000, firstOwner);
                     GroupComponent.WhackABlock(block, limit.PunishmentType);
                     return true;
                 }
@@ -232,12 +231,14 @@ namespace ShipCoreFramework
         internal void RecalculateLimits(GroupComponent group)
         {
             Limits.Clear();
-            
+
             var bl = group.ShipCore.BlockLimits;
             if (bl == null || bl.Length == 0) return;
 
             foreach (var limit in bl)
             {
+                if (limit == null) continue;
+
                 LimitWeightMap map;
                 if (!group.WeightMaps.TryGetValue(limit, out map)) continue;
 
@@ -248,7 +249,8 @@ namespace ShipCoreFramework
                     Limits[limit] = bucket;
                 }
 
-                foreach (var block in Blocks)
+                var blocksCopy = new List<IMySlimBlock>(Blocks);
+                foreach (var block in blocksCopy)
                 {
                     if (block == null || block.IsMovedBySplit || block.CubeGrid == null) continue;
                     var w = map.Get(block, KeyOf);
@@ -296,11 +298,20 @@ namespace ShipCoreFramework
 
         internal void Clean()
         {
-            Grid.OnBlockAdded -= BlockAdded;
-            Grid.OnBlockRemoved -= BlockRemoved;
-            foreach (var func in Blocks.Select(bl => bl.FatBlock).OfType<IMyFunctionalBlock>())
+            if (Grid != null)
             {
-                func.EnabledChanged -= FuncBlockOnEnabledChanged;
+                Grid.OnBlockAdded -= BlockAdded;
+                Grid.OnBlockRemoved -= BlockRemoved;
+            }
+            
+            foreach (var bl in Blocks)
+            {
+                var fatBlock = bl?.FatBlock;
+                var func = fatBlock as IMyFunctionalBlock;
+                if (func != null)
+                {
+                    func.EnabledChanged -= FuncBlockOnEnabledChanged;
+                }
             }
             Limits.Clear();
             CoreDictionary.Clear();
