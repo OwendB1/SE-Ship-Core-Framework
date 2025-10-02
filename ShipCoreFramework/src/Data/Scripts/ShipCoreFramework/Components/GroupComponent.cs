@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Entities.Cube;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.Utils;
@@ -31,7 +32,7 @@ namespace ShipCoreFramework
 
         internal readonly ConcurrentDictionary<BlockLimit, double> CountPerLimit = new ConcurrentDictionary<BlockLimit, double>();
         internal readonly Dictionary<BlockLimit, LimitWeightMap> WeightMaps = new Dictionary<BlockLimit, LimitWeightMap>();
-        internal readonly ConcurrentDictionary<MyCubeBlock, CoreComponent> CoreDictionary = new ConcurrentDictionary<MyCubeBlock, CoreComponent>();
+        internal readonly ConcurrentDictionary<IMyCubeBlock, CoreComponent> CoreDictionary = new ConcurrentDictionary<IMyCubeBlock, CoreComponent>();
         internal readonly Dictionary<MyCubeGrid, GridComponent> GridDictionary = new Dictionary<MyCubeGrid, GridComponent>();
 
         internal bool PunishModifiers;
@@ -260,7 +261,7 @@ namespace ShipCoreFramework
                 if (total <= limit.MaxCount) continue;
 
                 var over = total - limit.MaxCount;
-                var candidates = new List<KeyValuePair<MyCubeBlock, double>>(64);
+                var candidates = new List<KeyValuePair<IMySlimBlock, double>>(64);
 
                 EnsureWeightMaps();
                 LimitWeightMap map;
@@ -273,11 +274,11 @@ namespace ShipCoreFramework
 
                     foreach (var blk in bucket.Members)
                     {
-                        if (blk == null || blk.Closed || blk.CubeGrid == null) continue;
+                        if (blk == null || blk.IsMovedBySplit || blk.CubeGrid == null) continue;
 
-                        if (limit.AllowedDirections != null && MainCoreComponent != null && MainCoreComponent.CoreBlock != null && blk.SlimBlock != null)
+                        if (limit.AllowedDirections != null && MainCoreComponent?.CoreBlock != null)
                         {
-                            if (!IsValidDirection(MainCoreComponent.CoreBlock, blk.SlimBlock, limit.AllowedDirections))
+                            if (!IsValidDirection(MainCoreComponent.CoreBlock, blk, limit.AllowedDirections))
                             {
                                 WhackABlock(blk, limit.PunishmentType);
                                 continue;
@@ -285,7 +286,7 @@ namespace ShipCoreFramework
                         }
 
                         var w = map.Get(blk, GridComponent.KeyOf);
-                        if (w > 0d) candidates.Add(new KeyValuePair<MyCubeBlock, double>(blk, w));
+                        if (w > 0d) candidates.Add(new KeyValuePair<IMySlimBlock, double>(blk, w));
                     }
                 }
 
@@ -302,26 +303,28 @@ namespace ShipCoreFramework
             }
         }
 
-        internal void WhackABlock(IMyCubeBlock block, PunishmentType harm, MyStringHash? customDamageType = null)
+        internal void WhackABlock(IMySlimBlock block, PunishmentType harm, MyStringHash? customDamageType = null)
         {
-            if (block?.SlimBlock == null) return;
             var damageType = customDamageType ?? DamageTypeBlockLimit;
-            var func = block as IMyFunctionalBlock;
+            var func = block.FatBlock as IMyFunctionalBlock;
 
             switch (harm)
             {
                 case PunishmentType.Damage:
-                    var damageRequired = block.SlimBlock.Integrity - block.SlimBlock.MaxIntegrity * 0.5;
+                    var damageRequired = block.Integrity - block.MaxIntegrity * 0.5;
                     if (damageRequired < 0) damageRequired = 0;
-                    block.SlimBlock.DoDamage((float)damageRequired, damageType, true);
+                    block.DoDamage((float)damageRequired, damageType, true);
                     break;
                 case PunishmentType.Delete:
                     if (func != null) func.Enabled = false;
-                    var gridComponent = GridDictionary[(MyCubeGrid)block.CubeGrid];
-                    gridComponent.RemoveAndRefund(block.SlimBlock);
+                    if (GridDictionary.ContainsKey((MyCubeGrid)block.CubeGrid))
+                    {
+                        var gridComponent = GridDictionary[(MyCubeGrid)block.CubeGrid];
+                        gridComponent.RemoveAndRefund(block);
+                    }
                     break;
                 case PunishmentType.Explode:
-                    block.SlimBlock.DoDamage(block.SlimBlock.Integrity, damageType, true);
+                    block.DoDamage(block.Integrity, damageType, true);
                     break;
                 case PunishmentType.ShutOff:
                 default:
@@ -356,8 +359,13 @@ namespace ShipCoreFramework
         internal void ApplyModifiers(GridModifiers modifiers)
         {
             foreach (var kv in GridDictionary)
-            foreach (var blk in kv.Value.Blocks)
-                if (blk is IMyTerminalBlock) CubeGridModifiers.ApplyModifiers(blk, modifiers);
+            foreach (var bl in kv.Value.Blocks)
+            {
+                var fatBlock = bl?.FatBlock;
+                var terminalBlock = fatBlock as IMyTerminalBlock;
+                if (terminalBlock != null)
+                    CubeGridModifiers.ApplyModifiers(terminalBlock, modifiers);
+            }
         }
 
         internal static bool IsValidDirection(IMyCubeBlock myCore, IMySlimBlock block, List<DirectionType> allowedDirections)

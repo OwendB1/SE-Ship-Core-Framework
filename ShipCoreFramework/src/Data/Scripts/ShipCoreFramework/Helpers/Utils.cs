@@ -88,6 +88,11 @@ namespace ShipCoreFramework
         {
             return block==null ? Convert.ToString("CubeBlock") : Convert.ToString(block.BlockDefinition.TypeId).Replace("MyObjectBuilder_", "");
         }
+        
+        internal static string GetBlockTypeId(IMySlimBlock block)
+        {
+            return Convert.ToString(block.BlockDefinition.Id.TypeId);
+        }
 
         internal static string GetBlockSubtypeId(IMyCubeBlock block)
         {

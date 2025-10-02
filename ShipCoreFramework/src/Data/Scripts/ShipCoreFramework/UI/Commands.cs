@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using Sandbox.Game;
-using Sandbox.Game.Entities;
+using Sandbox.Game.Entities.Cube;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRageMath;
@@ -584,7 +584,7 @@ namespace ShipCoreFramework
                     if (!groupKvp.Value.WeightMaps.TryGetValue(blockLimit, out map))
                         continue;
 
-                    var sample = new List<KeyValuePair<MyCubeBlock, double>>(10);
+                    var sample = new List<KeyValuePair<IMySlimBlock, double>>(10);
                     var totalCount = 0;
 
                     foreach (var gridKvp in groupKvp.Value.GridDictionary)
@@ -596,7 +596,7 @@ namespace ShipCoreFramework
 
                         foreach (var blk in bucket.Members)
                         {
-                            if (blk == null || blk.Closed || blk.CubeGrid == null) continue;
+                            if (blk == null || blk.IsMovedBySplit || blk.CubeGrid == null) continue;
 
                             var w = map.Get(blk, GridComponent.KeyOf);
                             if (w <= 0d) continue;
@@ -606,7 +606,7 @@ namespace ShipCoreFramework
                             // Keep 'sample' as the 10 least-heavy items (ascending by weight)
                             if (sample.Count == 0)
                             {
-                                sample.Add(new KeyValuePair<MyCubeBlock, double>(blk, w));
+                                sample.Add(new KeyValuePair<IMySlimBlock, double>(blk, w));
                             }
                             else
                             {
@@ -614,13 +614,13 @@ namespace ShipCoreFramework
                                 for (var si = 0; si < sample.Count; si++)
                                 {
                                     if (!(w < sample[si].Value)) continue;
-                                    sample.Insert(si, new KeyValuePair<MyCubeBlock, double>(blk, w));
+                                    sample.Insert(si, new KeyValuePair<IMySlimBlock, double>(blk, w));
                                     inserted = true;
                                     break;
                                 }
                                 if (!inserted)
                                 {
-                                    sample.Add(new KeyValuePair<MyCubeBlock, double>(blk, w));
+                                    sample.Add(new KeyValuePair<IMySlimBlock, double>(blk, w));
                                 }
                                 if (sample.Count > 10)
                                 {
@@ -635,7 +635,7 @@ namespace ShipCoreFramework
                     foreach (var kv in sample)
                     {
                         var b = kv.Key;
-                        var blockName = b.DisplayNameText ?? b.DefinitionDisplayNameText;
+                        var blockName = b.FatBlock.DisplayNameText ?? b.FatBlock.DefinitionDisplayNameText;
                         body += "    - " + blockName + " (Weight: " + kv.Value.ToString("F1", CultureInfo.InvariantCulture) + ")\n";
                     }
                     if (totalCount > 10)

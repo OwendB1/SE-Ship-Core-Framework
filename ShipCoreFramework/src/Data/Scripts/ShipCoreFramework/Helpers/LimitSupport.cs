@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Entities.Cube;
 using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
@@ -45,7 +46,7 @@ namespace ShipCoreFramework
             _weights[new BlockKey(typeId, subtypeId)] = weight;
         }
 
-        internal double Get(IMyCubeBlock block, Func<IMyCubeBlock, BlockKey> keyOf)
+        internal double Get(IMySlimBlock block, Func<IMySlimBlock, BlockKey> keyOf)
         {
             var key = keyOf(block);
             double w;
@@ -57,7 +58,7 @@ namespace ShipCoreFramework
     internal sealed class LimitBucket
     {
         internal double TotalWeight;
-        internal readonly List<MyCubeBlock> Members = new List<MyCubeBlock>();
+        internal readonly List<IMySlimBlock> Members = new List<IMySlimBlock>();
 
         public LimitBucket(double totalWeight)
         {

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Entities.Cube;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 
@@ -10,13 +11,13 @@ namespace ShipCoreFramework
     {
         internal MyCubeGrid Grid;
         internal IMyGridGroupData GroupData;
-        internal readonly List<MyCubeBlock> Blocks = new List<MyCubeBlock>();
+        internal readonly List<IMySlimBlock> Blocks = new List<IMySlimBlock>();
         internal readonly Dictionary<BlockLimit, LimitBucket> Limits = new Dictionary<BlockLimit, LimitBucket>();
-        internal readonly Dictionary<MyCubeBlock, CoreComponent> CoreDictionary = new Dictionary<MyCubeBlock, CoreComponent>();
+        internal readonly Dictionary<IMyCubeBlock, CoreComponent> CoreDictionary = new Dictionary<IMyCubeBlock, CoreComponent>();
 
         private GroupComponent GroupComponent => Session.GroupDict[GroupData];
 
-        internal static BlockKey KeyOf(IMyCubeBlock b)
+        internal static BlockKey KeyOf(IMySlimBlock b)
         {
             return new BlockKey(Utils.GetBlockTypeId(b), Utils.GetBlockSubtypeId(b));
         }
@@ -26,13 +27,13 @@ namespace ShipCoreFramework
             Grid = grid;
             GroupData = groupData;
 
-            Grid.OnFatBlockAdded += FatBlockAdded;
-            Grid.OnFatBlockRemoved += FatBlockRemoved;
+            Grid.OnBlockAdded += BlockAdded;
+            Grid.OnBlockRemoved += BlockRemoved;
 
-            MyAPIGateway.Parallel.ForEach(Grid.GetFatBlocks(), FatBlockAdded);
+            MyAPIGateway.Parallel.ForEach(Grid.GetBlocks(), BlockAdded);
         }
 
-        private void FatBlockAdded(MyCubeBlock block)
+        private void BlockAdded(IMySlimBlock block)
         {
             var builderId = block.BuiltBy;
 
@@ -51,49 +52,51 @@ namespace ShipCoreFramework
             }
 
             Utils.Log(((IMyCubeGrid)Grid).CustomName + ": Block Added: " + Utils.GetBlockTypeId(block) + " | " + Utils.GetBlockSubtypeId(block));
-
-            var firstBigOwner = Grid.BigOwners.FirstOrDefault();
-            var maxBlocks = GroupComponent.ShipCore.MaxBlocks;
-            var maxPCU = GroupComponent.ShipCore.MaxPCU;
-            var maxMass = GroupComponent.ShipCore.MaxMass;
-
-            if (GroupComponent.GroupBlocksCount >= maxBlocks && maxBlocks > 0)
+            
+            var beacon = block.FatBlock as IMyBeacon;
+            if (beacon != null && Session.Config.ShipCores.Any(core => core.SubtypeId == ((IMyCubeBlock)block.FatBlock).BlockDefinition.SubtypeId))
             {
-                Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxBlocks: " + (GroupComponent.GroupBlocksCount > maxBlocks), 10000, firstBigOwner);
-                RemoveAndRefund(block.SlimBlock);
-                return;
+                var newCore = new CoreComponent();
+                newCore.Init(beacon, this, GroupComponent);
+                GroupComponent.CoreDictionary.TryAdd(block.FatBlock, newCore);
+                CoreDictionary.Add(block.FatBlock, newCore);
             }
-            if (GroupComponent.GroupPCU >= maxPCU && maxPCU > 0)
+            else
             {
-                Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxPCU: " + (GroupComponent.GroupPCU > maxPCU), 10000, firstBigOwner);
-                RemoveAndRefund(block.SlimBlock);
-                return;
-            }
-            if (GroupComponent.GroupMass >= maxMass && maxMass > 0f)
-            {
-                Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxMass: " + (GroupComponent.GroupMass > maxMass), 10000, firstBigOwner);
-                RemoveAndRefund(block.SlimBlock);
-                return;
+                var firstBigOwner = Grid.BigOwners.FirstOrDefault();
+                var maxBlocks = GroupComponent.ShipCore.MaxBlocks;
+                var maxPCU = GroupComponent.ShipCore.MaxPCU;
+                var maxMass = GroupComponent.ShipCore.MaxMass;
+
+                if (GroupComponent.GroupBlocksCount >= maxBlocks && maxBlocks > 0)
+                {
+                    Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxBlocks: " + (GroupComponent.GroupBlocksCount > maxBlocks), 10000, firstBigOwner);
+                    RemoveAndRefund(block);
+                    return;
+                }
+                if (GroupComponent.GroupPCU >= maxPCU && maxPCU > 0)
+                {
+                    Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxPCU: " + (GroupComponent.GroupPCU > maxPCU), 10000, firstBigOwner);
+                    RemoveAndRefund(block);
+                    return;
+                }
+                if (GroupComponent.GroupMass >= maxMass && maxMass > 0f)
+                {
+                    Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxMass: " + (GroupComponent.GroupMass > maxMass), 10000, firstBigOwner);
+                    RemoveAndRefund(block);
+                    return;
+                }
             }
 
             if (TryApplyLimitsOnAdd(block)) return;
 
-            var beacon = block as IMyBeacon;
-            if (beacon != null && Session.Config.ShipCores.Any(core => core.SubtypeId == ((IMyCubeBlock)block).BlockDefinition.SubtypeId))
-            {
-                var newCore = new CoreComponent();
-                newCore.Init(beacon, this, GroupComponent);
-                GroupComponent.CoreDictionary.TryAdd(block, newCore);
-                CoreDictionary.Add(block, newCore);
-            }
-
             Blocks.Add(block);
-            var funcBlock = block as IMyFunctionalBlock;
+            var funcBlock = block.FatBlock as IMyFunctionalBlock;
             if (funcBlock != null) funcBlock.EnabledChanged += FuncBlockOnEnabledChanged;
             GroupComponent.ApplyModifiers(GroupComponent.Modifiers);
         }
 
-        private bool TryApplyLimitsOnAdd(MyCubeBlock block)
+        private bool TryApplyLimitsOnAdd(IMySlimBlock block)
         {
             GroupComponent.EnsureWeightMaps();
             var firstOwner = Grid.BigOwners.FirstOrDefault();
@@ -111,7 +114,7 @@ namespace ShipCoreFramework
 
                 if (GroupComponent.MainCoreComponent != null && GroupComponent.MainCoreComponent.CoreBlock != null)
                 {
-                    if (!GroupComponent.IsValidDirection(GroupComponent.MainCoreComponent.CoreBlock, block.SlimBlock, limit.AllowedDirections))
+                    if (!GroupComponent.IsValidDirection(GroupComponent.MainCoreComponent.CoreBlock, block, limit.AllowedDirections))
                     {
                         Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violated directional locking!");
                         GroupComponent.WhackABlock(block, limit.PunishmentType);
@@ -119,7 +122,7 @@ namespace ShipCoreFramework
                     }
                 }
 
-                double cur = GroupComponent.CountPerLimit.GetOrAdd(limit, 0d);
+                var cur = GroupComponent.CountPerLimit.GetOrAdd(limit, 0d);
                 if (cur + w > limit.MaxCount)
                 {
                     Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates Blocklimit " + limit.Name + ": " + (cur + w) + "/" + limit.MaxCount, 10000, firstOwner);
@@ -142,14 +145,14 @@ namespace ShipCoreFramework
             return false;
         }
 
-        private void FatBlockRemoved(MyCubeBlock block)
+        private void BlockRemoved(IMySlimBlock block)
         {
-            var beacon = block as IMyBeacon;
-            if (beacon != null && GroupComponent.CoreDictionary.ContainsKey(block))
+            var beacon = block.FatBlock as IMyBeacon;
+            if (beacon != null && GroupComponent.CoreDictionary.ContainsKey(beacon))
             {
-                GroupComponent.CoreDictionary[block].CoreDestroyed();
-                GroupComponent.CoreDictionary.Remove(block);
-                CoreDictionary.Remove(block);
+                GroupComponent.CoreDictionary[beacon].CoreDestroyed();
+                GroupComponent.CoreDictionary.Remove(beacon);
+                CoreDictionary.Remove(beacon);
             }
 
             GroupComponent.EnsureWeightMaps();
@@ -181,7 +184,7 @@ namespace ShipCoreFramework
             }
 
             Blocks.Remove(block);
-            var funcBlock = block as IMyFunctionalBlock;
+            var funcBlock = block.FatBlock as IMyFunctionalBlock;
             if (funcBlock != null) funcBlock.EnabledChanged -= FuncBlockOnEnabledChanged;
             GroupComponent.ApplyModifiers(GroupComponent.Modifiers);
         }
@@ -207,12 +210,12 @@ namespace ShipCoreFramework
                 LimitWeightMap map;
                 if (!GroupComponent.WeightMaps.TryGetValue(limit, out map)) continue;
 
-                var local = new List<KeyValuePair<MyCubeBlock, double>>(bucket.Members.Count);
+                var local = new List<KeyValuePair<IMySlimBlock, double>>(bucket.Members.Count);
                 foreach (var b in bucket.Members)
                 {
-                    if (b == null || b.Closed || b.CubeGrid == null) continue;
+                    if (b == null || b.IsMovedBySplit || b.CubeGrid == null) continue;
                     var w = map.Get(b, KeyOf);
-                    if (w > 0d) local.Add(new KeyValuePair<MyCubeBlock, double>(b, w));
+                    if (w > 0d) local.Add(new KeyValuePair<IMySlimBlock, double>(b, w));
                 }
 
                 local.Sort((a, b) => a.Value.CompareTo(b.Value));
@@ -247,7 +250,7 @@ namespace ShipCoreFramework
 
                 foreach (var block in Blocks)
                 {
-                    if (block == null || block.Closed || block.CubeGrid == null) continue;
+                    if (block == null || block.IsMovedBySplit || block.CubeGrid == null) continue;
                     var w = map.Get(block, KeyOf);
                     if (w <= 0d) continue;
 
@@ -293,9 +296,9 @@ namespace ShipCoreFramework
 
         internal void Clean()
         {
-            Grid.OnFatBlockAdded -= FatBlockAdded;
-            Grid.OnFatBlockRemoved -= FatBlockRemoved;
-            foreach (var func in Blocks.OfType<IMyFunctionalBlock>())
+            Grid.OnBlockAdded -= BlockAdded;
+            Grid.OnBlockRemoved -= BlockRemoved;
+            foreach (var func in Blocks.Select(bl => bl.FatBlock).OfType<IMyFunctionalBlock>())
             {
                 func.EnabledChanged -= FuncBlockOnEnabledChanged;
             }

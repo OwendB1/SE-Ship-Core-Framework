@@ -84,7 +84,7 @@ namespace ShipCoreFramework
             return enhancedModifiers;
         }
         
-        public static void ApplyModifiers(MyCubeBlock block, GridModifiers modifiers)
+        public static void ApplyModifiers(IMyCubeBlock block, GridModifiers modifiers)
         {
             var thruster = block as IMyThrust;
             if (thruster != null)
@@ -111,7 +111,7 @@ namespace ShipCoreFramework
                 var baseYield = refDef?.MaterialEfficiency ?? 1f;
 
                 float prodSum = 0f, effSum = 0f;
-                var attachedR = block.CurrentAttachedUpgradeModules;
+                var attachedR = ((MyCubeBlock)block).CurrentAttachedUpgradeModules;
                 if (attachedR != null)
                 {
                     foreach (var m in attachedR.Select(kv => kv.Value.Block).Where(m => m != null))
@@ -152,7 +152,7 @@ namespace ShipCoreFramework
                 var baseSpeed = asmDef?.AssemblySpeed ?? 1f;
 
                 var prodSum = 0f;
-                var attachedA = block.CurrentAttachedUpgradeModules;
+                var attachedA = ((MyCubeBlock)block).CurrentAttachedUpgradeModules;
                 if (attachedA != null)
                 {
                     foreach (var m in attachedA.Select(kv => kv.Value.Block).Where(m => m != null))
