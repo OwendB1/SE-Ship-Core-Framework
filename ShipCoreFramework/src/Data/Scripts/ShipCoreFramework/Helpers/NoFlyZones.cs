@@ -36,7 +36,7 @@ namespace ShipCoreFramework
 
                     if (!doPunish) continue;
 
-                    var blocksCopy = new List<IMySlimBlock>(kvp.Value.Blocks);
+                    var blocksCopy = kvp.Value.GetBlocksCopy();
                     foreach (var block in blocksCopy)
                     {
                         if (block?.CubeGrid == null) continue;
@@ -52,7 +52,7 @@ namespace ShipCoreFramework
 
                             foreach (var limit in blockLimits)
                             {
-                                if (limit == null || limit.BlockGroups == null) continue;
+                                if (limit?.BlockGroups == null) continue;
 
                                 var match = limit.BlockGroups
                                     .SelectMany(g => g.BlockTypes)

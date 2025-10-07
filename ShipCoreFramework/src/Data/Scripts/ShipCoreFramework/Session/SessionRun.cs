@@ -21,7 +21,7 @@ namespace ShipCoreFramework
             
             var groupStartList = new List<IMyGridGroupData>();
             MyAPIGateway.GridGroups.GetGridGroups(GridLinkTypeEnum.Logical, groupStartList);
-            foreach(var group in groupStartList) GridGroupsOnOnGridGroupCreated(group);
+            MyAPIGateway.Parallel.ForEach(groupStartList, GridGroupsOnOnGridGroupCreated);
             TickScheduler.Schedule(() =>
             {
                 MyAPIGateway.Parallel.ForEach(GroupDict, kvp =>

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.Entities;
@@ -10,15 +11,24 @@ namespace ShipCoreFramework
     {
         internal MyCubeGrid Grid;
         internal IMyGridGroupData GroupData;
-        internal readonly List<IMySlimBlock> Blocks = new List<IMySlimBlock>();
-        internal readonly Dictionary<BlockLimit, LimitBucket> Limits = new Dictionary<BlockLimit, LimitBucket>();
-        internal readonly Dictionary<IMyCubeBlock, CoreComponent> CoreDictionary = new Dictionary<IMyCubeBlock, CoreComponent>();
+        private readonly object _blocksLock = new object();
+        private readonly List<IMySlimBlock> _blocks = new List<IMySlimBlock>();
+        internal readonly ConcurrentDictionary<BlockLimit, LimitBucket> Limits = new ConcurrentDictionary<BlockLimit, LimitBucket>();
+        internal readonly ConcurrentDictionary<IMyCubeBlock, CoreComponent> CoreDictionary = new ConcurrentDictionary<IMyCubeBlock, CoreComponent>();
 
         private GroupComponent GroupComponent => Session.GroupDict[GroupData];
 
         internal static BlockKey KeyOf(IMySlimBlock b)
         {
             return new BlockKey(Utils.GetBlockTypeId(b), Utils.GetBlockSubtypeId(b));
+        }
+
+        internal List<IMySlimBlock> GetBlocksCopy()
+        {
+            lock (_blocksLock)
+            {
+                return new List<IMySlimBlock>(_blocks);
+            }
         }
 
         internal void Init(MyCubeGrid grid, IMyGridGroupData groupData)
@@ -28,7 +38,7 @@ namespace ShipCoreFramework
 
             Grid.OnBlockAdded += BlockAdded;
             Grid.OnBlockRemoved += BlockRemoved;
-
+            
             MyAPIGateway.Parallel.ForEach(Grid.GetBlocks(), BlockAdded);
         }
 
@@ -58,7 +68,7 @@ namespace ShipCoreFramework
                 var newCore = new CoreComponent();
                 newCore.Init(beacon, this, GroupComponent);
                 GroupComponent.CoreDictionary.TryAdd(block.FatBlock, newCore);
-                CoreDictionary.Add(block.FatBlock, newCore);
+                CoreDictionary.TryAdd(block.FatBlock, newCore);
             }
             else
             {
@@ -89,7 +99,11 @@ namespace ShipCoreFramework
 
             if (TryApplyLimitsOnAdd(block)) return;
 
-            Blocks.Add(block);
+            lock (_blocksLock)
+            {
+                _blocks.Add(block);
+            }
+
             var funcBlock = block.FatBlock as IMyFunctionalBlock;
             if (funcBlock != null) funcBlock.EnabledChanged += FuncBlockOnEnabledChanged;
             GroupComponent.ApplyModifiers(GroupComponent.Modifiers);
@@ -182,7 +196,11 @@ namespace ShipCoreFramework
                 }
             }
 
-            Blocks.Remove(block);
+            lock (_blocksLock)
+            {
+                _blocks.Remove(block);
+            }
+
             var funcBlock = block.FatBlock as IMyFunctionalBlock;
             if (funcBlock != null) funcBlock.EnabledChanged -= FuncBlockOnEnabledChanged;
             GroupComponent.ApplyModifiers(GroupComponent.Modifiers);
@@ -249,7 +267,12 @@ namespace ShipCoreFramework
                     Limits[limit] = bucket;
                 }
 
-                var blocksCopy = new List<IMySlimBlock>(Blocks);
+                List<IMySlimBlock> blocksCopy;
+                lock (_blocksLock)
+                {
+                    blocksCopy = new List<IMySlimBlock>(_blocks);
+                }
+
                 foreach (var block in blocksCopy)
                 {
                     if (block == null || block.IsMovedBySplit || block.CubeGrid == null) continue;
@@ -303,8 +326,15 @@ namespace ShipCoreFramework
                 Grid.OnBlockAdded -= BlockAdded;
                 Grid.OnBlockRemoved -= BlockRemoved;
             }
-            
-            foreach (var bl in Blocks)
+
+            List<IMySlimBlock> blocksCopy;
+            lock (_blocksLock)
+            {
+                blocksCopy = new List<IMySlimBlock>(_blocks);
+                _blocks.Clear();
+            }
+
+            foreach (var bl in blocksCopy)
             {
                 var fatBlock = bl?.FatBlock;
                 var func = fatBlock as IMyFunctionalBlock;
@@ -313,9 +343,9 @@ namespace ShipCoreFramework
                     func.EnabledChanged -= FuncBlockOnEnabledChanged;
                 }
             }
+
             Limits.Clear();
             CoreDictionary.Clear();
-            Blocks.Clear();
         }
     }
 }

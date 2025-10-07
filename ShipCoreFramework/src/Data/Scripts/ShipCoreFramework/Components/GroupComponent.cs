@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.Entities;
-using Sandbox.Game.Entities.Cube;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.Utils;
@@ -32,9 +31,9 @@ namespace ShipCoreFramework
         internal CoreComponent MainCoreComponent;
 
         internal readonly ConcurrentDictionary<BlockLimit, double> CountPerLimit = new ConcurrentDictionary<BlockLimit, double>();
-        internal readonly Dictionary<BlockLimit, LimitWeightMap> WeightMaps = new Dictionary<BlockLimit, LimitWeightMap>();
+        internal readonly ConcurrentDictionary<BlockLimit, LimitWeightMap> WeightMaps = new ConcurrentDictionary<BlockLimit, LimitWeightMap>();
         internal readonly ConcurrentDictionary<IMyCubeBlock, CoreComponent> CoreDictionary = new ConcurrentDictionary<IMyCubeBlock, CoreComponent>();
-        internal readonly Dictionary<MyCubeGrid, GridComponent> GridDictionary = new Dictionary<MyCubeGrid, GridComponent>();
+        internal readonly ConcurrentDictionary<MyCubeGrid, GridComponent> GridDictionary = new ConcurrentDictionary<MyCubeGrid, GridComponent>();
 
         internal bool PunishModifiers;
         internal bool PunishSpeed;
@@ -374,12 +373,10 @@ namespace ShipCoreFramework
         {
             foreach (var kv in GridDictionary)
             {
-                var blocksCopy = new List<IMySlimBlock>(kv.Value.Blocks);
+                var blocksCopy = kv.Value.GetBlocksCopy();
                 foreach (var bl in blocksCopy)
                 {
-                    if (bl == null) continue;
-                    var fatBlock = bl.FatBlock;
-                    if (fatBlock == null) continue;
+                    var fatBlock = bl?.FatBlock;
                     var terminalBlock = fatBlock as IMyTerminalBlock;
                     if (terminalBlock != null)
                         CubeGridModifiers.ApplyModifiers(terminalBlock, modifiers);
