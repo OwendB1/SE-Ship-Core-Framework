@@ -84,19 +84,9 @@ namespace ShipCoreFramework
             return success ? groupComponent : null;
         }
         
-        internal static string GetBlockTypeId(IMyCubeBlock block)
-        {
-            return block==null ? Convert.ToString("CubeBlock") : Convert.ToString(block.BlockDefinition.TypeId).Replace("MyObjectBuilder_", "");
-        }
-        
         internal static string GetBlockTypeId(IMySlimBlock block)
         {
             return Convert.ToString(block.BlockDefinition.Id.TypeId).Replace("MyObjectBuilder_", "");
-        }
-
-        internal static string GetBlockSubtypeId(IMyCubeBlock block)
-        {
-            return Convert.ToString(block.BlockDefinition.SubtypeId);
         }
 
         internal static string GetBlockSubtypeId(IMySlimBlock block)
