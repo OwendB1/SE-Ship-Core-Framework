@@ -23,15 +23,11 @@ namespace ShipCoreFramework
         private float BoostDuration => ShipCore.Modifiers.BoostDuration;
         private float BoostCoolDown => ShipCore.Modifiers.BoostCoolDown;
         
-        private string _weightMapsBuiltForSubtypeId;
-        private readonly object _weightMapsLock = new object();
-
         internal Guid EntityId = Guid.NewGuid();
         internal IMyGridGroupData MyGroup;
         internal CoreComponent MainCoreComponent;
 
-        internal readonly ConcurrentDictionary<BlockLimit, double> CountPerLimit = new ConcurrentDictionary<BlockLimit, double>();
-        internal readonly ConcurrentDictionary<BlockLimit, LimitWeightMap> WeightMaps = new ConcurrentDictionary<BlockLimit, LimitWeightMap>();
+        internal readonly ConcurrentDictionary<BlockLimit, LimitBucket> Limits = new ConcurrentDictionary<BlockLimit, LimitBucket>();
         internal readonly ConcurrentDictionary<IMyCubeBlock, CoreComponent> CoreDictionary = new ConcurrentDictionary<IMyCubeBlock, CoreComponent>();
         internal readonly ConcurrentDictionary<MyCubeGrid, GridComponent> GridDictionary = new ConcurrentDictionary<MyCubeGrid, GridComponent>();
 
@@ -72,65 +68,28 @@ namespace ShipCoreFramework
             }
         }
 
-        internal void EnsureWeightMaps()
+        private void RecalculateAllLimits()
         {
-            var currentSubtype = ShipCore.SubtypeId;
-
-            if (_weightMapsBuiltForSubtypeId == currentSubtype && WeightMaps.Count != 0)
-                return;
-
-            lock (_weightMapsLock)
-            {
-                if (_weightMapsBuiltForSubtypeId == currentSubtype && WeightMaps.Count != 0)
-                    return;
-
-                WeightMaps.Clear();
-                _weightMapsBuiltForSubtypeId = currentSubtype;
-
-                var limits = ShipCore.BlockLimits;
-                if (limits == null) return;
-
-                foreach (var limit in limits)
-                {
-                    if (limit == null) continue;
-
-                    var map = new LimitWeightMap();
-                    var groups = limit.BlockGroups;
-                    if (groups != null)
-                    {
-                        foreach (var grp in groups)
-                        {
-                            var btList = grp.BlockTypes;
-                            if (btList == null) continue;
-                            foreach (var bt in btList)
-                            {
-                                map.Add(bt.TypeId, bt.SubtypeId, bt.CountWeight);
-                            }
-                        }
-                    }
-                    WeightMaps[limit] = map;
-                }
-            }
-        }
-        
-        private void RecalculateAllCounts()
-        {
-            EnsureWeightMaps();
-
-            CountPerLimit.Clear();
+            Limits.Clear();
 
             foreach (var comp in GridDictionary.Values)
             {
                 comp.RecalculateLimits(this);
-            }
 
-            foreach (var comp in GridDictionary.Values)
-            {
-                foreach (var kv in comp.Limits)
+                foreach (var gridLimitKv in comp.Limits)
                 {
-                    var limit = kv.Key;
-                    var bucket = kv.Value;
-                    CountPerLimit.AddOrUpdate(limit, bucket.TotalWeight, (_, oldVal) => oldVal + bucket.TotalWeight);
+                    var limit = gridLimitKv.Key;
+                    var gridBucket = gridLimitKv.Value;
+
+                    LimitBucket groupBucket;
+                    if (!Limits.TryGetValue(limit, out groupBucket))
+                    {
+                        groupBucket = new LimitBucket(0d);
+                        Limits[limit] = groupBucket;
+                    }
+
+                    groupBucket.TotalWeight += gridBucket.TotalWeight;
+                    groupBucket.Members.AddRange(gridBucket.Members);
                 }
             }
         }
@@ -155,7 +114,7 @@ namespace ShipCoreFramework
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
                 RebuildGroupState();
-                RecalculateAllCounts();
+                RecalculateAllLimits();
                 ApplyModifiers(Modifiers);
                 EnforceGroupPunishment();
             });
@@ -180,7 +139,7 @@ namespace ShipCoreFramework
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
                 RebuildGroupState();
-                RecalculateAllCounts();
+                RecalculateAllLimits();
                 ApplyModifiers(Modifiers);
                 EnforceGroupPunishment();
             });
@@ -202,7 +161,7 @@ namespace ShipCoreFramework
             }
 
             RebuildGroupState();
-            RecalculateAllCounts();
+            RecalculateAllLimits();
             EnforceGroupPunishment();
         }
 
@@ -237,7 +196,7 @@ namespace ShipCoreFramework
             }
 
             RebuildGroupState();
-            RecalculateAllCounts();
+            RecalculateAllLimits();
         }
 
         internal void OnGridRemoved(IMyGridGroupData removedFrom, IMyCubeGrid grid, IMyGridGroupData addedTo)
@@ -253,52 +212,42 @@ namespace ShipCoreFramework
             }
 
             RebuildGroupState();
-            RecalculateAllCounts();
+            RecalculateAllLimits();
         }
 
         private void EnforceGroupPunishment()
         {
             EnforceOverCapacity();
 
-            foreach (var kv in CountPerLimit)
+            foreach (var kv in Limits)
             {
                 var limit = kv.Key;
-                if (limit == null) continue;
+                var bucket = kv.Value;
 
-                var total = kv.Value;
+                if (limit == null || bucket == null) continue;
+
+                var total = bucket.TotalWeight;
                 if (total <= limit.MaxCount) continue;
 
                 var over = total - limit.MaxCount;
-                var candidates = new List<KeyValuePair<IMySlimBlock, double>>(64);
+                var candidates = new List<KeyValuePair<IMySlimBlock, double>>(bucket.Members.Count);
 
-                EnsureWeightMaps();
-                LimitWeightMap map;
-                if (!WeightMaps.TryGetValue(limit, out map)) continue;
-
-                foreach (var grid in GridDictionary.Values)
+                var membersCopy = new List<IMySlimBlock>(bucket.Members);
+                foreach (var blk in membersCopy)
                 {
-                    if (grid == null) continue;
+                    if (blk == null || blk.IsMovedBySplit || blk.CubeGrid == null) continue;
 
-                    LimitBucket bucket;
-                    if (!grid.Limits.TryGetValue(limit, out bucket) || bucket == null) continue;
-
-                    var membersCopy = new List<IMySlimBlock>(bucket.Members);
-                    foreach (var blk in membersCopy)
+                    if (limit.AllowedDirections != null && MainCoreComponent?.CoreBlock != null)
                     {
-                        if (blk == null || blk.IsMovedBySplit || blk.CubeGrid == null) continue;
-
-                        if (limit.AllowedDirections != null && MainCoreComponent?.CoreBlock != null)
+                        if (!IsValidDirection(MainCoreComponent.CoreBlock, blk, limit.AllowedDirections))
                         {
-                            if (!IsValidDirection(MainCoreComponent.CoreBlock, blk, limit.AllowedDirections))
-                            {
-                                WhackABlock(blk, limit.PunishmentType);
-                                continue;
-                            }
+                            WhackABlock(blk, limit.PunishmentType);
+                            continue;
                         }
-
-                        var w = map.Get(blk, GridComponent.KeyOf);
-                        if (w > 0d) candidates.Add(new KeyValuePair<IMySlimBlock, double>(blk, w));
                     }
+
+                    var w = limit.GetWeight(GridComponent.KeyOf(blk));
+                    if (w > 0d) candidates.Add(new KeyValuePair<IMySlimBlock, double>(blk, w));
                 }
 
                 candidates.Sort((a, b) => a.Value.CompareTo(b.Value));
@@ -310,8 +259,6 @@ namespace ShipCoreFramework
 
                     WhackABlock(t.Key, limit.PunishmentType);
                     over -= t.Value;
-
-                    CountPerLimit.AddOrUpdate(limit, 0d, (_, oldVal) => oldVal > t.Value ? oldVal - t.Value : 0d);
                 }
             }
         }
@@ -554,7 +501,7 @@ namespace ShipCoreFramework
         {
             var blk = (MyCubeBlock)lost.CoreBlock;
             var gc = lost.GridComponent;
-            if (gc != null) gc.CoreDictionary.Remove(blk);
+            gc?.CoreDictionary.Remove(blk);
             CoreDictionary.Remove(blk);
             MyAPIGateway.Utilities.InvokeOnGameThread(RebuildGroupState);
         }
@@ -564,7 +511,6 @@ namespace ShipCoreFramework
             if (!Session.HasStarted || Session.IsShuttingDown) return;
 
             CoreDictionary.Clear();
-            CountPerLimit.Clear();
 
             foreach (var comp in GridDictionary.Values)
             {
@@ -576,7 +522,7 @@ namespace ShipCoreFramework
 
             var oldMain = MainCoreComponent;
             var candidates = CoreDictionary.Values
-                .Where(c => c != null && c.CoreBlock != null && c.CoreBlock.CubeGrid != null && GridDictionary.ContainsKey((MyCubeGrid)c.CoreBlock.CubeGrid))
+                .Where(c => c?.CoreBlock?.CubeGrid != null && GridDictionary.ContainsKey((MyCubeGrid)c.CoreBlock.CubeGrid))
                 .OrderBy(c => c.CoreBlock.EntityId)
                 .ToList();
 
@@ -595,23 +541,7 @@ namespace ShipCoreFramework
                 return;
             }
 
-            EnsureWeightMaps();
-
-            foreach (var comp in GridDictionary.Values)
-            {
-                comp.RecalculateLimits(this);
-            }
-
-            foreach (var comp in GridDictionary.Values)
-            {
-                foreach (var kv in comp.Limits)
-                {
-                    var limit = kv.Key;
-                    var bucket = kv.Value;
-                    CountPerLimit.AddOrUpdate(limit, bucket.TotalWeight, (_, oldVal) => oldVal + bucket.TotalWeight);
-                }
-            }
-
+            RecalculateAllLimits();
             ApplyModifiers(Modifiers);
             EnforceGroupPunishment();
         }
@@ -624,8 +554,7 @@ namespace ShipCoreFramework
             }
             GridDictionary.Clear();
             CoreDictionary.Clear();
-            CountPerLimit.Clear();
-            WeightMaps.Clear();
+            Limits.Clear();
         }
     }
 }

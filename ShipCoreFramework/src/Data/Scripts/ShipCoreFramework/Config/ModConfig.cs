@@ -355,20 +355,45 @@ namespace ShipCoreFramework
     [XmlRoot("BlockLimit")]
     public class BlockLimit
     {
-        [XmlElement("Name")] 
+        [XmlElement("Name")]
         public string Name = string.Empty;
-        [XmlElement("BlockGroups")] 
+        [XmlElement("BlockGroups")]
         public string[] BlockGroupsShortHand = Array.Empty<string>();
-        [XmlIgnore]  
+        [XmlIgnore]
         public List<BlockGroup> BlockGroups = new List<BlockGroup>();
-        [XmlElement("MaxCount")] 
+        [XmlElement("MaxCount")]
         public float MaxCount;
-        [XmlElement("PunishByNoFlyZone")] 
+        [XmlElement("PunishByNoFlyZone")]
         public bool PunishByNoFlyZone;
-        [XmlElement("PunishmentType")] 
+        [XmlElement("PunishmentType")]
         public PunishmentType PunishmentType = PunishmentType.ShutOff;
-        [XmlElement("AllowedDirections")] 
-        public List<DirectionType> AllowedDirections;// = new List<DirectionType>{DirectionType.Forward,DirectionType.Backward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right};
+        [XmlElement("AllowedDirections")]
+        public List<DirectionType> AllowedDirections;
+
+        internal double GetWeight(BlockKey key)
+        {
+            if (BlockGroups == null) return 0d;
+
+            foreach (var group in BlockGroups)
+            {
+                if (group?.BlockTypes == null) continue;
+
+                foreach (var blockType in group.BlockTypes)
+                {
+                    if (blockType == null) continue;
+
+                    if (blockType.TypeId == key.TypeId)
+                    {
+                        if (blockType.SubtypeId == key.SubtypeId || blockType.SubtypeId == "any")
+                        {
+                            return blockType.CountWeight;
+                        }
+                    }
+                }
+            }
+
+            return 0d;
+        }
     }
 
     [XmlRoot("BlockGroup")]

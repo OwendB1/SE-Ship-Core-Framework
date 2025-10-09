@@ -91,7 +91,7 @@ namespace ShipCoreFramework
         
         internal static string GetBlockTypeId(IMySlimBlock block)
         {
-            return Convert.ToString(block.BlockDefinition.Id.TypeId);
+            return Convert.ToString(block.BlockDefinition.Id.TypeId).Replace("MyObjectBuilder_", "");
         }
 
         internal static string GetBlockSubtypeId(IMyCubeBlock block)

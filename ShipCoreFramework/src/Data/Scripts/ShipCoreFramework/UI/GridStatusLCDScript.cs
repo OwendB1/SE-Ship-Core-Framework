@@ -202,8 +202,10 @@ namespace ShipCoreFramework
             {
                 foreach (var blockLimit in GroupComponent.ShipCore.BlockLimits)
                 {
-                    double totalWeight;
-                    if (!GroupComponent.CountPerLimit.TryGetValue(blockLimit, out totalWeight)) totalWeight = 0d;
+                    double totalWeight = 0d;
+                    LimitBucket bucket;
+                    if (GroupComponent.Limits.TryGetValue(blockLimit, out bucket))
+                        totalWeight = bucket.TotalWeight;
                     var isOk = totalWeight <= blockLimit.MaxCount;
 
                     _gridResultsTable.Rows.Add(new Row

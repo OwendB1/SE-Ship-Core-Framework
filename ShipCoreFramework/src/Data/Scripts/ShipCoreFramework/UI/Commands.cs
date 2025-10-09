@@ -4,7 +4,6 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using Sandbox.Game;
-using Sandbox.Game.Entities.Cube;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRageMath;
@@ -17,7 +16,7 @@ namespace ShipCoreFramework
         {
             var message = Encoding.UTF8.GetString(data);
             Utils.Log($"Server: Command received from {sender}: {message}");
-            CommmandSwitch(Utils.GetPlayerIdFromSteamId(sender),message);
+            CommandSwitch(Utils.GetPlayerIdFromSteamId(sender),message);
         }
         
         private static void ForwardToServer(string message)
@@ -32,10 +31,10 @@ namespace ShipCoreFramework
 
             sendToOthers = false;
             if(!Session.IsServer) ForwardToServer(messageText);
-            CommmandSwitch(MyAPIGateway.Session.Player.IdentityId,messageText);
+            CommandSwitch(MyAPIGateway.Session.Player.IdentityId,messageText);
         }
         
-        private static void CommmandSwitch(long playerId, string messageText)
+        private static void CommandSwitch(long playerId, string messageText)
         {
             var allArgs = messageText.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
@@ -566,9 +565,10 @@ namespace ShipCoreFramework
                 body += "Block Limits:\n";
                 foreach (var blockLimit in shipCore.BlockLimits)
                 {
-                    double totalWeight;
-                    if (!groupKvp.Value.CountPerLimit.TryGetValue(blockLimit, out totalWeight))
-                        totalWeight = 0d;
+                    var totalWeight = 0d;
+                    LimitBucket bucket;
+                    if (groupKvp.Value.Limits.TryGetValue(blockLimit, out bucket))
+                        totalWeight = bucket.TotalWeight;
 
                     var percentage = blockLimit.MaxCount > 0
                         ? (totalWeight / blockLimit.MaxCount) * 100d
@@ -580,17 +580,12 @@ namespace ShipCoreFramework
                          + " (" + percentage.ToString("F1", CultureInfo.InvariantCulture) + "%)\n";
                     body += "  Punishment: " + blockLimit.PunishmentType + "\n";
 
-                    LimitWeightMap map;
-                    if (!groupKvp.Value.WeightMaps.TryGetValue(blockLimit, out map))
-                        continue;
-
                     var sample = new List<KeyValuePair<IMySlimBlock, double>>(10);
                     var totalCount = 0;
 
                     foreach (var gridKvp in groupKvp.Value.GridDictionary)
                     {
                         var gridComp = gridKvp.Value;
-                        LimitBucket bucket;
                         if (!gridComp.Limits.TryGetValue(blockLimit, out bucket))
                             continue;
 
@@ -598,7 +593,7 @@ namespace ShipCoreFramework
                         {
                             if (blk == null || blk.IsMovedBySplit || blk.CubeGrid == null) continue;
 
-                            var w = map.Get(blk, GridComponent.KeyOf);
+                            var w = blockLimit.GetWeight(GridComponent.KeyOf(blk));
                             if (w <= 0d) continue;
 
                             totalCount++;
