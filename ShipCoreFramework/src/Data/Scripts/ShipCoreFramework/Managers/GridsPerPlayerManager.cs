@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
 {
@@ -98,8 +100,10 @@ namespace ShipCoreFramework
 
         private static bool IsApplicableGroup(GroupComponent group)
         {
-            if (Config.IgnoreAiFactions && group.OwningFaction != null && group.OwningFaction.IsEveryoneNpc()) return false;
-            return Config.IgnoredFactionTags == null || group.OwningFaction == null || !Config.IgnoredFactionTags.Contains(group.OwningFaction.Tag);
+            var player = MyAPIGateway.Players.TryGetIdentityId(group.MajorityOwningPlayerId);
+            if (player == null) return false;
+            if (player.PromoteLevel == MyPromoteLevel.Admin) return false;
+            return !player.IsBot || !Config.IgnoreAiFactions;
         }
 
         private static Dictionary<string, List<Guid>> GetDefaultPlayerGridsSet()

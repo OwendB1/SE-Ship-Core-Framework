@@ -14,7 +14,7 @@ namespace ShipCoreFramework
     {
         internal ShipCore ShipCore => Session.Config.GetShipCoreByTypeId(MainCoreComponent?.SubtypeId ?? string.Empty);
         internal GridModifiers Modifiers => CubeGridModifiers.GetActiveModifiers(this);
-        internal long MajorityOwningPlayerId => this.GetMajorityOwner();
+        internal long MajorityOwningPlayerId => this.GetMajorityOwnerId();
         internal IMyFaction OwningFaction => this.GetOwningFaction();
         internal int GroupBlocksCount => GridDictionary.Sum(g => g.Key.BlocksCount);
         internal int GroupPCU => GridDictionary.Sum(g => g.Key.BlocksPCU);

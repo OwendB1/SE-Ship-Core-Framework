@@ -6,7 +6,6 @@ using System.Text;
 using Sandbox.Game;
 using Sandbox.ModAPI;
 using VRage.Game;
-using VRage.Game.Entities;
 using VRage.Game.ModAPI;
 using VRage.Utils;
 using VRageMath;
@@ -94,19 +93,11 @@ namespace ShipCoreFramework
             return Convert.ToString(block.BlockDefinition.Id.SubtypeId);
         }
         
-        internal static long GetMajorityOwner(this GroupComponent groupComponent)
+        internal static long GetMajorityOwnerId(this GroupComponent groupComponent)
         {
             var ownersPerGrid = new Dictionary<long, int>();
             foreach (var grid in groupComponent.GridDictionary.Select(kvp => kvp.Key).Where(grid => grid.BigOwners != null && grid.BigOwners.Count > 0))
             {
-                switch (grid.BigOwners.Count)
-                {
-                    case 0:
-                        return 0;
-                    case 1:
-                        return grid.BigOwners[0];
-                }
-                
                 foreach (var player in grid.BigOwners)
                 {
                     if (!ownersPerGrid.ContainsKey(player)) ownersPerGrid[player] = 1;
@@ -121,14 +112,6 @@ namespace ShipCoreFramework
             var factionsPerGrid = new Dictionary<IMyFaction, int>();
             foreach (var grid in groupComponent.GridDictionary.Select(kvp => kvp.Key).Where(grid => grid.BigOwners != null && grid.BigOwners.Count > 0))
             {
-                switch (grid.BigOwners.Count)
-                {
-                    case 0:
-                        return null;
-                    case 1:
-                        return MyAPIGateway.Session.Factions.TryGetPlayerFaction(grid.BigOwners[0]);
-                }
-                
                 foreach (var ownerFaction in grid.BigOwners.Select(owner => MyAPIGateway.Session.Factions.TryGetPlayerFaction(owner))
                              .Where(ownerFaction => ownerFaction != null))
                 {

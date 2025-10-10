@@ -129,7 +129,7 @@ namespace ShipCoreFramework
         
         private bool IsOnlyCoreOfThisTypeOnGrid()
         {
-            return _groupComponent.CoreDictionary.Count(b => ((IMyCubeBlock)b.Key).BlockDefinition.SubtypeId == SubtypeId) == 0;
+            return _groupComponent.CoreDictionary.Count(b => Utils.GetBlockSubtypeId(b.Key.SlimBlock) == SubtypeId) == 0;
         }
         
         internal void SaveCoreState()
@@ -147,7 +147,7 @@ namespace ShipCoreFramework
                     : $"A backup core of grid {grid.CustomName} was destroyed!",
                 10000, grid.BigOwners.FirstOrDefault(), true);
 
-            // Delegate to group to handle removal + failover deterministically
+            // Delegate to group to handle removal and failover deterministically
             _groupComponent.OnCoreRemoved(this);
         }
     }

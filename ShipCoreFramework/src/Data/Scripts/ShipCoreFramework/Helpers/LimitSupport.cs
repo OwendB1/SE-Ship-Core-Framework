@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Sandbox.Game.Entities;
-using Sandbox.Game.Entities.Cube;
 using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework

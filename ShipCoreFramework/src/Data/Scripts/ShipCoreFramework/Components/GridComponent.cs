@@ -97,7 +97,7 @@ namespace ShipCoreFramework
                 }
             }
 
-            if (TryApplyLimitsOnAdd(block)) return;
+            TryApplyLimitsOnAdd(block);
 
             lock (_blocksLock)
             {
@@ -109,12 +109,12 @@ namespace ShipCoreFramework
             GroupComponent.ApplyModifiers(GroupComponent.Modifiers);
         }
 
-        private bool TryApplyLimitsOnAdd(IMySlimBlock block)
+        private void TryApplyLimitsOnAdd(IMySlimBlock block)
         {
             var firstOwner = Grid.BigOwners.FirstOrDefault();
 
             var limits = GroupComponent.ShipCore.BlockLimits;
-            if (limits == null) return false;
+            if (limits == null) return;
 
             var blockKey = KeyOf(block);
 
@@ -131,7 +131,6 @@ namespace ShipCoreFramework
                     {
                         Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violated directional locking!");
                         GroupComponent.WhackABlock(block, limit.PunishmentType);
-                        return true;
                     }
                 }
 
@@ -147,7 +146,6 @@ namespace ShipCoreFramework
                 {
                     Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates Block limit " + limit.Name + ": " + (cur + w) + "/" + limit.MaxCount, 10000, firstOwner);
                     GroupComponent.WhackABlock(block, limit.PunishmentType);
-                    return true;
                 }
 
                 LimitBucket gridBucket;
@@ -163,7 +161,6 @@ namespace ShipCoreFramework
                 groupBucket.TotalWeight += w;
                 groupBucket.Members.Add(block);
             }
-            return false;
         }
 
         private void BlockRemoved(IMySlimBlock block)
