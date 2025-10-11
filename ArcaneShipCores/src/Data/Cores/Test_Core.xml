@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-16"?>
+<ShipCore xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <SubtypeId>Test_Core</SubtypeId>
+  <UniqueName>Test Grid Class</UniqueName>
+  <ForceBroadCast>true</ForceBroadCast>
+  <ForceBroadCastRange>1900</ForceBroadCastRange>
+  <LargeGridStatic>true</LargeGridStatic>
+  <LargeGridMobile>true</LargeGridMobile>
+  <MaxBlocks>5000</MaxBlocks>
+  <MaxMass>-1</MaxMass>
+  <MaxPCU>10000</MaxPCU>
+  <MaxPerFaction>3</MaxPerFaction>
+  <MaxPerPlayer>3</MaxPerPlayer>
+  <MinPlayers>3</MinPlayers>
+  <Modifiers>
+    <AssemblerSpeed>2</AssemblerSpeed>
+    <DrillHarvestMultiplier>2</DrillHarvestMultiplier>
+    <GyroEfficiency>2</GyroEfficiency>
+    <GyroForce>2</GyroForce>
+    <PowerProducersOutput>2</PowerProducersOutput>
+    <RefineEfficiency>2</RefineEfficiency>
+    <RefineSpeed>2</RefineSpeed>
+    <ThrusterEfficiency>2</ThrusterEfficiency>
+    <ThrusterForce>2</ThrusterForce>
+    <MaxSpeed>0.5</MaxSpeed>
+    <MaxBoost>0.5</MaxBoost>
+    <BoostDuration>5</BoostDuration>
+    <BoostCoolDown>5</BoostCoolDown>
+  </Modifiers>
+  <PassiveDefenseModifiers>
+    <Bullet>0.5</Bullet>
+    <Energy>0.5</Energy>
+    <Kinetic>0.5</Kinetic>
+    <Rocket>0.5</Rocket>
+    <Explosion>0.5</Explosion>
+    <Environment>0.5</Environment>
+  </PassiveDefenseModifiers>
+  <SpeedBoostEnabled>true</SpeedBoostEnabled>
+  <EnableActiveDefenseModifiers>true</EnableActiveDefenseModifiers>
+  <ActiveDefenseModifiers>
+    <Bullet>0.5</Bullet>
+    <Energy>0.5</Energy>
+    <Kinetic>0.5</Kinetic>
+    <Duration>5</Duration>
+    <Cooldown>5</Cooldown>
+    <Rocket>0.5</Rocket>
+    <Explosion>0.5</Explosion>
+    <Environment>0.5</Environment>
+  </ActiveDefenseModifiers>
+  <EnableReloadModifier>false</EnableReloadModifier>
+  <ReloadModifier>1</ReloadModifier>
+  <BlockLimits>
+    <Name>Drills, Punishment: Delete \n Direction: Foward</Name>
+    <BlockGroups>Drills</BlockGroups>
+    <MaxCount>3</MaxCount>
+    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishmentType>Delete</PunishmentType>
+    <AllowedDirections>Forward</AllowedDirections>
+  </BlockLimits>
+  <BlockLimits>
+    <Name>Grinders, Punishment: ShutOff</Name>
+    <BlockGroups>Grinders</BlockGroups>
+    <MaxCount>3</MaxCount>
+    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishmentType>ShutOff</PunishmentType>
+  </BlockLimits>
+  <BlockLimits>
+    <Name>Welders, Punishment: Damage</Name>
+    <BlockGroups>Welders</BlockGroups>
+    <MaxCount>3</MaxCount>
+    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishmentType>Damage</PunishmentType>
+  </BlockLimits>
+  <BlockLimits>
+    <Name>Collectors, Punishment: Explode</Name>
+    <BlockGroups>Collectors</BlockGroups>
+    <MaxCount>3</MaxCount>
+    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishmentType>Damage</PunishmentType>
+  </BlockLimits>
+</ShipCore>

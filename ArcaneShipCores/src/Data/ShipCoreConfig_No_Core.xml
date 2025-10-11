@@ -7,23 +7,23 @@
   <SmallGrid>true</SmallGrid>
   <MaxBlocks>5000</MaxBlocks>
   <MaxMass>-1</MaxMass>
-  <MaxPCU>50000</MaxPCU>
+  <MaxPCU>10000</MaxPCU>
   <MaxPerFaction>-1</MaxPerFaction>
   <MaxPerPlayer>-1</MaxPerPlayer>
   <MinBlocks>-1</MinBlocks>
   <MinPlayers>-1</MinPlayers>
   <Modifiers>
-    <AssemblerSpeed>0</AssemblerSpeed>
-    <DrillHarvestMultiplier>0</DrillHarvestMultiplier>
+    <AssemblerSpeed>1</AssemblerSpeed>
+    <DrillHarvestMultiplier>1</DrillHarvestMultiplier>
     <GyroEfficiency>1</GyroEfficiency>
     <GyroForce>1</GyroForce>
     <PowerProducersOutput>1</PowerProducersOutput>
-    <RefineEfficiency>0</RefineEfficiency>
-    <RefineSpeed>0</RefineSpeed>
+    <RefineEfficiency>1</RefineEfficiency>
+    <RefineSpeed>1</RefineSpeed>
     <ThrusterEfficiency>1</ThrusterEfficiency>
     <ThrusterForce>1</ThrusterForce>
-    <MaxSpeed>0.1</MaxSpeed>
-    <MaxBoost>1.2</MaxBoost>
+    <MaxSpeed>0.3</MaxSpeed>
+    <MaxBoost>0.3</MaxBoost>
     <BoostDuration>10</BoostDuration>
     <BoostCoolDown>60</BoostCoolDown>
   </Modifiers>
@@ -52,11 +52,28 @@
   <EnableReloadModifier>false</EnableReloadModifier>
   <ReloadModifier>1</ReloadModifier>
   <BlockLimits>
-    <Name>SAMPLE-LIMIT</Name>
-    <BlockGroups>TEST-GROUP</BlockGroups>
+    <Name>Tools</Name>
+    <BlockGroups>Grinders</BlockGroups>
+    <BlockGroups>Welders</BlockGroups>
+    <BlockGroups>Drills</BlockGroups>
+    <MaxCount>1</MaxCount>
+    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishmentType>Delete</PunishmentType>
+  </BlockLimits>
+  <BlockLimits>
+    <Name>Weaponry PDC Only</Name>
+    <BlockGroups>Weaponry</BlockGroups>
+    <MaxCount>2</MaxCount>
+    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishmentType>Delete</PunishmentType>
+  </BlockLimits>
+    <BlockLimits>
+    <Name>Non-PDC Weapons</Name>
+    <BlockGroups>Turrets</BlockGroups>
+    <BlockGroups>VanillaSmallGridFixedWeapons</BlockGroups>
+    <BlockGroups>VanillaLargeGridFixedWeapons</BlockGroups>
     <MaxCount>0</MaxCount>
-    <TurnedOffByNoFlyZone>false</TurnedOffByNoFlyZone>
-    <PunishmentType>ShutOff</PunishmentType>
-    <DirectionType>Any</DirectionType>
+    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishmentType>Delete</PunishmentType>
   </BlockLimits>
 </ShipCore>
