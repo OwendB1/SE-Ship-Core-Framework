@@ -19,4 +19,7 @@
   <ShipCoreFilenames>Data\Cores\Utility Ships\Harvester_Core.xml</ShipCoreFilenames>
   <ShipCoreFilenames>Data\Cores\Utility Ships\Utility_Core.xml</ShipCoreFilenames>
 
+  <ShipCoreFilenames>Data\Cores\Test_Core.xml</ShipCoreFilenames>
+  
+
 </CoreManifest>
