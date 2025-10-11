@@ -131,6 +131,7 @@ namespace ShipCoreFramework
                     {
                         Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violated directional locking!");
                         GroupComponent.WhackABlock(block, limit.PunishmentType);
+                        continue; // Don't add punished blocks to the limit buckets
                     }
                 }
 
@@ -146,6 +147,7 @@ namespace ShipCoreFramework
                 {
                     Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates Block limit " + limit.Name + ": " + (cur + w) + "/" + limit.MaxCount, 10000, firstOwner);
                     GroupComponent.WhackABlock(block, limit.PunishmentType);
+                    continue; // Don't add punished blocks to the limit buckets
                 }
 
                 LimitBucket gridBucket;
@@ -173,13 +175,14 @@ namespace ShipCoreFramework
                 CoreDictionary.Remove(beacon);
             }
 
-            var limits = GroupComponent.ShipCore.BlockLimits;
+            var limits = GroupComponent.Limits;
             if (limits != null)
             {
                 var blockKey = KeyOf(block);
 
-                foreach (var limit in limits)
+                foreach (var kvp in limits)
                 {
+                    var limit = kvp.Key;
                     if (limit == null) continue;
 
                     var w = limit.GetWeight(blockKey);
