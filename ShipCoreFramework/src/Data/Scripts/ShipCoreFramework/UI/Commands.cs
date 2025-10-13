@@ -458,7 +458,7 @@ namespace ShipCoreFramework
             {
                 if (GridsPerPlayerManager.PerPlayer.ContainsKey(player.IdentityId) && GridsPerPlayerManager.PerPlayer[player.IdentityId].ContainsKey(groupKvp.Value.ShipCore.SubtypeId))
                 {
-                    body += $"Per Player Limit:{GridsPerPlayerManager.PerPlayer[player.IdentityId][groupKvp.Value.ShipCore.SubtypeId].Count}/{groupKvp.Value.ShipCore.MaxPerPlayer}\n";
+                    body += $"Per Player Limit:{GridsPerPlayerManager.PerPlayer[player.IdentityId][groupKvp.Value.ShipCore.SubtypeId]}/{groupKvp.Value.ShipCore.MaxPerPlayer}\n";
                 }
                 else
                 {
@@ -473,7 +473,7 @@ namespace ShipCoreFramework
                 {
                     if (GridsPerFactionManager.PerFaction.ContainsKey(groupKvp.Value.OwningFaction.FactionId) && GridsPerFactionManager.PerFaction[groupKvp.Value.OwningFaction.FactionId].ContainsKey(groupKvp.Value.ShipCore.SubtypeId))
                     {
-                        body += $"Per Faction Limit:{GridsPerFactionManager.PerFaction[groupKvp.Value.OwningFaction.FactionId][groupKvp.Value.ShipCore.SubtypeId].Count}/{groupKvp.Value.ShipCore.MaxPerFaction}\n";
+                        body += $"Per Faction Limit:{GridsPerFactionManager.PerFaction[groupKvp.Value.OwningFaction.FactionId][groupKvp.Value.ShipCore.SubtypeId]}/{groupKvp.Value.ShipCore.MaxPerFaction}\n";
                     }
                     else
                     {

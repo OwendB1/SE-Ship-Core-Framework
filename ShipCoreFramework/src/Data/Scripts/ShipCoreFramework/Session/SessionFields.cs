@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using NexusModAPI;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;

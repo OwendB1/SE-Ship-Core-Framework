@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
@@ -12,12 +11,11 @@ namespace ShipCoreFramework
         {
             internal long PlayerId;
             internal string CoreType;
-            internal Guid GroupId;
-            internal bool Added;
+            internal int Delta;
         }
 
-        internal static readonly Dictionary<long, Dictionary<string, List<Guid>>> PerPlayer =
-            new Dictionary<long, Dictionary<string, List<Guid>>>();
+        internal static readonly Dictionary<long, Dictionary<string, int>> PerPlayer =
+            new Dictionary<long, Dictionary<string, int>>();
 
         private static bool _suppressEvents;
 
@@ -38,13 +36,13 @@ namespace ShipCoreFramework
             {
                 var maxAllowedGrids = Config.GetShipCoreByTypeId(newCoreType).MaxPerPlayer;
                 if (maxAllowedGrids < 0) return true;
-                var idx = PerPlayer[playerId][newCoreType].Count + 1;
-                if (idx <= maxAllowedGrids) return true;
-                Utils.ShowNotification("Per faction limit of this core has been hit!", 10000, 0, true);
+                var currentCount = PerPlayer[playerId][newCoreType];
+                if (currentCount + 1 <= maxAllowedGrids) return true;
+                Utils.ShowNotification("Per player limit of this core has been hit!", 10000, 0, true);
                 return false;
             }
 
-            Utils.Log("GridsPerPlayerClass::IsGridWithinPlayerLimits: Faction or class not found in faction limits data", 2);
+            Utils.Log("GridsPerPlayerClass::IsGridWithinPlayerLimits: Player or class not found in player limits data", 2);
             return true;
         }
 
@@ -53,25 +51,23 @@ namespace ShipCoreFramework
             if (!IsApplicableGroup(group)) return;
             var playerId = group.MajorityOwningPlayerId;
             var coreType = group.ShipCore.SubtypeId;
-            var groupId = group.EntityId;
 
-            Dictionary<string, List<Guid>> perGridClass;
+            Dictionary<string, int> perGridClass;
             if (!PerPlayer.TryGetValue(playerId, out perGridClass))
             {
                 perGridClass = GetDefaultPlayerGridsSet();
                 PerPlayer[playerId] = perGridClass;
             }
 
-            List<Guid> list;
-            if (!perGridClass.TryGetValue(coreType, out list))
+            if (!perGridClass.ContainsKey(coreType))
             {
-                Utils.Log($"GridsPerPlayerClass::AddCubeGrid: Missing list for core type {coreType} for player {playerId}", 2);
-                perGridClass[coreType] = list = new List<Guid>();
+                Utils.Log($"GridsPerPlayerClass::AddCubeGrid: Missing entry for core type {coreType} for player {playerId}", 2);
+                perGridClass[coreType] = 0;
             }
 
-            if (list.Contains(groupId)) return;
-            list.Add(groupId);
-            if (!_suppressEvents) LimitsNexusSync.BroadcastPlayerChange(new PlayerChange { PlayerId = playerId, CoreType = coreType, GroupId = groupId, Added = true });
+            perGridClass[coreType]++;
+            Utils.Log($"GridsPerPlayerClass::AddCubeGrid: Player {playerId} now has {perGridClass[coreType]} grids with {coreType}", 1);
+            if (!_suppressEvents) LimitsNexusSync.BroadcastPlayerChange(new PlayerChange { PlayerId = playerId, CoreType = coreType, Delta = 1 });
         }
 
         internal static void RemoveGridGroup(GroupComponent group)
@@ -79,20 +75,26 @@ namespace ShipCoreFramework
             if (!IsApplicableGroup(group)) return;
             var playerId = group.MajorityOwningPlayerId;
             var coreType = group.ShipCore.SubtypeId;
-            Dictionary<string, List<Guid>> perGridClass;
-            List<Guid> list;
-            
+            Dictionary<string, int> perGridClass;
+
             if (!PerPlayer.TryGetValue(playerId, out perGridClass)) return;
-            if (!perGridClass.TryGetValue(coreType, out list)) return;
-            var gridId = group.EntityId;
-            if (!list.Remove(gridId)) return;
-            if (!_suppressEvents) LimitsNexusSync.BroadcastPlayerChange(new PlayerChange { PlayerId = playerId, CoreType = coreType, GroupId = gridId, Added = false });
+            if (!perGridClass.ContainsKey(coreType)) return;
+            if (perGridClass[coreType] > 0)
+            {
+                perGridClass[coreType]--;
+                if (!_suppressEvents) LimitsNexusSync.BroadcastPlayerChange(new PlayerChange { PlayerId = playerId, CoreType = coreType, Delta = -1 });
+            }
         }
-        
+
         internal static void Reset()
         {
-            foreach (var gridsEntry in PerPlayer.SelectMany(classesEntry => classesEntry.Value))
-                gridsEntry.Value.Clear();
+            foreach (var classesEntry in PerPlayer.Values)
+            {
+                foreach (var key in classesEntry.Keys.ToList())
+                {
+                    classesEntry[key] = 0;
+                }
+            }
         }
 
         internal static void BeginExternalUpdate() { _suppressEvents = true; }
@@ -106,10 +108,10 @@ namespace ShipCoreFramework
             return !player.IsBot || !Config.IgnoreAiFactions;
         }
 
-        private static Dictionary<string, List<Guid>> GetDefaultPlayerGridsSet()
+        private static Dictionary<string, int> GetDefaultPlayerGridsSet()
         {
-            var set = new Dictionary<string, List<Guid>>();
-            foreach (var core in Config.ShipCores) set[core.UniqueName] = new List<Guid>();
+            var set = new Dictionary<string, int>();
+            foreach (var core in Config.ShipCores) set[core.UniqueName] = 0;
             return set;
         }
     }

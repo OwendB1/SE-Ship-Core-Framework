@@ -38,6 +38,7 @@ namespace ShipCoreFramework
     internal sealed class LimitBucket
     {
         internal double TotalWeight;
+        internal readonly object BucketLock = new object();
         internal readonly List<IMySlimBlock> Members = new List<IMySlimBlock>();
 
         public LimitBucket(double totalWeight)

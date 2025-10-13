@@ -142,7 +142,12 @@ namespace ShipCoreFramework
                     GroupComponent.Limits[limit] = groupBucket;
                 }
 
-                var cur = groupBucket.TotalWeight;
+                double cur;
+                lock (groupBucket.BucketLock)
+                {
+                    cur = groupBucket.TotalWeight;
+                }
+
                 if (cur + w > limit.MaxCount)
                 {
                     Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates Block limit " + limit.Name + ": " + (cur + w) + "/" + limit.MaxCount, 10000, firstOwner);
@@ -157,11 +162,17 @@ namespace ShipCoreFramework
                     Limits[limit] = gridBucket;
                 }
 
-                gridBucket.TotalWeight += w;
-                gridBucket.Members.Add(block);
+                lock (gridBucket.BucketLock)
+                {
+                    gridBucket.TotalWeight += w;
+                    gridBucket.Members.Add(block);
+                }
 
-                groupBucket.TotalWeight += w;
-                groupBucket.Members.Add(block);
+                lock (groupBucket.BucketLock)
+                {
+                    groupBucket.TotalWeight += w;
+                    groupBucket.Members.Add(block);
+                }
             }
         }
 
@@ -191,20 +202,24 @@ namespace ShipCoreFramework
                     LimitBucket gridBucket;
                     if (Limits.TryGetValue(limit, out gridBucket))
                     {
-                        var idx = gridBucket.Members.IndexOf(block);
-                        if (idx >= 0)
+                        lock (gridBucket.BucketLock)
                         {
-                            gridBucket.Members.RemoveAt(idx);
-                            gridBucket.TotalWeight -= w;
+                            var idx = gridBucket.Members.IndexOf(block);
+                            if (idx >= 0)
+                            {
+                                gridBucket.Members.RemoveAt(idx);
+                                gridBucket.TotalWeight -= w;
+                            }
                         }
                     }
 
                     LimitBucket groupBucket;
                     if (GroupComponent.Limits.TryGetValue(limit, out groupBucket))
                     {
-                        var idx = groupBucket.Members.IndexOf(block);
-                        if (idx >= 0)
+                        lock (groupBucket.BucketLock)
                         {
+                            var idx = groupBucket.Members.IndexOf(block);
+                            if (idx < 0) continue;
                             groupBucket.Members.RemoveAt(idx);
                             groupBucket.TotalWeight -= w;
                         }
@@ -235,13 +250,24 @@ namespace ShipCoreFramework
                 LimitBucket groupBucket;
                 if (!GroupComponent.Limits.TryGetValue(limit, out groupBucket)) continue;
 
-                var total = groupBucket.TotalWeight;
+                double total;
+                lock (groupBucket.BucketLock)
+                {
+                    total = groupBucket.TotalWeight;
+                }
+
                 if (total <= limit.MaxCount) continue;
 
                 var over = total - limit.MaxCount;
 
-                var local = new List<KeyValuePair<IMySlimBlock, double>>(bucket.Members.Count);
-                foreach (var b in bucket.Members)
+                List<IMySlimBlock> membersCopy;
+                lock (bucket.BucketLock)
+                {
+                    membersCopy = new List<IMySlimBlock>(bucket.Members);
+                }
+
+                var local = new List<KeyValuePair<IMySlimBlock, double>>(membersCopy.Count);
+                foreach (var b in membersCopy)
                 {
                     if (b == null || b.IsMovedBySplit || b.CubeGrid == null) continue;
                     var w = limit.GetWeight(KeyOf(b));
@@ -276,7 +302,7 @@ namespace ShipCoreFramework
             {
                 if (limit == null) continue;
 
-                LimitBucket bucket = new LimitBucket(0d);
+                var bucket = new LimitBucket(0d);
                 Limits[limit] = bucket;
 
                 foreach (var block in blocksCopy)
@@ -314,11 +340,17 @@ namespace ShipCoreFramework
                 if (selectedCargo != null)
                 {
                     var cargoInventory = selectedCargo.GetInventory();
-                    block.DecreaseMountLevel(block.Integrity, cargoInventory, true);
-                    block.MoveItemsFromConstructionStockpile(cargoInventory);
+                    MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+                    {
+                        block.DecreaseMountLevel(block.Integrity, cargoInventory, true);
+                        block.MoveItemsFromConstructionStockpile(cargoInventory);
+                    });
                 }
             }
-            grid.RemoveBlock(block, updatePhysics: true);
+            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+            {
+                grid.RemoveBlock(block, updatePhysics: true);
+            });
 
             var projectors = new List<IMyProjector>();
             MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(grid).GetBlocksOfType(projectors);

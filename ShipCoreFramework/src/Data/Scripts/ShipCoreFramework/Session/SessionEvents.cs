@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.ModAPI;
-using VRage.Game.Components;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 
@@ -9,7 +8,7 @@ namespace ShipCoreFramework
 {
     public partial class Session
     {
-        private void GridGroupsOnOnGridGroupCreated(IMyGridGroupData group)
+        private static void GridGroupsOnOnGridGroupCreated(IMyGridGroupData group)
         {
             if (group.LinkType != GridLinkTypeEnum.Logical) return;
             var gComp = new GroupComponent
@@ -24,7 +23,7 @@ namespace ShipCoreFramework
             group.OnGridRemoved += gComp.OnGridRemoved;
         }
         
-        private void GridGroupsOnOnGridGroupDestroyed(IMyGridGroupData group)
+        private static void GridGroupsOnOnGridGroupDestroyed(IMyGridGroupData group)
         {
             if (group.LinkType != GridLinkTypeEnum.Logical) return;
             GroupComponent gComp;
@@ -35,7 +34,7 @@ namespace ShipCoreFramework
             GroupDict.Remove(group);
         }
         
-        private void FactionStateChanged(MyFactionStateChange action, long fromFactionId, long toFactionId,
+        private static void FactionStateChanged(MyFactionStateChange action, long fromFactionId, long toFactionId,
             long factionId, long playerId)
         {
             if (Config.SelectedNoCore == null) return;

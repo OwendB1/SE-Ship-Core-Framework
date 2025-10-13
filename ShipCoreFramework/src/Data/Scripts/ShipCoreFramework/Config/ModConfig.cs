@@ -128,7 +128,7 @@ namespace ShipCoreFramework
                         if (newBlockGroups == null)
                             throw new Exception($"Failed to load block groups from Mod: {mod.FriendlyName}");
                         BlockGroups.AddRange(newBlockGroups);
-                        Utils.Log($"Loaded Groups From: {mod.FriendlyName}", 0, "Ship Core Config");
+                        Utils.Log($"Loaded Groups From: {mod.FriendlyName}", 1, "Ship Core Config");
                     }
 
                 //Add default Core to list
@@ -141,11 +141,11 @@ namespace ShipCoreFramework
                         if (newNoCore == null)
                             throw new Exception($"Failed to load no-core from Mod: {mod.FriendlyName}");
                         NoCoreConfigs.Add(newNoCore);
-                        Utils.Log($"Loaded No-Core Config From: {mod.FriendlyName}", 0, "Ship Core Config");
+                        Utils.Log($"Loaded No-Core Config From: {mod.FriendlyName}", 1, "Ship Core Config");
                     }
 
                 if (!MyAPIGateway.Utilities.FileExistsInModLocation(CoreManifestFileName, mod)) continue;
-                Utils.Log($"Found Manifest in: {mod.FriendlyName}", 0, "Ship Core Config");
+                Utils.Log($"Found Manifest in: {mod.FriendlyName}", 1, "Ship Core Config");
                 //Check the Core Manifest to get all cores in the mod
                 using (var reader = MyAPIGateway.Utilities.ReadFileInModLocation(CoreManifestFileName, mod))
                 {
@@ -163,7 +163,7 @@ namespace ShipCoreFramework
 
                             if (newShipCore == null){throw new Exception($"Failed to load ship core from file {shipCoreFilename} in Mod: {mod.FriendlyName}");}
                             ShipCores.Add(newShipCore);
-                            Utils.Log($"Loaded Core {newShipCore.UniqueName} From: {mod.FriendlyName}", 0, "Ship Core Config");
+                            Utils.Log($"Loaded Core {newShipCore.UniqueName} From: {mod.FriendlyName}", 1, "Ship Core Config");
                         }
                 }
             }
@@ -171,8 +171,8 @@ namespace ShipCoreFramework
             ThrowErrorIfDuplicates(NoCoreConfigs, core => core.UniqueName);
             ThrowErrorIfDuplicates(ShipCores, core => core.UniqueName);
             ThrowErrorIfDuplicates(BlockGroups, groups => groups.Name);
-            Utils.Log($"NoCoreConfigs.Count = {NoCoreConfigs.Count}", 0, "Ship Core Config");
-            Utils.Log($"BlockGroups.Count = {BlockGroups.Count}", 0, "Ship Core Config");
+            Utils.Log($"NoCoreConfigs.Count = {NoCoreConfigs.Count}", 1, "Ship Core Config");
+            Utils.Log($"BlockGroups.Count = {BlockGroups.Count}", 1, "Ship Core Config");
 
             foreach (var limit in ShipCores.SelectMany(core => core.BlockLimits))
             {

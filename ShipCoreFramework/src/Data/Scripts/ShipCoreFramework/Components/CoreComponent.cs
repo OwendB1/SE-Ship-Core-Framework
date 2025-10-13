@@ -33,7 +33,7 @@ namespace ShipCoreFramework
             CoreBlock = beacon;
             if (Session.Config.SelectedNoCore == null)
             {
-                Utils.Log("NOCORE is NULL for CORE");
+                Utils.Log("NOCORE is NULL for CORE", 3);
                 return;
             }
             CubeGridModifiers.AddModifiers(CoreBlock);
@@ -79,7 +79,7 @@ namespace ShipCoreFramework
             }
             
             var onlyCore = IsOnlyCoreOfThisTypeOnGrid();
-            Utils.Log($"Core Initial: {CoreBlock.CustomName}, PersistedMain: {persistedMain}, onlyCore: {onlyCore}", 3);
+            Utils.Log($"Core Initial: {CoreBlock.CustomName}, PersistedMain: {persistedMain}, OnlyCore: {onlyCore}", 3);
 
             if (!groupHasMain && (persistedMain || onlyCore))
             {

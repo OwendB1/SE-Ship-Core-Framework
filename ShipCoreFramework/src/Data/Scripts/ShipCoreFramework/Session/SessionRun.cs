@@ -56,7 +56,7 @@ namespace ShipCoreFramework
                 if (ammoDefinition != null)
                     ammoDefinition.DesiredSpeed += speedDifferential;
                 else
-                    Utils.Log($"AmmoType: {ammoId} was not successfully adjusted to match maxspeed");
+                    Utils.Log($"AmmoType: {ammoId} was not successfully adjusted to match maxspeed", 2);
             }
             
             MyAPIGateway.Session.OnSessionReady += SessionReady;

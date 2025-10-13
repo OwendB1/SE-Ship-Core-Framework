@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,7 +22,6 @@ namespace ShipCoreFramework
         private float BoostDuration => ShipCore.Modifiers.BoostDuration;
         private float BoostCoolDown => ShipCore.Modifiers.BoostCoolDown;
         
-        internal Guid EntityId = Guid.NewGuid();
         internal IMyGridGroupData MyGroup;
         internal CoreComponent MainCoreComponent;
 
@@ -72,10 +70,15 @@ namespace ShipCoreFramework
         {
             Limits.Clear();
 
-            foreach (var comp in GridDictionary.Values)
+            // Phase 1: Parallel recalculation per grid
+            MyAPIGateway.Parallel.ForEach(GridDictionary.Values, comp =>
             {
                 comp.RecalculateLimits(this);
+            });
 
+            // Phase 2: Sequential aggregation (with locks for thread safety)
+            foreach (var comp in GridDictionary.Values)
+            {
                 foreach (var gridLimitKv in comp.Limits)
                 {
                     var limit = gridLimitKv.Key;
@@ -88,8 +91,14 @@ namespace ShipCoreFramework
                         Limits[limit] = groupBucket;
                     }
 
-                    groupBucket.TotalWeight += gridBucket.TotalWeight;
-                    groupBucket.Members.AddRange(gridBucket.Members);
+                    lock (gridBucket.BucketLock)
+                    {
+                        lock (groupBucket.BucketLock)
+                        {
+                            groupBucket.TotalWeight += gridBucket.TotalWeight;
+                            groupBucket.Members.AddRange(gridBucket.Members);
+                        }
+                    }
                 }
             }
         }
@@ -106,7 +115,7 @@ namespace ShipCoreFramework
             MainCoreComponent = coreComponent;
 
             var grid = MainCoreComponent.GridComponent.Grid;
-            Utils.Log("Activate: Activating logic for " + ((IMyCubeGrid)grid).CustomName + " (group id: " + EntityId + ")!");
+            Utils.Log("Activate: Activating logic for " + ((IMyCubeGrid)grid).CustomName + " (group id: " + GridDictionary.First().Key.EntityId + ")!", 2);
 
             GridsPerFactionManager.AddGridGroup(this);
             GridsPerPlayerManager.AddGridGroup(this);
@@ -126,7 +135,7 @@ namespace ShipCoreFramework
             if (old != null)
             {
                 var grid = old.GridComponent.Grid;
-                Utils.Log("Reset: Resetting logic for " + ((IMyCubeGrid)grid).CustomName + " (group id: " + EntityId + ")!");
+                Utils.Log("Reset: Resetting logic for " + ((IMyCubeGrid)grid).CustomName + " (group id: " + GridDictionary.First().Key.EntityId + ")!", 2);
                 old.IsMainCore = false;
             }
             MainCoreComponent = null;
@@ -150,15 +159,15 @@ namespace ShipCoreFramework
             var tempGridList = new List<IMyCubeGrid>();
             MyGroup.GetGrids(tempGridList);
 
-            foreach (var myCubeGrid in tempGridList)
+            MyAPIGateway.Parallel.ForEach(tempGridList, myCubeGrid =>
             {
                 var startGrid = (MyCubeGrid)myCubeGrid;
-                if (startGrid.IsPreview) continue;
+                if (startGrid.IsPreview) return;
 
                 var gridComp = new GridComponent();
+                GridDictionary.TryAdd(startGrid, gridComp);
                 gridComp.Init(startGrid, MyGroup);
-                GridDictionary[startGrid] = gridComp;
-            }
+            });
 
             RebuildGroupState();
             RecalculateAllLimits();
@@ -170,40 +179,48 @@ namespace ShipCoreFramework
             var g = grid as MyCubeGrid;
             if (g == null || g.IsPreview) return;
 
-            if (removedFrom != null)
+            if (removedFrom != null) // Grid is transferring from another group
             {
-                GroupComponent src;
-                GridComponent moved;
-                if (Session.GroupDict.TryGetValue(removedFrom, out src) &&
-                    src.GridDictionary.TryGetValue(g, out moved))
+                GroupComponent oldGroup;
+                GridComponent movedComp;
+                if (Session.GroupDict.TryGetValue(removedFrom, out oldGroup) &&
+                    oldGroup.GridDictionary.TryGetValue(g, out movedComp))
                 {
-                    src.GridDictionary.Remove(g);
-                    moved.GroupData = addedTo;
-                    GridDictionary[g] = moved;
+                    // Transfer the component from old group to this group
+                    oldGroup.GridDictionary.Remove(g);
+                    movedComp.GroupData = addedTo;
+                    GridDictionary[g] = movedComp;
+
+                    // Update old group's state after removal
+                    oldGroup.RebuildGroupState();
+                    oldGroup.RecalculateAllLimits();
                 }
                 else
                 {
+                    // Fallback: couldn't find in old group, create new
                     var gc = new GridComponent();
                     gc.Init(g, MyGroup);
                     GridDictionary[g] = gc;
                 }
             }
-            else
+            else // New grid being added
             {
                 var gc = new GridComponent();
                 gc.Init(g, MyGroup);
                 GridDictionary[g] = gc;
             }
 
+            // Update this group's state after addition
             RebuildGroupState();
             RecalculateAllLimits();
         }
 
         internal void OnGridRemoved(IMyGridGroupData removedFrom, IMyCubeGrid grid, IMyGridGroupData addedTo)
         {
+            if (addedTo != null) return;
             var g = grid as MyCubeGrid;
             if (g == null) return;
-
+            
             GridComponent comp;
             if (GridDictionary.TryGetValue(g, out comp))
             {
@@ -226,13 +243,19 @@ namespace ShipCoreFramework
 
                 if (limit == null || bucket == null) continue;
 
-                var total = bucket.TotalWeight;
+                double total;
+                List<IMySlimBlock> membersCopy;
+                lock (bucket.BucketLock)
+                {
+                    total = bucket.TotalWeight;
+                    membersCopy = new List<IMySlimBlock>(bucket.Members);
+                }
+
                 if (total <= limit.MaxCount) continue;
 
                 var over = total - limit.MaxCount;
-                var candidates = new List<KeyValuePair<IMySlimBlock, double>>(bucket.Members.Count);
+                var candidates = new List<KeyValuePair<IMySlimBlock, double>>(membersCopy.Count);
 
-                var membersCopy = new List<IMySlimBlock>(bucket.Members);
                 foreach (var blk in membersCopy)
                 {
                     if (blk == null || blk.IsMovedBySplit || blk.CubeGrid == null) continue;
@@ -318,9 +341,9 @@ namespace ShipCoreFramework
 
         internal void ApplyModifiers(GridModifiers modifiers)
         {
-            foreach (var kv in GridDictionary)
+            MyAPIGateway.Parallel.ForEach(GridDictionary, kvp =>
             {
-                var blocksCopy = kv.Value.GetBlocksCopy();
+                var blocksCopy = kvp.Value.GetBlocksCopy();
                 foreach (var bl in blocksCopy)
                 {
                     var fatBlock = bl?.FatBlock;
@@ -328,7 +351,7 @@ namespace ShipCoreFramework
                     if (terminalBlock != null)
                         CubeGridModifiers.ApplyModifiers(terminalBlock, modifiers);
                 }
-            }
+            });
         }
 
         internal static bool IsValidDirection(IMyCubeBlock myCore, IMySlimBlock block, List<DirectionType> allowedDirections)
@@ -368,9 +391,10 @@ namespace ShipCoreFramework
 
         public void DefenseValuesChanged()
         {
+            var modifiers = GetActiveDefenseModifiers();
             foreach (var kvp in GridDictionary)
             {
-                CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = GetActiveDefenseModifiers();
+                CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
             }
         }
 
@@ -398,10 +422,13 @@ namespace ShipCoreFramework
                 _activeDefenseDurationTimer -= 1f;
                 if (!(_activeDefenseDurationTimer <= 0f)) return;
                 _activeDefenseEnabled = false;
+
+                var modifiers = GetPassiveDefenseModifiers();
                 foreach (var kvp in GridDictionary)
                 {
-                    CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = GetPassiveDefenseModifiers();
+                    CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
                 }
+
                 _activeDefenseCooldownTimer = ActiveDefenseCoolDown * 60f;
                 Utils.ShowNotification("Active Defense Disengaged! Cooldown started.", 1000);
             }
@@ -431,10 +458,13 @@ namespace ShipCoreFramework
             }
             _activeDefenseEnabled = true;
             _activeDefenseDurationTimer = ActiveDefenseDuration * 60f;
+
+            var modifiers = GetActiveDefenseModifiers();
             foreach (var kvp in GridDictionary)
             {
-                CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = GetActiveDefenseModifiers();
+                CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
             }
+
             Utils.ShowNotification("Active Defense Engaged!", 1000);
         }
 
@@ -481,7 +511,7 @@ namespace ShipCoreFramework
 
         internal GridDefenseModifiers GetPassiveDefenseModifiers()
         {
-            if (MainCoreComponent == null || MainCoreComponent.CoreBlock == null)
+            if (MainCoreComponent?.CoreBlock == null)
             {
                 return ShipCore.PassiveDefenseModifiers;
             }
