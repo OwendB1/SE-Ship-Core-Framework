@@ -453,12 +453,15 @@ namespace ShipCoreFramework
                 return;
             }
 
+            var shipCoreSubtypeId = groupKvp.Value.ShipCore.SubtypeId;
             var body = $"Grid: {targetGrid.CustomName}\nShip Class: {shipCore.UniqueName}\n\n";
-            if (groupKvp.Value.ShipCore.MaxPerPlayer > 0)
+            var currentMaxPerPlayer = groupKvp.Value.ShipCore.MaxPerPlayer;
+            if (currentMaxPerPlayer > 0)
             {
-                if (GridsPerPlayerManager.PerPlayer.ContainsKey(player.IdentityId) && GridsPerPlayerManager.PerPlayer[player.IdentityId].ContainsKey(groupKvp.Value.ShipCore.SubtypeId))
+                var ownerId = groupKvp.Value.MainCoreComponent.CoreBlock.OwnerId;
+                if (GridsPerPlayerManager.PerPlayer.ContainsKey(ownerId) && GridsPerPlayerManager.PerPlayer[ownerId].ContainsKey(shipCoreSubtypeId))
                 {
-                    body += $"Per Player Limit:{GridsPerPlayerManager.PerPlayer[player.IdentityId][groupKvp.Value.ShipCore.SubtypeId]}/{groupKvp.Value.ShipCore.MaxPerPlayer}\n";
+                    body += $"Per Player Limit:{GridsPerPlayerManager.PerPlayer[ownerId][shipCoreSubtypeId]}/{currentMaxPerPlayer}\n";
                 }
                 else
                 {
@@ -467,13 +470,15 @@ namespace ShipCoreFramework
                 
             }
             
-            if(groupKvp.Value.ShipCore.MaxPerFaction > 0)
+            var currentMaxPerFaction = groupKvp.Value.ShipCore.MaxPerFaction;
+            if(currentMaxPerFaction > 0)
             {
-                if (groupKvp.Value.OwningFaction?.FactionId != null)
+                if (groupKvp.Value.OwningFaction != null)
                 {
-                    if (GridsPerFactionManager.PerFaction.ContainsKey(groupKvp.Value.OwningFaction.FactionId) && GridsPerFactionManager.PerFaction[groupKvp.Value.OwningFaction.FactionId].ContainsKey(groupKvp.Value.ShipCore.SubtypeId))
+                    var owningFactionId = groupKvp.Value.OwningFaction.FactionId;
+                    if (GridsPerFactionManager.PerFaction.ContainsKey(owningFactionId) && GridsPerFactionManager.PerFaction[owningFactionId].ContainsKey(shipCoreSubtypeId))
                     {
-                        body += $"Per Faction Limit:{GridsPerFactionManager.PerFaction[groupKvp.Value.OwningFaction.FactionId][groupKvp.Value.ShipCore.SubtypeId]}/{groupKvp.Value.ShipCore.MaxPerFaction}\n";
+                        body += $"Per Faction Limit:{GridsPerFactionManager.PerFaction[owningFactionId][shipCoreSubtypeId]}/{currentMaxPerFaction}\n";
                     }
                     else
                     {

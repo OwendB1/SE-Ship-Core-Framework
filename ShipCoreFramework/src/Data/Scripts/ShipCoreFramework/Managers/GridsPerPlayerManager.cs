@@ -14,9 +14,7 @@ namespace ShipCoreFramework
             internal int Delta;
         }
 
-        internal static readonly Dictionary<long, Dictionary<string, int>> PerPlayer =
-            new Dictionary<long, Dictionary<string, int>>();
-
+        internal static readonly Dictionary<long, Dictionary<string, int>> PerPlayer = new Dictionary<long, Dictionary<string, int>>();
         private static bool _suppressEvents;
 
         private static ModConfig Config => Session.Config;
@@ -24,7 +22,7 @@ namespace ShipCoreFramework
         internal static bool WillGroupBeWithinPlayerLimits(GroupComponent group, string newCoreType)
         {
             if (!IsApplicableGroup(group)) return true;
-            var playerId = group.MajorityOwningPlayerId;
+            var playerId = group.OwnerId;
 
             if (!Config.IsValidCoreType(newCoreType))
             {
@@ -49,7 +47,7 @@ namespace ShipCoreFramework
         internal static void AddGridGroup(GroupComponent group)
         {
             if (!IsApplicableGroup(group)) return;
-            var playerId = group.MajorityOwningPlayerId;
+            var playerId = group.OwnerId;
             var coreType = group.ShipCore.SubtypeId;
 
             Dictionary<string, int> perGridClass;
@@ -72,18 +70,23 @@ namespace ShipCoreFramework
 
         internal static void RemoveGridGroup(GroupComponent group)
         {
+            Utils.Log("Remove1", 1);
             if (!IsApplicableGroup(group)) return;
-            var playerId = group.MajorityOwningPlayerId;
+            Utils.Log("Remove2", 1);
+            var playerId = group.OwnerId;
+            Utils.Log("Remove3", 1);
             var coreType = group.ShipCore.SubtypeId;
             Dictionary<string, int> perGridClass;
-
+            
+            Utils.Log("Remove4", 1);
             if (!PerPlayer.TryGetValue(playerId, out perGridClass)) return;
+            Utils.Log("Remove5", 1);
             if (!perGridClass.ContainsKey(coreType)) return;
-            if (perGridClass[coreType] > 0)
-            {
-                perGridClass[coreType]--;
-                if (!_suppressEvents) LimitsNexusSync.BroadcastPlayerChange(new PlayerChange { PlayerId = playerId, CoreType = coreType, Delta = -1 });
-            }
+            Utils.Log("Remove6", 1);
+            if (perGridClass[coreType] <= 0) return;
+            Utils.Log("Remove7", 1);
+            perGridClass[coreType]--;
+            if (!_suppressEvents) LimitsNexusSync.BroadcastPlayerChange(new PlayerChange { PlayerId = playerId, CoreType = coreType, Delta = -1 });
         }
 
         internal static void Reset()
@@ -102,8 +105,12 @@ namespace ShipCoreFramework
 
         private static bool IsApplicableGroup(GroupComponent group)
         {
-            var player = MyAPIGateway.Players.TryGetIdentityId(group.MajorityOwningPlayerId);
-            if (player == null) return false;
+            var player = MyAPIGateway.Players.TryGetIdentityId(group.OwnerId);
+            if (player == null)
+            {
+                Utils.Log("Player is null!!");
+                return false;
+            }
             if (player.PromoteLevel == MyPromoteLevel.Admin) return false;
             return !player.IsBot || !Config.IgnoreAiFactions;
         }

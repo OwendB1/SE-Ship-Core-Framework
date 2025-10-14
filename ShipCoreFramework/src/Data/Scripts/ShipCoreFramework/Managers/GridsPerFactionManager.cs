@@ -12,9 +12,7 @@ namespace ShipCoreFramework
             public int Delta;
         }
 
-        internal static readonly Dictionary<long, Dictionary<string, int>> PerFaction =
-            new Dictionary<long, Dictionary<string, int>>();
-
+        internal static readonly Dictionary<long, Dictionary<string, int>> PerFaction = new Dictionary<long, Dictionary<string, int>>();
         private static bool _suppressEvents;
 
         private static ModConfig Config => Session.Config;
@@ -31,7 +29,7 @@ namespace ShipCoreFramework
 
             var maxAllowedGrids = Config.GetShipCoreByTypeId(coreType).MaxPerFaction;
             var minNeededPlayers = Config.GetShipCoreByTypeId(coreType).MinPlayers;
-            var firstBigOwner = group.MajorityOwningPlayerId;
+            var firstBigOwner = group.OwnerId;
 
             if (maxAllowedGrids < 0) return true;
             if (factionId == -1 && minNeededPlayers > 1)

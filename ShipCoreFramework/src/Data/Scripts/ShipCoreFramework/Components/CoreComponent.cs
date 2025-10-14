@@ -91,23 +91,17 @@ namespace ShipCoreFramework
                 IsMainCore = false;
             }
             
-            Session.TickScheduler.Schedule(() =>
-            {
-                if (GridsPerFactionManager.WillGroupBeWithinFactionLimits(groupComponent, SubtypeId)) return;
-                Utils.ShowNotification("Per faction limit of this core has been hit!", 10000, CoreBlock.CubeGrid.BigOwners.FirstOrDefault(), true);
-                _groupComponent.ResetCore();
-                CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
-            }, 30);
+            if (GridsPerFactionManager.WillGroupBeWithinFactionLimits(groupComponent, SubtypeId)) return;
+            Utils.ShowNotification("Per faction limit of this core has been hit!", 10000, groupComponent.OwnerId, true);
+            _groupComponent.ResetCore();
+            CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
             
-            Session.TickScheduler.Schedule(() =>
-            {
-                if (GridsPerPlayerManager.WillGroupBeWithinPlayerLimits(groupComponent, SubtypeId)) return;
-                Utils.ShowNotification("Per player limit of this core has been hit!", 10000, CoreBlock.CubeGrid.BigOwners.FirstOrDefault(), true);
-                _groupComponent.ResetCore();
-                CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
-            }, 30);
-            
-            Session.TickScheduler.Schedule(_groupComponent.DefenseValuesChanged, 30);
+            if (GridsPerPlayerManager.WillGroupBeWithinPlayerLimits(groupComponent, SubtypeId)) return;
+            Utils.ShowNotification("Per player limit of this core has been hit!", 10000, groupComponent.OwnerId, true);
+            _groupComponent.ResetCore();
+            CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
+
+            _groupComponent.DefenseValuesChanged();
         }
         
         private void OnUpgradeValuesChanged()

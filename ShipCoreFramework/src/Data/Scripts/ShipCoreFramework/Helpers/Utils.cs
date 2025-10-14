@@ -98,28 +98,12 @@ namespace ShipCoreFramework
             var ownersPerGrid = new Dictionary<long, int>();
             foreach (var grid in groupComponent.GridDictionary.Select(kvp => kvp.Key).Where(grid => grid.BigOwners != null && grid.BigOwners.Count > 0))
             {
-                foreach (var player in grid.BigOwners)
+                foreach (var player in grid.BigOwners.Where(player => ownersPerGrid.ContainsKey(player)))
                 {
-                    if (!ownersPerGrid.ContainsKey(player)) ownersPerGrid[player] = 1;
-                    else ownersPerGrid[player]++;
+                    ownersPerGrid[player]++;
                 }
             }
             return ownersPerGrid.Count == 0 ? 0 : ownersPerGrid.MaxBy(kvp => kvp.Value).Key;
-        }
-
-        internal static IMyFaction GetOwningFaction(this GroupComponent groupComponent)
-        {
-            var factionsPerGrid = new Dictionary<IMyFaction, int>();
-            foreach (var grid in groupComponent.GridDictionary.Select(kvp => kvp.Key).Where(grid => grid.BigOwners != null && grid.BigOwners.Count > 0))
-            {
-                foreach (var ownerFaction in grid.BigOwners.Select(owner => MyAPIGateway.Session.Factions.TryGetPlayerFaction(owner))
-                             .Where(ownerFaction => ownerFaction != null))
-                {
-                    if (!factionsPerGrid.ContainsKey(ownerFaction)) factionsPerGrid[ownerFaction] = 1;
-                    else factionsPerGrid[ownerFaction]++;
-                }
-            }
-            return factionsPerGrid.Count == 0 ? null : factionsPerGrid.MaxBy(kvp => kvp.Value).Key;
         }
         
         internal static T LoadFromSandbox<T>(string keyName)

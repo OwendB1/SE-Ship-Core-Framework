@@ -13,8 +13,8 @@ namespace ShipCoreFramework
     {
         internal ShipCore ShipCore => Session.Config.GetShipCoreByTypeId(MainCoreComponent?.SubtypeId ?? string.Empty);
         internal GridModifiers Modifiers => CubeGridModifiers.GetActiveModifiers(this);
-        internal long MajorityOwningPlayerId => this.GetMajorityOwnerId();
-        internal IMyFaction OwningFaction => this.GetOwningFaction();
+        internal long OwnerId => MainCoreComponent?.CoreBlock.OwnerId ?? this.GetMajorityOwnerId();
+        internal IMyFaction OwningFaction => MyAPIGateway.Session.Factions.TryGetPlayerFaction(OwnerId);
         internal int GroupBlocksCount => GridDictionary.Sum(g => g.Key.BlocksCount);
         internal int GroupPCU => GridDictionary.Sum(g => g.Key.BlocksPCU);
         internal float GroupMass => GridDictionary.Sum(g => g.Key.Mass);
@@ -65,42 +65,25 @@ namespace ShipCoreFramework
                 return ShipCore.ActiveDefenseModifiers.Cooldown;
             }
         }
-
-        private void RecalculateAllLimits()
+        
+        internal void InitGrids()
         {
-            Limits.Clear();
+            var tempGridList = new List<IMyCubeGrid>();
+            MyGroup.GetGrids(tempGridList);
 
-            // Phase 1: Parallel recalculation per grid
-            MyAPIGateway.Parallel.ForEach(GridDictionary.Values, comp =>
+            MyAPIGateway.Parallel.ForEach(tempGridList, myCubeGrid =>
             {
-                comp.RecalculateLimits(this);
+                var startGrid = (MyCubeGrid)myCubeGrid;
+                if (startGrid.IsPreview) return;
+
+                var gridComp = new GridComponent();
+                GridDictionary.TryAdd(startGrid, gridComp);
+                gridComp.Init(startGrid, MyGroup);
             });
 
-            // Phase 2: Sequential aggregation (with locks for thread safety)
-            foreach (var comp in GridDictionary.Values)
-            {
-                foreach (var gridLimitKv in comp.Limits)
-                {
-                    var limit = gridLimitKv.Key;
-                    var gridBucket = gridLimitKv.Value;
-
-                    LimitBucket groupBucket;
-                    if (!Limits.TryGetValue(limit, out groupBucket))
-                    {
-                        groupBucket = new LimitBucket(0d);
-                        Limits[limit] = groupBucket;
-                    }
-
-                    lock (gridBucket.BucketLock)
-                    {
-                        lock (groupBucket.BucketLock)
-                        {
-                            groupBucket.TotalWeight += gridBucket.TotalWeight;
-                            groupBucket.Members.AddRange(gridBucket.Members);
-                        }
-                    }
-                }
-            }
+            RebuildGroupState();
+            RecalculateAllLimits();
+            EnforceGroupPunishment();
         }
 
         internal void Activate(CoreComponent coreComponent)
@@ -115,7 +98,7 @@ namespace ShipCoreFramework
             MainCoreComponent = coreComponent;
 
             var grid = MainCoreComponent.GridComponent.Grid;
-            Utils.Log("Activate: Activating logic for " + ((IMyCubeGrid)grid).CustomName + " (group id: " + GridDictionary.First().Key.EntityId + ")!", 2);
+            Utils.Log($"Activate: Activating logic for {((IMyCubeGrid)grid).CustomName}!", 2);
 
             GridsPerFactionManager.AddGridGroup(this);
             GridsPerPlayerManager.AddGridGroup(this);
@@ -135,7 +118,7 @@ namespace ShipCoreFramework
             if (old != null)
             {
                 var grid = old.GridComponent.Grid;
-                Utils.Log("Reset: Resetting logic for " + ((IMyCubeGrid)grid).CustomName + " (group id: " + GridDictionary.First().Key.EntityId + ")!", 2);
+                Utils.Log($"Reset: Resetting logic for {((IMyCubeGrid)grid).CustomName}!", 2);
                 old.IsMainCore = false;
             }
             MainCoreComponent = null;
@@ -152,26 +135,6 @@ namespace ShipCoreFramework
                 ApplyModifiers(Modifiers);
                 EnforceGroupPunishment();
             });
-        }
-
-        internal void InitGrids()
-        {
-            var tempGridList = new List<IMyCubeGrid>();
-            MyGroup.GetGrids(tempGridList);
-
-            MyAPIGateway.Parallel.ForEach(tempGridList, myCubeGrid =>
-            {
-                var startGrid = (MyCubeGrid)myCubeGrid;
-                if (startGrid.IsPreview) return;
-
-                var gridComp = new GridComponent();
-                GridDictionary.TryAdd(startGrid, gridComp);
-                gridComp.Init(startGrid, MyGroup);
-            });
-
-            RebuildGroupState();
-            RecalculateAllLimits();
-            EnforceGroupPunishment();
         }
 
         internal void OnGridAdded(IMyGridGroupData addedTo, IMyCubeGrid grid, IMyGridGroupData removedFrom)
@@ -199,14 +162,14 @@ namespace ShipCoreFramework
                 {
                     // Fallback: couldn't find in old group, create new
                     var gc = new GridComponent();
-                    gc.Init(g, MyGroup);
+                    gc.Init(g, addedTo);
                     GridDictionary[g] = gc;
                 }
             }
             else // New grid being added
             {
                 var gc = new GridComponent();
-                gc.Init(g, MyGroup);
+                gc.Init(g, addedTo);
                 GridDictionary[g] = gc;
             }
 
@@ -574,6 +537,43 @@ namespace ShipCoreFramework
             RecalculateAllLimits();
             ApplyModifiers(Modifiers);
             EnforceGroupPunishment();
+        }
+        
+        private void RecalculateAllLimits()
+        {
+            Limits.Clear();
+
+            // Phase 1: Parallel recalculation per grid
+            MyAPIGateway.Parallel.ForEach(GridDictionary.Values, comp =>
+            {
+                comp.RecalculateLimits(this);
+            });
+
+            // Phase 2: Sequential aggregation (with locks for thread safety)
+            foreach (var comp in GridDictionary.Values)
+            {
+                foreach (var gridLimitKv in comp.Limits)
+                {
+                    var limit = gridLimitKv.Key;
+                    var gridBucket = gridLimitKv.Value;
+
+                    LimitBucket groupBucket;
+                    if (!Limits.TryGetValue(limit, out groupBucket))
+                    {
+                        groupBucket = new LimitBucket(0d);
+                        Limits[limit] = groupBucket;
+                    }
+
+                    lock (gridBucket.BucketLock)
+                    {
+                        lock (groupBucket.BucketLock)
+                        {
+                            groupBucket.TotalWeight += gridBucket.TotalWeight;
+                            groupBucket.Members.AddRange(gridBucket.Members);
+                        }
+                    }
+                }
+            }
         }
 
         internal void Clean()
