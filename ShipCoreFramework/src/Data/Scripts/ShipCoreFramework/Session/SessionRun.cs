@@ -153,7 +153,6 @@ namespace ShipCoreFramework
 
         public override void UpdateAfterSimulation()
         {
-            TickScheduler.Update1();
             if(!HasStarted) HasStarted = true;
             CoreTerminalControls.RegisterOnce();
 
