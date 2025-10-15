@@ -94,7 +94,7 @@ namespace ShipCoreFramework
             boost.Enabled = delegate(IMyTerminalBlock b)
             {
                 var groupComp = b.GetGroupComponent();
-                if (groupComp != null) return groupComp.MainCoreComponent.IsMainCore;
+                if (groupComp != null) return groupComp.MainCoreComponent?.IsMainCore ?? false;
                 Utils.ShowChatMessage("Could not sync box, main grid group match was not found??");
                 return false;
             };
@@ -119,7 +119,7 @@ namespace ShipCoreFramework
             defense.Enabled = delegate(IMyTerminalBlock b)
             {
                 var groupComp = b.GetGroupComponent();
-                if (groupComp != null) return groupComp.MainCoreComponent.IsMainCore;
+                if (groupComp != null) return groupComp.MainCoreComponent?.IsMainCore ?? false;
                 Utils.ShowChatMessage("Could not sync box, main grid group match was not found??");
                 return false;
             };
