@@ -68,6 +68,13 @@ namespace ShipCoreFramework
         
         internal void InitGrids()
         {
+            // Skip initialization for ignored factions/AI
+            if (Utils.IsIgnoredGroup(this))
+            {
+                Utils.Log($"InitGrids: Skipping ignored group (Faction: {OwningFaction?.Tag ?? "None"})", 2);
+                return;
+            }
+
             var tempGridList = new List<IMyCubeGrid>();
             MyGroup.GetGrids(tempGridList);
 
@@ -173,6 +180,17 @@ namespace ShipCoreFramework
                 GridDictionary[g] = gc;
             }
 
+            // Check if group should be ignored after adding the grid (ownership may have changed)
+            if (Utils.IsIgnoredGroup(this))
+            {
+                Utils.Log($"OnGridAdded: Group became ignored after grid addition (Faction: {OwningFaction?.Tag ?? "None"})", 2);
+                if (MainCoreComponent != null)
+                {
+                    ResetCore();
+                }
+                return;
+            }
+
             // Update this group's state after addition
             RebuildGroupState();
             RecalculateAllLimits();
@@ -197,6 +215,12 @@ namespace ShipCoreFramework
 
         private void EnforceGroupPunishment()
         {
+            // Skip block limit enforcement for ignored factions/AI
+            if (Utils.IsIgnoredGroup(this))
+            {
+                return;
+            }
+
             EnforceOverCapacity();
 
             foreach (var kv in Limits)

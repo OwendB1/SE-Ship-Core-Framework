@@ -1,9 +1,7 @@
-using System.Linq;
 using System.Text;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces.Terminal;
-using VRage.Game.Entity;
 using VRage.Utils;
 
 namespace ShipCoreFramework

@@ -12,6 +12,12 @@ namespace ShipCoreFramework
     {
         internal static void EnforceSpeedLimit(GroupComponent groupComponent)
         {
+            // Skip speed enforcement for ignored factions/AI
+            if (Utils.IsIgnoredGroup(groupComponent))
+            {
+                return;
+            }
+
             foreach (var kvp in groupComponent.GridDictionary)
             {
                 if(kvp.Key.IsStatic) return;
@@ -22,7 +28,7 @@ namespace ShipCoreFramework
                 {
                     maxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.Modifiers.MaxBoost;
                 }
-            
+
                 var velocity = kvp.Key.Physics.LinearVelocity;
                 if (velocity.LengthSquared() <= maxSpeed * maxSpeed) return;
                 velocity = Vector3.Normalize(velocity) * maxSpeed;
@@ -36,7 +42,7 @@ namespace ShipCoreFramework
                     catch (Exception)
                     {
                         // do nothing
-                    } 
+                    }
                 });
             }
         }

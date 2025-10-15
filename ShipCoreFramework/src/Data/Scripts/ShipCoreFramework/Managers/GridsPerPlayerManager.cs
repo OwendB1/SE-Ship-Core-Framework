@@ -112,7 +112,17 @@ namespace ShipCoreFramework
                 return false;
             }
             if (player.PromoteLevel == MyPromoteLevel.Admin) return false;
-            return !player.IsBot || !Config.IgnoreAiFactions;
+
+            // Check if AI/bot and we're ignoring AI
+            if (player.IsBot && Config.IgnoreAiFactions)
+                return false;
+
+            // Check if faction tag is in ignored list
+            var faction = group.OwningFaction;
+            if (faction != null && Config.IgnoredFactionTags != null && Config.IgnoredFactionTags.Contains(faction.Tag))
+                return false;
+
+            return true;
         }
 
         private static Dictionary<string, int> GetDefaultPlayerGridsSet()

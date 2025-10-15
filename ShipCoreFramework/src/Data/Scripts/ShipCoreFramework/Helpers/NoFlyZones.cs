@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
@@ -15,6 +14,12 @@ namespace ShipCoreFramework
         internal static void EnforceNoFlyZones(GroupComponent groupComponent, bool doPunish)
         {
             if (Session.Config.NoFlyZones == null || Session.Config.NoFlyZones.Count == 0) return;
+
+            // Skip no-fly zone enforcement for ignored factions/AI
+            if (Utils.IsIgnoredGroup(groupComponent))
+            {
+                return;
+            }
 
             foreach (var zone in Session.Config.NoFlyZones)
             {
