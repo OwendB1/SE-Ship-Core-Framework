@@ -31,6 +31,7 @@ namespace ShipCoreFramework
             IsClient = (MpActive && !MyAPIGateway.Utilities.IsDedicated) || !MpActive;
             
             Config.LoadConfig();
+            ModAPI.Initialize();
             _myNexusApi = new NexusAPI(OnNexusEnabled);
             MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed = Config.MaxPossibleSpeedMetersPerSecond;
             MyDefinitionManager.Static.EnvironmentDefinition.SmallShipMaxSpeed = Config.MaxPossibleSpeedMetersPerSecond;
@@ -105,7 +106,9 @@ namespace ShipCoreFramework
             LimitsNexusSync.Stop();
             _myNexusApi?.Unload();
             _myNexusApi = null;
-            
+
+            ModAPI.Close();
+
             GridsPerFactionManager.Reset();
             GridsPerPlayerManager.Reset();
             Config.SaveConfig();
