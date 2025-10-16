@@ -382,12 +382,10 @@ namespace ShipCoreFramework
                 {
                     if (blockType == null) continue;
 
-                    if (blockType.TypeId == key.TypeId)
+                    if (blockType.TypeId != key.TypeId) continue;
+                    if (blockType.SubtypeId == key.SubtypeId || blockType.SubtypeId == "any")
                     {
-                        if (blockType.SubtypeId == key.SubtypeId || blockType.SubtypeId == "any")
-                        {
-                            return blockType.CountWeight;
-                        }
+                        return blockType.CountWeight;
                     }
                 }
             }

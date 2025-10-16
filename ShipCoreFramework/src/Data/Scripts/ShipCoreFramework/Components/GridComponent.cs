@@ -31,15 +31,20 @@ namespace ShipCoreFramework
             }
         }
 
-        internal void Init(MyCubeGrid grid, IMyGridGroupData groupData)
+        internal void Init(IMyCubeGrid grid, IMyGridGroupData groupData)
         {
-            Grid = grid;
+            Grid = (MyCubeGrid)grid;
             GroupData = groupData;
 
             Grid.OnBlockAdded += BlockAdded;
             Grid.OnBlockRemoved += BlockRemoved;
-            
-            MyAPIGateway.Parallel.ForEach(Grid.GetBlocks(), BlockAdded);
+
+            var blocks = new List<IMySlimBlock>();
+            grid.GetBlocks(blocks);
+            foreach (var block in blocks)
+            {
+                BlockAdded(block);
+            }
         }
 
         private void BlockAdded(IMySlimBlock block)

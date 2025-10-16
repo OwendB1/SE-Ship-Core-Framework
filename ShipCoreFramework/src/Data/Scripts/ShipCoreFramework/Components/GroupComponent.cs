@@ -77,7 +77,7 @@ namespace ShipCoreFramework
 
             var tempGridList = new List<IMyCubeGrid>();
             MyGroup.GetGrids(tempGridList);
-
+            
             MyAPIGateway.Parallel.ForEach(tempGridList, myCubeGrid =>
             {
                 var startGrid = (MyCubeGrid)myCubeGrid;
@@ -116,9 +116,8 @@ namespace ShipCoreFramework
                 RecalculateAllLimits();
                 ApplyModifiers(Modifiers);
                 EnforceGroupPunishment();
-
-                // Broadcast CoreActivated event
-                ModAPI.BroadcastCoreActivated((IMyCubeGrid)grid, ShipCore.SubtypeId, ShipCore.UniqueName);
+                
+                ModAPI.BroadcastCoreActivated(grid, ShipCore.SubtypeId, ShipCore.UniqueName);
             });
         }
 
@@ -142,8 +141,7 @@ namespace ShipCoreFramework
 
             GridsPerFactionManager.RemoveGridGroup(this);
             GridsPerPlayerManager.RemoveGridGroup(this);
-
-            // Broadcast CoreDeactivated event
+            
             if (oldGrid != null)
             {
                 ModAPI.BroadcastCoreDeactivated(oldGrid, oldCoreSubtype, oldCoreName);
@@ -206,10 +204,11 @@ namespace ShipCoreFramework
                 }
                 return;
             }
-
-            // Update this group's state after addition
+            
             RebuildGroupState();
             RecalculateAllLimits();
+            
+            ModAPI.BroadcastGridAddedToGroup(grid, addedTo);
         }
 
         internal void OnGridRemoved(IMyGridGroupData removedFrom, IMyCubeGrid grid, IMyGridGroupData addedTo)
@@ -217,7 +216,7 @@ namespace ShipCoreFramework
             if (addedTo != null) return;
             var g = grid as MyCubeGrid;
             if (g == null) return;
-            
+
             GridComponent comp;
             if (GridDictionary.TryGetValue(g, out comp))
             {
@@ -227,6 +226,8 @@ namespace ShipCoreFramework
 
             RebuildGroupState();
             RecalculateAllLimits();
+            
+            ModAPI.BroadcastGridRemovedFromGroup(grid, removedFrom);
         }
 
         private void EnforceGroupPunishment()
@@ -238,6 +239,8 @@ namespace ShipCoreFramework
             }
 
             EnforceOverCapacity();
+
+            int totalBlocksPunished = 0;
 
             foreach (var kv in Limits)
             {
@@ -268,6 +271,7 @@ namespace ShipCoreFramework
                         if (!IsValidDirection(MainCoreComponent.CoreBlock, blk, limit.AllowedDirections))
                         {
                             WhackABlock(blk, limit.PunishmentType);
+                            totalBlocksPunished++;
                             continue;
                         }
                     }
@@ -284,8 +288,14 @@ namespace ShipCoreFramework
                     if (t.Key == null) continue;
 
                     WhackABlock(t.Key, limit.PunishmentType);
+                    totalBlocksPunished++;
                     over -= t.Value;
                 }
+            }
+            
+            if (totalBlocksPunished > 0 && MyGroup != null)
+            {
+                ModAPI.BroadcastLimitsEnforced(MyGroup, totalBlocksPunished);
             }
         }
 
@@ -410,8 +420,7 @@ namespace ShipCoreFramework
                 BoostEnabled = false;
                 _boostCooldownTimer = BoostCoolDown * 60f;
                 Utils.ShowNotification("Boost Disengaged! Cooldown started.", 1000);
-
-                // Broadcast BoostDeactivated event
+                
                 if (MainCoreComponent?.GridComponent?.Grid != null)
                 {
                     ModAPI.BroadcastBoostDeactivated(MainCoreComponent.GridComponent.Grid);
@@ -440,8 +449,7 @@ namespace ShipCoreFramework
 
                 _activeDefenseCooldownTimer = ActiveDefenseCoolDown * 60f;
                 Utils.ShowNotification("Active Defense Disengaged! Cooldown started.", 1000);
-
-                // Broadcast ActiveDefenseDeactivated event
+                
                 if (MainCoreComponent?.GridComponent?.Grid != null)
                 {
                     ModAPI.BroadcastActiveDefenseDeactivated(MainCoreComponent.GridComponent.Grid);
@@ -481,8 +489,7 @@ namespace ShipCoreFramework
             }
 
             Utils.ShowNotification("Active Defense Engaged!", 1000);
-
-            // Broadcast ActiveDefenseActivated event
+            
             if (MainCoreComponent?.GridComponent?.Grid != null)
             {
                 ModAPI.BroadcastActiveDefenseActivated(MainCoreComponent.GridComponent.Grid);
@@ -509,8 +516,7 @@ namespace ShipCoreFramework
             BoostEnabled = true;
             _boostDurationTimer = BoostDuration * 60f;
             Utils.ShowNotification("Boost Engaged!", 1000);
-
-            // Broadcast BoostActivated event
+            
             if (MainCoreComponent?.GridComponent?.Grid != null)
             {
                 ModAPI.BroadcastBoostActivated(MainCoreComponent.GridComponent.Grid);
@@ -637,6 +643,11 @@ namespace ShipCoreFramework
                         }
                     }
                 }
+            }
+            
+            if (MyGroup != null)
+            {
+                ModAPI.BroadcastLimitsRecalculated(MyGroup);
             }
         }
 
