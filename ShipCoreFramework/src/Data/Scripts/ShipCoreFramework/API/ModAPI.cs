@@ -11,28 +11,12 @@ namespace ShipCoreFramework
     /// <summary>
     /// Ship Core Framework external API for other mods to interact with the system.
     /// Other mods can receive this API via MyAPIGateway.Utilities.RegisterMessageHandler.
+    ///
+    /// IMPORTANT: To use this API, copy ApiData.cs to your mod project.
+    /// It contains all necessary data structures and constants.
     /// </summary>
     public static class ModAPI
     {
-        /// <summary>
-        /// Unique identifier for Ship Core Framework API messages.
-        /// Other mods should use this ID to register a message handler.
-        /// Example: MyAPIGateway.Utilities.RegisterMessageHandler(ModAPI.API_ID, OnApiReceived);
-        /// </summary>
-        public const long API_ID = 3217652398L; // Unique ID for SCF
-
-        // Event IDs - Other mods can register handlers for these to receive event notifications
-        public const long EVENT_CORE_ACTIVATED = 3217652399L;
-        public const long EVENT_CORE_DEACTIVATED = 3217652400L;
-        public const long EVENT_LIMITS_RECALCULATED = 3217652401L;
-        public const long EVENT_LIMITS_ENFORCED = 3217652402L;
-        public const long EVENT_BOOST_ACTIVATED = 3217652403L;
-        public const long EVENT_BOOST_DEACTIVATED = 3217652404L;
-        public const long EVENT_ACTIVE_DEFENSE_ACTIVATED = 3217652405L;
-        public const long EVENT_ACTIVE_DEFENSE_DEACTIVATED = 3217652406L;
-        public const long EVENT_GRID_ADDED_TO_GROUP = 3217652407L;
-        public const long EVENT_GRID_REMOVED_FROM_GROUP = 3217652408L;
-
         private static bool _isInitialized;
 
         /// <summary>
@@ -48,19 +32,18 @@ namespace ShipCoreFramework
             {
                 var apiDictionary = new Dictionary<string, Delegate>
                 {
-                    { "GetGridCore", new Func<IMyCubeGrid, ShipCore>(GetGridCore) },
-                    { "GetCoreBySubtypeId", new Func<string, ShipCore>(GetCoreBySubtypeId) },
-                    { "GetAllCoreConfigs", new Func<List<ShipCore>>(GetAllCoreConfigs) },
-                    { "GetBlockLimitsStatus", new Func<IMyCubeGrid, Dictionary<string, LimitStatus>>(GetBlockLimitsStatus) },
+                    { "GetGridCore", new Func<IMyCubeGrid, ShipCoreData>(GetGridCore) },
+                    { "GetCoreBySubtypeId", new Func<string, ShipCoreData>(GetCoreBySubtypeId) },
+                    { "GetAllCoreConfigs", new Func<List<ShipCoreData>>(GetAllCoreConfigs) },
+                    { "GetBlockLimitsStatus", new Func<IMyCubeGrid, Dictionary<string, LimitStatusData>>(GetBlockLimitsStatus) },
                     { "IsBlockAllowed", new Func<IMyCubeGrid, string, string, int, bool>(IsBlockAllowed) },
-                    { "GetGridModifiers", new Func<IMyCubeGrid, GridModifiers>(GetGridModifiers) },
-                    { "GetGroupComponent", new Func<IMyCubeGrid, GroupComponent>(GetGroupComponent) },
+                    { "GetGridModifiers", new Func<IMyCubeGrid, GridModifiersData>(GetGridModifiers) },
                     { "GetMaxSpeed", new Func<IMyCubeGrid, float>(GetMaxSpeed) },
                     { "IsBoostActive", new Func<IMyCubeGrid, bool>(IsBoostActive) },
-                    { "GetNoCoreConfig", new Func<ShipCore>(GetNoCoreConfig) }
+                    { "GetNoCoreConfig", new Func<ShipCoreData>(GetNoCoreConfig) }
                 };
 
-                MyAPIGateway.Utilities.SendModMessage(API_ID, apiDictionary);
+                MyAPIGateway.Utilities.SendModMessage(ApiConstants.API_ID, apiDictionary);
                 Utils.Log("ModAPI: Successfully broadcast API dictionary to other mods", 1);
             }
             catch (Exception ex)
@@ -96,7 +79,7 @@ namespace ShipCoreFramework
                     Timestamp = DateTime.UtcNow
                 };
 
-                MyAPIGateway.Utilities.SendModMessage(EVENT_CORE_ACTIVATED, eventData);
+                MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_CORE_ACTIVATED, eventData);
                 Utils.Log($"ModAPI Event: CoreActivated for grid {grid?.DisplayName ?? "Unknown"}", 2);
             }
             catch (Exception ex)
@@ -122,7 +105,7 @@ namespace ShipCoreFramework
                     Timestamp = DateTime.UtcNow
                 };
 
-                MyAPIGateway.Utilities.SendModMessage(EVENT_CORE_DEACTIVATED, eventData);
+                MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_CORE_DEACTIVATED, eventData);
                 Utils.Log($"ModAPI Event: CoreDeactivated for grid {grid?.DisplayName ?? "Unknown"}", 2);
             }
             catch (Exception ex)
@@ -146,7 +129,7 @@ namespace ShipCoreFramework
                     Timestamp = DateTime.UtcNow
                 };
 
-                MyAPIGateway.Utilities.SendModMessage(EVENT_LIMITS_RECALCULATED, eventData);
+                MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_LIMITS_RECALCULATED, eventData);
                 Utils.Log($"ModAPI Event: LimitsRecalculated for group", 3);
             }
             catch (Exception ex)
@@ -171,7 +154,7 @@ namespace ShipCoreFramework
                     Timestamp = DateTime.UtcNow
                 };
 
-                MyAPIGateway.Utilities.SendModMessage(EVENT_LIMITS_ENFORCED, eventData);
+                MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_LIMITS_ENFORCED, eventData);
                 Utils.Log($"ModAPI Event: LimitsEnforced, punished {blocksPunished} blocks", 3);
             }
             catch (Exception ex)
@@ -195,7 +178,7 @@ namespace ShipCoreFramework
                     Timestamp = DateTime.UtcNow
                 };
 
-                MyAPIGateway.Utilities.SendModMessage(EVENT_BOOST_ACTIVATED, eventData);
+                MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_BOOST_ACTIVATED, eventData);
                 Utils.Log($"ModAPI Event: BoostActivated for grid {grid?.DisplayName ?? "Unknown"}", 3);
             }
             catch (Exception ex)
@@ -219,7 +202,7 @@ namespace ShipCoreFramework
                     Timestamp = DateTime.UtcNow
                 };
 
-                MyAPIGateway.Utilities.SendModMessage(EVENT_BOOST_DEACTIVATED, eventData);
+                MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_BOOST_DEACTIVATED, eventData);
                 Utils.Log($"ModAPI Event: BoostDeactivated for grid {grid?.DisplayName ?? "Unknown"}", 3);
             }
             catch (Exception ex)
@@ -243,7 +226,7 @@ namespace ShipCoreFramework
                     Timestamp = DateTime.UtcNow
                 };
 
-                MyAPIGateway.Utilities.SendModMessage(EVENT_ACTIVE_DEFENSE_ACTIVATED, eventData);
+                MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_ACTIVE_DEFENSE_ACTIVATED, eventData);
                 Utils.Log($"ModAPI Event: ActiveDefenseActivated for grid {grid?.DisplayName ?? "Unknown"}", 3);
             }
             catch (Exception ex)
@@ -267,7 +250,7 @@ namespace ShipCoreFramework
                     Timestamp = DateTime.UtcNow
                 };
 
-                MyAPIGateway.Utilities.SendModMessage(EVENT_ACTIVE_DEFENSE_DEACTIVATED, eventData);
+                MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_ACTIVE_DEFENSE_DEACTIVATED, eventData);
                 Utils.Log($"ModAPI Event: ActiveDefenseDeactivated for grid {grid?.DisplayName ?? "Unknown"}", 3);
             }
             catch (Exception ex)
@@ -292,7 +275,7 @@ namespace ShipCoreFramework
                     Timestamp = DateTime.UtcNow
                 };
 
-                MyAPIGateway.Utilities.SendModMessage(EVENT_GRID_ADDED_TO_GROUP, eventData);
+                MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_GRID_ADDED_TO_GROUP, eventData);
                 Utils.Log($"ModAPI Event: GridAddedToGroup {grid?.DisplayName ?? "Unknown"}", 3);
             }
             catch (Exception ex)
@@ -317,13 +300,121 @@ namespace ShipCoreFramework
                     Timestamp = DateTime.UtcNow
                 };
 
-                MyAPIGateway.Utilities.SendModMessage(EVENT_GRID_REMOVED_FROM_GROUP, eventData);
+                MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_GRID_REMOVED_FROM_GROUP, eventData);
                 Utils.Log($"ModAPI Event: GridRemovedFromGroup {grid?.DisplayName ?? "Unknown"}", 3);
             }
             catch (Exception ex)
             {
                 Utils.Log($"ModAPI.BroadcastGridRemovedFromGroup: Exception - {ex}");
             }
+        }
+
+        // ===== Helper Methods =====
+
+        private static ShipCoreData ConvertToShipCoreData(ShipCore core)
+        {
+            if (core == null)
+            {
+                return new ShipCoreData
+                {
+                    SubtypeId = string.Empty,
+                    UniqueName = "NoCore",
+                    Modifiers = new GridModifiersData { AssemblerSpeed = 1, DrillHarvestMultiplier = 1, GyroEfficiency = 1, GyroForce = 1, PowerProducersOutput = 1, RefineEfficiency = 1, RefineSpeed = 1, ThrusterEfficiency = 1, ThrusterForce = 1, MaxSpeed = 0.3f, MaxBoost = 1.2f, BoostDuration = 10f, BoostCoolDown = 60f }
+                };
+            }
+
+            return new ShipCoreData
+            {
+                SubtypeId = core.SubtypeId,
+                UniqueName = core.UniqueName,
+                ForceBroadCast = core.ForceBroadCast,
+                ForceBroadCastRange = core.ForceBroadCastRange,
+                LargeGridStatic = core.LargeGridStatic,
+                LargeGridMobile = core.LargeGridMobile,
+                MaxBlocks = core.MaxBlocks,
+                MaxMass = core.MaxMass,
+                MaxPCU = core.MaxPCU,
+                MaxPerFaction = core.MaxPerFaction,
+                MaxPerPlayer = core.MaxPerPlayer,
+                MinPlayers = core.MinPlayers,
+                Modifiers = ConvertToGridModifiersData(core.Modifiers),
+                PassiveDefenseModifiers = ConvertToDefenseModifiersData(core.PassiveDefenseModifiers),
+                SpeedBoostEnabled = core.SpeedBoostEnabled,
+                EnableActiveDefenseModifiers = core.EnableActiveDefenseModifiers,
+                ActiveDefenseModifiers = ConvertToDefenseModifiersData(core.ActiveDefenseModifiers)
+            };
+        }
+
+        private static GridModifiersData ConvertToGridModifiersData(GridModifiers modifiers)
+        {
+            if (modifiers == null)
+            {
+                return new GridModifiersData
+                {
+                    AssemblerSpeed = 1,
+                    DrillHarvestMultiplier = 1,
+                    GyroEfficiency = 1,
+                    GyroForce = 1,
+                    PowerProducersOutput = 1,
+                    RefineEfficiency = 1,
+                    RefineSpeed = 1,
+                    ThrusterEfficiency = 1,
+                    ThrusterForce = 1,
+                    MaxSpeed = 0.3f,
+                    MaxBoost = 1.2f,
+                    BoostDuration = 10f,
+                    BoostCoolDown = 60f
+                };
+            }
+
+            return new GridModifiersData
+            {
+                AssemblerSpeed = modifiers.AssemblerSpeed,
+                DrillHarvestMultiplier = modifiers.DrillHarvestMultiplier,
+                GyroEfficiency = modifiers.GyroEfficiency,
+                GyroForce = modifiers.GyroForce,
+                PowerProducersOutput = modifiers.PowerProducersOutput,
+                RefineEfficiency = modifiers.RefineEfficiency,
+                RefineSpeed = modifiers.RefineSpeed,
+                ThrusterEfficiency = modifiers.ThrusterEfficiency,
+                ThrusterForce = modifiers.ThrusterForce,
+                MaxSpeed = modifiers.MaxSpeed,
+                MaxBoost = modifiers.MaxBoost,
+                BoostDuration = modifiers.BoostDuration,
+                BoostCoolDown = modifiers.BoostCoolDown
+            };
+        }
+
+        private static GridDefenseModifiersData ConvertToDefenseModifiersData(GridDefenseModifiers modifiers)
+        {
+            if (modifiers == null)
+            {
+                return new GridDefenseModifiersData
+                {
+                    Bullet = 1f,
+                    PostShield = 1f,
+                    Duration = 0f,
+                    Cooldown = 0f,
+                    Rocket = 1f,
+                    Explosion = 1f,
+                    Environment = 1f,
+                    Energy = 1f,
+                    Kinetic = 1f
+                };
+            }
+
+            return new GridDefenseModifiersData
+            {
+                Bullet = modifiers.Bullet,
+                PostShield = modifiers.PostShield,
+                Duration = modifiers.Duration,
+                Cooldown = modifiers.Cooldown,
+                Rocket = modifiers.Rocket,
+                Explosion = modifiers.Explosion,
+                Environment = modifiers.Environment,
+                Energy = modifiers.Energy,
+                Kinetic = modifiers.Kinetic
+            };
         }
 
         // ===== Public API Methods =====
@@ -333,30 +424,30 @@ namespace ShipCoreFramework
         /// Returns the NoCore config if the grid has no active core.
         /// </summary>
         /// <param name="grid">The grid to check</param>
-        /// <returns>The active ShipCore config, or NoCore if none exists</returns>
-        public static ShipCore GetGridCore(IMyCubeGrid grid)
+        /// <returns>The active ShipCore config data, or NoCore if none exists</returns>
+        public static ShipCoreData GetGridCore(IMyCubeGrid grid)
         {
-            if (grid == null) return Session.Config.SelectedNoCore;
+            if (grid == null) return ConvertToShipCoreData(Session.Config.SelectedNoCore);
 
             try
             {
                 var myCubeGrid = grid as MyCubeGrid;
-                if (myCubeGrid == null) return Session.Config.SelectedNoCore;
+                if (myCubeGrid == null) return ConvertToShipCoreData(Session.Config.SelectedNoCore);
 
-                
+
                 var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, grid);
-                if (groupData == null) return Session.Config.SelectedNoCore;
+                if (groupData == null) return ConvertToShipCoreData(Session.Config.SelectedNoCore);
 
                 GroupComponent groupComponent;
                 if (!Session.GroupDict.TryGetValue(groupData, out groupComponent))
-                    return Session.Config.SelectedNoCore;
+                    return ConvertToShipCoreData(Session.Config.SelectedNoCore);
 
-                return groupComponent.ShipCore ?? Session.Config.SelectedNoCore;
+                return ConvertToShipCoreData(groupComponent.ShipCore ?? Session.Config.SelectedNoCore);
             }
             catch (Exception ex)
             {
                 Utils.Log($"ModAPI.GetGridCore: Exception - {ex}");
-                return Session.Config.SelectedNoCore;
+                return ConvertToShipCoreData(Session.Config.SelectedNoCore);
             }
         }
 
@@ -364,36 +455,41 @@ namespace ShipCoreFramework
         /// Gets a specific ShipCore configuration by its SubtypeId.
         /// </summary>
         /// <param name="subtypeId">The SubtypeId of the core beacon block</param>
-        /// <returns>The ShipCore config, or NoCore if not found</returns>
-        public static ShipCore GetCoreBySubtypeId(string subtypeId)
+        /// <returns>The ShipCore config data, or NoCore if not found</returns>
+        public static ShipCoreData GetCoreBySubtypeId(string subtypeId)
         {
-            if (string.IsNullOrEmpty(subtypeId)) return Session.Config.SelectedNoCore;
+            if (string.IsNullOrEmpty(subtypeId)) return ConvertToShipCoreData(Session.Config.SelectedNoCore);
 
             try
             {
-                return Session.Config.GetShipCoreByTypeId(subtypeId);
+                return ConvertToShipCoreData(Session.Config.GetShipCoreByTypeId(subtypeId));
             }
             catch (Exception ex)
             {
                 Utils.Log($"ModAPI.GetCoreBySubtypeId: Exception - {ex}");
-                return Session.Config.SelectedNoCore;
+                return ConvertToShipCoreData(Session.Config.SelectedNoCore);
             }
         }
 
         /// <summary>
         /// Gets all available ShipCore configurations loaded by the framework.
         /// </summary>
-        /// <returns>List of all ShipCore configs</returns>
-        public static List<ShipCore> GetAllCoreConfigs()
+        /// <returns>List of all ShipCore config data</returns>
+        public static List<ShipCoreData> GetAllCoreConfigs()
         {
             try
             {
-                return new List<ShipCore>(Session.Config.ShipCores);
+                var result = new List<ShipCoreData>();
+                foreach (var core in Session.Config.ShipCores)
+                {
+                    result.Add(ConvertToShipCoreData(core));
+                }
+                return result;
             }
             catch (Exception ex)
             {
                 Utils.Log($"ModAPI.GetAllCoreConfigs: Exception - {ex}");
-                return new List<ShipCore>();
+                return new List<ShipCoreData>();
             }
         }
 
@@ -402,9 +498,9 @@ namespace ShipCoreFramework
         /// </summary>
         /// <param name="grid">The grid to check</param>
         /// <returns>Dictionary mapping limit names to their current status</returns>
-        public static Dictionary<string, LimitStatus> GetBlockLimitsStatus(IMyCubeGrid grid)
+        public static Dictionary<string, LimitStatusData> GetBlockLimitsStatus(IMyCubeGrid grid)
         {
-            var result = new Dictionary<string, LimitStatus>();
+            var result = new Dictionary<string, LimitStatusData>();
             if (grid == null) return result;
 
             try
@@ -429,7 +525,7 @@ namespace ShipCoreFramework
                         totalWeight = bucket.TotalWeight;
                     }
 
-                    result[limit.Name] = new LimitStatus
+                    result[limit.Name] = new LimitStatusData
                     {
                         Name = limit.Name,
                         Current = totalWeight,
@@ -502,52 +598,26 @@ namespace ShipCoreFramework
         /// Gets the current grid modifiers applied to a grid's core.
         /// </summary>
         /// <param name="grid">The grid to check</param>
-        /// <returns>GridModifiers for the grid, or default modifiers if no core</returns>
-        public static GridModifiers GetGridModifiers(IMyCubeGrid grid)
+        /// <returns>GridModifiers data for the grid, or default modifiers if no core</returns>
+        public static GridModifiersData GetGridModifiers(IMyCubeGrid grid)
         {
-            if (grid == null) return new GridModifiers();
+            if (grid == null) return ConvertToGridModifiersData(null);
 
             try
             {
                 var groupData =  MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, grid);
-                if (groupData == null) return new GridModifiers();
+                if (groupData == null) return ConvertToGridModifiersData(null);
 
                 GroupComponent groupComponent;
                 if (!Session.GroupDict.TryGetValue(groupData, out groupComponent))
-                    return new GridModifiers();
+                    return ConvertToGridModifiersData(null);
 
-                return groupComponent.Modifiers ?? new GridModifiers();
+                return ConvertToGridModifiersData(groupComponent.Modifiers);
             }
             catch (Exception ex)
             {
                 Utils.Log($"ModAPI.GetGridModifiers: Exception - {ex}");
-                return new GridModifiers();
-            }
-        }
-
-        /// <summary>
-        /// Gets the internal GroupComponent for a grid (advanced usage).
-        /// WARNING: Direct manipulation of GroupComponent can break the framework.
-        /// Use with caution and only for read-only access.
-        /// </summary>
-        /// <param name="grid">The grid to check</param>
-        /// <returns>The GroupComponent, or null if not found</returns>
-        public static GroupComponent GetGroupComponent(IMyCubeGrid grid)
-        {
-            if (grid == null) return null;
-
-            try
-            {
-                var groupData =  MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, grid);
-                if (groupData == null) return null;
-
-                GroupComponent groupComponent;
-                return Session.GroupDict.TryGetValue(groupData, out groupComponent) ? groupComponent : null;
-            }
-            catch (Exception ex)
-            {
-                Utils.Log($"ModAPI.GetGroupComponent: Exception - {ex}");
-                return null;
+                return ConvertToGridModifiersData(null);
             }
         }
 
@@ -562,8 +632,14 @@ namespace ShipCoreFramework
 
             try
             {
-                var groupComponent = GetGroupComponent(grid);
-                var core = groupComponent?.ShipCore;
+                var groupData =  MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, grid);
+                if (groupData == null) return 100f;
+
+                GroupComponent groupComponent;
+                if (!Session.GroupDict.TryGetValue(groupData, out groupComponent))
+                    return 100f;
+
+                var core = groupComponent.ShipCore;
                 if (core == null) return 100f;
 
                 var baseSpeed = core.Modifiers.MaxSpeed * Session.Config.MaxPossibleSpeedMetersPerSecond;
@@ -591,8 +667,14 @@ namespace ShipCoreFramework
 
             try
             {
-                var groupComponent = GetGroupComponent(grid);
-                return groupComponent != null && groupComponent.BoostEnabled;
+                var groupData =  MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, grid);
+                if (groupData == null) return false;
+
+                GroupComponent groupComponent;
+                if (!Session.GroupDict.TryGetValue(groupData, out groupComponent))
+                    return false;
+
+                return groupComponent.BoostEnabled;
             }
             catch (Exception ex)
             {
@@ -605,34 +687,18 @@ namespace ShipCoreFramework
         /// Gets the currently selected NoCore configuration.
         /// This is the config applied to grids without a core beacon.
         /// </summary>
-        /// <returns>The active NoCore ShipCore config</returns>
-        public static ShipCore GetNoCoreConfig()
+        /// <returns>The active NoCore ShipCore config data</returns>
+        public static ShipCoreData GetNoCoreConfig()
         {
             try
             {
-                return Session.Config.SelectedNoCore ?? new ShipCore();
+                return ConvertToShipCoreData(Session.Config.SelectedNoCore ?? new ShipCore());
             }
             catch (Exception ex)
             {
                 Utils.Log($"ModAPI.GetNoCoreConfig: Exception - {ex}");
-                return new ShipCore();
+                return ConvertToShipCoreData(null);
             }
-        }
-    }
-
-    /// <summary>
-    /// Status information for a block limit.
-    /// </summary>
-    public class LimitStatus
-    {
-        public string Name;
-        public double Current;
-        public double Max;
-        public bool IsOverLimit;
-
-        public override string ToString()
-        {
-            return $"{Name}: {Current:F1}/{Max:F1} {(IsOverLimit ? "[OVER LIMIT]" : "")}";
         }
     }
 }

@@ -2,9 +2,13 @@
 
 The Ship Core Framework provides an external API that allows other mods to interact with the core system, check block limits, retrieve grid modifiers, and query core configurations.
 
+## Getting Started
+
+**IMPORTANT**: To use this API, copy the `ApiData.cs` file from the Ship Core Framework mod to your own mod project. This file contains all the data structures (structs and event args classes) that the API uses. This approach ensures you have all necessary types without needing to reference the Ship Core Framework assembly.
+
 ## API ID
 
-The API is broadcast using a unique identifier:
+The API constants are defined in `ApiConstants` (available in `ApiData.cs`):
 ```csharp
 public const long API_ID = 3217652398L;
 ```
@@ -18,23 +22,23 @@ using System;
 using System.Collections.Generic;
 using Sandbox.ModAPI;
 using VRage.Game.Components;
+using ShipCoreFramework; // After copying ApiData.cs to your project
 
 namespace YourModNamespace
 {
     [MySessionComponentDescriptor(MyUpdateOrder.BeforeSimulation)]
     public class YourModSession : MySessionComponentBase
     {
-        private const long SCF_API_ID = 3217652398L;
         private Dictionary<string, Delegate> _scfApi;
 
         public override void LoadData()
         {
-            MyAPIGateway.Utilities.RegisterMessageHandler(SCF_API_ID, OnApiReceived);
+            MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.API_ID, OnApiReceived);
         }
 
         protected override void UnloadData()
         {
-            MyAPIGateway.Utilities.UnregisterMessageHandler(SCF_API_ID, OnApiReceived);
+            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.API_ID, OnApiReceived);
             _scfApi = null;
         }
 
@@ -52,40 +56,37 @@ namespace YourModNamespace
 
 ## Available API Methods
 
-Once you have the API dictionary, you can call methods using delegates:
+Once you have the API dictionary, you can call methods using delegates. All return types are structs defined in `ApiData.cs`.
 
 ### 1. GetGridCore
 Gets the active ShipCore configuration for a grid.
 
-**Signature:** `Func<IMyCubeGrid, ShipCore>`
+**Signature:** `Func<IMyCubeGrid, ShipCoreData>`
 
 ```csharp
-var getGridCore = _scfApi["GetGridCore"] as Func<IMyCubeGrid, ShipCore>;
+var getGridCore = _scfApi["GetGridCore"] as Func<IMyCubeGrid, ShipCoreData>;
 var core = getGridCore(myGrid);
 
-if (core != null)
-{
-    MyAPIGateway.Utilities.ShowMessage("Core", $"Grid has core: {core.UniqueName}");
-}
+MyAPIGateway.Utilities.ShowMessage("Core", $"Grid has core: {core.UniqueName}");
 ```
 
 ### 2. GetCoreBySubtypeId
 Gets a specific ShipCore configuration by its SubtypeId.
 
-**Signature:** `Func<string, ShipCore>`
+**Signature:** `Func<string, ShipCoreData>`
 
 ```csharp
-var getCoreBySubtype = _scfApi["GetCoreBySubtypeId"] as Func<string, ShipCore>;
+var getCoreBySubtype = _scfApi["GetCoreBySubtypeId"] as Func<string, ShipCoreData>;
 var core = getCoreBySubtype("MyShipCoreSubtype");
 ```
 
 ### 3. GetAllCoreConfigs
 Gets all available ShipCore configurations loaded by the framework.
 
-**Signature:** `Func<List<ShipCore>>`
+**Signature:** `Func<List<ShipCoreData>>`
 
 ```csharp
-var getAllCores = _scfApi["GetAllCoreConfigs"] as Func<List<ShipCore>>;
+var getAllCores = _scfApi["GetAllCoreConfigs"] as Func<List<ShipCoreData>>;
 var allCores = getAllCores();
 
 foreach (var core in allCores)
@@ -97,11 +98,11 @@ foreach (var core in allCores)
 ### 4. GetBlockLimitsStatus
 Gets the current block limit status for a grid.
 
-**Signature:** `Func<IMyCubeGrid, Dictionary<string, LimitStatus>>`
+**Signature:** `Func<IMyCubeGrid, Dictionary<string, LimitStatusData>>`
 
-**LimitStatus Structure:**
+**LimitStatusData Structure** (defined in `ApiData.cs`):
 ```csharp
-public class LimitStatus
+public struct LimitStatusData
 {
     public string Name;        // Limit name
     public double Current;     // Current count
@@ -112,7 +113,7 @@ public class LimitStatus
 
 **Example:**
 ```csharp
-var getLimits = _scfApi["GetBlockLimitsStatus"] as Func<IMyCubeGrid, Dictionary<string, LimitStatus>>;
+var getLimits = _scfApi["GetBlockLimitsStatus"] as Func<IMyCubeGrid, Dictionary<string, LimitStatusData>>;
 var limits = getLimits(myGrid);
 
 foreach (var kvp in limits)
@@ -147,11 +148,11 @@ if (!canPlace)
 ### 6. GetGridModifiers
 Gets the current grid modifiers applied to a grid's core.
 
-**Signature:** `Func<IMyCubeGrid, GridModifiers>`
+**Signature:** `Func<IMyCubeGrid, GridModifiersData>`
 
-**GridModifiers Structure:**
+**GridModifiersData Structure** (defined in `ApiData.cs`):
 ```csharp
-public class GridModifiers
+public struct GridModifiersData
 {
     public float AssemblerSpeed;
     public float DrillHarvestMultiplier;
@@ -171,7 +172,7 @@ public class GridModifiers
 
 **Example:**
 ```csharp
-var getModifiers = _scfApi["GetGridModifiers"] as Func<IMyCubeGrid, GridModifiers>;
+var getModifiers = _scfApi["GetGridModifiers"] as Func<IMyCubeGrid, GridModifiersData>;
 var modifiers = getModifiers(myGrid);
 
 MyAPIGateway.Utilities.ShowMessage("Modifiers",
@@ -208,30 +209,56 @@ if (boosting)
 ### 9. GetNoCoreConfig
 Gets the currently selected NoCore configuration (applied to grids without a core).
 
-**Signature:** `Func<ShipCore>`
+**Signature:** `Func<ShipCoreData>`
 
 ```csharp
-var getNoCoreConfig = _scfApi["GetNoCoreConfig"] as Func<ShipCore>;
+var getNoCoreConfig = _scfApi["GetNoCoreConfig"] as Func<ShipCoreData>;
 var noCoreConfig = getNoCoreConfig();
 
 MyAPIGateway.Utilities.ShowMessage("NoCore", $"Default config: {noCoreConfig.UniqueName}");
 ```
 
-### 10. GetGroupComponent (Advanced)
-Gets the internal GroupComponent for a grid.
+## Data Structures
 
-**⚠️ WARNING:** Direct manipulation of GroupComponent can break the framework. Use with caution and only for read-only access.
+All data structures are defined in `ApiData.cs`. Copy this file to your mod project to access them.
 
-**Signature:** `Func<IMyCubeGrid, GroupComponent>`
-
+### ShipCoreData
 ```csharp
-var getGroupComponent = _scfApi["GetGroupComponent"] as Func<IMyCubeGrid, GroupComponent>;
-var groupComponent = getGroupComponent(myGrid);
-
-if (groupComponent != null)
+public struct ShipCoreData
 {
-    // Read-only access is safe
-    int blockCount = groupComponent.GroupBlocksCount;
+    public string SubtypeId;
+    public string UniqueName;
+    public bool ForceBroadCast;
+    public float ForceBroadCastRange;
+    public bool LargeGridStatic;
+    public bool LargeGridMobile;
+    public int MaxBlocks;
+    public float MaxMass;
+    public int MaxPCU;
+    public int MaxPerFaction;
+    public int MaxPerPlayer;
+    public int MinPlayers;
+    public GridModifiersData Modifiers;
+    public GridDefenseModifiersData PassiveDefenseModifiers;
+    public bool SpeedBoostEnabled;
+    public bool EnableActiveDefenseModifiers;
+    public GridDefenseModifiersData ActiveDefenseModifiers;
+}
+```
+
+### GridDefenseModifiersData
+```csharp
+public struct GridDefenseModifiersData
+{
+    public float Bullet;
+    public float PostShield;
+    public float Duration;
+    public float Cooldown;
+    public float Rocket;
+    public float Explosion;
+    public float Environment;
+    public float Energy;
+    public float Kinetic;
 }
 ```
 
@@ -241,7 +268,7 @@ The Ship Core Framework broadcasts events when significant actions occur. Other 
 
 ### Available Events
 
-The following event IDs are available for subscription:
+The following event IDs are available for subscription (defined in `ApiConstants` in `ApiData.cs`):
 
 ```csharp
 public const long EVENT_CORE_ACTIVATED = 3217652399L;
@@ -258,7 +285,7 @@ public const long EVENT_GRID_REMOVED_FROM_GROUP = 3217652408L;
 
 ### Event Argument Classes
 
-Each event broadcasts with specific event arguments:
+Each event broadcasts with specific event arguments (all defined in `ApiData.cs`):
 
 **CoreActivatedEventArgs**:
 ```csharp
@@ -282,11 +309,36 @@ public class CoreDeactivatedEventArgs
 }
 ```
 
+**LimitsRecalculatedEventArgs**:
+```csharp
+public class LimitsRecalculatedEventArgs
+{
+    public IMyGridGroupData GroupData;
+    public DateTime Timestamp;
+}
+```
+
+**LimitsEnforcedEventArgs**:
+```csharp
+public class LimitsEnforcedEventArgs
+{
+    public IMyGridGroupData GroupData;
+    public int BlocksPunished;
+    public DateTime Timestamp;
+}
+```
+
 **BoostEventArgs / ActiveDefenseEventArgs**:
 ```csharp
 public class BoostEventArgs  // Also used for Active Defense events
 {
     public IMyCubeGrid Grid;           // Grid that activated/deactivated boost
+    public DateTime Timestamp;
+}
+
+public class ActiveDefenseEventArgs
+{
+    public IMyCubeGrid Grid;
     public DateTime Timestamp;
 }
 ```
@@ -310,30 +362,27 @@ using System;
 using Sandbox.ModAPI;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
+using ShipCoreFramework; // After copying ApiData.cs
 
 namespace YourModNamespace
 {
     [MySessionComponentDescriptor(MyUpdateOrder.BeforeSimulation)]
     public class YourModSession : MySessionComponentBase
     {
-        private const long EVENT_CORE_ACTIVATED = 3217652399L;
-        private const long EVENT_CORE_DEACTIVATED = 3217652400L;
-        private const long EVENT_BOOST_ACTIVATED = 3217652403L;
-
         public override void LoadData()
         {
             // Subscribe to multiple events
-            MyAPIGateway.Utilities.RegisterMessageHandler(EVENT_CORE_ACTIVATED, OnCoreActivated);
-            MyAPIGateway.Utilities.RegisterMessageHandler(EVENT_CORE_DEACTIVATED, OnCoreDeactivated);
-            MyAPIGateway.Utilities.RegisterMessageHandler(EVENT_BOOST_ACTIVATED, OnBoostActivated);
+            MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_CORE_ACTIVATED, OnCoreActivated);
+            MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_CORE_DEACTIVATED, OnCoreDeactivated);
+            MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_BOOST_ACTIVATED, OnBoostActivated);
         }
 
         protected override void UnloadData()
         {
             // Unsubscribe from events
-            MyAPIGateway.Utilities.UnregisterMessageHandler(EVENT_CORE_ACTIVATED, OnCoreActivated);
-            MyAPIGateway.Utilities.UnregisterMessageHandler(EVENT_CORE_DEACTIVATED, OnCoreDeactivated);
-            MyAPIGateway.Utilities.UnregisterMessageHandler(EVENT_BOOST_ACTIVATED, OnBoostActivated);
+            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_CORE_ACTIVATED, OnCoreActivated);
+            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_CORE_DEACTIVATED, OnCoreDeactivated);
+            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_BOOST_ACTIVATED, OnBoostActivated);
         }
 
         private void OnCoreActivated(object payload)
@@ -413,24 +462,24 @@ using System.Collections.Generic;
 using Sandbox.ModAPI;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
+using ShipCoreFramework; // After copying ApiData.cs to your project
 
 namespace ExampleMod
 {
     [MySessionComponentDescriptor(MyUpdateOrder.BeforeSimulation)]
     public class ExampleModSession : MySessionComponentBase
     {
-        private const long SCF_API_ID = 3217652398L;
         private Dictionary<string, Delegate> _scfApi;
         private bool _apiReady = false;
 
         public override void LoadData()
         {
-            MyAPIGateway.Utilities.RegisterMessageHandler(SCF_API_ID, OnApiReceived);
+            MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.API_ID, OnApiReceived);
         }
 
         protected override void UnloadData()
         {
-            MyAPIGateway.Utilities.UnregisterMessageHandler(SCF_API_ID, OnApiReceived);
+            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.API_ID, OnApiReceived);
             _scfApi = null;
             _apiReady = false;
         }
@@ -461,7 +510,7 @@ namespace ExampleMod
         {
             if (!_apiReady) return;
 
-            var getLimits = _scfApi["GetBlockLimitsStatus"] as Func<IMyCubeGrid, Dictionary<string, LimitStatus>>;
+            var getLimits = _scfApi["GetBlockLimitsStatus"] as Func<IMyCubeGrid, Dictionary<string, LimitStatusData>>;
             if (getLimits == null) return;
 
             var limits = getLimits(grid);
@@ -479,11 +528,11 @@ namespace ExampleMod
         {
             if (!_apiReady) return "Unknown";
 
-            var getCore = _scfApi["GetGridCore"] as Func<IMyCubeGrid, ShipCore>;
+            var getCore = _scfApi["GetGridCore"] as Func<IMyCubeGrid, ShipCoreData>;
             if (getCore == null) return "Unknown";
 
             var core = getCore(grid);
-            return core?.UniqueName ?? "No Core";
+            return core.UniqueName ?? "No Core";
         }
     }
 }
@@ -491,19 +540,21 @@ namespace ExampleMod
 
 ## Important Notes
 
-1. **API Availability**: The API is broadcast during `LoadData()`, so it should be available by the time your mod's `BeforeStart()` is called. Always check if the API is null before using it.
+1. **Copy ApiData.cs**: Always copy `ApiData.cs` from the Ship Core Framework to your mod project. This file contains all data structures used by the API.
 
-2. **Thread Safety**: All API methods include proper error handling and thread safety. However, be aware that grid groups can change at any time due to pistons, rotors, connectors, etc.
+2. **API Availability**: The API is broadcast during `LoadData()`, so it should be available by the time your mod's `BeforeStart()` is called. Always check if the API is null before using it.
 
-3. **Null Checks**: Always check if the returned delegates are null before calling them, as the API dictionary might not contain all expected methods if the version differs.
+3. **Thread Safety**: All API methods include proper error handling and thread safety. However, be aware that grid groups can change at any time due to pistons, rotors, connectors, etc.
 
-4. **NoCore Config**: Grids without a Ship Core beacon will use the "NoCore" configuration. You can check which config is active using `GetGridCore()` or `GetNoCoreConfig()`.
+4. **Null Checks**: Always check if the returned delegates are null before calling them, as the API dictionary might not contain all expected methods if the version differs.
 
-5. **Version Compatibility**: This API is designed for Ship Core Framework v3. Future versions may add or change methods, so always include null checks for delegates.
+5. **NoCore Config**: Grids without a Ship Core beacon will use the "NoCore" configuration. You can check which config is active using `GetGridCore()` or `GetNoCoreConfig()`.
+
+6. **Version Compatibility**: This API is designed for Ship Core Framework v3. Future versions may add or change methods, so always include null checks for delegates.
 
 ## Preventing Drift
 
-As mentioned in your requirements, the API prevents drift between what the framework considers a grid's core and what your mod thinks it is. **Always use `GetGridCore()` to determine a grid's active core** instead of trying to find core beacons manually.
+The API prevents drift between what the framework considers a grid's core and what your mod thinks it is. **Always use `GetGridCore()` to determine a grid's active core** instead of trying to find core beacons manually.
 
 Example:
 ```csharp
@@ -512,7 +563,7 @@ var beacons = new List<IMyBeacon>();
 grid.GetBlocksOfType(beacons, b => b.BlockDefinition.SubtypeId.Contains("Core"));
 
 // ✅ DO THIS - always matches the framework's state
-var getCore = _scfApi["GetGridCore"] as Func<IMyCubeGrid, ShipCore>;
+var getCore = _scfApi["GetGridCore"] as Func<IMyCubeGrid, ShipCoreData>;
 var actualCore = getCore(grid);
 ```
 
@@ -520,6 +571,6 @@ var actualCore = getCore(grid);
 
 For questions or issues with the API, please contact:
 - Blues-Hailfire
-- ODB-Tech
+- OwendB (OB / ODB-Tech)
 
 Or open an issue in the mod's development repository.
