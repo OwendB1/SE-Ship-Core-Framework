@@ -16,7 +16,7 @@ namespace ShipCoreFramework
     {
         [XmlIgnore] private const string IgnoreAiKey = "ShipCore.IgnoreAiV1";
         [XmlIgnore] private const string IgnoredFactionsKey = "ShipCore.IgnoredFactionsV1";
-        [XmlIgnore] private const string SelectedNoCoreKey = "ShipCore.SelectedNoCoreBlobV1";
+        [XmlIgnore] private const string SelectedNoCoreKey = "ShipCore.SelectedNoCoreNameV1";
         [XmlIgnore] private const string GlobalConfigFileName = "ShipCoreConfig_World.xml";
         [XmlIgnore] private const string CoreManifestFileName = @"Data\ShipCoreConfig_Manifest.xml";
         [XmlIgnore] private const string BlockGroupsFileName = @"Data\ShipCoreConfig_Groups.xml";
@@ -60,7 +60,7 @@ namespace ShipCoreFramework
                 Utils.Log($"Stored Data In World Config: Saved {IgnoreAiKey}", showInChat ? 3 : 0);
                 Utils.SaveToSandbox(IgnoredFactionsKey, IgnoredFactionTags);
                 Utils.Log($"Stored Data In World Config: : Saved {IgnoredFactionsKey}", showInChat ? 3 : 0);
-                Utils.SaveToSandbox(SelectedNoCoreKey, SelectedNoCore);
+                Utils.SaveToSandbox(SelectedNoCoreKey, SelectedNoCore.UniqueName);
                 Utils.Log($"Stored Data In World Config: : Saved {SelectedNoCoreKey}", showInChat ? 3 : 0);
             }
             catch (Exception e)
@@ -112,7 +112,8 @@ namespace ShipCoreFramework
 
             IgnoreAiFactions = Utils.LoadFromSandbox<bool>(IgnoreAiKey);
             IgnoredFactionTags = Utils.LoadFromSandbox<List<string>>(IgnoredFactionsKey) ?? new List<string>{"SPRT","ADMIN","FMCA", "BORG", "TERA"};
-            SelectedNoCore = Utils.LoadFromSandbox<ShipCore>(SelectedNoCoreKey) ?? DefaultNoCoreConfig.ShipCore;
+            var selectedNoCoreName = Utils.LoadFromSandbox<string>(SelectedNoCoreKey);
+            SelectedNoCore = Session.Config.NoCoreConfigs.FirstOrDefault(e => e.UniqueName  == selectedNoCoreName);
 
             //if(SelectedNoCore==null)
             //Run Though Mods
