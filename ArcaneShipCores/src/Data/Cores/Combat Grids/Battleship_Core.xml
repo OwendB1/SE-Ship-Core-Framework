@@ -6,9 +6,9 @@
   <ForceBroadCastRange>5000</ForceBroadCastRange>
   <LargeGridStatic>true</LargeGridStatic>
   <LargeGridMobile>true</LargeGridMobile>
-  <MaxBlocks>5000</MaxBlocks>
+  <MaxBlocks>25000</MaxBlocks>
   <MaxMass>-1</MaxMass>
-  <MaxPCU>85000</MaxPCU>
+  <MaxPCU>150000</MaxPCU>
   <MaxPerFaction>3</MaxPerFaction>
   <MaxPerPlayer>-1</MaxPerPlayer>
   <MinPlayers>5</MinPlayers>
