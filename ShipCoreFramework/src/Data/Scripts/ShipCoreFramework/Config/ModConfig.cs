@@ -112,10 +112,7 @@ namespace ShipCoreFramework
 
             IgnoreAiFactions = Utils.LoadFromSandbox<bool>(IgnoreAiKey);
             IgnoredFactionTags = Utils.LoadFromSandbox<List<string>>(IgnoredFactionsKey) ?? new List<string>{"SPRT","ADMIN","FMCA", "BORG", "TERA"};
-            var selectedNoCoreName = Utils.LoadFromSandbox<string>(SelectedNoCoreKey);
-            SelectedNoCore = Session.Config.NoCoreConfigs.FirstOrDefault(e => e.UniqueName  == selectedNoCoreName);
-
-            //if(SelectedNoCore==null)
+            
             //Run Though Mods
             foreach (var mod in MyAPIGateway.Session.Mods)
             {
@@ -168,6 +165,9 @@ namespace ShipCoreFramework
                         }
                 }
             }
+            
+            var selectedNoCoreName = Utils.LoadFromSandbox<string>(SelectedNoCoreKey);
+            SelectedNoCore = Session.Config.NoCoreConfigs.FirstOrDefault(e => e.UniqueName.Equals(selectedNoCoreName, StringComparison.OrdinalIgnoreCase));
 
             ThrowErrorIfDuplicates(NoCoreConfigs, core => core.UniqueName);
             ThrowErrorIfDuplicates(ShipCores, core => core.UniqueName);

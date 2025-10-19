@@ -16,6 +16,7 @@ namespace ShipCoreFramework
         public override void BeforeStart()
         {
             Networking.Register();
+            if (Config.SelectedNoCore == null) return;
             MyAPIGateway.GridGroups.OnGridGroupCreated += GridGroupsOnOnGridGroupCreated;
             MyAPIGateway.GridGroups.OnGridGroupDestroyed += GridGroupsOnOnGridGroupDestroyed;
             
