@@ -48,7 +48,7 @@ namespace ShipCoreFramework
             }
             catch (Exception ex)
             {
-                Utils.Log($"ModAPI: Failed to initialize API - {ex}");
+                Utils.Log($"ModAPI: Failed to initialize API - {ex}", 3);
             }
         }
 
@@ -80,11 +80,11 @@ namespace ShipCoreFramework
                 };
 
                 MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_CORE_ACTIVATED, eventData);
-                Utils.Log($"ModAPI Event: CoreActivated for grid {grid?.DisplayName ?? "Unknown"}", 2);
+                Utils.Log($"ModAPI Event: CoreActivated for grid {grid?.DisplayName ?? "Unknown"}", 1);
             }
             catch (Exception ex)
             {
-                Utils.Log($"ModAPI.BroadcastCoreActivated: Exception - {ex}");
+                Utils.Log($"ModAPI.BroadcastCoreActivated: Exception - {ex}", 3);
             }
         }
 
@@ -106,11 +106,11 @@ namespace ShipCoreFramework
                 };
 
                 MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_CORE_DEACTIVATED, eventData);
-                Utils.Log($"ModAPI Event: CoreDeactivated for grid {grid?.DisplayName ?? "Unknown"}", 2);
+                Utils.Log($"ModAPI Event: CoreDeactivated for grid {grid?.DisplayName ?? "Unknown"}", 1);
             }
             catch (Exception ex)
             {
-                Utils.Log($"ModAPI.BroadcastCoreDeactivated: Exception - {ex}");
+                Utils.Log($"ModAPI.BroadcastCoreDeactivated: Exception - {ex}", 3);
             }
         }
 
@@ -130,11 +130,11 @@ namespace ShipCoreFramework
                 };
 
                 MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_LIMITS_RECALCULATED, eventData);
-                Utils.Log($"ModAPI Event: LimitsRecalculated for group", 3);
+                Utils.Log("ModAPI Event: LimitsRecalculated for group", 1);
             }
             catch (Exception ex)
             {
-                Utils.Log($"ModAPI.BroadcastLimitsRecalculated: Exception - {ex}");
+                Utils.Log($"ModAPI.BroadcastLimitsRecalculated: Exception - {ex}", 3);
             }
         }
 
@@ -155,11 +155,11 @@ namespace ShipCoreFramework
                 };
 
                 MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_LIMITS_ENFORCED, eventData);
-                Utils.Log($"ModAPI Event: LimitsEnforced, punished {blocksPunished} blocks", 3);
+                Utils.Log($"ModAPI Event: LimitsEnforced, punished {blocksPunished} blocks", 1);
             }
             catch (Exception ex)
             {
-                Utils.Log($"ModAPI.BroadcastLimitsEnforced: Exception - {ex}");
+                Utils.Log($"ModAPI.BroadcastLimitsEnforced: Exception - {ex}", 3);
             }
         }
 
@@ -179,11 +179,11 @@ namespace ShipCoreFramework
                 };
 
                 MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_BOOST_ACTIVATED, eventData);
-                Utils.Log($"ModAPI Event: BoostActivated for grid {grid?.DisplayName ?? "Unknown"}", 3);
+                Utils.Log($"ModAPI Event: BoostActivated for grid {grid?.DisplayName ?? "Unknown"}", 1);
             }
             catch (Exception ex)
             {
-                Utils.Log($"ModAPI.BroadcastBoostActivated: Exception - {ex}");
+                Utils.Log($"ModAPI.BroadcastBoostActivated: Exception - {ex}", 3);
             }
         }
 
@@ -203,11 +203,11 @@ namespace ShipCoreFramework
                 };
 
                 MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_BOOST_DEACTIVATED, eventData);
-                Utils.Log($"ModAPI Event: BoostDeactivated for grid {grid?.DisplayName ?? "Unknown"}", 3);
+                Utils.Log($"ModAPI Event: BoostDeactivated for grid {grid?.DisplayName ?? "Unknown"}", 1);
             }
             catch (Exception ex)
             {
-                Utils.Log($"ModAPI.BroadcastBoostDeactivated: Exception - {ex}");
+                Utils.Log($"ModAPI.BroadcastBoostDeactivated: Exception - {ex}", 3);
             }
         }
 
@@ -227,11 +227,11 @@ namespace ShipCoreFramework
                 };
 
                 MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_ACTIVE_DEFENSE_ACTIVATED, eventData);
-                Utils.Log($"ModAPI Event: ActiveDefenseActivated for grid {grid?.DisplayName ?? "Unknown"}", 3);
+                Utils.Log($"ModAPI Event: ActiveDefenseActivated for grid {grid?.DisplayName ?? "Unknown"}", 1);
             }
             catch (Exception ex)
             {
-                Utils.Log($"ModAPI.BroadcastActiveDefenseActivated: Exception - {ex}");
+                Utils.Log($"ModAPI.BroadcastActiveDefenseActivated: Exception - {ex}", 3);
             }
         }
 
@@ -255,7 +255,7 @@ namespace ShipCoreFramework
             }
             catch (Exception ex)
             {
-                Utils.Log($"ModAPI.BroadcastActiveDefenseDeactivated: Exception - {ex}");
+                Utils.Log($"ModAPI.BroadcastActiveDefenseDeactivated: Exception - {ex}", 3);
             }
         }
 
@@ -276,11 +276,11 @@ namespace ShipCoreFramework
                 };
 
                 MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_GRID_ADDED_TO_GROUP, eventData);
-                Utils.Log($"ModAPI Event: GridAddedToGroup {grid?.DisplayName ?? "Unknown"}", 3);
+                Utils.Log($"ModAPI Event: GridAddedToGroup {grid?.DisplayName ?? "Unknown"}", 1);
             }
             catch (Exception ex)
             {
-                Utils.Log($"ModAPI.BroadcastGridAddedToGroup: Exception - {ex}");
+                Utils.Log($"ModAPI.BroadcastGridAddedToGroup: Exception - {ex}", 3);
             }
         }
 
@@ -301,11 +301,11 @@ namespace ShipCoreFramework
                 };
 
                 MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_GRID_REMOVED_FROM_GROUP, eventData);
-                Utils.Log($"ModAPI Event: GridRemovedFromGroup {grid?.DisplayName ?? "Unknown"}", 3);
+                Utils.Log($"ModAPI Event: GridRemovedFromGroup {grid?.DisplayName ?? "Unknown"}", 1);
             }
             catch (Exception ex)
             {
-                Utils.Log($"ModAPI.BroadcastGridRemovedFromGroup: Exception - {ex}");
+                Utils.Log($"ModAPI.BroadcastGridRemovedFromGroup: Exception - {ex}", 3);
             }
         }
 

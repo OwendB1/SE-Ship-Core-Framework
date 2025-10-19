@@ -234,7 +234,7 @@ namespace ShipCoreFramework
 
             EnforceOverCapacity();
 
-            int totalBlocksPunished = 0;
+            var totalBlocksPunished = 0;
 
             foreach (var kv in Limits)
             {
