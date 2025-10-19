@@ -60,7 +60,7 @@ namespace ShipCoreFramework
                 Utils.Log($"Stored Data In World Config: Saved {IgnoreAiKey}", showInChat ? 3 : 0);
                 Utils.SaveToSandbox(IgnoredFactionsKey, IgnoredFactionTags);
                 Utils.Log($"Stored Data In World Config: : Saved {IgnoredFactionsKey}", showInChat ? 3 : 0);
-                Utils.SaveToSandbox(SelectedNoCoreKey, SelectedNoCore.UniqueName);
+                Utils.SaveToSandbox(SelectedNoCoreKey, SelectedNoCore);
                 Utils.Log($"Stored Data In World Config: : Saved {SelectedNoCoreKey}", showInChat ? 3 : 0);
             }
             catch (Exception e)
