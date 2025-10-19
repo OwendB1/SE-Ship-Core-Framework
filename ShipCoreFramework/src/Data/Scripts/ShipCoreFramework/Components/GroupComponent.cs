@@ -77,8 +77,8 @@ namespace ShipCoreFramework
 
             var tempGridList = new List<IMyCubeGrid>();
             MyGroup.GetGrids(tempGridList);
-            
-            MyAPIGateway.Parallel.ForEach(tempGridList, myCubeGrid =>
+
+            foreach (var myCubeGrid in tempGridList)
             {
                 var startGrid = (MyCubeGrid)myCubeGrid;
                 if (startGrid.IsPreview) return;
@@ -86,7 +86,7 @@ namespace ShipCoreFramework
                 var gridComp = new GridComponent();
                 GridDictionary.TryAdd(startGrid, gridComp);
                 gridComp.Init(startGrid, MyGroup);
-            });
+            }
 
             RebuildGroupState();
             RecalculateAllLimits();
@@ -361,7 +361,7 @@ namespace ShipCoreFramework
 
         internal void ApplyModifiers(GridModifiers modifiers)
         {
-            MyAPIGateway.Parallel.ForEach(GridDictionary, kvp =>
+            foreach (var kvp in GridDictionary)
             {
                 var blocksCopy = kvp.Value.GetBlocksCopy();
                 foreach (var bl in blocksCopy)
@@ -371,7 +371,7 @@ namespace ShipCoreFramework
                     if (terminalBlock != null)
                         CubeGridModifiers.ApplyModifiers(terminalBlock, modifiers);
                 }
-            });
+            }
         }
 
         internal static bool IsValidDirection(IMyCubeBlock myCore, IMySlimBlock block, List<DirectionType> allowedDirections)
@@ -636,16 +636,10 @@ namespace ShipCoreFramework
         private void RecalculateAllLimits()
         {
             Limits.Clear();
-
-            // Phase 1: Parallel recalculation per grid
-            MyAPIGateway.Parallel.ForEach(GridDictionary.Values, comp =>
-            {
-                comp.RecalculateLimits(this);
-            });
-
-            // Phase 2: Sequential aggregation (with locks for thread safety)
+            
             foreach (var comp in GridDictionary.Values)
             {
+                comp.RecalculateLimits(this);
                 foreach (var gridLimitKv in comp.Limits)
                 {
                     var limit = gridLimitKv.Key;

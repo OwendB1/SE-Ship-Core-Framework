@@ -157,6 +157,8 @@ namespace ShipCoreFramework
 
         public override void UpdateAfterSimulation()
         {
+            Utils.ShowNotification("There is no No Core currently selected. Make sure to select one and reload the world!!");
+            if (Config.SelectedNoCore == null) return;
             if(!HasStarted) HasStarted = true;
             CoreTerminalControls.RegisterOnce();
 
@@ -166,14 +168,14 @@ namespace ShipCoreFramework
 
             MyAPIGateway.Parallel.StartBackground(() =>
             {
-                MyAPIGateway.Parallel.ForEach(GroupDict, kvp =>
+                foreach (var kvp in GroupDict)
                 {
                     kvp.Value.RunBoostTimerTick();
                     kvp.Value.RunActiveDefenseTimerTick();
                     SpeedEnforcement.EnforceSpeedLimit(kvp.Value);
                     
                     if (runNfz) NoFlyZones.EnforceNoFlyZones(kvp.Value, doPunish);
-                });
+                }
             });
         }
     }
