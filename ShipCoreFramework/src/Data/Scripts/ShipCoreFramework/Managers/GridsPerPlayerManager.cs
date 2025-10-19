@@ -70,21 +70,14 @@ namespace ShipCoreFramework
 
         internal static void RemoveGridGroup(GroupComponent group)
         {
-            Utils.Log("Remove1", 1);
-            if (!IsApplicableGroup(group)) return;
-            Utils.Log("Remove2", 1);
             var playerId = group.OwnerId;
-            Utils.Log("Remove3", 1);
             var coreType = group.ShipCore.SubtypeId;
-            Dictionary<string, int> perGridClass;
             
-            Utils.Log("Remove4", 1);
+            Dictionary<string, int> perGridClass;
             if (!PerPlayer.TryGetValue(playerId, out perGridClass)) return;
-            Utils.Log("Remove5", 1);
             if (!perGridClass.ContainsKey(coreType)) return;
-            Utils.Log("Remove6", 1);
             if (perGridClass[coreType] <= 0) return;
-            Utils.Log("Remove7", 1);
+
             perGridClass[coreType]--;
             if (!_suppressEvents) LimitsNexusSync.BroadcastPlayerChange(new PlayerChange { PlayerId = playerId, CoreType = coreType, Delta = -1 });
         }

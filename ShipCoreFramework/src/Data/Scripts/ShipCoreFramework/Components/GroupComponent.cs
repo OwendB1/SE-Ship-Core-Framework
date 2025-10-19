@@ -125,8 +125,8 @@ namespace ShipCoreFramework
         {
             var old = MainCoreComponent;
             IMyCubeGrid oldGrid = null;
-            string oldCoreSubtype = string.Empty;
-            string oldCoreName = string.Empty;
+            var oldCoreSubtype = string.Empty;
+            var oldCoreName = string.Empty;
 
             if (old != null)
             {
@@ -135,12 +135,11 @@ namespace ShipCoreFramework
                 var oldCore = Session.Config.GetShipCoreByTypeId(oldCoreSubtype);
                 oldCoreName = oldCore?.UniqueName ?? string.Empty;
                 Utils.Log($"Reset: Resetting logic for {oldGrid.CustomName}!", 2);
+                GridsPerFactionManager.RemoveGridGroup(this);
+                GridsPerPlayerManager.RemoveGridGroup(this);
                 old.IsMainCore = false;
             }
             MainCoreComponent = null;
-
-            GridsPerFactionManager.RemoveGridGroup(this);
-            GridsPerPlayerManager.RemoveGridGroup(this);
             
             if (oldGrid != null)
             {
@@ -163,38 +162,33 @@ namespace ShipCoreFramework
             var g = grid as MyCubeGrid;
             if (g == null || g.IsPreview) return;
 
-            if (removedFrom != null) // Grid is transferring from another group
+            if (removedFrom != null)
             {
                 GroupComponent oldGroup;
                 GridComponent movedComp;
-                if (Session.GroupDict.TryGetValue(removedFrom, out oldGroup) &&
-                    oldGroup.GridDictionary.TryGetValue(g, out movedComp))
+                if (Session.GroupDict.TryGetValue(removedFrom, out oldGroup) && oldGroup.GridDictionary.TryGetValue(g, out movedComp))
                 {
-                    // Transfer the component from old group to this group
                     oldGroup.GridDictionary.Remove(g);
                     movedComp.GroupData = addedTo;
                     GridDictionary[g] = movedComp;
-
-                    // Update old group's state after removal
+                    
                     oldGroup.RebuildGroupState();
                     oldGroup.RecalculateAllLimits();
                 }
                 else
                 {
-                    // Fallback: couldn't find in old group, create new
                     var gc = new GridComponent();
                     gc.Init(g, addedTo);
                     GridDictionary[g] = gc;
                 }
             }
-            else // New grid being added
+            else
             {
                 var gc = new GridComponent();
                 gc.Init(g, addedTo);
                 GridDictionary[g] = gc;
             }
-
-            // Check if group should be ignored after adding the grid (ownership may have changed)
+            
             if (Utils.IsIgnoredGroup(this))
             {
                 Utils.Log($"OnGridAdded: Group became ignored after grid addition (Faction: {OwningFaction?.Tag ?? "None"})", 2);

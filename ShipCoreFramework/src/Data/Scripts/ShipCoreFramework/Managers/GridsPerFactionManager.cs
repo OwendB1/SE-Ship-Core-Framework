@@ -81,18 +81,16 @@ namespace ShipCoreFramework
 
         internal static void RemoveGridGroup(GroupComponent group)
         {
-            if (!IsApplicableGrid(group)) return;
             var factionId = group.OwningFaction?.FactionId ?? -1;
             var gridClassId = group.ShipCore.SubtypeId;
+            
             Dictionary<string, int> perGroup;
-
             if (!PerFaction.TryGetValue(factionId, out perGroup)) return;
             if (!perGroup.ContainsKey(gridClassId)) return;
-            if (perGroup[gridClassId] > 0)
-            {
-                perGroup[gridClassId]--;
-                if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = factionId, CoreType = gridClassId, Delta = -1 });
-            }
+            if (perGroup[gridClassId] <= 0) return;
+            
+            perGroup[gridClassId]--;
+            if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = factionId, CoreType = gridClassId, Delta = -1 });
         }
 
         internal static void Reset()
