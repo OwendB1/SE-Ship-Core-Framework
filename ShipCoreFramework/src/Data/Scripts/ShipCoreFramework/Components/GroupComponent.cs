@@ -13,7 +13,15 @@ namespace ShipCoreFramework
     {
         internal ShipCore ShipCore => Session.Config.GetShipCoreByTypeId(MainCoreComponent?.SubtypeId ?? string.Empty);
         internal GridModifiers Modifiers => CubeGridModifiers.GetActiveModifiers(this);
-        internal long OwnerId => MainCoreComponent?.CoreBlock.OwnerId ?? this.GetMajorityOwnerId();
+        //internal long OwnerId => MainCoreComponent?.CoreBlock.OwnerId ?? this.GetMajorityOwnerId();
+        internal long OwnerId
+        {
+            get
+            {
+                var ownerId = MainCoreComponent?.CoreBlock.OwnerId ?? 0;
+                return ownerId != 0 ? ownerId : this.GetMajorityOwnerId();
+            }
+        }
         internal IMyFaction OwningFaction => MyAPIGateway.Session.Factions.TryGetPlayerFaction(OwnerId);
         internal int GroupBlocksCount => GridDictionary.Sum(g => g.Key.BlocksCount);
         internal int GroupPCU => GridDictionary.Sum(g => g.Key.BlocksPCU);

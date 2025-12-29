@@ -49,6 +49,9 @@ namespace ShipCoreFramework
             var modMessage ="";
             switch (sub)
             {
+                case "inventory":
+                    if(Session.LocalPlayer!=null) Inventory(playerId,args);
+                    return;
                 case "reloadconfig":
                     if(!CheckIfAdmin(playerId)) return;
                     modMessage+=ReloadConfig();
@@ -112,6 +115,114 @@ namespace ShipCoreFramework
             {
                 MyVisualScriptLogicProvider.SendChatMessage(modMessage,"ShipCores: LocalHost:", playerId, "Red");
             }
+        }
+        private static void Inventory(long playerId, string[] args)
+        {
+            string body ="";
+            Dictionary<string,string> BodySort = new Dictionary<string, string>();
+            if (args.Length < 3 || !CheckIfAdmin(playerId))
+            {
+                if(GridsPerPlayerManager.PerPlayer.ContainsKey(playerId))
+                {
+                    
+                    foreach (KeyValuePair<string, int> classCount in GridsPerPlayerManager.PerPlayer[playerId])
+                    {
+                        int max = Session.Config.GetShipCoreByTypeId(classCount.Key).MaxPerPlayer;
+                        BodySort[classCount.Key]=$"> {classCount.Key}:\n";
+                        if(max != -1)
+                        {
+                            BodySort[classCount.Key]+=$"            > Per Player:{classCount.Value}/{max}\n";
+                        }
+                        
+                    }
+
+                }
+                IMyFaction Faction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(playerId);
+                long factionId = Faction?.FactionId ?? -1;
+                if(factionId != -1 && GridsPerFactionManager.PerFaction.ContainsKey(factionId))
+                {
+                    foreach (KeyValuePair<string, int> classCount in GridsPerFactionManager.PerFaction[factionId])
+                    {
+                        int max = Session.Config.GetShipCoreByTypeId(classCount.Key).MaxPerFaction;
+                        if(max != -1)
+                        {
+                            BodySort[classCount.Key]=$"            > Per Faction:{classCount.Value}/{max}\n";
+                        }
+                    }                
+                }
+                body = string.Join("", BodySort.Values);
+            }
+            else
+            {
+                
+                var sub = args[1].ToLower();
+                switch (sub)
+                {
+                    /*
+                    case "update":
+                        GridsPerPlayerManager.PerPlayer=GridsPerPlayerManager.GetDefaultPlayerGridsSet();
+                        GridsPerFactionManager.PerFaction=GridsPerFactionManager.GetDefaultFactionGridsSet();
+                        break;*/
+                    case "faction":
+                        goto case "f";
+                    case "f":
+                        if(args[2] is long)
+                        {
+                            playerId = long.Parse(args[2]);
+                            IMyFaction Faction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(playerId);
+                            long factionId = Faction?.FactionId ?? -1;
+                            if(factionId != -1 && GridsPerFactionManager.PerFaction.ContainsKey(factionId))
+                            {
+                                foreach (KeyValuePair<string, int> classCount in GridsPerFactionManager.PerFaction[factionId])
+                                {
+                                    int max = Session.Config.GetShipCoreByTypeId(classCount.Key).MaxPerFaction;
+                                    if(max != -1)
+                                    {
+                                        BodySort[classCount.Key]=$"            > Per Faction:{classCount.Value}/{max}\n";
+                                    }
+                                }                
+                            }
+                        }
+                        break;
+                    case "player":
+                        goto case "p";
+                    case "p":
+                        if(args[2] is long)
+                        {
+                            playerId = long.Parse(args[2]);
+                            if(GridsPerPlayerManager.PerPlayer.ContainsKey(playerId))
+                            {
+                                
+                                foreach (KeyValuePair<string, int> classCount in GridsPerPlayerManager.PerPlayer[playerId])
+                                {
+                                    int max = Session.Config.GetShipCoreByTypeId(classCount.Key).MaxPerPlayer;
+                                    BodySort[classCount.Key]=$"> {classCount.Key}:\n";
+                                    if(max != -1)
+                                    {
+                                        BodySort[classCount.Key]+=$"            > Per Player:{classCount.Value}/{max}\n";
+                                    }
+                                    
+                                }
+
+                            }
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+            //{
+                //GridsPerFactionManager.
+            //}
+            //else
+            //{
+            //}
+            MyAPIGateway.Utilities.ShowMissionScreen(
+                "Ship Core Framework",
+                $"Inventory - {playerId}\n",
+                "Core Counts",
+                body
+            );
         }
         private static string ReloadConfig()
         {

@@ -87,25 +87,25 @@ namespace ShipCoreFramework
         
         public static void ApplyModifiers(IMyCubeBlock block, GridModifiers modifiers)
         {
+
             var thruster = block as IMyThrust;
             if (thruster != null)
             {
-                thruster.ThrustMultiplier = modifiers.ThrusterForce;
-                thruster.PowerConsumptionMultiplier = 1f / modifiers.ThrusterEfficiency;
+                if(modifiers.ThrusterForce != -1)thruster.ThrustMultiplier = modifiers.ThrusterForce;
+                if(modifiers.ThrusterEfficiency != -1)thruster.PowerConsumptionMultiplier = 1f / modifiers.ThrusterEfficiency;
             }
-
             var gyro = block as IMyGyro;
             if (gyro != null)
             {
-                gyro.GyroStrengthMultiplier = modifiers.GyroForce;
-                gyro.PowerConsumptionMultiplier = 1f / modifiers.GyroEfficiency;
+                if(gyro.GyroStrengthMultiplier != -1) gyro.GyroStrengthMultiplier = modifiers.GyroForce;
+                if(gyro.PowerConsumptionMultiplier != -1) gyro.PowerConsumptionMultiplier = 1f / modifiers.GyroEfficiency;
             }
-
+            
             var id = ((IMyTerminalBlock)block).BlockDefinition;
             var cubeDef = MyDefinitionManager.Static.GetCubeBlockDefinition(id);
 
             var refinery = block as IMyRefinery;
-            if (refinery != null)
+            if (refinery != null && (modifiers.RefineSpeed != -1 && modifiers.RefineEfficiency != -1))
             {
                 var refDef = cubeDef as MyRefineryDefinition;
                 var baseSpeed = refDef?.RefineSpeed ?? 1f;
@@ -147,7 +147,7 @@ namespace ShipCoreFramework
             }
 
             var assembler = block as IMyAssembler;
-            if (assembler != null)
+            if (assembler != null && modifiers.AssemblerSpeed != -1)
             {
                 var asmDef = cubeDef as MyAssemblerDefinition;
                 var baseSpeed = asmDef?.AssemblySpeed ?? 1f;

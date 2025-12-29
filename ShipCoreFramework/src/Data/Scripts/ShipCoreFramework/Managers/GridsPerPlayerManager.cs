@@ -14,7 +14,7 @@ namespace ShipCoreFramework
             internal int Delta;
         }
 
-        internal static readonly Dictionary<long, Dictionary<string, int>> PerPlayer = new Dictionary<long, Dictionary<string, int>>();
+        public static readonly Dictionary<long, Dictionary<string, int>> PerPlayer = new Dictionary<long, Dictionary<string, int>>();
         private static bool _suppressEvents;
 
         private static ModConfig Config => Session.Config;
@@ -121,7 +121,7 @@ namespace ShipCoreFramework
         private static Dictionary<string, int> GetDefaultPlayerGridsSet()
         {
             var set = new Dictionary<string, int>();
-            foreach (var core in Config.ShipCores) set[core.UniqueName] = 0;
+            foreach (var core in Config.ShipCores) set[core.SubtypeId] = 0;
             return set;
         }
     }

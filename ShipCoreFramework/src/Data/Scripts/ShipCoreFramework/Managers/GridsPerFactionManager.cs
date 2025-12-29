@@ -12,7 +12,7 @@ namespace ShipCoreFramework
             public int Delta;
         }
 
-        internal static readonly Dictionary<long, Dictionary<string, int>> PerFaction = new Dictionary<long, Dictionary<string, int>>();
+        public static readonly Dictionary<long, Dictionary<string, int>> PerFaction = new Dictionary<long, Dictionary<string, int>>();
         private static bool _suppressEvents;
 
         private static ModConfig Config => Session.Config;
@@ -34,7 +34,7 @@ namespace ShipCoreFramework
             if (maxAllowedGrids < 0) return true;
             if (factionId == -1 && minNeededPlayers > 1)
             {
-                Utils.ShowNotification($"Player is not in Faction and therefore cannot build faction limited core: {coreType}",10000, firstBigOwner,true);
+                Utils.ShowNotification($"Player is not in Faction [OwningPlayer:{firstBigOwner}] and therefore cannot build faction limited core: {coreType}",10000, firstBigOwner,true);
                 return false;
             }
 
@@ -48,7 +48,7 @@ namespace ShipCoreFramework
             {
                 var currentCount = PerFaction[factionId][coreType];
                 if (currentCount + 1 <= maxAllowedGrids) return true;
-                Utils.ShowNotification("Per faction limit of this core has been hit!", 10000, 0,true);
+                Utils.ShowNotification($"Faction limit reached, you have {currentCount}/{maxAllowedGrids} {coreType} built!", 10000, 0,true);
                 return false;
             }
 
@@ -116,7 +116,7 @@ namespace ShipCoreFramework
         private static Dictionary<string, int> GetDefaultFactionGridsSet()
         {
             var set = new Dictionary<string, int>();
-            foreach (var core in Config.ShipCores) set[core.UniqueName] = 0;
+            foreach (var core in Config.ShipCores) set[core.SubtypeId] = 0;
             return set;
         }
     }

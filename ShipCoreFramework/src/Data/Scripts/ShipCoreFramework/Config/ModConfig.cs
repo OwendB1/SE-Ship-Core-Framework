@@ -184,8 +184,8 @@ namespace ShipCoreFramework
                     }
                 }
             }
-
-            if (SelectedNoCore == null) return;
+            //Select the default config instead of returning
+            if (SelectedNoCore == null) SelectedNoCore=DefaultNoCoreConfig.ShipCore;
             foreach(var limit in SelectedNoCore.BlockLimits)
             {
                 foreach(var shorthand in limit.BlockGroupsShortHand)
