@@ -17,7 +17,7 @@ namespace ShipCoreFramework
     
         public bool Equals(BlockKey other)
         {
-            return string.Equals(TypeId, other.TypeId) && string.Equals(SubtypeId, other.SubtypeId);
+            return string.Equals(TypeId, other.TypeId) && (string.Equals(SubtypeId, other.SubtypeId) || SubtypeId.ToLower()=="any");
         }
     
         public override bool Equals(object obj)
