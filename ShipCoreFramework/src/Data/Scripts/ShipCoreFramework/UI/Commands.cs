@@ -129,7 +129,7 @@ namespace ShipCoreFramework
                     {
                         int max = Session.Config.GetShipCoreByTypeId(classCount.Key).MaxPerPlayer;
                         BodySort[classCount.Key]=$"> {classCount.Key}:\n";
-                        if(max != -1)
+                        if(max != -1 && classCount.Value>0)
                         {
                             BodySort[classCount.Key]+=$"            > Per Player:{classCount.Value}/{max}\n";
                         }

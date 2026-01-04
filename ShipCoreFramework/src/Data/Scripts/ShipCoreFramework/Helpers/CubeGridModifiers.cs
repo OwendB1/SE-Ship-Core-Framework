@@ -87,6 +87,8 @@ namespace ShipCoreFramework
         
         public static void ApplyModifiers(IMyCubeBlock block, GridModifiers modifiers)
         {
+            var id = ((IMyTerminalBlock)block).BlockDefinition;
+            var cubeDef = MyDefinitionManager.Static.GetCubeBlockDefinition(id);
 
             var thruster = block as IMyThrust;
             if (thruster != null)
@@ -94,15 +96,13 @@ namespace ShipCoreFramework
                 if(modifiers.ThrusterForce != -1)thruster.ThrustMultiplier = modifiers.ThrusterForce;
                 if(modifiers.ThrusterEfficiency != -1)thruster.PowerConsumptionMultiplier = 1f / modifiers.ThrusterEfficiency;
             }
+
             var gyro = block as IMyGyro;
             if (gyro != null)
             {
                 if(gyro.GyroStrengthMultiplier != -1) gyro.GyroStrengthMultiplier = modifiers.GyroForce;
                 if(gyro.PowerConsumptionMultiplier != -1) gyro.PowerConsumptionMultiplier = 1f / modifiers.GyroEfficiency;
             }
-            
-            var id = ((IMyTerminalBlock)block).BlockDefinition;
-            var cubeDef = MyDefinitionManager.Static.GetCubeBlockDefinition(id);
 
             var refinery = block as IMyRefinery;
             if (refinery != null && (modifiers.RefineSpeed != -1 && modifiers.RefineEfficiency != -1))
@@ -125,23 +125,30 @@ namespace ShipCoreFramework
                             switch (up.UpgradeType)
                             {
                                 case "Productivity":
-                                    prodSum += up.Modifier;
+                                    if(up.ModifierType == MyUpgradeModifierType.Additive)
+                                    {prodSum += up.Modifier;}
+                                    else
+                                    {prodSum *= up.Modifier;}
                                     break;
                                 case "Effectiveness":
-                                    effSum += up.Modifier;
+                                    if(up.ModifierType == MyUpgradeModifierType.Additive)
+                                    {effSum += up.Modifier;}
+                                    else
+                                    {effSum *= up.Modifier;}
                                     break;
                             }
                         }
                     }
                 }
 
-                var targetSpeed = (baseSpeed + prodSum) * modifiers.RefineSpeed;
-                var prodValue = targetSpeed - baseSpeed;
-                if (prodValue < -baseSpeed) prodValue = -baseSpeed;
+                //var targetSpeed = (baseSpeed + prodSum) * modifiers.RefineSpeed;
+                //var prodValue = targetSpeed - baseSpeed;
+                //if (prodValue < -baseSpeed) prodValue = -baseSpeed;
                 
-                var yieldValue = (baseYield + effSum) * modifiers.RefineEfficiency;
-                if (yieldValue < 0f) yieldValue = 0f;
-                
+                //var yieldValue = (baseYield + effSum) * modifiers.RefineEfficiency;
+                //if (yieldValue < 0f) yieldValue = 0f;
+                var prodValue = baseSpeed * prodSum * modifiers.RefineSpeed;
+                var yieldValue = baseYield * effSum * modifiers.RefineEfficiency;
                 refinery.UpgradeValues["Productivity"]  = prodValue;
                 refinery.UpgradeValues["Effectiveness"] = yieldValue;
             }
@@ -161,24 +168,44 @@ namespace ShipCoreFramework
                         var ups = new List<MyUpgradeModuleInfo>(); 
                         m.FillUpgradeList(ups);
                         if (ups.Count == 0) continue;
-                        prodSum += ups.Where(t => t.UpgradeType == "Productivity").Sum(t => t.Modifier);
+                        //I (Blue) need to fix this line:
+                        // Using foreach loop
+                        foreach (var up in ups)
+                        {
+                            if (up.UpgradeType == "Productivity")
+                            {
+                                if(up.ModifierType == MyUpgradeModifierType.Additive)
+                                {prodSum += up.Modifier;}
+                                else
+                                {prodSum *= up.Modifier;}
+                                
+                            }
+                        }
                     }
                 }
 
-                var targetSpeed = (baseSpeed + prodSum) * modifiers.AssemblerSpeed;
-                var prodValue = targetSpeed - baseSpeed;
-                if (prodValue < -baseSpeed) prodValue = -baseSpeed;
+                //var targetSpeed = (baseSpeed + prodSum) * modifiers.AssemblerSpeed;
+                //var prodValue = targetSpeed - baseSpeed;
+                //if (prodValue < -baseSpeed) prodValue = -baseSpeed;
+                var prodValue = baseSpeed*prodSum*modifiers.AssemblerSpeed;
 
                 assembler.UpgradeValues["Productivity"] = prodValue;
             }
 
             var reactor = block as IMyReactor;
-            if (reactor != null) reactor.PowerOutputMultiplier = modifiers.PowerProducersOutput;
+            if (reactor != null)
+            {
+                reactor.PowerOutputMultiplier = modifiers.PowerProducersOutput;
+            }
 
             var drill = block as IMyShipDrill;
-            if (drill != null) drill.DrillHarvestMultiplier = modifiers.DrillHarvestMultiplier;
+            if (drill != null)
+            {
+                drill.DrillHarvestMultiplier = modifiers.DrillHarvestMultiplier;
+            }
+            
         }
-
+        //Works 100%
         public static void GridCoreDamageHandler(object target, ref MyDamageInformation damageInfo)
         {
             var myBlock = target as IMySlimBlock;
