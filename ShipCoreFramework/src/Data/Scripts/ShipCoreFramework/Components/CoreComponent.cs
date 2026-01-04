@@ -91,11 +91,16 @@ namespace ShipCoreFramework
                 IsMainCore = false;
             }
             
-            if (!GridsPerFactionManager.WillGroupBeWithinFactionLimits(groupComponent, SubtypeId) || !GridsPerPlayerManager.WillGroupBeWithinPlayerLimits(groupComponent, SubtypeId))
-            {
-                _groupComponent.ResetCore();
-                CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
-            }
+            if (GridsPerFactionManager.WillGroupBeWithinFactionLimits(groupComponent, SubtypeId)) return;
+            Utils.ShowNotification("Per faction limit of this core has been hit!", 10000, groupComponent.OwnerId, true);
+            _groupComponent.ResetCore();
+            CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
+            
+            if (GridsPerPlayerManager.WillGroupBeWithinPlayerLimits(groupComponent, SubtypeId)) return;
+            Utils.ShowNotification("Per player limit of this core has been hit!", 10000, groupComponent.OwnerId, true);
+            _groupComponent.ResetCore();
+            CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
+
             _groupComponent.DefenseValuesChanged();
         }
         
