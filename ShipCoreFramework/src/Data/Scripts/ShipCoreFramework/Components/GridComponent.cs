@@ -255,6 +255,8 @@ namespace ShipCoreFramework
             {
                 var limit = kv.Key;
                 var bucket = kv.Value;
+                
+                if(!bucket.Members.Contains(obj.SlimBlock)) continue;
 
                 LimitBucket groupBucket;
                 if (!GroupComponent.Limits.TryGetValue(limit, out groupBucket)) continue;
@@ -268,29 +270,9 @@ namespace ShipCoreFramework
                 if (total <= limit.MaxCount) continue;
 
                 var over = total - limit.MaxCount;
-
-                List<IMySlimBlock> membersCopy;
-                lock (bucket.BucketLock)
-                {
-                    membersCopy = new List<IMySlimBlock>(bucket.Members);
-                }
-
-                var local = new List<KeyValuePair<IMySlimBlock, double>>(membersCopy.Count);
-                foreach (var b in membersCopy)
-                {
-                    if (b == null || b.IsMovedBySplit || b.CubeGrid == null) continue;
-                    var w = limit.GetWeight(KeyOf(b));
-                    if (w > 0d) local.Add(new KeyValuePair<IMySlimBlock, double>(b, w));
-                }
-
-                local.Sort((a, b) => a.Value.CompareTo(b.Value));
-
-                foreach (var t in local)
-                {
-                    if (over <= 0d) break;
-                    GroupComponent.WhackABlock(t.Key, PunishmentType.ShutOff);
-                    over -= t.Value;
-                }
+                
+                if (over <= 0d) break;
+                GroupComponent.WhackABlock(obj.SlimBlock, PunishmentType.ShutOff);
             }
         }
 
