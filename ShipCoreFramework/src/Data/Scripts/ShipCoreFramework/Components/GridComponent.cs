@@ -72,7 +72,6 @@ namespace ShipCoreFramework
             {
                 var newCore = new CoreComponent();
                 newCore.Init(beacon, this, GroupComponent);
-                GroupComponent.CoreDictionary.TryAdd(block.FatBlock, newCore);
                 CoreDictionary.TryAdd(block.FatBlock, newCore);
             }
             else
@@ -181,14 +180,14 @@ namespace ShipCoreFramework
             }
         }
 
-        private void BlockRemoved(IMySlimBlock block)
+        internal void BlockRemoved(IMySlimBlock block)
         {
             var beacon = block.FatBlock as IMyBeacon;
-            if (beacon != null && GroupComponent.CoreDictionary.ContainsKey(beacon))
+            CoreComponent value;
+            if (beacon != null && CoreDictionary.TryGetValue(beacon, out value))
             {
-                GroupComponent.CoreDictionary[beacon].CoreDestroyed();
-                GroupComponent.CoreDictionary.Remove(beacon);
                 CoreDictionary.Remove(beacon);
+                value.CoreDestroyed();
             }
 
             var limits = GroupComponent.Limits;

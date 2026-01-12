@@ -32,9 +32,9 @@ namespace ShipCoreFramework
         
         internal IMyGridGroupData MyGroup;
         internal CoreComponent MainCoreComponent;
-
+        
         internal readonly ConcurrentDictionary<BlockLimit, LimitBucket> Limits = new ConcurrentDictionary<BlockLimit, LimitBucket>();
-        internal readonly ConcurrentDictionary<IMyCubeBlock, CoreComponent> CoreDictionary = new ConcurrentDictionary<IMyCubeBlock, CoreComponent>();
+        internal Dictionary<IMyCubeBlock, CoreComponent> CoreDictionary => Utils.Flatten(GridDictionary.Values, component => component.CoreDictionary);
         internal readonly ConcurrentDictionary<MyCubeGrid, GridComponent> GridDictionary = new ConcurrentDictionary<MyCubeGrid, GridComponent>();
 
         internal bool PunishModifiers;
@@ -95,8 +95,7 @@ namespace ShipCoreFramework
                 GridDictionary.TryAdd(startGrid, gridComp);
                 gridComp.Init(startGrid, MyGroup);
             }
-
-            RebuildGroupState();
+            
             RecalculateAllLimits();
             EnforceGroupPunishment();
         }
@@ -120,7 +119,6 @@ namespace ShipCoreFramework
 
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
-                RebuildGroupState();
                 RecalculateAllLimits();
                 ApplyModifiers(Modifiers);
                 EnforceGroupPunishment();
@@ -158,7 +156,6 @@ namespace ShipCoreFramework
 
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
-                RebuildGroupState();
                 RecalculateAllLimits();
                 ApplyModifiers(Modifiers);
                 EnforceGroupPunishment();
@@ -180,7 +177,6 @@ namespace ShipCoreFramework
                     movedComp.GroupData = addedTo;
                     GridDictionary[g] = movedComp;
                     
-                    oldGroup.RebuildGroupState();
                     oldGroup.RecalculateAllLimits();
                 }
                 else
@@ -206,8 +202,6 @@ namespace ShipCoreFramework
                 }
                 return;
             }
-            
-            RebuildGroupState();
             RecalculateAllLimits();
             
             ModAPI.BroadcastGridAddedToGroup(grid, addedTo);
@@ -225,8 +219,6 @@ namespace ShipCoreFramework
                 comp.Clean();
                 GridDictionary.Remove(g);
             }
-
-            RebuildGroupState();
             RecalculateAllLimits();
             
             ModAPI.BroadcastGridRemovedFromGroup(grid, removedFrom);
@@ -243,7 +235,6 @@ namespace ShipCoreFramework
             EnforceOverCapacity();
 
             var totalBlocksPunished = 0;
-
             foreach (var kv in Limits)
             {
                 var limit = kv.Key;
@@ -594,51 +585,17 @@ namespace ShipCoreFramework
 
         internal void OnCoreRemoved(CoreComponent lost)
         {
-            var blk = (MyCubeBlock)lost.CoreBlock;
-            var gc = lost.GridComponent;
-            gc?.CoreDictionary.Remove(blk);
-            CoreDictionary.Remove(blk);
-            MyAPIGateway.Utilities.InvokeOnGameThread(RebuildGroupState);
-        }
-
-        private void RebuildGroupState()
-        {
-            if (!Session.HasStarted || Session.IsShuttingDown) return;
-
-            CoreDictionary.Clear();
-
-            foreach (var comp in GridDictionary.Values)
+            if(!ReferenceEquals(lost, MainCoreComponent)) return;
+            var newMain = CoreDictionary.Values.FirstOrDefault();
+            if (newMain == null)
             {
-                foreach (var coreKvp in comp.CoreDictionary)
-                {
-                    CoreDictionary[coreKvp.Key] = coreKvp.Value;
-                }
+                ResetCore();
             }
-
-            var oldMain = MainCoreComponent;
-            var candidates = CoreDictionary.Values
-                .Where(c => c?.CoreBlock?.CubeGrid != null && GridDictionary.ContainsKey((MyCubeGrid)c.CoreBlock.CubeGrid))
-                .OrderBy(c => c.CoreBlock.EntityId)
-                .ToList();
-
-            var newMain = candidates.FirstOrDefault();
-
-            if (!ReferenceEquals(newMain, oldMain))
+            else
             {
-                if (newMain == null)
-                {
-                    ResetCore();
-                    return;
-                }
-
-                if (oldMain != null) ResetCore();
-                Activate(newMain);
-                return;
+                MainCoreComponent = newMain;
+                MainCoreComponent.IsMainCore = true;
             }
-
-            RecalculateAllLimits();
-            ApplyModifiers(Modifiers);
-            EnforceGroupPunishment();
         }
         
         private void RecalculateAllLimits()
@@ -684,7 +641,6 @@ namespace ShipCoreFramework
                 kvp.Value.Clean();
             }
             GridDictionary.Clear();
-            CoreDictionary.Clear();
             Limits.Clear();
         }
     }

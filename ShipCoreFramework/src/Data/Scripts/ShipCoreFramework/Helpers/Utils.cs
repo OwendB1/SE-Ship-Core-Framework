@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -14,6 +14,32 @@ namespace ShipCoreFramework
 {
     internal static class Utils
     {
+        public static Dictionary<TKey, TValue> Flatten<TKey, TValue, TOuter>(
+            IEnumerable<TOuter> outers,
+            Func<TOuter, IDictionary<TKey, TValue>> selector,
+            int initialCapacity = 0)
+        {
+            if (outers == null) throw new ArgumentNullException("outers");
+            if (selector == null) throw new ArgumentNullException("selector");
+
+            var result = initialCapacity > 0
+                ? new Dictionary<TKey, TValue>(initialCapacity)
+                : new Dictionary<TKey, TValue>();
+
+            foreach (var outer in outers)
+            {
+                var inner = selector(outer);
+                if (inner == null) continue;
+
+                foreach (var kvp in inner)
+                {
+                    result.Add(kvp.Key, kvp.Value); // unique keys assumed
+                }
+            }
+
+            return result;
+        }
+        
         internal static long GetPlayerIdFromSteamId(ulong steamId)
         {
             var players = new List<IMyPlayer>();

@@ -91,17 +91,17 @@ namespace ShipCoreFramework
                 IsMainCore = false;
             }
             
+            _groupComponent.DefenseValuesChanged();
+            
             if (GridsPerFactionManager.WillGroupBeWithinFactionLimits(groupComponent, SubtypeId)) return;
-            Utils.ShowNotification("Per faction limit of this core has been hit!", 10000, groupComponent.OwnerId, true);
-            _groupComponent.ResetCore();
             CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
+            GridComponent.BlockRemoved(CoreBlock.SlimBlock);
+            _groupComponent.ResetCore();
             
             if (GridsPerPlayerManager.WillGroupBeWithinPlayerLimits(groupComponent, SubtypeId)) return;
-            Utils.ShowNotification("Per player limit of this core has been hit!", 10000, groupComponent.OwnerId, true);
-            _groupComponent.ResetCore();
             CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
-
-            _groupComponent.DefenseValuesChanged();
+            GridComponent.BlockRemoved(CoreBlock.SlimBlock);
+            _groupComponent.ResetCore();
         }
         
         private void OnUpgradeValuesChanged()
@@ -141,7 +141,7 @@ namespace ShipCoreFramework
                     : $"A backup core of grid {grid.CustomName} was destroyed!",
                 10000, grid.BigOwners.FirstOrDefault(), true);
 
-            // Delegate to group to handle removal and failover deterministically
+            // Delegate to a group to handle removal and failover deterministically
             _groupComponent.OnCoreRemoved(this);
         }
     }

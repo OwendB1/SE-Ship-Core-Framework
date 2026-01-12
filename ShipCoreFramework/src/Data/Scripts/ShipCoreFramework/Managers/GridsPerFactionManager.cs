@@ -34,13 +34,13 @@ namespace ShipCoreFramework
             if (maxAllowedGrids < 0) return true;
             if (factionId == -1 && minNeededPlayers > 1)
             {
-                Utils.ShowNotification($"Player is not in Faction [OwningPlayer:{firstBigOwner}] and therefore cannot build faction limited core: {coreType}",10000, firstBigOwner,true);
+                Utils.ShowChatMessage($"Player is not in Faction [OwningPlayer:{firstBigOwner}] and therefore cannot build faction limited core: {coreType}");
                 return false;
             }
 
             if (group.OwningFaction?.Members.Count < minNeededPlayers)
             {
-                Utils.ShowNotification($"{group.OwningFaction?.Members.Count}/{minNeededPlayers} players needed to build: {coreType}",10000, firstBigOwner, true);
+                Utils.ShowChatMessage($"{group.OwningFaction?.Members.Count}/{minNeededPlayers} players needed to build: {coreType}");
                 return false;
             }
 
@@ -48,7 +48,7 @@ namespace ShipCoreFramework
             {
                 var currentCount = PerFaction[factionId][coreType];
                 if (currentCount + 1 <= maxAllowedGrids) return true;
-                Utils.ShowNotification($"Faction limit reached, you have {currentCount}/{maxAllowedGrids} {coreType} built!", 10000, 0,true);
+                Utils.ShowChatMessage($"Faction limit reached, you have {currentCount}/{maxAllowedGrids} {coreType} built!");
                 return false;
             }
 

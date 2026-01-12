@@ -26,7 +26,7 @@ namespace ShipCoreFramework
 
             if (!Config.IsValidCoreType(newCoreType))
             {
-                Utils.Log($"GridsPerPlayerClass::IsGridWithinPlayerLimits: Unknown core type id {newCoreType}", 2);
+                Utils.ShowChatMessage($"GridsPerPlayerClass::IsGridWithinPlayerLimits: Unknown core type id {newCoreType}");
                 return false;
             }
 
@@ -36,7 +36,7 @@ namespace ShipCoreFramework
                 if (maxAllowedGrids < 0) return true;
                 var currentCount = PerPlayer[playerId][newCoreType];
                 if (currentCount + 1 <= maxAllowedGrids) return true;
-                Utils.ShowNotification("Per player limit of this core has been hit!", 10000, 0, true);
+                Utils.ShowChatMessage("Per player limit of this core has been hit!");
                 return false;
             }
 
