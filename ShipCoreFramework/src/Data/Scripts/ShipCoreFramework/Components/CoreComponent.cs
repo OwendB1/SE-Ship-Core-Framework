@@ -48,7 +48,6 @@ namespace ShipCoreFramework
             var groupHasMain = groupComponent.MainCoreComponent != null;
             
             CoreBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged;
-            Utils.Log($"Core Initial: {SubtypeId}", 3);
             if (CheckIfCoreOfOtherTypeExists())
             {
                 Utils.Log($"Other Core Exist: {CoreBlock.CubeGrid.CustomName}", 3);
