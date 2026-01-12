@@ -36,7 +36,7 @@ namespace ShipCoreFramework
             Grid = (MyCubeGrid)grid;
             GroupData = groupData;
 
-            Grid.OnBlockAdded += BlockAdded;
+            Grid.OnBlockAdded += BlockAddedEvent;
             Grid.OnBlockRemoved += BlockRemoved;
 
             var blocks = new List<IMySlimBlock>();
@@ -47,7 +47,12 @@ namespace ShipCoreFramework
             }
         }
 
-        private void BlockAdded(IMySlimBlock block)
+        private void BlockAddedEvent(IMySlimBlock block)
+        {
+            BlockAdded(block, false);
+        }
+
+        private void BlockAdded(IMySlimBlock block, bool limitBasedPunish = true)
         {
             var builderId = block.BuiltBy;
 
@@ -101,7 +106,7 @@ namespace ShipCoreFramework
                 }
             }
 
-            TryApplyLimitsOnAdd(block);
+            TryApplyLimitsOnAdd(block, limitBasedPunish);
 
             lock (_blocksLock)
             {
@@ -113,7 +118,7 @@ namespace ShipCoreFramework
             GroupComponent.ApplyModifiers(GroupComponent.Modifiers);
         }
 
-        private void TryApplyLimitsOnAdd(IMySlimBlock block)
+        private void TryApplyLimitsOnAdd(IMySlimBlock block, bool limitBasedPunish)
         {
             var firstOwner = Grid.BigOwners.FirstOrDefault();
 
@@ -134,7 +139,7 @@ namespace ShipCoreFramework
                     if (!GroupComponent.IsValidDirection(GroupComponent.MainCoreComponent.CoreBlock, block, limit.AllowedDirections))
                     {
                         Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violated directional locking!");
-                        GroupComponent.WhackABlock(block, limit.PunishmentType);
+                        GroupComponent.WhackABlock(block, limitBasedPunish ? limit.PunishmentType: PunishmentType.Delete);
                         continue; // Don't add punished blocks to the limit buckets
                     }
                 }
@@ -155,7 +160,7 @@ namespace ShipCoreFramework
                 if (cur + w > limit.MaxCount)
                 {
                     Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates Block limit " + limit.Name + ": " + (cur + w) + "/" + limit.MaxCount, 10000, firstOwner);
-                    GroupComponent.WhackABlock(block, limit.PunishmentType);
+                    GroupComponent.WhackABlock(block, limitBasedPunish ? limit.PunishmentType: PunishmentType.Delete);
                     continue; // Don't add punished blocks to the limit buckets
                 }
 
@@ -365,7 +370,7 @@ namespace ShipCoreFramework
         {
             if (Grid != null)
             {
-                Grid.OnBlockAdded -= BlockAdded;
+                Grid.OnBlockAdded -= BlockAddedEvent;
                 Grid.OnBlockRemoved -= BlockRemoved;
             }
 

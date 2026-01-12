@@ -58,7 +58,7 @@
     <BlockGroups>Drills</BlockGroups>
     <MaxCount>1</MaxCount>
     <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
-    <PunishmentType>Delete</PunishmentType>
+    <PunishmentType>ShutOff</PunishmentType>
   </BlockLimits>
   <BlockLimits>
     <Name>Weaponry PDC Only</Name>
