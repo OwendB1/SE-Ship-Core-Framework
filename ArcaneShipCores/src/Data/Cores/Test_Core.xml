@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-16"?>
 <ShipCore xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <SubtypeId>Test_Core</SubtypeId>
-  <UniqueName>Test Grid Class</UniqueName>
+  <UniqueName>Test Grid Core</UniqueName>
   <ForceBroadCast>true</ForceBroadCast>
   <ForceBroadCastRange>1900</ForceBroadCastRange>
   <LargeGridStatic>true</LargeGridStatic>
