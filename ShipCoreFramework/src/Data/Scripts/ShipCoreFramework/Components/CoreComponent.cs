@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI;
 using VRage.Game;
@@ -48,6 +49,7 @@ namespace ShipCoreFramework
             var groupHasMain = groupComponent.MainCoreComponent != null;
             
             CoreBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged;
+            CoreBlock.AppendingCustomInfo += AppendingCustomInfo;
             if (CheckIfCoreOfOtherTypeExists())
             {
                 Utils.Log($"Other Core Exist: {CoreBlock.CubeGrid.CustomName}", 3);
@@ -110,7 +112,14 @@ namespace ShipCoreFramework
         {
             _groupComponent.DefenseValuesChanged();
         }
-        
+        private void AppendingCustomInfo(IMyTerminalBlock block, StringBuilder MyText)
+        {
+            var targetGrid=block.CubeGrid;
+            var groupKvp = Session.GroupDict.FirstOrDefault(gk => gk.Value.GridDictionary.Any(kvp => kvp.Key == targetGrid));
+            var shipCore = groupKvp.Value.ShipCore;
+            if (groupKvp.Value == null || shipCore == null){return;}
+            MyText.Append(Commands.GetCoreInfo(targetGrid, shipCore,groupKvp));
+        }
         private bool CheckIfCoreOfOtherTypeExists()
         {
             var fatTerminals = CoreBlock.CubeGrid.GetFatBlocks<IMyTerminalBlock>();

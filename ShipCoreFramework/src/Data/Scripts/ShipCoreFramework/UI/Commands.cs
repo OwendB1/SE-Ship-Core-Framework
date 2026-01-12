@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using Sandbox.Game;
 using Sandbox.ModAPI;
@@ -522,10 +523,9 @@ namespace ShipCoreFramework
             Session.Config.SaveConfig(true);
             return $"Removed ignored faction tag '{tag}'.";
         }
-
         private static void CoreInfo(long playerId)
         {
-            var targetGrid = Utils.RaycastForGrid();
+             var targetGrid = Utils.RaycastForGrid();
             
             if (targetGrid == null)
             {
@@ -563,7 +563,16 @@ namespace ShipCoreFramework
                 Utils.ShowChatMessage($"Grid '{targetGrid.CustomName}' is ignored.");
                 return;
             }
-
+            var body = GetCoreInfo(targetGrid, shipCore,groupKvp);
+            MyAPIGateway.Utilities.ShowMissionScreen(
+                "Ship Core Framework",
+                $"Ship Class Limits - {targetGrid.CustomName}",
+                "Block Limits & Usage",
+                body
+            );
+        }
+        public static string GetCoreInfo(IMyCubeGrid targetGrid,ShipCore shipCore,KeyValuePair<IMyGridGroupData, GroupComponent> groupKvp)
+        {
             var shipCoreSubtypeId = groupKvp.Value.ShipCore.SubtypeId;
             var body = $"Grid: {targetGrid.CustomName}\nShip Class: {shipCore.UniqueName}\n\n";
             var currentMaxPerPlayer = groupKvp.Value.ShipCore.MaxPerPlayer;
@@ -755,13 +764,7 @@ namespace ShipCoreFramework
                     }
                 }
             }
-
-            MyAPIGateway.Utilities.ShowMissionScreen(
-                "Ship Core Framework",
-                $"Ship Class Limits - {targetGrid.CustomName}",
-                "Block Limits & Usage",
-                body
-            );
+            return body;
         }
 
         private static void ShowHelp()
