@@ -52,7 +52,7 @@
             <!-- Antenna info-->
             <ResourceSinkGroup>Utility</ResourceSinkGroup>
             <MaxBroadcastRadius>200000</MaxBroadcastRadius>
-            <Flare>BeaconLarge</Flare>
+            <Flare></Flare>
             <MaxBroadcastPowerDrainkW>20</MaxBroadcastPowerDrainkW>
 
             <EmissiveColorPreset>Beacon</EmissiveColorPreset>
