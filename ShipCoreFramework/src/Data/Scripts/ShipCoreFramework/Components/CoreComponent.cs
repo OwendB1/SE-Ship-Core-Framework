@@ -52,7 +52,7 @@ namespace ShipCoreFramework
             if (CheckIfCoreOfOtherTypeExists())
             {
                 Utils.Log($"Other Core Exist: {CoreBlock.CubeGrid.CustomName}", 3);
-                CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
+                GridComponent.RemoveAndRefund(CoreBlock.SlimBlock);
                 Utils.ShowNotification("Other Core Type Exist On Grid", 10000, CoreBlock.CubeGrid.BigOwners.FirstOrDefault(), true);
                 return;
             }
@@ -96,12 +96,12 @@ namespace ShipCoreFramework
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
                 if (GridsPerFactionManager.WillGroupBeWithinFactionLimits(groupComponent, SubtypeId)) return;
-                CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
+                GridComponent.RemoveAndRefund(CoreBlock.SlimBlock);
                 GridComponent.BlockRemoved(CoreBlock.SlimBlock);
                 _groupComponent.ResetCore();
             
                 if (GridsPerPlayerManager.WillGroupBeWithinPlayerLimits(groupComponent, SubtypeId)) return;
-                CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
+                GridComponent.RemoveAndRefund(CoreBlock.SlimBlock);
                 GridComponent.BlockRemoved(CoreBlock.SlimBlock);
                 _groupComponent.ResetCore();
             });
