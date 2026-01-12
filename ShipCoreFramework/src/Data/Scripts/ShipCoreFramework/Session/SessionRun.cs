@@ -157,7 +157,11 @@ namespace ShipCoreFramework
 
         public override void UpdateAfterSimulation()
         {
-            if (Config.SelectedNoCore == null) {Utils.ShowNotification("There is no No Core currently selected. Make sure to select one and reload the world!!");return;}
+            if (Config.SelectedNoCore == null)
+            {
+                Utils.ShowNotification("There is no No Core currently selected. Make sure to select one and reload the world!!");
+                return;
+            }
             if(!HasStarted) HasStarted = true;
             CoreTerminalControls.RegisterOnce();
 
