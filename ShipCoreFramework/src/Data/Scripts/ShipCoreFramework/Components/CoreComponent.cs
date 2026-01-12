@@ -93,15 +93,18 @@ namespace ShipCoreFramework
             
             _groupComponent.DefenseValuesChanged();
             
-            if (GridsPerFactionManager.WillGroupBeWithinFactionLimits(groupComponent, SubtypeId)) return;
-            CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
-            GridComponent.BlockRemoved(CoreBlock.SlimBlock);
-            _groupComponent.ResetCore();
+            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+            {
+                if (GridsPerFactionManager.WillGroupBeWithinFactionLimits(groupComponent, SubtypeId)) return;
+                CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
+                GridComponent.BlockRemoved(CoreBlock.SlimBlock);
+                _groupComponent.ResetCore();
             
-            if (GridsPerPlayerManager.WillGroupBeWithinPlayerLimits(groupComponent, SubtypeId)) return;
-            CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
-            GridComponent.BlockRemoved(CoreBlock.SlimBlock);
-            _groupComponent.ResetCore();
+                if (GridsPerPlayerManager.WillGroupBeWithinPlayerLimits(groupComponent, SubtypeId)) return;
+                CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
+                GridComponent.BlockRemoved(CoreBlock.SlimBlock);
+                _groupComponent.ResetCore();
+            });
         }
         
         private void OnUpgradeValuesChanged()

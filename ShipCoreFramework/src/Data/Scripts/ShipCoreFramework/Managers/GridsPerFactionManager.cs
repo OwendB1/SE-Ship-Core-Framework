@@ -44,16 +44,11 @@ namespace ShipCoreFramework
                 return false;
             }
 
-            if (PerFaction.ContainsKey(factionId) && PerFaction[factionId].ContainsKey(coreType))
-            {
-                var currentCount = PerFaction[factionId][coreType];
-                if (currentCount + 1 <= maxAllowedGrids) return true;
-                Utils.ShowChatMessage($"Faction limit reached, you have {currentCount}/{maxAllowedGrids} {coreType} built!");
-                return false;
-            }
-
-            Utils.Log("GridsPerFactionClass::IsGridWithinFactionLimits: Faction or class not found in faction limits data", 3);
-            return true;
+            if (!PerFaction.ContainsKey(factionId) || !PerFaction[factionId].ContainsKey(coreType)) return true;
+            var currentCount = PerFaction[factionId][coreType];
+            if (currentCount + 1 <= maxAllowedGrids) return true;
+            Utils.ShowChatMessage($"Faction limit reached, you have {currentCount}/{maxAllowedGrids} {coreType} built!");
+            return false;
         }
 
         internal static void AddGridGroup(GroupComponent group)
