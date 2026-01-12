@@ -16,8 +16,8 @@ using IngameIMyEntity = VRage.Game.ModAPI.Ingame.IMyEntity;
 
 namespace ShipCoreFramework
 {
-    [MyTextSurfaceScript("GridStatusLCDScript", "Grid class status")]
-    internal class GridStatusLCDScript : MyTSSCommon
+    [MyTextSurfaceScript("CoreTypeLCDScript", "Core status")]
+    internal class CoreTypeLCDScript : MyTSSCommon
     {
         private static readonly float ScrollSpeed = 3; //pixels per update
         private static readonly int ScrollPauseUpdates = 15; //how many updates to say paused at the start and end when scrolling
@@ -68,7 +68,7 @@ namespace ShipCoreFramework
         private readonly IMyTerminalBlock _terminalBlock;
         private int _scrollTime;
 
-        public GridStatusLCDScript(IMyTextSurface surface, IngameCubeBlock block, Vector2 size) : base(surface, block, size)
+        public CoreTypeLCDScript(IMyTextSurface surface, IngameCubeBlock block, Vector2 size) : base(surface, block, size)
         {
             _terminalBlock = (IMyTerminalBlock)block; // internal stored m_block is the ingame interface which has no events, so can't unhook later on, therefore this field is required.
             _terminalBlock.OnMarkForClose += BlockMarkedForClose; // required if you're going to make use of Dispose() as it won't get called when block is removed or grid is cut/unloaded.

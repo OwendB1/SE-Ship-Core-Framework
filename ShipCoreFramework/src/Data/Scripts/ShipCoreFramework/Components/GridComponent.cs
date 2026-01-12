@@ -130,7 +130,9 @@ namespace ShipCoreFramework
             foreach (var limit in limits)
             {
                 if (limit == null) continue;
-
+                var hit = limit.BlockGroups.Any(g => g.BlockTypes.Any(b => b.TypeId == blockKey.TypeId && b.SubtypeId == blockKey.SubtypeId));
+                if (!hit) continue;
+                
                 var w = limit.GetWeight(blockKey);
                 if (w <= 0d) continue;
 
