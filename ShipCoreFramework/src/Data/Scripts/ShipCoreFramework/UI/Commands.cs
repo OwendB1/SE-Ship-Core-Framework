@@ -144,7 +144,7 @@ namespace ShipCoreFramework
                     foreach (KeyValuePair<string, int> classCount in GridsPerFactionManager.PerFaction[factionId])
                     {
                         int max = Session.Config.GetShipCoreByTypeId(classCount.Key).MaxPerFaction;
-                        if(max != -1)
+                        if(max != -1 && classCount.Value>0)
                         {
                             BodySort[classCount.Key]=$"            > Per Faction:{classCount.Value}/{max}\n";
                         }
