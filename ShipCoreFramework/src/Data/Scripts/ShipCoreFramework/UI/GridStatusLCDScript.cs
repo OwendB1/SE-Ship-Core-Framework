@@ -42,6 +42,18 @@ namespace ShipCoreFramework
                 new Column { Name = "Success" }
             }
         };
+        
+        private readonly Table _gridLimitsTable = new Table
+        {
+            Columns = new List<Column>
+            {
+                new Column { Name = "LimitName" },
+                new Column { Name = "Value", Alignment = TextAlignment.RIGHT },
+                new Column { Name = "Separator" },
+                new Column { Name = "Max" },
+                new Column { Name = "Punishment Type" }
+            }
+        };
 
         private readonly Table _headerTable = new Table
         {
@@ -123,6 +135,7 @@ namespace ShipCoreFramework
             Surface.ScriptForegroundColor = Color.Black;
             // the colors in the terminal are Surface.ScriptBackgroundColor and Surface.ScriptForegroundColor, the other ones without Script in name are for text/image mode.
             _gridResultsTable.Clear();
+            _gridLimitsTable.Clear();
 
             Vector2 currentPosition;
             var spritesToRender = new List<MySprite>();
@@ -197,6 +210,11 @@ namespace ShipCoreFramework
                         Grid.BlocksPCU <= ShipCore.MaxPCU ? successColor : failColor),
                     Grid.BlocksPCU <= ShipCore.MaxPCU ? new Cell() : new Cell("X", failColor)
                 });
+            
+            var gridResultsTableTopLeft = currentPosition + new Vector2(0, 5);
+
+            _gridResultsTable.RenderToSprites(spritesToRender, gridResultsTableTopLeft, screenInnerWidth, cellGap,
+                out currentPosition, bodyScale);
 
             if (GroupComponent.ShipCore.BlockLimits != null)
             {
@@ -208,20 +226,20 @@ namespace ShipCoreFramework
                         totalWeight = bucket.TotalWeight;
                     var isOk = totalWeight <= blockLimit.MaxCount;
 
-                    _gridResultsTable.Rows.Add(new Row
+                    _gridLimitsTable.Rows.Add(new Row
                     {
                         new Cell(blockLimit.Name + ":"),
                         new Cell(totalWeight.ToString(CultureInfo.InvariantCulture)),
                         new Cell("/"),
                         new Cell(blockLimit.MaxCount.ToString(CultureInfo.InvariantCulture), isOk ? successColor : failColor),
-                        isOk ? new Cell() : new Cell("X", failColor)
+                        new Cell("Type: " + blockLimit.PunishmentType)
                     });
                 }
             }
 
-            var gridResultsTableTopLeft = currentPosition + new Vector2(0, 5);
+            var gridLimitsTableTopLeft = currentPosition + new Vector2(0, 5);
 
-            _gridResultsTable.RenderToSprites(spritesToRender, gridResultsTableTopLeft, screenInnerWidth, cellGap,
+            _gridLimitsTable.RenderToSprites(spritesToRender, gridLimitsTableTopLeft, screenInnerWidth, cellGap,
                 out currentPosition, bodyScale);
 
             //Applied modifiers

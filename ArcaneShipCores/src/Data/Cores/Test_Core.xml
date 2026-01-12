@@ -50,7 +50,7 @@
   <EnableReloadModifier>false</EnableReloadModifier>
   <ReloadModifier>1</ReloadModifier>
   <BlockLimits>
-    <Name>Drills, Punishment: Delete \n Direction: Foward</Name>
+    <Name>Drills</Name>
     <BlockGroups>Drills</BlockGroups>
     <MaxCount>3</MaxCount>
     <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
@@ -58,21 +58,21 @@
     <AllowedDirections>Forward</AllowedDirections>
   </BlockLimits>
   <BlockLimits>
-    <Name>Grinders, Punishment: ShutOff</Name>
+    <Name>Grinders</Name>
     <BlockGroups>Grinders</BlockGroups>
     <MaxCount>3</MaxCount>
     <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
     <PunishmentType>ShutOff</PunishmentType>
   </BlockLimits>
   <BlockLimits>
-    <Name>Welders, Punishment: Damage</Name>
+    <Name>Welders</Name>
     <BlockGroups>Welders</BlockGroups>
     <MaxCount>3</MaxCount>
     <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
     <PunishmentType>Damage</PunishmentType>
   </BlockLimits>
   <BlockLimits>
-    <Name>Collectors, Punishment: Explode</Name>
+    <Name>Collectors</Name>
     <BlockGroups>Collectors</BlockGroups>
     <MaxCount>3</MaxCount>
     <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
