@@ -50,7 +50,7 @@
             <!-- Beacon properties -->
             <ResourceSinkGroup>Utility</ResourceSinkGroup>
             <MaxBroadcastRadius>200000</MaxBroadcastRadius>
-            <Flare>BeaconSmall</Flare>
+            <Flare></Flare>
             <MaxBroadcastPowerDrainkW>20</MaxBroadcastPowerDrainkW>
             <!-- End Beacon Props-->
 
