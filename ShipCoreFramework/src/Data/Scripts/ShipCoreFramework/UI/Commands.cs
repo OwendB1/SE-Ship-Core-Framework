@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using Sandbox.Game;
 using Sandbox.ModAPI;
@@ -117,45 +116,45 @@ namespace ShipCoreFramework
                 MyVisualScriptLogicProvider.SendChatMessage(modMessage,"ShipCores: LocalHost:", playerId, "Red");
             }
         }
+        
         private static void Inventory(long playerId, string[] args)
         {
-            string body ="";
-            Dictionary<string,string> BodySort = new Dictionary<string, string>();
+            var body ="";
+            var bodySort = new Dictionary<string, string>();
             if (args.Length < 3 || !CheckIfAdmin(playerId))
             {
-                if(GridsPerPlayerManager.PerPlayer.ContainsKey(playerId))
+                Dictionary<string, int> playerVal;
+                if(GridsPerPlayerManager.PerPlayer.TryGetValue(playerId, out playerVal))
                 {
-                    
-                    foreach (KeyValuePair<string, int> classCount in GridsPerPlayerManager.PerPlayer[playerId])
+                    foreach (var classCount in playerVal)
                     {
-                        int max = Session.Config.GetShipCoreByTypeId(classCount.Key).MaxPerPlayer;
-                        BodySort[classCount.Key]=$"> {classCount.Key}:\n";
+                        var max = Session.Config.GetShipCoreByTypeId(classCount.Key).MaxPerPlayer;
+                        bodySort[classCount.Key]=$"> {classCount.Key}:\n";
                         if(max != -1 && classCount.Value>0)
                         {
-                            BodySort[classCount.Key]+=$"            > Per Player:{classCount.Value}/{max}\n";
+                            bodySort[classCount.Key]+=$"            > Per Player:{classCount.Value}/{max}\n";
                         }
-                        
                     }
-
                 }
-                IMyFaction Faction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(playerId);
-                long factionId = Faction?.FactionId ?? -1;
-                if(factionId != -1 && GridsPerFactionManager.PerFaction.ContainsKey(factionId))
+                
+                var faction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(playerId);
+                var factionId = faction?.FactionId ?? -1;
+                Dictionary<string, int> factionVal;
+                if(factionId != -1 && GridsPerFactionManager.PerFaction.TryGetValue(factionId, out factionVal))
                 {
-                    foreach (KeyValuePair<string, int> classCount in GridsPerFactionManager.PerFaction[factionId])
+                    foreach (var classCount in factionVal)
                     {
-                        int max = Session.Config.GetShipCoreByTypeId(classCount.Key).MaxPerFaction;
+                        var max = Session.Config.GetShipCoreByTypeId(classCount.Key).MaxPerFaction;
                         if(max != -1 && classCount.Value>0)
                         {
-                            BodySort[classCount.Key]=$"            > Per Faction:{classCount.Value}/{max}\n";
+                            bodySort[classCount.Key]=$"            > Per Faction:{classCount.Value}/{max}\n";
                         }
                     }                
                 }
-                body = string.Join("", BodySort.Values);
+                body = string.Join("", bodySort.Values);
             }
             else
             {
-                
                 var sub = args[1].ToLower();
                 switch (sub)
                 {
@@ -167,48 +166,39 @@ namespace ShipCoreFramework
                     case "faction":
                         goto case "f";
                     case "f":
-                        if(args[2] is long)
+                        if (!long.TryParse(args[2], out playerId)) return;
+                        var faction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(playerId);
+                        var factionId = faction?.FactionId ?? -1;
+                        Dictionary<string, int> factionVal;
+                        if(factionId != -1 && GridsPerFactionManager.PerFaction.TryGetValue(factionId, out factionVal))
                         {
-                            playerId = long.Parse(args[2]);
-                            IMyFaction Faction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(playerId);
-                            long factionId = Faction?.FactionId ?? -1;
-                            if(factionId != -1 && GridsPerFactionManager.PerFaction.ContainsKey(factionId))
+                            foreach (var classCount in factionVal)
                             {
-                                foreach (KeyValuePair<string, int> classCount in GridsPerFactionManager.PerFaction[factionId])
+                                var max = Session.Config.GetShipCoreByTypeId(classCount.Key).MaxPerFaction;
+                                if(max != -1)
                                 {
-                                    int max = Session.Config.GetShipCoreByTypeId(classCount.Key).MaxPerFaction;
-                                    if(max != -1)
-                                    {
-                                        BodySort[classCount.Key]=$"            > Per Faction:{classCount.Value}/{max}\n";
-                                    }
-                                }                
-                            }
+                                    bodySort[classCount.Key]=$"            > Per Faction:{classCount.Value}/{max}\n";
+                                }
+                            }                
                         }
                         break;
                     case "player":
                         goto case "p";
                     case "p":
-                        if(args[2] is long)
+                        if (!long.TryParse(args[2], out playerId)) return;
+                        Dictionary<string, int> playerVal;
+                        if(GridsPerPlayerManager.PerPlayer.TryGetValue(playerId, out playerVal))
                         {
-                            playerId = long.Parse(args[2]);
-                            if(GridsPerPlayerManager.PerPlayer.ContainsKey(playerId))
+                            foreach (var classCount in playerVal)
                             {
-                                
-                                foreach (KeyValuePair<string, int> classCount in GridsPerPlayerManager.PerPlayer[playerId])
+                                var max = Session.Config.GetShipCoreByTypeId(classCount.Key).MaxPerPlayer;
+                                bodySort[classCount.Key]=$"> {classCount.Key}:\n";
+                                if(max != -1)
                                 {
-                                    int max = Session.Config.GetShipCoreByTypeId(classCount.Key).MaxPerPlayer;
-                                    BodySort[classCount.Key]=$"> {classCount.Key}:\n";
-                                    if(max != -1)
-                                    {
-                                        BodySort[classCount.Key]+=$"            > Per Player:{classCount.Value}/{max}\n";
-                                    }
-                                    
+                                    bodySort[classCount.Key]+=$"            > Per Player:{classCount.Value}/{max}\n";
                                 }
-
                             }
                         }
-                        break;
-                    default:
                         break;
                 }
             }
