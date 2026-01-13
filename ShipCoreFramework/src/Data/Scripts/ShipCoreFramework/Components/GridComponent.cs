@@ -41,6 +41,12 @@ namespace ShipCoreFramework
 
             var blocks = new List<IMySlimBlock>();
             grid.GetBlocks(blocks);
+            //MUST get beacons before blocks or blocks will be added based on default class
+            var beaconBlocks = blocks.Where(b => b.FatBlock is IMyBeacon).ToList();
+            foreach (var beacon in beaconBlocks)
+            {
+                BlockAdded(beacon);
+            }
             foreach (var block in blocks)
             {
                 BlockAdded(block);
