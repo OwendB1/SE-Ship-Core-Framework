@@ -11,7 +11,7 @@ namespace ShipCoreFramework
     internal class CoreComponent
     {
         private GroupComponent _groupComponent;
-        private bool _isMainCore;
+        private bool _isMainCore = false;
         
         internal string SubtypeId;
         internal IMyBeacon CoreBlock;
@@ -116,8 +116,9 @@ namespace ShipCoreFramework
         {
             var targetGrid=block.CubeGrid;
             var groupKvp = Session.GroupDict.FirstOrDefault(gk => gk.Value.GridDictionary.Any(kvp => kvp.Key == targetGrid));
+            if(groupKvp.Value == null || targetGrid == null){return;}
             var shipCore = groupKvp.Value.ShipCore;
-            if (groupKvp.Value == null || shipCore == null){return;}
+            if ( shipCore == null){return;}
             MyText.Append(Commands.GetCoreInfo(targetGrid, shipCore,groupKvp));
         }
         private bool CheckIfCoreOfOtherTypeExists()
