@@ -222,7 +222,9 @@ namespace ShipCoreFramework
                 "Ship Core Framework",
                 $"Inventory - {playerId}\n",
                 "Core Counts",
-                body
+                body,
+                null,
+                RandomConsent()
             );
         }
         private static string ReloadConfig()
@@ -290,7 +292,9 @@ namespace ShipCoreFramework
                 "ShipCore Framework",
                 "/core listnoflyzones",
                 "No-Fly Zones",
-                body
+                body,
+                null,
+                RandomConsent()
             );
         }
         
@@ -568,7 +572,9 @@ namespace ShipCoreFramework
                 "Ship Core Framework",
                 $"Ship Class Limits - {targetGrid.CustomName}",
                 "Block Limits & Usage",
-                body
+                body,
+                null,
+                RandomConsent()
             );
         }
         public static string GetCoreInfo(IMyCubeGrid targetGrid,ShipCore shipCore,KeyValuePair<IMyGridGroupData, GroupComponent> groupKvp)
@@ -827,7 +833,10 @@ Raycasts from crosshairs to find a grid and displays all its core information.";
                 "ShipCore Framework",
                 "/core help",
                 "Command Reference",
-                body
+                body,
+                null,
+                RandomConsent()
+                
             );
         }
 
@@ -838,6 +847,12 @@ Raycasts from crosshairs to find a grid and displays all its core information.";
             MyAPIGateway.Players.GetPlayers(players);
             return (from player in players where player.IdentityId == playerId 
                 select player.PromoteLevel == MyPromoteLevel.Admin || player.PromoteLevel == MyPromoteLevel.Owner).FirstOrDefault();
+        }
+        private static string RandomConsent()
+        {
+            string[] options = {"Cool Beans","I Understand","I Understand","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","I Don't like reading","It's MoMo's fault"};
+            Random rng = new Random();
+            return options[rng.Next(options.Length)];
         }
     }
 }
