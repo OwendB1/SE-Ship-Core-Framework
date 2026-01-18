@@ -32,6 +32,12 @@ namespace ShipCoreFramework
         public void Init(IMyBeacon beacon, GridComponent gridComponent, GroupComponent groupComponent)
         {   
             CoreBlock = beacon;
+            if (CoreBlock.OwnerId == 0)
+            {
+                MyAPIGateway.Utilities.InvokeOnGameThread(() => Init(beacon, gridComponent, groupComponent));
+                return;
+            }
+            
             if (Session.Config.SelectedNoCore == null)
             {
                 Utils.Log("NOCORE is NULL for CORE", 3);
@@ -156,7 +162,7 @@ namespace ShipCoreFramework
                 10000, grid.BigOwners.FirstOrDefault(), true);
 
             // Delegate to a group to handle removal and failover deterministically
-            _groupComponent.OnCoreRemoved(this);
+            _groupComponent.CoreRemoved(this);
         }
     }
 }

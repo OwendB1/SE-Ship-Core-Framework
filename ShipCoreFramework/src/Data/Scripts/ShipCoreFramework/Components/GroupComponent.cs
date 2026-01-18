@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -216,6 +217,7 @@ namespace ShipCoreFramework
             GridComponent comp;
             if (GridDictionary.TryGetValue(g, out comp))
             {
+                if (MainCoreComponent.GridComponent.Grid.EntityId == g.EntityId) CoreRemoved(MainCoreComponent);
                 comp.Clean();
                 GridDictionary.Remove(g);
             }
@@ -583,7 +585,7 @@ namespace ShipCoreFramework
             }
         }
 
-        internal void OnCoreRemoved(CoreComponent lost)
+        internal void CoreRemoved(CoreComponent lost)
         {
             if(!ReferenceEquals(lost, MainCoreComponent)) return;
             var newMain = CoreDictionary.Values.FirstOrDefault();
@@ -636,6 +638,16 @@ namespace ShipCoreFramework
 
         internal void Clean()
         {
+            try
+            {
+                GridsPerFactionManager.RemoveGridGroup(this);
+                GridsPerPlayerManager.RemoveGridGroup(this);
+            }
+            catch (Exception e)
+            {
+                Utils.Log("LOGGING EXCEPTION (most likely due to closure of world): " + e, 1);
+            }
+            
             foreach (var kvp in GridDictionary)
             {
                 kvp.Value.Clean();
