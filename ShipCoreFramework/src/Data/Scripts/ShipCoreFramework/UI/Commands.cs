@@ -147,7 +147,7 @@ namespace ShipCoreFramework
                         var max = Session.Config.GetShipCoreByTypeId(classCount.Key).MaxPerFaction;
                         if(max != -1 && classCount.Value>0)
                         {
-                            bodySort[classCount.Key]=$"            > Per Faction:{classCount.Value}/{max}\n";
+                            bodySort[classCount.Key]+=$"            > Per Faction:{classCount.Value}/{max}\n";
                         }
                     }                
                 }
