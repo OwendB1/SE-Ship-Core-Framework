@@ -596,6 +596,8 @@ namespace ShipCoreFramework
             {
                 MainCoreComponent = newMain;
                 MainCoreComponent.IsMainCore = true;
+                MainCoreComponent.SaveCoreState();
+                MainCoreComponent.CoreBlock?.RefreshCustomInfo();
             }
         }
         

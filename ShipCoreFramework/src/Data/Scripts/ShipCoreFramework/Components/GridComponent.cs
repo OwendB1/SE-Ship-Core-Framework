@@ -43,11 +43,21 @@ namespace ShipCoreFramework
             grid.GetBlocks(blocks);
             
             //MUST get beacons before blocks or blocks will be added based on default class
-            var orderedBlocks = blocks.OrderBy(b => b.FatBlock is IMyBeacon).ToList();
-            foreach (var beacon in orderedBlocks)
+            var beaconBlocks = blocks.Where(b => b.FatBlock is IMyBeacon).ToList();
+            foreach (var beacon in beaconBlocks)
             {
                 BlockAdded(beacon);
             }
+
+            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+            {
+                var otherBlocks = blocks.Where(b => !(b.FatBlock is IMyBeacon)).ToList();
+                foreach (var block in otherBlocks)
+                {
+                    BlockAdded(block);
+                }
+                // MyAPIGateway.Parallel.ForEach(otherBlocks, block => BlockAdded(block));
+            });
         }
 
         private void BlockAddedEvent(IMySlimBlock block)
@@ -73,7 +83,7 @@ namespace ShipCoreFramework
                 }
             }
 
-            Utils.Log(((IMyCubeGrid)Grid).CustomName + ": Block Added: " + Utils.GetBlockTypeId(block) + " | " + Utils.GetBlockSubtypeId(block));
+            Utils.Log(((IMyCubeGrid)Grid).CustomName + ": Block Added: " + Utils.GetBlockTypeId(block) + " | " + Utils.GetBlockSubtypeId(block), 3);
             
             var beacon = block.FatBlock as IMyBeacon;
             if (beacon != null && Session.Config.ShipCores.Any(core => core.SubtypeId == block.FatBlock.BlockDefinition.SubtypeId))

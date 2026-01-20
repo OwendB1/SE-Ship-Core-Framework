@@ -87,8 +87,6 @@ namespace ShipCoreFramework
                 newMain.IsMainCore = true;
                 newMain.SaveCoreState();
                 newMain.CoreBlock?.RefreshCustomInfo();
-
-                group.Activate(newMain);
             }
             
             var players = new List<IMyPlayer>();
@@ -97,8 +95,7 @@ namespace ShipCoreFramework
                 CubegridEntityId = ActionData.CubegridEntityId,
                 BlockEntityId = ActionData.BlockEntityId
             });
-            foreach (var p in players)
-                Session.Networking.SendToPlayer(sync, p.SteamUserId);
+            foreach (var p in players) Session.Networking.SendToPlayer(sync, p.SteamUserId);
         }
     }
     
@@ -135,10 +132,6 @@ namespace ShipCoreFramework
                 var terminal = kv.Key as IMyTerminalBlock;
                 terminal?.RefreshCustomInfo();
             }
-
-            CoreComponent newMain;
-            if (group.CoreDictionary.TryGetValue(block, out newMain))
-                group.Activate(newMain);
         }
     }
     
