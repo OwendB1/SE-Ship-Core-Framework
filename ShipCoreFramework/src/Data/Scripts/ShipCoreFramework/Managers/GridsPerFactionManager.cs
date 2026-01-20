@@ -17,7 +17,7 @@ namespace ShipCoreFramework
 
         private static ModConfig Config => Session.Config;
 
-        internal static bool WillGroupBeWithinFactionLimits(GroupComponent group, string coreType)
+        internal static bool IsGroupWithinFactionLimits(GroupComponent group, string coreType)
         {
             if (!IsApplicableGrid(group)) return true;
             var factionId = group.OwningFaction?.FactionId ?? -1;
@@ -46,7 +46,7 @@ namespace ShipCoreFramework
 
             if (!PerFaction.ContainsKey(factionId) || !PerFaction[factionId].ContainsKey(coreType)) return true;
             var currentCount = PerFaction[factionId][coreType];
-            if (currentCount + 1 <= maxAllowedGrids) return true;
+            if (currentCount <= maxAllowedGrids) return true;
             Utils.ShowChatMessage($"Faction limit reached, you have {currentCount}/{maxAllowedGrids} {coreType} built!");
             return false;
         }
@@ -81,8 +81,10 @@ namespace ShipCoreFramework
             
             Dictionary<string, int> perGroup;
             if (!PerFaction.TryGetValue(factionId, out perGroup)) return;
-            if (!perGroup.ContainsKey(gridClassId)) return;
-            if (perGroup[gridClassId] <= 0) return;
+            
+            int value;
+            if (!perGroup.TryGetValue(gridClassId, out value)) return;
+            if (value <= 0) return;
             
             perGroup[gridClassId]--;
             if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = factionId, CoreType = gridClassId, Delta = -1 });

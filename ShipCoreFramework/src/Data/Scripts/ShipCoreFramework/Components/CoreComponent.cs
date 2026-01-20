@@ -29,20 +29,23 @@ namespace ShipCoreFramework
             }
         }
         
-        public void Init(IMyBeacon beacon, GridComponent gridComponent, GroupComponent groupComponent)
+        public bool Init(IMyBeacon beacon, GridComponent gridComponent, GroupComponent groupComponent)
         {   
             CoreBlock = beacon;
             if (CoreBlock.OwnerId == 0)
             {
-                MyAPIGateway.Utilities.InvokeOnGameThread(() => Init(beacon, gridComponent, groupComponent));
-                return;
+                Utils.ShowChatMessage($"Was not able to determine ownership of core { CoreBlock.CustomName }, removing from world!");
+                GridComponent.RemoveAndRefund(CoreBlock.SlimBlock);
+                GridComponent.BlockRemoved(CoreBlock.SlimBlock);
+                return false;
             }
             
             if (Session.Config.SelectedNoCore == null)
             {
                 Utils.Log("NOCORE is NULL for CORE", 3);
-                return;
+                return false;
             }
+            
             CubeGridModifiers.AddModifiers(CoreBlock);
             IsMainCore = false;
             GridComponent = gridComponent;
@@ -52,7 +55,7 @@ namespace ShipCoreFramework
             var persistedMain = CoreBlock.Storage != null
                                 && CoreBlock.Storage.ContainsKey(Session.CoreStateStorageGUID)
                                 && CoreBlock.Storage[Session.CoreStateStorageGUID] == "1";
-            var groupHasMain = groupComponent.MainCoreComponent != null;
+            var groupHasMain = _groupComponent.MainCoreComponent != null;
             
             CoreBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged;
             CoreBlock.AppendingCustomInfo += AppendingCustomInfo;
@@ -61,7 +64,7 @@ namespace ShipCoreFramework
                 Utils.Log($"Other Core Exist: {CoreBlock.CubeGrid.CustomName}", 3);
                 GridComponent.RemoveAndRefund(CoreBlock.SlimBlock);
                 Utils.ShowNotification("Other Core Type Exist On Grid", 10000, CoreBlock.CubeGrid.BigOwners.FirstOrDefault(), true);
-                return;
+                return false;
             }
             
             var relationship = CoreBlock.GetUserRelationToOwner(CoreBlock.CubeGrid.BigOwners.FirstOrDefault());
@@ -80,15 +83,13 @@ namespace ShipCoreFramework
                     {
                         Utils.ShowNotification("Cores can only be built by the grid owner!", 10000, CoreBlock.OwnerId, true);
                         CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
-                        return;
+                        return false;
                     }
                 }
             }
             
-            var onlyCore = IsOnlyCoreOfThisTypeOnGrid();
-            Utils.Log($"Core Initial: {SubtypeId}, PersistedMain: {persistedMain}, OnlyCore: {onlyCore}", 3);
-
-            if (!groupHasMain && (persistedMain || onlyCore))
+            Utils.Log($"Core Initial: {SubtypeId}, GroupHasMain: {groupHasMain}, PersistedMain: {persistedMain}", 3);
+            if (!groupHasMain || persistedMain)
             {
                 IsMainCore = true;
                 _groupComponent.Activate(this);
@@ -97,21 +98,17 @@ namespace ShipCoreFramework
             {
                 IsMainCore = false;
             }
-            
-            _groupComponent.DefenseValuesChanged();
-            
-            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+
+            if (!GridsPerFactionManager.IsGroupWithinFactionLimits(_groupComponent, SubtypeId) || !GridsPerPlayerManager.IsGroupWithinPlayerLimits(_groupComponent, SubtypeId))
             {
-                if (GridsPerFactionManager.WillGroupBeWithinFactionLimits(groupComponent, SubtypeId)) return;
                 GridComponent.RemoveAndRefund(CoreBlock.SlimBlock);
                 GridComponent.BlockRemoved(CoreBlock.SlimBlock);
                 _groupComponent.ResetCore();
-            
-                if (GridsPerPlayerManager.WillGroupBeWithinPlayerLimits(groupComponent, SubtypeId)) return;
-                GridComponent.RemoveAndRefund(CoreBlock.SlimBlock);
-                GridComponent.BlockRemoved(CoreBlock.SlimBlock);
-                _groupComponent.ResetCore();
-            });
+                return false;
+            }
+
+            _groupComponent.DefenseValuesChanged();
+            return true;
         }
         
         private void OnUpgradeValuesChanged()
@@ -139,11 +136,6 @@ namespace ShipCoreFramework
                 var subtype = Utils.GetBlockSubtypeId(terminal.SlimBlock);
                 return coreSubtypeId.Any(sub => sub == subtype);
             });
-        }
-        
-        private bool IsOnlyCoreOfThisTypeOnGrid()
-        {
-            return _groupComponent.CoreDictionary.Count(b => Utils.GetBlockSubtypeId(b.Key.SlimBlock) == SubtypeId) == 0;
         }
         
         internal void SaveCoreState()

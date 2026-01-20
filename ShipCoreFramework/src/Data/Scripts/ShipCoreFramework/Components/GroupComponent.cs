@@ -14,7 +14,6 @@ namespace ShipCoreFramework
     {
         internal ShipCore ShipCore => Session.Config.GetShipCoreByTypeId(MainCoreComponent?.SubtypeId ?? string.Empty);
         internal GridModifiers Modifiers => CubeGridModifiers.GetActiveModifiers(this);
-        //internal long OwnerId => MainCoreComponent?.CoreBlock.OwnerId ?? this.GetMajorityOwnerId();
         internal long OwnerId
         {
             get
@@ -217,7 +216,7 @@ namespace ShipCoreFramework
             GridComponent comp;
             if (GridDictionary.TryGetValue(g, out comp))
             {
-                if (MainCoreComponent.GridComponent.Grid.EntityId == g.EntityId) CoreRemoved(MainCoreComponent);
+                if (MainCoreComponent?.GridComponent.Grid.EntityId == g.EntityId) CoreRemoved(MainCoreComponent);
                 comp.Clean();
                 GridDictionary.Remove(g);
             }

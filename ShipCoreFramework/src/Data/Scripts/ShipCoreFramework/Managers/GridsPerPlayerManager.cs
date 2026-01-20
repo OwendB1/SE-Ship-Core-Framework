@@ -19,7 +19,7 @@ namespace ShipCoreFramework
 
         private static ModConfig Config => Session.Config;
 
-        internal static bool WillGroupBeWithinPlayerLimits(GroupComponent group, string newCoreType)
+        internal static bool IsGroupWithinPlayerLimits(GroupComponent group, string newCoreType)
         {
             if (!IsApplicableGroup(group)) return true;
             var playerId = group.OwnerId;
@@ -35,7 +35,7 @@ namespace ShipCoreFramework
                 var maxAllowedGrids = Config.GetShipCoreByTypeId(newCoreType).MaxPerPlayer;
                 if (maxAllowedGrids < 0) return true;
                 var currentCount = PerPlayer[playerId][newCoreType];
-                if (currentCount + 1 <= maxAllowedGrids) return true;
+                if (currentCount <= maxAllowedGrids) return true;
                 Utils.ShowChatMessage("Per player limit of this core has been hit!");
                 return false;
             }
@@ -75,8 +75,10 @@ namespace ShipCoreFramework
             
             Dictionary<string, int> perGridClass;
             if (!PerPlayer.TryGetValue(playerId, out perGridClass)) return;
-            if (!perGridClass.ContainsKey(coreType)) return;
-            if (perGridClass[coreType] <= 0) return;
+            
+            int value;
+            if (!perGridClass.TryGetValue(coreType, out value)) return;
+            if (value <= 0) return;
 
             perGridClass[coreType]--;
             if (!_suppressEvents) LimitsNexusSync.BroadcastPlayerChange(new PlayerChange { PlayerId = playerId, CoreType = coreType, Delta = -1 });

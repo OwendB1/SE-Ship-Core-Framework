@@ -41,15 +41,12 @@ namespace ShipCoreFramework
 
             var blocks = new List<IMySlimBlock>();
             grid.GetBlocks(blocks);
+            
             //MUST get beacons before blocks or blocks will be added based on default class
-            var beaconBlocks = blocks.Where(b => b.FatBlock is IMyBeacon).ToList();
-            foreach (var beacon in beaconBlocks)
+            var orderedBlocks = blocks.OrderBy(b => b.FatBlock is IMyBeacon).ToList();
+            foreach (var beacon in orderedBlocks)
             {
                 BlockAdded(beacon);
-            }
-            foreach (var block in blocks)
-            {
-                BlockAdded(block);
             }
         }
 
@@ -82,8 +79,23 @@ namespace ShipCoreFramework
             if (beacon != null && Session.Config.ShipCores.Any(core => core.SubtypeId == block.FatBlock.BlockDefinition.SubtypeId))
             {
                 var newCore = new CoreComponent();
-                newCore.Init(beacon, this, GroupComponent);
-                CoreDictionary.TryAdd(block.FatBlock, newCore);
+                MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+                {
+                    var success = newCore.Init(beacon, this, GroupComponent);
+                    if (success) CoreDictionary.TryAdd(block.FatBlock, newCore);
+                    Utils.Log(success.ToString(), 3);
+                
+                    TryApplyLimitsOnAdd(block, limitBasedPunish);
+
+                    lock (_blocksLock)
+                    {
+                        _blocks.Add(block);
+                    }
+
+                    var funcBlock = block.FatBlock as IMyFunctionalBlock;
+                    if (funcBlock != null) funcBlock.EnabledChanged += FuncBlockOnEnabledChanged;
+                    GroupComponent.ApplyModifiers(GroupComponent.Modifiers);
+                });
             }
             else
             {
@@ -110,18 +122,18 @@ namespace ShipCoreFramework
                     RemoveAndRefund(block);
                     return;
                 }
+                
+                TryApplyLimitsOnAdd(block, limitBasedPunish);
+
+                lock (_blocksLock)
+                {
+                    _blocks.Add(block);
+                }
+
+                var funcBlock = block.FatBlock as IMyFunctionalBlock;
+                if (funcBlock != null) funcBlock.EnabledChanged += FuncBlockOnEnabledChanged;
+                GroupComponent.ApplyModifiers(GroupComponent.Modifiers);
             }
-
-            TryApplyLimitsOnAdd(block, limitBasedPunish);
-
-            lock (_blocksLock)
-            {
-                _blocks.Add(block);
-            }
-
-            var funcBlock = block.FatBlock as IMyFunctionalBlock;
-            if (funcBlock != null) funcBlock.EnabledChanged += FuncBlockOnEnabledChanged;
-            GroupComponent.ApplyModifiers(GroupComponent.Modifiers);
         }
 
         private void TryApplyLimitsOnAdd(IMySlimBlock block, bool limitBasedPunish)
