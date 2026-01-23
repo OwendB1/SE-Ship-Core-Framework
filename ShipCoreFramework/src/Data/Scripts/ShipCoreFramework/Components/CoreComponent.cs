@@ -66,6 +66,14 @@ namespace ShipCoreFramework
                 Utils.ShowNotification("Other Core Type Exist On Grid", 10000, CoreBlock.CubeGrid.BigOwners.FirstOrDefault(), true);
                 return false;
             }
+
+            if (groupComponent.GridDictionary.Count + 1 > groupComponent.ShipCore.MaxBackupCores)
+            {
+                Utils.Log($"Exceeds max number of backup cores: {CoreBlock.CubeGrid.CustomName}", 3);
+                GridComponent.RemoveAndRefund(CoreBlock.SlimBlock);
+                Utils.ShowNotification("This core exceeds max backup cores", 10000, CoreBlock.CubeGrid.BigOwners.FirstOrDefault(), true);
+                return false;
+            }
             
             var relationship = CoreBlock.GetUserRelationToOwner(CoreBlock.CubeGrid.BigOwners.FirstOrDefault());
             if (relationship == MyRelationsBetweenPlayerAndBlock.Neutral || relationship == MyRelationsBetweenPlayerAndBlock.Enemies)

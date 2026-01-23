@@ -147,8 +147,8 @@ namespace ShipCoreFramework
                 
                 //var yieldValue = (baseYield + effSum) * modifiers.RefineEfficiency;
                 //if (yieldValue < 0f) yieldValue = 0f;
-                var prodValue = baseSpeed * prodSum * modifiers.RefineSpeed;
-                var yieldValue = baseYield * effSum * modifiers.RefineEfficiency;
+                var prodValue = baseSpeed * prodSum == 0f ? 1f : prodSum * modifiers.RefineSpeed;
+                var yieldValue = baseYield * effSum == 0f ? 1f : effSum * modifiers.RefineEfficiency;
                 refinery.UpgradeValues["Productivity"]  = prodValue;
                 refinery.UpgradeValues["Effectiveness"] = yieldValue;
             }

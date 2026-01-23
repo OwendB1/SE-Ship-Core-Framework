@@ -240,6 +240,8 @@ namespace ShipCoreFramework
         public string SubtypeId = string.Empty;
         [XmlElement("UniqueName")]
         public string UniqueName = string.Empty;
+        [XmlElement("MaxBackupCores")]
+        public int MaxBackupCores = -1;
         [XmlElement("ForceBroadCast")]
         public bool ForceBroadCast;
         [XmlElement("ForceBroadCastRange")]
