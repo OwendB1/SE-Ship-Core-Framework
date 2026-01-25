@@ -133,6 +133,46 @@ namespace ShipCoreFramework
             return ownersPerGrid.Count == 0 ? 0 : ownersPerGrid.MaxBy(kvp => kvp.Value).Key;
         }
         
+        internal static void RemoveAndRefund(this IMySlimBlock block)
+        {
+            var grid = block.CubeGrid;
+            var cargoContainers = new List<IMyCargoContainer>();
+            MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(grid).GetBlocksOfType(cargoContainers);
+            if (cargoContainers.Count != 0)
+            {
+                IMyCargoContainer selectedCargo = null;
+                var maxAvailableVolume = -1.0f;
+                foreach (var cargo in cargoContainers)
+                {
+                    var inventory = cargo.GetInventory();
+                    if (inventory == null) continue;
+
+                    var availableVolume = (float)inventory.MaxVolume - (float)inventory.CurrentVolume;
+
+                    if (!(availableVolume > maxAvailableVolume)) continue;
+                    maxAvailableVolume = availableVolume;
+                    selectedCargo = cargo;
+                }
+                if (selectedCargo != null)
+                {
+                    var cargoInventory = selectedCargo.GetInventory();
+                    MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+                    {
+                        block.DecreaseMountLevel(block.Integrity, cargoInventory, true);
+                        block.MoveItemsFromConstructionStockpile(cargoInventory);
+                    });
+                }
+            }
+            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+            {
+                grid.RemoveBlock(block, updatePhysics: true);
+            });
+
+            var projectors = new List<IMyProjector>();
+            MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(grid).GetBlocksOfType(projectors);
+            projectors.ForEach(p => p.Enabled = false);
+        }
+        
         internal static T LoadFromSandbox<T>(string keyName)
         {
             string savedBlobB64;

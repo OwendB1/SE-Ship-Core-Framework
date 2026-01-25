@@ -307,11 +307,7 @@ namespace ShipCoreFramework
                     break;
                 case PunishmentType.Delete:
                     if (func != null) func.Enabled = false;
-                    if (GridDictionary.ContainsKey((MyCubeGrid)block.CubeGrid))
-                    {
-                        var gridComponent = GridDictionary[(MyCubeGrid)block.CubeGrid];
-                        gridComponent.RemoveAndRefund(block);
-                    }
+                    block.RemoveAndRefund();
                     break;
                 case PunishmentType.Explode:
                     block.DoDamage(block.Integrity, damageType, true);

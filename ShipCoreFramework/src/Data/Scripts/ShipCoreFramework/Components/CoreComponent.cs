@@ -31,13 +31,14 @@ namespace ShipCoreFramework
         
         public bool Init(IMyBeacon beacon, GridComponent gridComponent, GroupComponent groupComponent)
         {   
-            Utils.Log($"Init Core: {beacon.CustomName}", 3);
             CoreBlock = beacon;
-            if (beacon.OwnerId == 0)
+            if (CoreBlock.OwnerId == 0)
             {
-                Utils.ShowChatMessage($"Was not able to determine ownership of core { beacon.CustomName }, removing from world!");
-                GridComponent.RemoveAndRefund(beacon.SlimBlock);
-                GridComponent.BlockRemoved(beacon.SlimBlock);
+                var name = CoreBlock.CustomName;
+                Utils.Log($"Was not able to determine ownership of core { name }, removing from world!");
+                CoreBlock.SlimBlock.RemoveAndRefund();
+                Utils.Log($"Removed Core: { name }", 3);
+                GridComponent.BlockRemoved(CoreBlock.SlimBlock);
                 return false;
             }
             
@@ -63,7 +64,7 @@ namespace ShipCoreFramework
             if (CheckIfCoreOfOtherTypeExists())
             {
                 Utils.Log($"Other Core Exist: {CoreBlock.CubeGrid.CustomName}", 3);
-                GridComponent.RemoveAndRefund(CoreBlock.SlimBlock);
+                CoreBlock.SlimBlock.RemoveAndRefund();
                 Utils.ShowNotification("Other Core Type Exist On Grid", 10000, CoreBlock.CubeGrid.BigOwners.FirstOrDefault(), true);
                 return false;
             }
@@ -71,7 +72,7 @@ namespace ShipCoreFramework
             if (groupComponent.CoreDictionary.Count > groupComponent.ShipCore?.MaxBackupCores && groupComponent.ShipCore?.MaxBackupCores > 0)
             {
                 Utils.Log($"Exceeds max number of backup cores: {CoreBlock.CubeGrid.CustomName}", 3);
-                GridComponent.RemoveAndRefund(CoreBlock.SlimBlock);
+                CoreBlock.SlimBlock.RemoveAndRefund();
                 Utils.ShowNotification("This core exceeds max backup cores", 10000, CoreBlock.CubeGrid.BigOwners.FirstOrDefault(), true);
                 return false;
             }
@@ -110,7 +111,7 @@ namespace ShipCoreFramework
 
             if (!GridsPerFactionManager.IsGroupWithinFactionLimits(_groupComponent, SubtypeId) || !GridsPerPlayerManager.IsGroupWithinPlayerLimits(_groupComponent, SubtypeId))
             {
-                GridComponent.RemoveAndRefund(CoreBlock.SlimBlock);
+                CoreBlock.SlimBlock.RemoveAndRefund();
                 GridComponent.BlockRemoved(CoreBlock.SlimBlock);
                 _groupComponent.ResetCore();
                 return false;

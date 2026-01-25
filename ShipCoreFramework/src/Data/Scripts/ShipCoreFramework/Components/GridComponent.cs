@@ -118,19 +118,19 @@ namespace ShipCoreFramework
                 if (GroupComponent.GroupBlocksCount >= maxBlocks && maxBlocks > 0)
                 {
                     Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxBlocks: " + (GroupComponent.GroupBlocksCount > maxBlocks), 10000, firstBigOwner);
-                    RemoveAndRefund(block);
+                    block.RemoveAndRefund();
                     return;
                 }
                 if (GroupComponent.GroupPCU >= maxPCU && maxPCU > 0)
                 {
                     Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxPCU: " + (GroupComponent.GroupPCU > maxPCU), 10000, firstBigOwner);
-                    RemoveAndRefund(block);
+                    block.RemoveAndRefund();
                     return;
                 }
                 if (GroupComponent.GroupMass >= maxMass && maxMass > 0f)
                 {
                     Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxMass: " + (GroupComponent.GroupMass > maxMass), 10000, firstBigOwner);
-                    RemoveAndRefund(block);
+                    block.RemoveAndRefund();
                     return;
                 }
                 
@@ -337,46 +337,6 @@ namespace ShipCoreFramework
                     bucket.Members.Add(block);
                 }
             }
-        }
-
-        internal void RemoveAndRefund(IMySlimBlock block)
-        {
-            IMyCubeGrid grid = Grid;
-            var cargoContainers = new List<IMyCargoContainer>();
-            MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(grid).GetBlocksOfType(cargoContainers);
-            if (cargoContainers.Count != 0)
-            {
-                IMyCargoContainer selectedCargo = null;
-                var maxAvailableVolume = -1.0f;
-                foreach (var cargo in cargoContainers)
-                {
-                    var inventory = cargo.GetInventory();
-                    if (inventory == null) continue;
-
-                    var availableVolume = (float)inventory.MaxVolume - (float)inventory.CurrentVolume;
-
-                    if (!(availableVolume > maxAvailableVolume)) continue;
-                    maxAvailableVolume = availableVolume;
-                    selectedCargo = cargo;
-                }
-                if (selectedCargo != null)
-                {
-                    var cargoInventory = selectedCargo.GetInventory();
-                    MyAPIGateway.Utilities.InvokeOnGameThread(() =>
-                    {
-                        block.DecreaseMountLevel(block.Integrity, cargoInventory, true);
-                        block.MoveItemsFromConstructionStockpile(cargoInventory);
-                    });
-                }
-            }
-            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
-            {
-                grid.RemoveBlock(block, updatePhysics: true);
-            });
-
-            var projectors = new List<IMyProjector>();
-            MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(grid).GetBlocksOfType(projectors);
-            projectors.ForEach(p => p.Enabled = false);
         }
 
         internal void Clean()
