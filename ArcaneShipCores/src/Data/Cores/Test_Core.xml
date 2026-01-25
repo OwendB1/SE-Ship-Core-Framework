@@ -6,6 +6,7 @@
   <ForceBroadCastRange>1900</ForceBroadCastRange>
   <LargeGridStatic>true</LargeGridStatic>
   <LargeGridMobile>true</LargeGridMobile>
+  <MaxBackupCores>5</MaxBackupCores>
   <MaxBlocks>5000</MaxBlocks>
   <MaxMass>-1</MaxMass>
   <MaxPCU>10000</MaxPCU>

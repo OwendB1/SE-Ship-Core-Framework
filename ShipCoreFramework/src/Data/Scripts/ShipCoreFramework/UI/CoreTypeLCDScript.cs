@@ -174,6 +174,21 @@ namespace ShipCoreFramework
                 punishSpeed ? new Cell("X", failColor) : new Cell()
             });
             
+            if (ShipCore.MaxBackupCores > 0 )
+            {
+                var passed = GroupComponent.CoreDictionary.Count <= ShipCore.MaxBackupCores;
+                var target = ShipCore.MaxBackupCores.ToString();
+
+                _gridResultsTable.Rows.Add(new Row
+                {
+                    new Cell("Backup cores: "),
+                    new Cell(GroupComponent.CoreDictionary.Count.ToString()),
+                    new Cell("/"),
+                    new Cell(target, passed ? successColor : failColor),
+                    passed ? new Cell() : new Cell("X", failColor)
+                });
+            }
+            
             if (ShipCore.MaxBlocks > 1 )
             {
                 var passed = Grid.BlocksCount <= ShipCore.MaxBlocks;
@@ -183,22 +198,26 @@ namespace ShipCoreFramework
                 {
                     new Cell("Blocks: "),
                     new Cell(Grid.BlocksCount.ToString()),
-                    new Cell(""),
+                    new Cell("/"),
                     new Cell(target, passed ? successColor : failColor),
                     passed ? new Cell() : new Cell("X", failColor)
                 });
             }
 
             if (ShipCore.MaxMass > 1)
+            {
+                var passed = Grid.Mass <= ShipCore.MaxMass;
+                var target = ShipCore.MaxMass.ToString(CultureInfo.InvariantCulture);
+                
                 _gridResultsTable.Rows.Add(new Row
                 {
                     new Cell("Mass: "),
                     new Cell(Grid.Mass.ToString(CultureInfo.InvariantCulture)),
                     new Cell("/"),
-                    new Cell(ShipCore.MaxMass.ToString(CultureInfo.InvariantCulture),
-                        Grid.Mass <= ShipCore.MaxMass ? successColor : failColor),
-                    Grid.Mass <= ShipCore.MaxMass ? new Cell() : new Cell("X", failColor)
+                    new Cell(target, passed ? successColor : failColor),
+                    passed ? new Cell() : new Cell("X", failColor)
                 });
+            }
 
             if (ShipCore.MaxPCU > 1)
                 _gridResultsTable.Rows.Add(new Row
