@@ -176,13 +176,13 @@ namespace ShipCoreFramework
             
             if (ShipCore.MaxBackupCores > 0 )
             {
-                var passed = GroupComponent.CoreDictionary.Count <= ShipCore.MaxBackupCores;
+                var passed = GroupComponent.CoreDictionary.Count - 1 <= ShipCore.MaxBackupCores;
                 var target = ShipCore.MaxBackupCores.ToString();
 
                 _gridResultsTable.Rows.Add(new Row
                 {
                     new Cell("Backup cores: "),
-                    new Cell(GroupComponent.CoreDictionary.Count.ToString()),
+                    new Cell((GroupComponent.CoreDictionary.Count - 1).ToString()),
                     new Cell("/"),
                     new Cell(target, passed ? successColor : failColor),
                     passed ? new Cell() : new Cell("X", failColor)

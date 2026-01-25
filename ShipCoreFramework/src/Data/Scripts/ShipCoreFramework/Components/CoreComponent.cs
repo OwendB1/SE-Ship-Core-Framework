@@ -68,7 +68,7 @@ namespace ShipCoreFramework
                 return false;
             }
 
-            if (groupComponent.GridDictionary.Count + 1 > groupComponent.ShipCore?.MaxBackupCores && groupComponent.ShipCore?.MaxBackupCores > 0)
+            if (groupComponent.CoreDictionary.Count > groupComponent.ShipCore?.MaxBackupCores && groupComponent.ShipCore?.MaxBackupCores > 0)
             {
                 Utils.Log($"Exceeds max number of backup cores: {CoreBlock.CubeGrid.CustomName}", 3);
                 GridComponent.RemoveAndRefund(CoreBlock.SlimBlock);
