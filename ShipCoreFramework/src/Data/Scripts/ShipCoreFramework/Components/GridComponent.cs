@@ -16,7 +16,7 @@ namespace ShipCoreFramework
         internal readonly ConcurrentDictionary<BlockLimit, LimitBucket> Limits = new ConcurrentDictionary<BlockLimit, LimitBucket>();
         internal readonly ConcurrentDictionary<IMyCubeBlock, CoreComponent> CoreDictionary = new ConcurrentDictionary<IMyCubeBlock, CoreComponent>();
 
-        private GroupComponent GroupComponent => Session.GroupDict[GroupData];
+        private GroupComponent GroupComponent => Session.GroupDict.FirstOrDefault(kvp => kvp.Key == GroupData).Value;
 
         internal static BlockKey KeyOf(IMySlimBlock b)
         {
@@ -91,6 +91,7 @@ namespace ShipCoreFramework
                 var newCore = new CoreComponent();
                 MyAPIGateway.Utilities.InvokeOnGameThread(() =>
                 {
+                    if (GroupComponent == null) return;
                     var success = newCore.Init(beacon, this, GroupComponent);
                     if (success) CoreDictionary.TryAdd(block.FatBlock, newCore);
                     Utils.Log(success.ToString(), 3);

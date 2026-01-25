@@ -31,12 +31,13 @@ namespace ShipCoreFramework
         
         public bool Init(IMyBeacon beacon, GridComponent gridComponent, GroupComponent groupComponent)
         {   
+            Utils.Log($"Init Core: {beacon.CustomName}", 3);
             CoreBlock = beacon;
-            if (CoreBlock.OwnerId == 0)
+            if (beacon.OwnerId == 0)
             {
-                Utils.ShowChatMessage($"Was not able to determine ownership of core { CoreBlock.CustomName }, removing from world!");
-                GridComponent.RemoveAndRefund(CoreBlock.SlimBlock);
-                GridComponent.BlockRemoved(CoreBlock.SlimBlock);
+                Utils.ShowChatMessage($"Was not able to determine ownership of core { beacon.CustomName }, removing from world!");
+                GridComponent.RemoveAndRefund(beacon.SlimBlock);
+                GridComponent.BlockRemoved(beacon.SlimBlock);
                 return false;
             }
             
