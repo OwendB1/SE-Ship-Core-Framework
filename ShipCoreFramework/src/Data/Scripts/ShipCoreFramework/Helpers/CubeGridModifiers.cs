@@ -93,8 +93,8 @@ namespace ShipCoreFramework
             var thruster = block as IMyThrust;
             if (thruster != null)
             {
-                if(modifiers.ThrusterForce != -1)thruster.ThrustMultiplier = modifiers.ThrusterForce;
-                if(modifiers.ThrusterEfficiency != -1)thruster.PowerConsumptionMultiplier = 1f / modifiers.ThrusterEfficiency;
+                if(modifiers.ThrusterForce != -1) thruster.ThrustMultiplier = modifiers.ThrusterForce;
+                if(modifiers.ThrusterEfficiency != -1) thruster.PowerConsumptionMultiplier = 1f / modifiers.ThrusterEfficiency;
             }
 
             var gyro = block as IMyGyro;
@@ -105,7 +105,7 @@ namespace ShipCoreFramework
             }
 
             var refinery = block as IMyRefinery;
-            if (refinery != null && (modifiers.RefineSpeed != -1 && modifiers.RefineEfficiency != -1))
+            if (refinery != null && (modifiers.RefineSpeed != -1f && modifiers.RefineEfficiency != -1))
             {
                 var refDef = cubeDef as MyRefineryDefinition;
                 var baseSpeed = refDef?.RefineSpeed ?? 1f;
@@ -140,16 +140,10 @@ namespace ShipCoreFramework
                         }
                     }
                 }
-
-                //var targetSpeed = (baseSpeed + prodSum) * modifiers.RefineSpeed;
-                //var prodValue = targetSpeed - baseSpeed;
-                //if (prodValue < -baseSpeed) prodValue = -baseSpeed;
                 
-                //var yieldValue = (baseYield + effSum) * modifiers.RefineEfficiency;
-                //if (yieldValue < 0f) yieldValue = 0f;
-                var prodValue = baseSpeed * (prodSum == 0f ? 1f : prodSum) * modifiers.RefineSpeed;
-                var yieldValue = baseYield * (effSum == 0f ? 1f : effSum) *  modifiers.RefineEfficiency;
-                refinery.UpgradeValues["Productivity"]  = prodValue;
+                var prodValue = (baseSpeed * modifiers.RefineSpeed) + (prodSum * modifiers.RefineSpeed) - baseSpeed;
+                var yieldValue = (baseYield * modifiers.RefineEfficiency) + (effSum * modifiers.RefineEfficiency);
+                refinery.UpgradeValues["Productivity"] = prodValue;
                 refinery.UpgradeValues["Effectiveness"] = yieldValue;
             }
 
@@ -183,12 +177,8 @@ namespace ShipCoreFramework
                         }
                     }
                 }
-
-                //var targetSpeed = (baseSpeed + prodSum) * modifiers.AssemblerSpeed;
-                //var prodValue = targetSpeed - baseSpeed;
-                //if (prodValue < -baseSpeed) prodValue = -baseSpeed;
-                var prodValue = baseSpeed*prodSum*modifiers.AssemblerSpeed;
-
+                
+                var prodValue = baseSpeed * modifiers.RefineSpeed + prodSum * modifiers.RefineSpeed - baseSpeed;
                 assembler.UpgradeValues["Productivity"] = prodValue;
             }
 
