@@ -9,8 +9,7 @@ namespace ShipCoreFramework
         {
             UniqueName = "DEFAULT-NO-CORE-ALL-GRID-TYPES",
             SubtypeId = "NO-CORE",
-            LargeGridStatic = true,
-            LargeGridMobile = true,
+            MobilityType = MobilityType.Both,
             MaxBlocks = 30000,
             Modifiers = new GridModifiers(), // Use default modifiers
             PassiveDefenseModifiers = new GridDefenseModifiers(),

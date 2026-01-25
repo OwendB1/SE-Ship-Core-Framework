@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -34,10 +35,45 @@ namespace ShipCoreFramework
             CoreBlock = beacon;
             if (CoreBlock.OwnerId == 0)
             {
-                var name = CoreBlock.CustomName;
-                Utils.ShowChatMessage($"Was not able to determine ownership of core { name }, removing from world!");
+                var found = false;
+                for (var i = 0; i < CoreBlock.SlimBlock.ComponentStack.GroupCount; i++)
+                {
+                    if (CoreBlock.SlimBlock.ComponentStack.GetComponentStackInfo(i).ComponentName != "Computer") continue;
+                    found = true;
+                    break;
+                }
+                
+                if (found)
+                {
+                    var name = CoreBlock.CustomName;
+                    Utils.ShowChatMessage($"Was not able to determine ownership of core { name }, removing from world!");
+                }
+                else
+                {
+                    var subType = Utils.GetBlockSubtypeId(CoreBlock.SlimBlock);
+                    Utils.ShowChatMessage($"Core {subType} does not have any computer components for its build thus it will never have ownership, removing from world!");
+                }
                 CoreBlock.SlimBlock.RemoveAndRefund();
                 return false;
+            }
+            
+            var shipCoreType = Session.Config.GetShipCoreByTypeId(CoreBlock.BlockDefinition.SubtypeId);
+            switch (shipCoreType.MobilityType)
+            {
+                case MobilityType.Static:
+                    if (!CoreBlock.CubeGrid.IsStatic)
+                    {
+                        CoreBlock.SlimBlock.RemoveAndRefund();
+                        return false;
+                    }
+                    break;
+                case MobilityType.Mobile:
+                    if (CoreBlock.CubeGrid.IsStatic)
+                    {
+                        CoreBlock.SlimBlock.RemoveAndRefund();
+                        return false;
+                    }
+                    break;
             }
             
             if (Session.Config.SelectedNoCore == null)
@@ -69,7 +105,7 @@ namespace ShipCoreFramework
 
             if (groupComponent.CoreDictionary.Count > groupComponent.ShipCore?.MaxBackupCores && groupComponent.ShipCore?.MaxBackupCores > 0)
             {
-                Utils.Log($"Exceeds max number of backup cores: {CoreBlock.CubeGrid.CustomName}", 3);
+                Utils.Log($"Exceeds max number of backup cores: {CoreBlock.CubeGrid.CustomName}", 2);
                 CoreBlock.SlimBlock.RemoveAndRefund();
                 Utils.ShowNotification("This core exceeds max backup cores", 10000, CoreBlock.CubeGrid.BigOwners.FirstOrDefault(), true);
                 return false;
@@ -96,7 +132,7 @@ namespace ShipCoreFramework
                 }
             }
             
-            Utils.Log($"Core Initial: {SubtypeId}, GroupHasMain: {groupHasMain}, PersistedMain: {persistedMain}", 3);
+            Utils.Log($"Core Initial: {SubtypeId}, GroupHasMain: {groupHasMain}, PersistedMain: {persistedMain}", 1);
             if (!groupHasMain || persistedMain)
             {
                 IsMainCore = true;

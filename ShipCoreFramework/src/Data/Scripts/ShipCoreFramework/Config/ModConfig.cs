@@ -246,10 +246,8 @@ namespace ShipCoreFramework
         public bool ForceBroadCast;
         [XmlElement("ForceBroadCastRange")]
         public float ForceBroadCastRange;
-        [XmlElement("LargeGridStatic")]
-        public bool LargeGridStatic;
-        [XmlElement("LargeGridMobile")]
-        public bool LargeGridMobile;
+        [XmlElement("MobilityType")]
+        public MobilityType MobilityType = MobilityType.Both;
         [XmlElement("MaxBlocks")]
         public int MaxBlocks = -1;
         [XmlElement("MaxMass")]
@@ -351,6 +349,17 @@ namespace ShipCoreFramework
             Name = name;
             Value = value;
         }
+    }
+    
+    [XmlRoot("MobilityType")]
+    public enum MobilityType
+    {
+        [XmlElement("Static")]
+        Static = 0, 
+        [XmlElement("Mobile")]
+        Mobile = 1, 
+        [XmlElement("Both")]
+        Both = 2
     }
 
     [XmlRoot("BlockLimit")]

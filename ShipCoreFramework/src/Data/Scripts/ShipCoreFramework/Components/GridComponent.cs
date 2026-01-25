@@ -83,7 +83,7 @@ namespace ShipCoreFramework
                 }
             }
 
-            Utils.Log(((IMyCubeGrid)Grid).CustomName + ": Block Added: " + Utils.GetBlockTypeId(block) + " | " + Utils.GetBlockSubtypeId(block), 3);
+            Utils.Log(((IMyCubeGrid)Grid).CustomName + ": Block Added: " + Utils.GetBlockTypeId(block) + " | " + Utils.GetBlockSubtypeId(block));
             
             var beacon = block.FatBlock as IMyBeacon;
             if (beacon != null && Session.Config.ShipCores.Any(core => core.SubtypeId == block.FatBlock.BlockDefinition.SubtypeId))
@@ -94,7 +94,6 @@ namespace ShipCoreFramework
                     if (GroupComponent == null) return;
                     var success = newCore.Init(beacon, this, GroupComponent);
                     if (success) CoreDictionary.TryAdd(block.FatBlock, newCore);
-                    Utils.Log(success.ToString(), 3);
                 
                     TryApplyLimitsOnAdd(block, limitBasedPunish);
 

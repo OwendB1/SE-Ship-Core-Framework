@@ -2,6 +2,7 @@
 
 using System;
 using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 using VRageMath;
 
 #endregion
@@ -20,6 +21,7 @@ namespace ShipCoreFramework
 
             foreach (var kvp in groupComponent.GridDictionary)
             {
+                var group = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Physical, kvp.Key);
                 if(kvp.Key.IsStatic) return;
                 if (kvp.Key?.Physics == null) return;
                 var maxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.Modifiers.MaxSpeed;

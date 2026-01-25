@@ -112,7 +112,7 @@ namespace ShipCoreFramework
             MainCoreComponent = coreComponent;
 
             var grid = MainCoreComponent.GridComponent.Grid;
-            Utils.Log($"Activate: Activating logic for {((IMyCubeGrid)grid).CustomName}!", 2);
+            Utils.Log($"Activate: Activating logic for {((IMyCubeGrid)grid).CustomName}!", 1);
 
             GridsPerFactionManager.AddGridGroup(this);
             GridsPerPlayerManager.AddGridGroup(this);
@@ -325,8 +325,13 @@ namespace ShipCoreFramework
                 (ShipCore.MaxPCU > 0 && GroupPCU >= ShipCore.MaxPCU) ||
                 (ShipCore.MaxMass > 0 && GroupMass >= ShipCore.MaxMass))
             {
-                if (ShipCore.LargeGridMobile) PunishSpeed = true;
-                if (ShipCore.LargeGridStatic) PunishModifiers = true;
+                if (ShipCore.MobilityType == MobilityType.Mobile) PunishSpeed = true;
+                if (ShipCore.MobilityType == MobilityType.Static) PunishModifiers = true;
+                if (ShipCore.MobilityType == MobilityType.Both)
+                {
+                    PunishModifiers = true;
+                    PunishSpeed = true;
+                }
                 var modifiers = GetPassiveDefenseModifiers();
                 foreach (var kvp in GridDictionary)
                 {
@@ -335,8 +340,13 @@ namespace ShipCoreFramework
             }
             else
             {
-                if (ShipCore.LargeGridMobile) PunishSpeed = false;
-                if (ShipCore.LargeGridStatic) PunishModifiers = false;
+                if (ShipCore.MobilityType == MobilityType.Mobile) PunishSpeed = true;
+                if (ShipCore.MobilityType == MobilityType.Static) PunishModifiers = true;
+                if (ShipCore.MobilityType == MobilityType.Both)
+                {
+                    PunishModifiers = true;
+                    PunishSpeed = true;
+                }
                 var modifiers1 = GetPassiveDefenseModifiers();
                 foreach (var kvp in GridDictionary)
                 {
@@ -345,8 +355,13 @@ namespace ShipCoreFramework
 
                 if (!ShipCore.ForceBroadCast || CoreDictionary.Select(kvp => kvp.Key as IMyFunctionalBlock).Any(func => func != null && func.Enabled)) return;
 
-                if (ShipCore.LargeGridMobile) PunishSpeed = true;
-                if (ShipCore.LargeGridStatic) PunishModifiers = true;
+                if (ShipCore.MobilityType == MobilityType.Mobile) PunishSpeed = true;
+                if (ShipCore.MobilityType == MobilityType.Static) PunishModifiers = true;
+                if (ShipCore.MobilityType == MobilityType.Both)
+                {
+                    PunishModifiers = true;
+                    PunishSpeed = true;
+                }
                 var modifiers2 = GetPassiveDefenseModifiers();
                 foreach (var kvp in GridDictionary)
                 {

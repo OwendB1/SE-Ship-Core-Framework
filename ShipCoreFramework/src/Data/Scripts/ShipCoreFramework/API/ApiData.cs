@@ -45,8 +45,7 @@ namespace ShipCoreFramework
         public string UniqueName;
         public bool ForceBroadCast;
         public float ForceBroadCastRange;
-        public bool LargeGridStatic;
-        public bool LargeGridMobile;
+        public MobilityTypeData MobilityTypeData;
         public int MaxBlocks;
         public float MaxMass;
         public int MaxPCU;
@@ -110,6 +109,16 @@ namespace ShipCoreFramework
         {
             return string.Format("{0}: {1:F1}/{2:F1} {3}", Name, Current, Max, IsOverLimit ? "[OVER LIMIT]" : "");
         }
+    }
+
+    /// <summary>
+    /// Mobility type data for a grid core.
+    /// </summary>
+    public enum MobilityTypeData
+    {
+        Static = 0,
+        Mobile = 1,
+        Both = 2
     }
 
     // ===== Event Argument Classes =====
