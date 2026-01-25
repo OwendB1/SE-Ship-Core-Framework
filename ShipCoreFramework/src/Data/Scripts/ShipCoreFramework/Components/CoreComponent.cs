@@ -35,10 +35,8 @@ namespace ShipCoreFramework
             if (CoreBlock.OwnerId == 0)
             {
                 var name = CoreBlock.CustomName;
-                Utils.Log($"Was not able to determine ownership of core { name }, removing from world!");
+                Utils.ShowChatMessage($"Was not able to determine ownership of core { name }, removing from world!");
                 CoreBlock.SlimBlock.RemoveAndRefund();
-                Utils.Log($"Removed Core: { name }", 3);
-                GridComponent.BlockRemoved(CoreBlock.SlimBlock);
                 return false;
             }
             
