@@ -352,8 +352,6 @@ namespace ShipCoreFramework
     }
     
     [XmlRoot("MobilityType")]
-
-    ///YOu can't put xml elements in an ENUM
     public enum MobilityType
     {
         Static = 0, 

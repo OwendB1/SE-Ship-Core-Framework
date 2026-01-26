@@ -122,6 +122,7 @@ namespace ShipCoreFramework
                 RecalculateAllLimits();
                 ApplyModifiers(Modifiers);
                 EnforceGroupPunishment();
+                EnforceOverCapacity();
                 
                 ModAPI.BroadcastCoreActivated(grid, ShipCore.SubtypeId, ShipCore.UniqueName);
             });
@@ -159,6 +160,7 @@ namespace ShipCoreFramework
                 RecalculateAllLimits();
                 ApplyModifiers(Modifiers);
                 EnforceGroupPunishment();
+                EnforceOverCapacity();
             });
         }
 
@@ -332,6 +334,7 @@ namespace ShipCoreFramework
                     PunishModifiers = true;
                     PunishSpeed = true;
                 }
+                
                 var modifiers = GetPassiveDefenseModifiers();
                 foreach (var kvp in GridDictionary)
                 {
