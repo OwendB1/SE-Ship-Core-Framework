@@ -25,11 +25,13 @@ namespace ShipCoreFramework
                 if(kvp.Key.IsStatic) return;
                 if (kvp.Key?.Physics == null) return;
                 var maxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.Modifiers.MaxSpeed;
-                Utils.ShowNotification($"Max Speed{maxSpeed}");
-                if(maxSpeed==0)
+                Utils.Log($"Group Comp Info: {groupComponent.ShipCore.UniqueName} Max Speed:{maxSpeed}", 6);
+                //var maxSpeed=0.0f;
+                //Utils.ShowNotification($"Max Speed{maxSpeed}");
+                /*if(maxSpeed==0.0f)
                 {
                     (kvp.Key as IMyCubeGrid).IsStatic=true;
-                }
+                }*/
                 if (groupComponent.PunishSpeed) maxSpeed /= 4;
                 if (groupComponent.ShipCore != null && groupComponent.BoostEnabled)
                 {
@@ -37,6 +39,7 @@ namespace ShipCoreFramework
                 }
 
                 var velocity = kvp.Key.Physics.LinearVelocity;
+                //Utils.ShowNotification($"My Velocity{velocity}");
                 if (velocity.LengthSquared() <= maxSpeed * maxSpeed) return;
                 velocity = Vector3.Normalize(velocity) * maxSpeed;
                 MyAPIGateway.Utilities.InvokeOnGameThread(() =>
