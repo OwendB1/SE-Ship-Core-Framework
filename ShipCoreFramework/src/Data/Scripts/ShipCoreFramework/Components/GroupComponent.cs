@@ -340,12 +340,12 @@ namespace ShipCoreFramework
             }
             else
             {
-                if (ShipCore.MobilityType == MobilityType.Mobile) PunishSpeed = true;
-                if (ShipCore.MobilityType == MobilityType.Static) PunishModifiers = true;
+                if (ShipCore.MobilityType == MobilityType.Mobile) PunishSpeed = false;
+                if (ShipCore.MobilityType == MobilityType.Static) PunishModifiers = false;
                 if (ShipCore.MobilityType == MobilityType.Both)
                 {
-                    PunishModifiers = true;
-                    PunishSpeed = true;
+                    PunishModifiers = false;
+                    PunishSpeed = false;
                 }
                 var modifiers1 = GetPassiveDefenseModifiers();
                 foreach (var kvp in GridDictionary)
@@ -354,14 +354,6 @@ namespace ShipCoreFramework
                 }
 
                 if (!ShipCore.ForceBroadCast || CoreDictionary.Select(kvp => kvp.Key as IMyFunctionalBlock).Any(func => func != null && func.Enabled)) return;
-
-                if (ShipCore.MobilityType == MobilityType.Mobile) PunishSpeed = true;
-                if (ShipCore.MobilityType == MobilityType.Static) PunishModifiers = true;
-                if (ShipCore.MobilityType == MobilityType.Both)
-                {
-                    PunishModifiers = true;
-                    PunishSpeed = true;
-                }
                 var modifiers2 = GetPassiveDefenseModifiers();
                 foreach (var kvp in GridDictionary)
                 {
