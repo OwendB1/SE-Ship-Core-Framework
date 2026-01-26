@@ -296,9 +296,9 @@ namespace ShipCoreFramework
         [XmlElement("ThrusterForce")]
         public float ThrusterForce = 1;
         [XmlElement("MaxSpeed")]
-        public float MaxSpeed = 0.3f;
+        public float MaxSpeed = 0.0f;
         [XmlElement("MaxBoost")]
-        public float MaxBoost = 1.2f;
+        public float MaxBoost = 0.0f;
         [XmlElement("BoostDuration")]
         public float BoostDuration = 10f; 
         [XmlElement("BoostCoolDown")]
@@ -352,13 +352,12 @@ namespace ShipCoreFramework
     }
     
     [XmlRoot("MobilityType")]
+
+    ///YOu can't put xml elements in an ENUM
     public enum MobilityType
     {
-        [XmlElement("Static")]
         Static = 0, 
-        [XmlElement("Mobile")]
         Mobile = 1, 
-        [XmlElement("Both")]
         Both = 2
     }
 

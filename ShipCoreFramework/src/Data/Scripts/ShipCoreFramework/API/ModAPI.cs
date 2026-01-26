@@ -319,7 +319,7 @@ namespace ShipCoreFramework
                 {
                     SubtypeId = string.Empty,
                     UniqueName = "NoCore",
-                    Modifiers = new GridModifiersData { AssemblerSpeed = 1, DrillHarvestMultiplier = 1, GyroEfficiency = 1, GyroForce = 1, PowerProducersOutput = 1, RefineEfficiency = 1, RefineSpeed = 1, ThrusterEfficiency = 1, ThrusterForce = 1, MaxSpeed = 0.3f, MaxBoost = 1.2f, BoostDuration = 10f, BoostCoolDown = 60f }
+                    Modifiers = new GridModifiersData { AssemblerSpeed = 1, DrillHarvestMultiplier = 1, GyroEfficiency = 1, GyroForce = 1, PowerProducersOutput = 1, RefineEfficiency = 1, RefineSpeed = 1, ThrusterEfficiency = 1, ThrusterForce = 1, MaxSpeed = 0.0f, MaxBoost = 0.0f, BoostDuration = 10f, BoostCoolDown = 60f }
                 };
             }
 
@@ -359,8 +359,8 @@ namespace ShipCoreFramework
                     RefineSpeed = 1,
                     ThrusterEfficiency = 1,
                     ThrusterForce = 1,
-                    MaxSpeed = 0.3f,
-                    MaxBoost = 1.2f,
+                    MaxSpeed = 0.0f,
+                    MaxBoost = 0.0f,
                     BoostDuration = 10f,
                     BoostCoolDown = 60f
                 };

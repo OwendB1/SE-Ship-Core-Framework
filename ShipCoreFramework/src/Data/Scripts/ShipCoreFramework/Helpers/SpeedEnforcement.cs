@@ -25,6 +25,7 @@ namespace ShipCoreFramework
                 if(kvp.Key.IsStatic) return;
                 if (kvp.Key?.Physics == null) return;
                 var maxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.Modifiers.MaxSpeed;
+                Utils.ShowNotification($"Max Speed{maxSpeed}");
                 if(maxSpeed==0)
                 {
                     (kvp.Key as IMyCubeGrid).IsStatic=true;
