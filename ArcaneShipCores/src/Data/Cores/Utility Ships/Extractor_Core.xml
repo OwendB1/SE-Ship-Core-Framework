@@ -4,8 +4,7 @@
   <UniqueName>Extractor Grid Class</UniqueName>
   <ForceBroadCast>true</ForceBroadCast>
   <ForceBroadCastRange>5000</ForceBroadCastRange>
-  <LargeGridStatic>false</LargeGridStatic>
-  <LargeGridMobile>false</LargeGridMobile>
+  <MobilityType>Both</MobilityType>
   <SmallGrid>true</SmallGrid>
   <MaxBlocks>5000</MaxBlocks>
   <MaxMass>-1</MaxMass>

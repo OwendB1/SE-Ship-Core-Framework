@@ -4,8 +4,7 @@
   <UniqueName>Frigate Grid Class</UniqueName>
   <ForceBroadCast>true</ForceBroadCast>
   <ForceBroadCastRange>1000</ForceBroadCastRange>
-  <LargeGridStatic>true</LargeGridStatic>
-  <LargeGridMobile>true</LargeGridMobile>
+  <MobilityType>Mobile</MobilityType>
   <MaxBlocks>5000</MaxBlocks>
   <MaxMass>-1</MaxMass>
   <MaxPCU>40000</MaxPCU>

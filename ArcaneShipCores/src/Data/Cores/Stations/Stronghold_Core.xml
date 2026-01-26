@@ -4,8 +4,7 @@
   <UniqueName>Stronghold Station Class</UniqueName>
   <ForceBroadCast>true</ForceBroadCast>
   <ForceBroadCastRange>20000</ForceBroadCastRange>
-  <LargeGridStatic>true</LargeGridStatic>
-  <LargeGridMobile>false</LargeGridMobile>
+  <MobilityType>Static</MobilityType>
   <MaxBlocks>20000</MaxBlocks>
   <MaxMass>-1</MaxMass>
   <MaxPCU>85000</MaxPCU>
@@ -22,7 +21,7 @@
     <RefineSpeed>3</RefineSpeed>
     <ThrusterEfficiency>1</ThrusterEfficiency>
     <ThrusterForce>0.1</ThrusterForce>
-    <MaxSpeed>0.3</MaxSpeed>
+    <MaxSpeed>0</MaxSpeed>
     <MaxBoost>0</MaxBoost>
     <BoostDuration>15</BoostDuration>
     <BoostCoolDown>15</BoostCoolDown>

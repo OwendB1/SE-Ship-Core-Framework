@@ -4,8 +4,7 @@
   <UniqueName>Courier Grid Class</UniqueName>
   <ForceBroadCast>true</ForceBroadCast>
   <ForceBroadCastRange>10000</ForceBroadCastRange>
-  <LargeGridStatic>true</LargeGridStatic>
-  <LargeGridMobile>true</LargeGridMobile>
+  <MobilityType>Both</MobilityType>
   <SmallGrid>false</SmallGrid>
   <MaxBlocks>-1</MaxBlocks>
   <MaxMass>50000000</MaxMass>

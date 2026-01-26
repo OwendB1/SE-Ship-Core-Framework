@@ -4,8 +4,7 @@
   <UniqueName>Fighter Grid Class</UniqueName>
   <ForceBroadCast>true</ForceBroadCast>
   <ForceBroadCastRange>2000</ForceBroadCastRange>
-  <LargeGridStatic>true</LargeGridStatic>
-  <LargeGridMobile>true</LargeGridMobile>
+  <MobilityType>Mobile</MobilityType>
   <MaxBlocks>1000</MaxBlocks>
   <MaxMass>-1</MaxMass>
   <MaxPCU>6000</MaxPCU>

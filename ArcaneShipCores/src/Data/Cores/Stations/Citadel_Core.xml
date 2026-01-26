@@ -4,8 +4,7 @@
   <UniqueName>Citadel Station Class</UniqueName>
   <ForceBroadCast>true</ForceBroadCast>
   <ForceBroadCastRange>200000</ForceBroadCastRange>
-  <LargeGridStatic>true</LargeGridStatic>
-  <LargeGridMobile>false</LargeGridMobile>
+  <MobilityType>Static</MobilityType>
   <MaxBlocks>30000</MaxBlocks>
   <MaxMass>-1</MaxMass>
   <MaxPCU>120000</MaxPCU>
@@ -22,7 +21,7 @@
     <RefineSpeed>10</RefineSpeed>
     <ThrusterEfficiency>1</ThrusterEfficiency>
     <ThrusterForce>0.1</ThrusterForce>
-    <MaxSpeed>0.1</MaxSpeed>
+    <MaxSpeed>0</MaxSpeed>
     <MaxBoost>0</MaxBoost>
     <BoostDuration>15</BoostDuration>
     <BoostCoolDown>15</BoostCoolDown>

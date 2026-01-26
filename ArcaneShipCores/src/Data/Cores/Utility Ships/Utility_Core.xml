@@ -4,8 +4,7 @@
   <UniqueName>Utility Grid Class</UniqueName>
   <ForceBroadCast>false</ForceBroadCast>
   <ForceBroadCastRange>0</ForceBroadCastRange>
-  <LargeGridStatic>true</LargeGridStatic>
-  <LargeGridMobile>true</LargeGridMobile>
+  <MobilityType>Both</MobilityType>
   <SmallGrid>true</SmallGrid>
   <MaxBlocks>5000</MaxBlocks>
   <MaxMass>-1</MaxMass>

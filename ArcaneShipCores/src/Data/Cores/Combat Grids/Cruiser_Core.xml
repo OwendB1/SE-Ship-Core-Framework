@@ -4,8 +4,7 @@
   <UniqueName>Cruiser Grid Class</UniqueName>
   <ForceBroadCast>true</ForceBroadCast>
   <ForceBroadCastRange>3000</ForceBroadCastRange>
-  <LargeGridStatic>true</LargeGridStatic>
-  <LargeGridMobile>true</LargeGridMobile>
+  <MobilityType>Mobile</MobilityType>
   <MaxBlocks>10000</MaxBlocks>
   <MaxMass>-1</MaxMass>
   <MaxPCU>60000</MaxPCU>

@@ -4,8 +4,7 @@
   <UniqueName>Test Grid Core</UniqueName>
   <ForceBroadCast>true</ForceBroadCast>
   <ForceBroadCastRange>1900</ForceBroadCastRange>
-  <LargeGridStatic>true</LargeGridStatic>
-  <LargeGridMobile>true</LargeGridMobile>
+  <MobilityType>Both</MobilityType>
   <MaxBackupCores>5</MaxBackupCores>
   <MaxBlocks>5000</MaxBlocks>
   <MaxMass>-1</MaxMass>
@@ -23,7 +22,7 @@
     <RefineSpeed>2</RefineSpeed>
     <ThrusterEfficiency>2</ThrusterEfficiency>
     <ThrusterForce>2</ThrusterForce>
-    <MaxSpeed>0.5</MaxSpeed>
+    <MaxSpeed>0.3</MaxSpeed>
     <MaxBoost>0.5</MaxBoost>
     <BoostDuration>5</BoostDuration>
     <BoostCoolDown>5</BoostCoolDown>

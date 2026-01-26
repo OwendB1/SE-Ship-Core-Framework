@@ -4,8 +4,7 @@
   <UniqueName>Harvester Grid Class</UniqueName>
   <ForceBroadCast>true</ForceBroadCast>
   <ForceBroadCastRange>50000</ForceBroadCastRange>
-  <LargeGridStatic>true</LargeGridStatic>
-  <LargeGridMobile>true</LargeGridMobile>
+  <MobilityType>Both</MobilityType>
   <SmallGrid>true</SmallGrid>
   <MaxBlocks>10000</MaxBlocks>
   <MaxMass>-1</MaxMass>

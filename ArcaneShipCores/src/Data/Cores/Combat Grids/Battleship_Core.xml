@@ -4,8 +4,7 @@
   <UniqueName>Battleship Grid Class</UniqueName>
   <ForceBroadCast>true</ForceBroadCast>
   <ForceBroadCastRange>5000</ForceBroadCastRange>
-  <LargeGridStatic>true</LargeGridStatic>
-  <LargeGridMobile>true</LargeGridMobile>
+  <MobilityType>Mobile</MobilityType>
   <MaxBlocks>25000</MaxBlocks>
   <MaxMass>-1</MaxMass>
   <MaxPCU>150000</MaxPCU>
