@@ -156,17 +156,11 @@ namespace ShipCoreFramework
                 if (selectedCargo != null)
                 {
                     var cargoInventory = selectedCargo.GetInventory();
-                    MyAPIGateway.Utilities.InvokeOnGameThread(() =>
-                    {
-                        block.DecreaseMountLevel(block.Integrity, cargoInventory, true);
-                        block.MoveItemsFromConstructionStockpile(cargoInventory);
-                    });
+                    block.DecreaseMountLevel(block.Integrity, cargoInventory, true);
+                    block.MoveItemsFromConstructionStockpile(cargoInventory);
                 }
             }
-            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
-            {
-                grid.RemoveBlock(block, updatePhysics: true);
-            });
+            grid.RemoveBlock(block, updatePhysics: true);
 
             var projectors = new List<IMyProjector>();
             MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(grid).GetBlocksOfType(projectors);

@@ -56,7 +56,7 @@ namespace ShipCoreFramework
                 {
                     BlockAdded(block);
                 }
-                // MyAPIGateway.Parallel.ForEach(otherBlocks, block => BlockAdded(block));
+                MyAPIGateway.Parallel.ForEach(otherBlocks, block => BlockAdded(block));
             });
         }
 
@@ -109,28 +109,31 @@ namespace ShipCoreFramework
             }
             else
             {
-                var firstBigOwner = Grid.BigOwners.FirstOrDefault();
-                var maxBlocks = GroupComponent.ShipCore.MaxBlocks;
-                var maxPCU = GroupComponent.ShipCore.MaxPCU;
-                var maxMass = GroupComponent.ShipCore.MaxMass;
+                if (!limitBasedPunish)
+                {
+                    var firstBigOwner = Grid.BigOwners.FirstOrDefault();
+                    var maxBlocks = GroupComponent.ShipCore.MaxBlocks;
+                    var maxPCU = GroupComponent.ShipCore.MaxPCU;
+                    var maxMass = GroupComponent.ShipCore.MaxMass;
 
-                if (GroupComponent.GroupBlocksCount >= maxBlocks && maxBlocks > 0)
-                {
-                    Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxBlocks: " + (GroupComponent.GroupBlocksCount > maxBlocks), 10000, firstBigOwner);
-                    block.RemoveAndRefund();
-                    return;
-                }
-                if (GroupComponent.GroupPCU >= maxPCU && maxPCU > 0)
-                {
-                    Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxPCU: " + (GroupComponent.GroupPCU > maxPCU), 10000, firstBigOwner);
-                    block.RemoveAndRefund();
-                    return;
-                }
-                if (GroupComponent.GroupMass >= maxMass && maxMass > 0f)
-                {
-                    Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxMass: " + (GroupComponent.GroupMass > maxMass), 10000, firstBigOwner);
-                    block.RemoveAndRefund();
-                    return;
+                    if (GroupComponent.GroupBlocksCount >= maxBlocks && maxBlocks > 0)
+                    {
+                        Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxBlocks: " + (GroupComponent.GroupBlocksCount > maxBlocks), 10000, firstBigOwner);
+                        block.RemoveAndRefund();
+                        return;
+                    }
+                    if (GroupComponent.GroupPCU >= maxPCU && maxPCU > 0)
+                    {
+                        Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxPCU: " + (GroupComponent.GroupPCU > maxPCU), 10000, firstBigOwner);
+                        block.RemoveAndRefund();
+                        return;
+                    }
+                    if (GroupComponent.GroupMass >= maxMass && maxMass > 0f)
+                    {
+                        Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxMass: " + (GroupComponent.GroupMass > maxMass), 10000, firstBigOwner);
+                        block.RemoveAndRefund();
+                        return;
+                    }
                 }
                 
                 TryApplyLimitsOnAdd(block, limitBasedPunish);
