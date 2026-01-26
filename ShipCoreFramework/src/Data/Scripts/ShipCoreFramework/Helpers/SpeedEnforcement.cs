@@ -1,6 +1,8 @@
 ﻿#region
 
 using System;
+using System.Linq;
+using System.Collections.Generic;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRageMath;
@@ -18,16 +20,15 @@ namespace ShipCoreFramework
             {
                 return;
             }
+            List<IMyCubeGrid> AttachedGrids = new List<IMyCubeGrid>();
+            groupComponent.GridDictionary.First().Key.GetGridGroup(GridLinkTypeEnum.Physical).GetGrids(AttachedGrids);
 
-            foreach (var kvp in groupComponent.GridDictionary)
+            foreach (var kvp in AttachedGrids)
             {
-                var group = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Physical, kvp.Key);
-                if(kvp.Key.IsStatic) return;
-                if (kvp.Key?.Physics == null) return;
+                var group = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Physical, kvp);
+                if(kvp.IsStatic) return;
+                if (kvp?.Physics == null) return;
                 var maxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.Modifiers.MaxSpeed;
-                Utils.Log($"Group Comp Info: {groupComponent.ShipCore.UniqueName} Max Speed:{maxSpeed}", 6);
-                //var maxSpeed=0.0f;
-                //Utils.ShowNotification($"Max Speed{maxSpeed}");
                 /*if(maxSpeed==0.0f)
                 {
                     (kvp.Key as IMyCubeGrid).IsStatic=true;
@@ -38,16 +39,15 @@ namespace ShipCoreFramework
                     maxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.Modifiers.MaxBoost;
                 }
 
-                var velocity = kvp.Key.Physics.LinearVelocity;
-                //Utils.ShowNotification($"My Velocity{velocity}");
+                var velocity = kvp.Physics.LinearVelocity;
                 if (velocity.LengthSquared() <= maxSpeed * maxSpeed) return;
                 velocity = Vector3.Normalize(velocity) * maxSpeed;
                 MyAPIGateway.Utilities.InvokeOnGameThread(() =>
                 {
                     try
                     {
-                        if (kvp.Key?.Physics != null)
-                            kvp.Key.Physics.SetSpeeds(velocity, kvp.Key.Physics.AngularVelocity);
+                        if (kvp?.Physics != null)
+                            kvp.Physics.SetSpeeds(velocity, kvp.Physics.AngularVelocity);
                     }
                     catch (Exception)
                     {
