@@ -202,7 +202,7 @@ namespace ShipCoreFramework
         [ProtoMember(14)] public bool SpeedBoostEnabled;
         [ProtoMember(15)] public bool EnableActiveDefenseModifiers;
         [ProtoMember(16)] public GridDefenseModifiersData ActiveDefenseModifiers;
-        [ProtoMember(17)] public bool DyamicBoostEnabled;
+        [ProtoMember(17)] public bool DynamicBoostEnabled;
         [ProtoMember(18)] public SpeedModifiersData SpeedModifiers;
     }
 
