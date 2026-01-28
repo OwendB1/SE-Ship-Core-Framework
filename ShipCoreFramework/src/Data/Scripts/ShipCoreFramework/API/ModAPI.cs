@@ -477,7 +477,7 @@ namespace ShipCoreFramework
                 MaxPerFaction = core.MaxPerFaction,
                 MaxPerPlayer = core.MaxPerPlayer,
                 MinPlayers = core.MinPlayers,
-                Modifiers = ConvertToGridModifiersData(core.Modifiers),
+                Modifiers = ConvertToGridModifiersData(core.Modifiers,core.SpeedModifiers),
                 PassiveDefenseModifiers = ConvertToDefenseModifiersData(core.PassiveDefenseModifiers),
                 SpeedBoostEnabled = core.SpeedBoostEnabled,
                 EnableActiveDefenseModifiers = core.EnableActiveDefenseModifiers,
@@ -485,7 +485,7 @@ namespace ShipCoreFramework
             };
         }
 
-        private static GridModifiersData ConvertToGridModifiersData(GridModifiers modifiers)
+        private static GridModifiersData ConvertToGridModifiersData(GridModifiers modifiers, SpeedModifiers speedModifiers)
         {
             if (modifiers == null)
             {
@@ -518,10 +518,10 @@ namespace ShipCoreFramework
                 RefineSpeed = modifiers.RefineSpeed,
                 ThrusterEfficiency = modifiers.ThrusterEfficiency,
                 ThrusterForce = modifiers.ThrusterForce,
-                MaxSpeed = modifiers.MaxSpeed,
-                MaxBoost = modifiers.MaxBoost,
-                BoostDuration = modifiers.BoostDuration,
-                BoostCoolDown = modifiers.BoostCoolDown
+                MaxSpeed = speedModifiers.MaxSpeed,
+                MaxBoost = speedModifiers.MaxBoost,
+                BoostDuration = speedModifiers.BoostDuration,
+                BoostCoolDown = speedModifiers.BoostCoolDown
             };
         }
 
@@ -704,23 +704,28 @@ namespace ShipCoreFramework
 
         public static GridModifiersData GetGridModifiers(IMyCubeGrid grid)
         {
-            if (grid == null) return ConvertToGridModifiersData(null);
+            if (grid == null) return ConvertToGridModifiersData(null,null);
 
             try
             {
+<<<<<<< Updated upstream
                 var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, grid);
                 if (groupData == null) return ConvertToGridModifiersData(null);
+=======
+                var groupData =  MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, grid);
+                if (groupData == null) return ConvertToGridModifiersData(null,null);
+>>>>>>> Stashed changes
 
                 GroupComponent groupComponent;
                 if (!Session.GroupDict.TryGetValue(groupData, out groupComponent))
-                    return ConvertToGridModifiersData(null);
+                    return ConvertToGridModifiersData(null,null);
 
-                return ConvertToGridModifiersData(groupComponent.Modifiers);
+                return ConvertToGridModifiersData(groupComponent.Modifiers,groupComponent.SpeedModifiers);
             }
             catch (Exception ex)
             {
                 Utils.Log($"ModAPI.GetGridModifiers: Exception - {ex}");
-                return ConvertToGridModifiersData(null);
+                return ConvertToGridModifiersData(null,null);
             }
         }
 
@@ -740,10 +745,10 @@ namespace ShipCoreFramework
                 var core = groupComponent.ShipCore;
                 if (core == null) return 100f;
 
-                var baseSpeed = core.Modifiers.MaxSpeed * Session.Config.MaxPossibleSpeedMetersPerSecond;
+                var baseSpeed = core.SpeedModifiers.MaxSpeed * Session.Config.MaxPossibleSpeedMetersPerSecond;
 
                 if (groupComponent.BoostEnabled)
-                    return baseSpeed * core.Modifiers.MaxBoost;
+                    return baseSpeed * core.SpeedModifiers.MaxBoost;
 
                 return baseSpeed;
             }

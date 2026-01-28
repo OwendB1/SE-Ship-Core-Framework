@@ -644,7 +644,17 @@ namespace ShipCoreFramework
                 else
                     body += $"  {m.Name}: x{m.Value:F2}\n";
             }
-
+            //Speed Info
+            body += "Speed Modifiers:\n";
+            var speedmods = groupKvp.Value.SpeedModifiers;
+            if (speedmods != null)
+            {
+                body += $"    Max Speed:       {speedmods.MaxSpeed:F2}\n";
+                body += $"    Max Boost Speed: {speedmods.MaxBoost:F2}\n";
+                body += $"    Speed Resist:    {speedmods.BoostResistance:F2}\n";
+                body += $"    Boost Duration:  {speedmods.BoostDuration:F2}\n";
+                body += $"    Boost Cooldown:  {speedmods.BoostCoolDown:F2}\n";
+            }
             var passive = groupKvp.Value.GetPassiveDefenseModifiers();
             var active = groupKvp.Value.GetActiveDefenseModifiers();
 

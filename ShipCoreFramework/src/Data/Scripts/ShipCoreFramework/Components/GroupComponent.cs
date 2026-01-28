@@ -14,6 +14,7 @@ namespace ShipCoreFramework
     {
         internal ShipCore ShipCore => Session.Config.GetShipCoreByTypeId(MainCoreComponent?.SubtypeId ?? string.Empty);
         internal GridModifiers Modifiers => CubeGridModifiers.GetActiveModifiers(this);
+        internal SpeedModifiers SpeedModifiers => CubeGridModifiers.GetActiveSpeedModifiers(this);
         internal long OwnerId
         {
             get
@@ -27,8 +28,8 @@ namespace ShipCoreFramework
         internal int GroupPCU => GridDictionary.Sum(g => g.Key.BlocksPCU);
         internal float GroupMass => GridDictionary.Sum(g => g.Key.Mass);
 
-        private float BoostDuration => ShipCore.Modifiers.BoostDuration;
-        private float BoostCoolDown => ShipCore.Modifiers.BoostCoolDown;
+        private float BoostDuration => ShipCore.SpeedModifiers.BoostDuration;
+        private float BoostCoolDown => ShipCore.SpeedModifiers.BoostCoolDown;
         
         internal IMyGridGroupData MyGroup;
         internal CoreComponent MainCoreComponent;

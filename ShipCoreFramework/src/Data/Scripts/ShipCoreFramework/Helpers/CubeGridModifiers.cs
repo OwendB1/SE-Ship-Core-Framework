@@ -31,6 +31,7 @@ namespace ShipCoreFramework
 
             coreBlock.AddUpgradeValue("MaxSpeed", 1f);
             coreBlock.AddUpgradeValue("MaxBoost", 1f);
+            coreBlock.AddUpgradeValue("BoostResistance", 1f);
             coreBlock.AddUpgradeValue("BoostDuration", 1f);
             coreBlock.AddUpgradeValue("BoostCoolDown", 1f);
 
@@ -77,14 +78,31 @@ namespace ShipCoreFramework
             enhancedModifiers.RefineSpeed = shipCore.Modifiers.RefineSpeed * myBlock.CoreBlock.UpgradeValues["RefineSpeed"];
             enhancedModifiers.ThrusterEfficiency = shipCore.Modifiers.ThrusterEfficiency * myBlock.CoreBlock.UpgradeValues["ThrusterEfficiency"];
             enhancedModifiers.ThrusterForce = shipCore.Modifiers.ThrusterForce * myBlock.CoreBlock.UpgradeValues["ThrusterForce"];
-            enhancedModifiers.MaxSpeed = shipCore.Modifiers.MaxSpeed * myBlock.CoreBlock.UpgradeValues["MaxSpeed"];
-            enhancedModifiers.MaxBoost = shipCore.Modifiers.MaxBoost * myBlock.CoreBlock.UpgradeValues["MaxBoost"];
-            enhancedModifiers.BoostDuration = shipCore.Modifiers.BoostDuration * myBlock.CoreBlock.UpgradeValues["BoostDuration"];
-            enhancedModifiers.BoostCoolDown = shipCore.Modifiers.BoostCoolDown * myBlock.CoreBlock.UpgradeValues["BoostCoolDown"];
             
             return enhancedModifiers;
         }
-        
+        internal static SpeedModifiers GetActiveSpeedModifiers(GroupComponent gridGroupComponentLogic)
+        {
+            if (gridGroupComponentLogic.PunishModifiers) return Session.Config.SelectedNoCore.SpeedModifiers;
+            var shipCore = gridGroupComponentLogic.ShipCore;
+            
+            if (shipCore.SubtypeId == Session.Config.SelectedNoCore.SubtypeId) return shipCore.SpeedModifiers;
+            var enhancedModifiers = new SpeedModifiers();
+            
+            var myBlock = gridGroupComponentLogic.MainCoreComponent;
+            if (myBlock == null)
+            {
+                return shipCore.SpeedModifiers;
+            }
+            enhancedModifiers.MaxSpeed = shipCore.SpeedModifiers.MaxSpeed * myBlock.CoreBlock.UpgradeValues["MaxSpeed"];
+            enhancedModifiers.MaxBoost = shipCore.SpeedModifiers.MaxBoost * myBlock.CoreBlock.UpgradeValues["MaxBoost"];
+            enhancedModifiers.BoostResistance = shipCore.SpeedModifiers.BoostResistance * myBlock.CoreBlock.UpgradeValues["BoostResistance"];
+            enhancedModifiers.BoostDuration = shipCore.SpeedModifiers.BoostDuration * myBlock.CoreBlock.UpgradeValues["BoostDuration"];
+            enhancedModifiers.BoostCoolDown = shipCore.SpeedModifiers.BoostCoolDown * myBlock.CoreBlock.UpgradeValues["BoostCoolDown"];
+
+            
+            return enhancedModifiers;
+        }
         public static void ApplyModifiers(IMyCubeBlock block, GridModifiers modifiers)
         {
             var id = ((IMyTerminalBlock)block).BlockDefinition;

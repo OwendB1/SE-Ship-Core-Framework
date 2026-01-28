@@ -20,11 +20,15 @@
     <RefineSpeed>0</RefineSpeed>
     <ThrusterEfficiency>1.5</ThrusterEfficiency>
     <ThrusterForce>1.5</ThrusterForce>
+  </Modifiers>
+  <DyamicBoostEnabled>true</DyamicBoostEnabled>
+  <SpeedModifiers>
     <MaxSpeed>0.8</MaxSpeed>
     <MaxBoost>0.9</MaxBoost>
+    <BoostResistance>0.9</BoostResistance>
     <BoostDuration>10</BoostDuration>
     <BoostCoolDown>60</BoostCoolDown>
-  </Modifiers>
+  </SpeedModifiers>
   <PassiveDefenseModifiers>
     <Bullet>1</Bullet>
     <Energy>1</Energy>

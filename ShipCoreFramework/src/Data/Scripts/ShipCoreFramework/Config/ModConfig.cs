@@ -266,6 +266,10 @@ namespace ShipCoreFramework
         public GridDefenseModifiers PassiveDefenseModifiers = new GridDefenseModifiers();
         [XmlElement("SpeedBoostEnabled")]
         public bool SpeedBoostEnabled;
+        [XmlElement("DyamicBoostEnabled")]
+        public bool DyamicBoostEnabled;
+        [XmlElement("SpeedModifiers")]
+        public SpeedModifiers SpeedModifiers = new SpeedModifiers();
         [XmlElement("EnableActiveDefenseModifiers")]
         public bool EnableActiveDefenseModifiers;
         [XmlElement("ActiveDefenseModifiers")]
@@ -274,6 +278,21 @@ namespace ShipCoreFramework
         public BlockLimit[] BlockLimits = Array.Empty<BlockLimit>();
     }
     
+    [XmlRoot("SpeedModifiers")]
+    public class SpeedModifiers
+    {
+        [XmlElement("MaxSpeed")]
+        public float MaxSpeed = 0.0f;
+        [XmlElement("MaxBoost")]
+        public float MaxBoost = 0.0f;
+        [XmlElement("BoostDuration")]
+        public float BoostDuration = 10f; 
+        [XmlElement("BoostCoolDown")]
+        public float BoostCoolDown = 60f;      
+        //Dyamic Boost Stuff
+        [XmlElement("BoostResistance")]
+        public float BoostResistance = 10f;    
+    }
     [XmlRoot("GridModifiers")]
     public class GridModifiers
     {
@@ -295,14 +314,6 @@ namespace ShipCoreFramework
         public float ThrusterEfficiency = 1;
         [XmlElement("ThrusterForce")]
         public float ThrusterForce = 1;
-        [XmlElement("MaxSpeed")]
-        public float MaxSpeed = 0.0f;
-        [XmlElement("MaxBoost")]
-        public float MaxBoost = 0.0f;
-        [XmlElement("BoostDuration")]
-        public float BoostDuration = 10f; 
-        [XmlElement("BoostCoolDown")]
-        public float BoostCoolDown = 60f; 
         
         public override string ToString()
         {
@@ -331,10 +342,10 @@ namespace ShipCoreFramework
                 new ModifierNameValue("Assembler speed", AssemblerSpeed),
                 new ModifierNameValue("Power output", PowerProducersOutput),
                 new ModifierNameValue("Drill harvest", DrillHarvestMultiplier),
-                new ModifierNameValue("Max speed", MaxSpeed),
-                new ModifierNameValue("Max boost", MaxBoost),
-                new ModifierNameValue("Boost duration", BoostDuration),
-                new ModifierNameValue("Boost cooldown", BoostCoolDown)
+                //new ModifierNameValue("Max speed", MaxSpeed),
+                //new ModifierNameValue("Max boost", MaxBoost),
+                //new ModifierNameValue("Boost duration", BoostDuration),
+                //new ModifierNameValue("Boost cooldown", BoostCoolDown)
             };
         }
     }
