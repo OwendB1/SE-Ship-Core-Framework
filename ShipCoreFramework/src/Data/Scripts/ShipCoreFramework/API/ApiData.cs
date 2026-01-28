@@ -268,7 +268,7 @@ namespace ShipCoreFramework
 
         public override string ToString()
         {
-            return string.Format("{0}: {1:F1}/{2:F1} {3}", Name, Current, Max, IsOverLimit ? "[OVER LIMIT]" : "");
+            return $"{Name}: {Current:F1}/{Max:F1} {(IsOverLimit ? "[OVER LIMIT]" : "")}";
         }
     }
 
