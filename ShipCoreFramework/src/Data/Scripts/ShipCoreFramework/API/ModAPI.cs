@@ -32,6 +32,7 @@ namespace ShipCoreFramework
             {
                 var apiDictionary = new Dictionary<string, Delegate>
                 {
+                    { "GetApiVersion", new Func<int>(() => ApiConstants.API_VERSION) },
                     { "GetGridCore", new Func<IMyCubeGrid, ShipCoreData>(GetGridCore) },
                     { "GetCoreBySubtypeId", new Func<string, ShipCoreData>(GetCoreBySubtypeId) },
                     { "GetAllCoreConfigs", new Func<List<ShipCoreData>>(GetAllCoreConfigs) },

@@ -19,6 +19,15 @@ namespace ShipCoreFramework
         /// Example: MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.API_ID, OnApiReceived);
         /// </summary>
         public const long API_ID = 3217652398L;
+        
+        
+        private const int API_MAJOR = 1;
+        private const int API_MINOR = 1;
+        
+        /// <summary>
+        /// Versioning of the API. This allows mods to check for API compatibility and prevent mismatched versions.
+        /// </summary>
+        public const int API_VERSION = (API_MAJOR << 8) | API_MINOR;
 
         // Event IDs - Other mods can register handlers for these to receive event notifications
         public const long EVENT_CORE_ACTIVATED = 3217652399L;
