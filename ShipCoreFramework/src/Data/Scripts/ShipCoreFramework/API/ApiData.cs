@@ -120,6 +120,48 @@ namespace ShipCoreFramework
         /// Signature: object -> byte[] (ShipCoreData), arg ignored.
         /// </summary>
         public const int GetNoCoreConfig_Binary = 18;
+        
+        /// <summary>
+        /// Gets the SpeedModifiers for the grid's active core (serialized).
+        /// Signature: IMyCubeGrid -> byte[] (SpeedModifiersData).
+        /// </summary>
+        public const int GetSpeedModifiers_Binary = 19;
+
+        /// <summary>
+        /// Gets whether Dynamic Boost is enabled for the grid's active core.
+        /// Signature: IMyCubeGrid -> bool.
+        /// </summary>
+        public const int IsDynamicBoostEnabled = 20;
+
+        /// <summary>
+        /// Gets BoostResistance from the grid's active core SpeedModifiers.
+        /// Signature: IMyCubeGrid -> float.
+        /// </summary>
+        public const int GetBoostResistance = 21;
+
+        /// <summary>
+        /// Gets base max speed in m/s (without boost), based on core SpeedModifiers.
+        /// Signature: IMyCubeGrid -> float.
+        /// </summary>
+        public const int GetBaseMaxSpeed = 22;
+
+        /// <summary>
+        /// Gets max boost multiplier (core SpeedModifiers.MaxBoost).
+        /// Signature: IMyCubeGrid -> float.
+        /// </summary>
+        public const int GetMaxBoostMultiplier = 23;
+
+        /// <summary>
+        /// Gets boost duration in seconds (core SpeedModifiers.BoostDuration).
+        /// Signature: IMyCubeGrid -> float.
+        /// </summary>
+        public const int GetBoostDuration = 24;
+
+        /// <summary>
+        /// Gets boost cooldown in seconds (core SpeedModifiers.BoostCoolDown).
+        /// Signature: IMyCubeGrid -> float.
+        /// </summary>
+        public const int GetBoostCooldown = 25;
 
         // Optional: Field getters for "no parsing" access (primitives only).
         // These can be handy if a consumer only needs a single field and wants to avoid deserializing a full DTO.
@@ -160,6 +202,8 @@ namespace ShipCoreFramework
         [ProtoMember(14)] public bool SpeedBoostEnabled;
         [ProtoMember(15)] public bool EnableActiveDefenseModifiers;
         [ProtoMember(16)] public GridDefenseModifiersData ActiveDefenseModifiers;
+        [ProtoMember(17)] public bool DyamicBoostEnabled;
+        [ProtoMember(18)] public SpeedModifiersData SpeedModifiers;
     }
 
     /// <summary>
@@ -177,10 +221,21 @@ namespace ShipCoreFramework
         [ProtoMember(7)] public float RefineSpeed;
         [ProtoMember(8)] public float ThrusterEfficiency;
         [ProtoMember(9)] public float ThrusterForce;
-        [ProtoMember(10)] public float MaxSpeed;
-        [ProtoMember(11)] public float MaxBoost;
-        [ProtoMember(12)] public float BoostDuration;
-        [ProtoMember(13)] public float BoostCoolDown;
+    }
+    
+    /// <summary>
+    /// Speed modifiers data (movement/boost tuning).
+    /// </summary>
+    [ProtoContract]
+    public class SpeedModifiersData
+    {
+        [ProtoMember(1)] public float MaxSpeed;
+        [ProtoMember(2)] public float MaxBoost;
+        [ProtoMember(3)] public float BoostDuration;
+        [ProtoMember(4)] public float BoostCoolDown;
+
+        // Dynamic boost tuning
+        [ProtoMember(5)] public float BoostResistance;
     }
 
     /// <summary>

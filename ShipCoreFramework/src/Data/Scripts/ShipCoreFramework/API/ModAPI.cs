@@ -129,6 +129,32 @@ namespace ShipCoreFramework
                         var dto = GetNoCoreConfig();
                         return MyAPIGateway.Utilities.SerializeToBinary(dto);
                     };
+                
+                case ApiMethodId.GetSpeedModifiers_Binary:
+                    return arg =>
+                    {
+                        var grid = arg as IMyCubeGrid;
+                        var dto = GetSpeedModifiers(grid);
+                        return MyAPIGateway.Utilities.SerializeToBinary(dto);
+                    };
+
+                case ApiMethodId.IsDynamicBoostEnabled:
+                    return arg => IsDynamicBoostEnabled(arg as IMyCubeGrid);
+
+                case ApiMethodId.GetBoostResistance:
+                    return arg => GetBoostResistance(arg as IMyCubeGrid);
+
+                case ApiMethodId.GetBaseMaxSpeed:
+                    return arg => GetBaseMaxSpeed(arg as IMyCubeGrid);
+
+                case ApiMethodId.GetMaxBoostMultiplier:
+                    return arg => GetMaxBoostMultiplier(arg as IMyCubeGrid);
+
+                case ApiMethodId.GetBoostDuration:
+                    return arg => GetBoostDuration(arg as IMyCubeGrid);
+
+                case ApiMethodId.GetBoostCooldown:
+                    return arg => GetBoostCooldown(arg as IMyCubeGrid);
 
                 // Optional primitive getters:
                 case ApiMethodId.GetGridCore_SubtypeId:
@@ -433,6 +459,128 @@ namespace ShipCoreFramework
                 Utils.Log($"ModAPI.BroadcastGridRemovedFromGroup: Exception - {ex}", 3);
             }
         }
+        
+        /// <summary>
+        /// Gets the speed modifiers for a grid's active core.
+        /// </summary>
+        public static SpeedModifiersData GetSpeedModifiers(IMyCubeGrid grid)
+        {
+            if (grid == null) return ConvertToSpeedModifiersData(null);
+
+            try
+            {
+                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, grid);
+                if (groupData == null) return ConvertToSpeedModifiersData(null);
+
+                GroupComponent groupComponent;
+                if (!Session.GroupDict.TryGetValue(groupData, out groupComponent))
+                    return ConvertToSpeedModifiersData(null);
+
+                var core = groupComponent.ShipCore;
+                if (core == null) return ConvertToSpeedModifiersData(null);
+
+                return ConvertToSpeedModifiersData(core.SpeedModifiers);
+            }
+            catch (Exception ex)
+            {
+                Utils.Log($"ModAPI.GetSpeedModifiers: Exception - {ex}");
+                return ConvertToSpeedModifiersData(null);
+            }
+        }
+
+        /// <summary>
+        /// Returns true if Dynamic Boost is enabled for the grid's active core.
+        /// </summary>
+        public static bool IsDynamicBoostEnabled(IMyCubeGrid grid)
+        {
+            if (grid == null) return false;
+
+            try
+            {
+                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, grid);
+                if (groupData == null) return false;
+
+                GroupComponent groupComponent;
+                if (!Session.GroupDict.TryGetValue(groupData, out groupComponent))
+                    return false;
+
+                var core = groupComponent.ShipCore;
+                if (core == null) return false;
+
+                return core.DyamicBoostEnabled;
+            }
+            catch (Exception ex)
+            {
+                Utils.Log($"ModAPI.IsDynamicBoostEnabled: Exception - {ex}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Gets BoostResistance from the grid's active core speed modifiers.
+        /// </summary>
+        public static float GetBoostResistance(IMyCubeGrid grid)
+        {
+            var s = GetSpeedModifiers(grid);
+            return s != null ? s.BoostResistance : 0f;
+        }
+
+        /// <summary>
+        /// Gets base max speed in m/s without boost applied.
+        /// </summary>
+        public static float GetBaseMaxSpeed(IMyCubeGrid grid)
+        {
+            if (grid == null) return 100f;
+
+            try
+            {
+                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, grid);
+                if (groupData == null) return 100f;
+
+                GroupComponent groupComponent;
+                if (!Session.GroupDict.TryGetValue(groupData, out groupComponent))
+                    return 100f;
+
+                var core = groupComponent.ShipCore;
+                if (core == null || core.SpeedModifiers == null)
+                    return 100f;
+
+                return core.SpeedModifiers.MaxSpeed * Session.Config.MaxPossibleSpeedMetersPerSecond;
+            }
+            catch (Exception ex)
+            {
+                Utils.Log($"ModAPI.GetBaseMaxSpeed: Exception - {ex}");
+                return 100f;
+            }
+        }
+
+        /// <summary>
+        /// Gets max boost multiplier for the grid's active core.
+        /// </summary>
+        public static float GetMaxBoostMultiplier(IMyCubeGrid grid)
+        {
+            var s = GetSpeedModifiers(grid);
+            return s != null ? s.MaxBoost : 0f;
+        }
+
+        /// <summary>
+        /// Gets boost duration in seconds for the grid's active core.
+        /// </summary>
+        public static float GetBoostDuration(IMyCubeGrid grid)
+        {
+            var s = GetSpeedModifiers(grid);
+            return s != null ? s.BoostDuration : 0f;
+        }
+
+        /// <summary>
+        /// Gets boost cooldown in seconds for the grid's active core.
+        /// </summary>
+        public static float GetBoostCooldown(IMyCubeGrid grid)
+        {
+            var s = GetSpeedModifiers(grid);
+            return s != null ? s.BoostCoolDown : 0f;
+        }
+
 
 
         // ===== Helper Methods =====
@@ -455,11 +603,15 @@ namespace ShipCoreFramework
                         RefineEfficiency = 1,
                         RefineSpeed = 1,
                         ThrusterEfficiency = 1,
-                        ThrusterForce = 1,
+                        ThrusterForce = 1
+                    },
+                    SpeedModifiers = new SpeedModifiersData
+                    {
                         MaxSpeed = 0.0f,
                         MaxBoost = 0.0f,
                         BoostDuration = 10f,
-                        BoostCoolDown = 60f
+                        BoostCoolDown = 60f,
+                        BoostResistance = 10f
                     }
                 };
             }
@@ -481,7 +633,9 @@ namespace ShipCoreFramework
                 PassiveDefenseModifiers = ConvertToDefenseModifiersData(core.PassiveDefenseModifiers),
                 SpeedBoostEnabled = core.SpeedBoostEnabled,
                 EnableActiveDefenseModifiers = core.EnableActiveDefenseModifiers,
-                ActiveDefenseModifiers = ConvertToDefenseModifiersData(core.ActiveDefenseModifiers)
+                ActiveDefenseModifiers = ConvertToDefenseModifiersData(core.ActiveDefenseModifiers),
+                DyamicBoostEnabled = core.DyamicBoostEnabled,
+                SpeedModifiers = ConvertToSpeedModifiersData(core.SpeedModifiers),
             };
         }
 
@@ -499,11 +653,7 @@ namespace ShipCoreFramework
                     RefineEfficiency = 1,
                     RefineSpeed = 1,
                     ThrusterEfficiency = 1,
-                    ThrusterForce = 1,
-                    MaxSpeed = 0.0f,
-                    MaxBoost = 0.0f,
-                    BoostDuration = 10f,
-                    BoostCoolDown = 60f
+                    ThrusterForce = 1
                 };
             }
 
@@ -741,6 +891,8 @@ namespace ShipCoreFramework
 
                 var core = groupComponent.ShipCore;
                 if (core == null) return 100f;
+
+                var baseSpeed = core.SpeedModifiers.MaxSpeed * Session.Config.MaxPossibleSpeedMetersPerSecond;
 
                 var baseSpeed = core.SpeedModifiers.MaxSpeed * Session.Config.MaxPossibleSpeedMetersPerSecond;
 

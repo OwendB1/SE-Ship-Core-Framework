@@ -186,9 +186,7 @@ namespace ShipCoreFramework
         public ShipCoreData GetGridCore(IMyCubeGrid grid)
         {
             var bytes = (byte[])Invoke(ApiMethodId.GetGridCore_Binary, grid);
-            if (bytes == null) return null;
-
-            return MyAPIGateway.Utilities.SerializeFromBinary<ShipCoreData>(bytes);
+            return bytes == null ? null : MyAPIGateway.Utilities.SerializeFromBinary<ShipCoreData>(bytes);
         }
 
         /// <summary>
@@ -197,9 +195,7 @@ namespace ShipCoreFramework
         public ShipCoreData GetCoreBySubtypeId(string subtypeId)
         {
             var bytes = (byte[])Invoke(ApiMethodId.GetCoreBySubtypeId_Binary, subtypeId);
-            if (bytes == null) return null;
-
-            return MyAPIGateway.Utilities.SerializeFromBinary<ShipCoreData>(bytes);
+            return bytes == null ? null : MyAPIGateway.Utilities.SerializeFromBinary<ShipCoreData>(bytes);
         }
 
         /// <summary>
@@ -242,9 +238,7 @@ namespace ShipCoreFramework
         public GridModifiersData GetGridModifiers(IMyCubeGrid grid)
         {
             var bytes = (byte[])Invoke(ApiMethodId.GetGridModifiers_Binary, grid);
-            if (bytes == null) return null;
-
-            return MyAPIGateway.Utilities.SerializeFromBinary<GridModifiersData>(bytes);
+            return bytes == null ? null : MyAPIGateway.Utilities.SerializeFromBinary<GridModifiersData>(bytes);
         }
 
         /// <summary>
@@ -253,7 +247,7 @@ namespace ShipCoreFramework
         public float GetMaxSpeed(IMyCubeGrid grid)
         {
             var result = Invoke(ApiMethodId.GetMaxSpeed, grid);
-            return result is float ? (float)result : 0f;
+            return result as float? ?? 0f;
         }
 
         /// <summary>
@@ -271,9 +265,7 @@ namespace ShipCoreFramework
         public ShipCoreData GetNoCoreConfig()
         {
             var bytes = (byte[])Invoke(ApiMethodId.GetNoCoreConfig_Binary, null);
-            if (bytes == null) return null;
-
-            return MyAPIGateway.Utilities.SerializeFromBinary<ShipCoreData>(bytes);
+            return bytes == null ? null : MyAPIGateway.Utilities.SerializeFromBinary<ShipCoreData>(bytes);
         }
 
         /// <summary>
@@ -284,6 +276,70 @@ namespace ShipCoreFramework
             var result = Invoke(ApiMethodId.GetGridCore_SubtypeId, grid);
             return result as string ?? string.Empty;
         }
+        
+        /// <summary>
+        /// Gets SpeedModifiers for the grid's active core (deserialized DTO).
+        /// </summary>
+        public SpeedModifiersData GetSpeedModifiers(IMyCubeGrid grid)
+        {
+            var bytes = (byte[])Invoke(ApiMethodId.GetSpeedModifiers_Binary, grid);
+            return bytes == null ? null : MyAPIGateway.Utilities.SerializeFromBinary<SpeedModifiersData>(bytes);
+        }
+
+        /// <summary>
+        /// Returns true if Dynamic Boost is enabled for the grid's active core.
+        /// </summary>
+        public bool IsDynamicBoostEnabled(IMyCubeGrid grid)
+        {
+            var result = Invoke(ApiMethodId.IsDynamicBoostEnabled, grid);
+            return result is bool && (bool)result;
+        }
+
+        /// <summary>
+        /// Gets BoostResistance for the grid's active core.
+        /// </summary>
+        public float GetBoostResistance(IMyCubeGrid grid)
+        {
+            var result = Invoke(ApiMethodId.GetBoostResistance, grid);
+            return result as float? ?? 0f;
+        }
+
+        /// <summary>
+        /// Gets base max speed in m/s (no boost applied).
+        /// </summary>
+        public float GetBaseMaxSpeed(IMyCubeGrid grid)
+        {
+            var result = Invoke(ApiMethodId.GetBaseMaxSpeed, grid);
+            return result as float? ?? 0f;
+        }
+
+        /// <summary>
+        /// Gets max boost multiplier (core SpeedModifiers.MaxBoost).
+        /// </summary>
+        public float GetMaxBoostMultiplier(IMyCubeGrid grid)
+        {
+            var result = Invoke(ApiMethodId.GetMaxBoostMultiplier, grid);
+            return result as float? ?? 0f;
+        }
+
+        /// <summary>
+        /// Gets boost duration in seconds.
+        /// </summary>
+        public float GetBoostDuration(IMyCubeGrid grid)
+        {
+            var result = Invoke(ApiMethodId.GetBoostDuration, grid);
+            return result as float? ?? 0f;
+        }
+
+        /// <summary>
+        /// Gets boost cooldown in seconds.
+        /// </summary>
+        public float GetBoostCooldown(IMyCubeGrid grid)
+        {
+            var result = Invoke(ApiMethodId.GetBoostCooldown, grid);
+            return result as float? ?? 0f;
+        }
+
 
         // ===== Internals =====
 
@@ -298,10 +354,7 @@ namespace ShipCoreFramework
             try
             {
                 var method = _factory(methodId);
-                if (method == null)
-                    return null;
-
-                return method(arg);
+                return method?.Invoke(arg);
             }
             catch (Exception e)
             {
