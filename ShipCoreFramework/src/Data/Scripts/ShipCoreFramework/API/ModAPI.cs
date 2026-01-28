@@ -717,10 +717,7 @@ namespace ShipCoreFramework
 >>>>>>> Stashed changes
 
                 GroupComponent groupComponent;
-                if (!Session.GroupDict.TryGetValue(groupData, out groupComponent))
-                    return ConvertToGridModifiersData(null,null);
-
-                return ConvertToGridModifiersData(groupComponent.Modifiers,groupComponent.SpeedModifiers);
+                return ConvertToGridModifiersData(!Session.GroupDict.TryGetValue(groupData, out groupComponent) ? null : groupComponent.Modifiers);
             }
             catch (Exception ex)
             {
