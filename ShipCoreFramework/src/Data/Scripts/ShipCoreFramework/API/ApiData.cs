@@ -33,7 +33,7 @@ namespace ShipCoreFramework
         /// Increment when you add functionality in a backwards compatible way,
         /// but you still want consumers to update if you require exact matches.
         /// </summary>
-        public const int API_MINOR = 0;
+        public const int API_MINOR = 1;
 
         /// <summary>
         /// Encoded API version (Major.Minor) packed into a single int.
