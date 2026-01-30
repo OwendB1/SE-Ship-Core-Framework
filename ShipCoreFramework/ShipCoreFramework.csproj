@@ -9,47 +9,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Reference Include="ProtoBuf.Net">
-        <HintPath>.\Bin64\ProtoBuf.Net.dll</HintPath>
-      </Reference>
-      <Reference Include="ProtoBuf.Net.Core">
-        <HintPath>.\Bin64\ProtoBuf.Net.Core.dll</HintPath>
-      </Reference>
-      <Reference Include="Sandbox.Common">
-        <HintPath>.\Bin64\Sandbox.Common.dll</HintPath>
-      </Reference>
-      <Reference Include="Sandbox.Game">
-        <HintPath>.\Bin64\Sandbox.Game.dll</HintPath>
-      </Reference>
-      <Reference Include="Sandbox.Game.XmlSerializers">
-        <HintPath>.\Bin64\Sandbox.Game.XmlSerializers.dll</HintPath>
-      </Reference>
-      <Reference Include="Sandbox.Graphics">
-        <HintPath>.\Bin64\Sandbox.Graphics.dll</HintPath>
-      </Reference>
-      <Reference Include="SpaceEngineers.Game">
-        <HintPath>.\Bin64\SpaceEngineers.Game.dll</HintPath>
-      </Reference>
-      <Reference Include="SpaceEngineers.ObjectBuilders">
-        <HintPath>.\Bin64\SpaceEngineers.ObjectBuilders.dll</HintPath>
-      </Reference>
-      <Reference Include="VRage">
-        <HintPath>.\Bin64\VRage.dll</HintPath>
-      </Reference>
-      <Reference Include="VRage.Game">
-        <HintPath>.\Bin64\VRage.Game.dll</HintPath>
-      </Reference>
-      <Reference Include="VRage.Library">
-        <HintPath>.\Bin64\VRage.Library.dll</HintPath>
-      </Reference>
-      <Reference Include="VRage.Math">
-        <HintPath>.\Bin64\VRage.Math.dll</HintPath>
-      </Reference>
-      <Reference Include="VRage.Render">
-        <HintPath>.\Bin64\VRage.Render.dll</HintPath>
-      </Reference>
-      <Reference Include="VRage.Scripting">
-        <HintPath>.\Bin64\VRage.Scripting.dll</HintPath>
-      </Reference>
+      <PackageReference Include="Mal.Mdk2.References" Version="2.2.7">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
     </ItemGroup>
+
+    
 </Project>

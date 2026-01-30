@@ -371,3 +371,5 @@ FodyWeavers.xsd
 .idea
 
 ShipCoreFramework/Bin64
+
+*.ini
