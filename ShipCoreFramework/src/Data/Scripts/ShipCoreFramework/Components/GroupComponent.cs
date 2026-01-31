@@ -43,6 +43,10 @@ namespace ShipCoreFramework
         internal bool BoostEnabled;
         
         internal bool FrictionEnforcementEnabled = true;
+        
+        // When SpeedLimitType.Normal and a boost ends, slowly ramp the effective max speed down to the base max speed.
+        internal bool PostBoostRampActive;
+        internal float PostBoostSpeedCapMetersPerSecond;
 
         private float _boostCooldownTimer;
         private float _boostDurationTimer;
@@ -436,6 +440,12 @@ namespace ShipCoreFramework
                 BoostEnabled = false;
                 _boostCooldownTimer = BoostCoolDown * 60f;
                 Utils.ShowNotification("Boost Disengaged! Cooldown started.", 1000);
+
+                // Start the post-boost ramp-down cap from boosted max speed.
+                // The enforcement loop will slowly reduce this cap back to base max.
+                var speedMods = SpeedModifiers;
+                PostBoostRampActive = true;
+                PostBoostSpeedCapMetersPerSecond = Session.Config.MaxPossibleSpeedMetersPerSecond * speedMods.MaxBoost;
                 
                 if (MainCoreComponent?.GridComponent?.Grid != null)
                 {
@@ -530,6 +540,7 @@ namespace ShipCoreFramework
                 return;
             }
             BoostEnabled = true;
+            PostBoostRampActive = false;
             _boostDurationTimer = BoostDuration * 60f;
             Utils.ShowNotification("Boost Engaged!", 1000);
             
