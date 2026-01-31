@@ -47,6 +47,10 @@ namespace ShipCoreFramework
         // When SpeedLimitType.Normal and a boost ends, slowly ramp the effective max speed down to the base max speed.
         internal bool PostBoostRampActive;
         internal float PostBoostSpeedCapMetersPerSecond;
+        
+        // Optional runtime overrides (per logical group).
+        // -1 means "no override, use config-derived values".
+        internal float FrictionMaximumDecelerationOverride = -1f;
 
         private float _boostCooldownTimer;
         private float _boostDurationTimer;

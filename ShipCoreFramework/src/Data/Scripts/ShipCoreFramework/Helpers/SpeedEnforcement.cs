@@ -115,6 +115,10 @@ namespace ShipCoreFramework
                         t = MathHelper.Clamp(t, 0f, 1f);
 
                         var maxDecel = Math.Max(0f, groupComponent.SpeedModifiers.MaximumFrictionDeceleration);
+                        if (groupComponent.FrictionMaximumDecelerationOverride >= 0f)
+                        {
+                            maxDecel = groupComponent.FrictionMaximumDecelerationOverride;
+                        }
                         if (boostActive && boostMaxSpeed > 0.001f)
                         {
                             // During boost, reduce friction deceleration to help reach/maintain higher speeds.

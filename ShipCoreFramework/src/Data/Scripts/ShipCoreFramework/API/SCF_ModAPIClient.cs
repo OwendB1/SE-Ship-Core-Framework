@@ -358,6 +358,33 @@ namespace ShipCoreFramework
             return result is bool && (bool)result;
         }
 
+        /// <summary>
+        /// Sets the maximum friction deceleration override (m/s^2) for a logical grid group.
+        /// </summary>
+        public bool SetFrictionMaximumDecelerationForGroup(IMyGridGroupData groupData, float deceleration)
+        {
+            var result = Invoke(ApiMethodId.SetFrictionMaximumDecelerationForGroup, MyTuple.Create(groupData, deceleration));
+            return result is bool && (bool)result;
+        }
+
+        /// <summary>
+        /// Clears the maximum friction deceleration override for a logical grid group.
+        /// </summary>
+        public bool ClearFrictionMaximumDecelerationForGroup(IMyGridGroupData groupData)
+        {
+            var result = Invoke(ApiMethodId.ClearFrictionMaximumDecelerationForGroup, groupData);
+            return result is bool && (bool)result;
+        }
+
+        /// <summary>
+        /// Gets the maximum friction deceleration override (m/s^2) for a logical grid group, or -1 if none.
+        /// </summary>
+        public float GetFrictionMaximumDecelerationForGroup(IMyGridGroupData groupData)
+        {
+            var result = Invoke(ApiMethodId.GetFrictionMaximumDecelerationForGroup, groupData);
+            return result as float? ?? -1f;
+        }
+
 
         // ===== Internals =====
 

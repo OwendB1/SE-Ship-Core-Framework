@@ -175,6 +175,26 @@ namespace ShipCoreFramework
         /// </summary>
         public const int GetFrictionEnabledForGroup = 27;
 
+        /// <summary>
+        /// Sets the maximum friction deceleration (m/s^2) override for a logical grid group.
+        /// Use a value &gt;= 0 to override the core/config value.
+        /// Signature: object -> bool (expects MyTuple&lt;IMyGridGroupData, float&gt;).
+        /// </summary>
+        public const int SetFrictionMaximumDecelerationForGroup = 28;
+
+        /// <summary>
+        /// Clears the maximum friction deceleration override for a logical grid group.
+        /// Signature: IMyGridGroupData -> bool.
+        /// </summary>
+        public const int ClearFrictionMaximumDecelerationForGroup = 29;
+
+        /// <summary>
+        /// Gets the maximum friction deceleration override for a logical grid group.
+        /// Returns -1 if no override is set.
+        /// Signature: IMyGridGroupData -> float.
+        /// </summary>
+        public const int GetFrictionMaximumDecelerationForGroup = 30;
+
         // Optional: Field getters for "no parsing" access (primitives only).
         // These can be handy if a consumer only needs a single field and wants to avoid deserializing a full DTO.
         public const int GetGridCore_SubtypeId = 100;   // IMyCubeGrid -> string

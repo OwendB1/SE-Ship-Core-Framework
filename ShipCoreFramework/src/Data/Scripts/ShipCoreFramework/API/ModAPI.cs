@@ -166,6 +166,19 @@ namespace ShipCoreFramework
                 case ApiMethodId.GetFrictionEnabledForGroup:
                     return arg => GetFrictionEnabledForGroup(arg as IMyGridGroupData);
 
+                case ApiMethodId.SetFrictionMaximumDecelerationForGroup:
+                    return arg =>
+                    {
+                        var t = (MyTuple<IMyGridGroupData, float>)arg;
+                        return SetFrictionMaximumDecelerationForGroup(t.Item1, t.Item2);
+                    };
+
+                case ApiMethodId.ClearFrictionMaximumDecelerationForGroup:
+                    return arg => ClearFrictionMaximumDecelerationForGroup(arg as IMyGridGroupData);
+
+                case ApiMethodId.GetFrictionMaximumDecelerationForGroup:
+                    return arg => GetFrictionMaximumDecelerationForGroup(arg as IMyGridGroupData);
+
                 // Optional primitive getters:
                 case ApiMethodId.GetGridCore_SubtypeId:
                     return arg =>
@@ -556,6 +569,75 @@ namespace ShipCoreFramework
             {
                 Utils.Log($"ModAPI.GetFrictionEnabledForGroup: Exception - {ex}");
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Sets the maximum friction deceleration override (m/s^2) for a logical grid group.
+        /// </summary>
+        public static bool SetFrictionMaximumDecelerationForGroup(IMyGridGroupData groupData, float deceleration)
+        {
+            if (groupData == null) return false;
+            if (deceleration < 0f) return false;
+
+            try
+            {
+                GroupComponent groupComponent;
+                if (!Session.GroupDict.TryGetValue(groupData, out groupComponent))
+                    return false;
+
+                groupComponent.FrictionMaximumDecelerationOverride = deceleration;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Utils.Log($"ModAPI.SetFrictionMaximumDecelerationForGroup: Exception - {ex}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Clears the maximum friction deceleration override for a logical grid group.
+        /// </summary>
+        public static bool ClearFrictionMaximumDecelerationForGroup(IMyGridGroupData groupData)
+        {
+            if (groupData == null) return false;
+
+            try
+            {
+                GroupComponent groupComponent;
+                if (!Session.GroupDict.TryGetValue(groupData, out groupComponent))
+                    return false;
+
+                groupComponent.FrictionMaximumDecelerationOverride = -1f;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Utils.Log($"ModAPI.ClearFrictionMaximumDecelerationForGroup: Exception - {ex}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Gets the maximum friction deceleration override for a logical grid group (or -1 if none).
+        /// </summary>
+        public static float GetFrictionMaximumDecelerationForGroup(IMyGridGroupData groupData)
+        {
+            if (groupData == null) return -1f;
+
+            try
+            {
+                GroupComponent groupComponent;
+                if (!Session.GroupDict.TryGetValue(groupData, out groupComponent))
+                    return -1f;
+
+                return groupComponent.FrictionMaximumDecelerationOverride;
+            }
+            catch (Exception ex)
+            {
+                Utils.Log($"ModAPI.GetFrictionMaximumDecelerationForGroup: Exception - {ex}");
+                return -1f;
             }
         }
 
