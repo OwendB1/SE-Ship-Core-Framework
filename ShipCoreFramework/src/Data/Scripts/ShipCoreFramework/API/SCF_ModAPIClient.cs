@@ -340,6 +340,24 @@ namespace ShipCoreFramework
             return result as float? ?? 0f;
         }
 
+        /// <summary>
+        /// Enables/disables friction-based speed limiting for a logical grid group.
+        /// </summary>
+        public bool SetFrictionEnabledForGroup(IMyGridGroupData groupData, bool enabled)
+        {
+            var result = Invoke(ApiMethodId.SetFrictionEnabledForGroup, MyTuple.Create(groupData, enabled));
+            return result is bool && (bool)result;
+        }
+
+        /// <summary>
+        /// Gets whether friction-based speed limiting is enabled for a logical grid group.
+        /// </summary>
+        public bool GetFrictionEnabledForGroup(IMyGridGroupData groupData)
+        {
+            var result = Invoke(ApiMethodId.GetFrictionEnabledForGroup, groupData);
+            return result is bool && (bool)result;
+        }
+
 
         // ===== Internals =====
 

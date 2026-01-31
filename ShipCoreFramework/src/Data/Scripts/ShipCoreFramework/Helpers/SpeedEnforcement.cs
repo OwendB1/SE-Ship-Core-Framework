@@ -5,6 +5,7 @@ using System.Linq;
 using System.Collections.Generic;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
+using VRage.Game.Components;
 using VRageMath;
 
 #endregion
@@ -20,75 +21,108 @@ namespace ShipCoreFramework
             {
                 return;
             }
-            List<IMyCubeGrid> AttachedGrids = new List<IMyCubeGrid>();
-            groupComponent.GridDictionary.First().Key.GetGridGroup(GridLinkTypeEnum.Physical).GetGrids(AttachedGrids);
+            
+            if (groupComponent.GridDictionary.Count == 0) return;
 
-            foreach (var kvp in AttachedGrids)
+            var physicalGroup = groupComponent.GridDictionary.First().Key.GetGridGroup(GridLinkTypeEnum.Physical);
+            if (physicalGroup == null) return;
+
+            var attachedGrids = new List<IMyCubeGrid>();
+            physicalGroup.GetGrids(attachedGrids);
+
+            foreach (var grid in attachedGrids)
             {
-                var group = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Physical, kvp);
-                if (kvp?.Physics == null) continue;
-                if(kvp.IsStatic) continue;
-                var maxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.SpeedModifiers.MaxSpeed;
-                var maxBoost = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.SpeedModifiers.MaxBoost;
-                var velocity = kvp.Physics.LinearVelocity;
-                var acceleration = Convert.ToSingle(Math.Sqrt(kvp.Physics.LinearAcceleration.LengthSquared()));
-                var direction = Vector3.Normalize(velocity);
-                //If under max speed return
-                if (velocity.LengthSquared() <= maxSpeed * maxSpeed) continue;
-                /*if(maxSpeed==0.0f)
-                {
-                    (kvp.Key as IMyCubeGrid).IsStatic=true;
-                }*/
-                //If Dynamic Speed boost
-                if(groupComponent.ShipCore.DyamicBoostEnabled && (!groupComponent.ShipCore.SpeedBoostEnabled || (groupComponent.ShipCore.SpeedBoostEnabled &&groupComponent.ShipCore != null && groupComponent.BoostEnabled)))
-                {
-                    if(velocity.LengthSquared()>(maxBoost*maxBoost)+1f)
-                    {
-                        velocity = direction * maxBoost;
-                    }
-                    else
-                    {
-                        //maxSpeed = maxSpeed+Convert.ToSingle(Math.Pow(acceleration,1/groupComponent.SpeedModifiers.BoostResistance));
-                        maxSpeed = maxSpeed+Convert.ToSingle(Math.Sqrt(acceleration)*groupComponent.SpeedModifiers.BoostResistance);
-                        if(maxSpeed>maxBoost) maxSpeed=maxBoost;
-                        var vsqrd = Convert.ToSingle(Math.Sqrt(velocity.LengthSquared()));
-                        var vbrake = (vsqrd-maxSpeed)*0.99f;
-                        if(vbrake<1)vbrake=0;
-                        velocity = direction * (maxSpeed+vbrake);
+                if (grid?.Physics == null) continue;
+                if (grid.IsStatic) continue;
 
-                    }
-                }
-                else
+                var velocity = grid.Physics.LinearVelocity;
+                var speedSq = velocity.LengthSquared();
+                if (speedSq < 0.0001f) continue;
+
+                if (groupComponent.PunishSpeed)
                 {
-                    if (groupComponent.ShipCore != null && groupComponent.ShipCore.SpeedBoostEnabled)
+                    var punishedVelocity = velocity / 4f;
+                    MyAPIGateway.Utilities.InvokeOnGameThread(() =>
                     {
-                        if(groupComponent.BoostEnabled)maxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.SpeedModifiers.MaxBoost;
-                        else
+                        try
                         {
-                             velocity = direction * maxSpeed;
+                            grid.Physics?.SetSpeeds(punishedVelocity, grid.Physics.AngularVelocity);
                         }
-
-                    }
-                    else
-                    {
-                        
-                    }
-                    velocity = direction * maxSpeed;
-                    
+                        catch
+                        {
+                            // ignore
+                        }
+                    });
+                    continue;
                 }
-                //If Over limits, cut speed
-                if (groupComponent.PunishSpeed) velocity /= 4;
-                //Do the thing
+
+                var baseMaxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.SpeedModifiers.MaxSpeed;
+                var boostMaxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.SpeedModifiers.MaxBoost;
+                var maxSpeed = (groupComponent.ShipCore != null && groupComponent.ShipCore.SpeedBoostEnabled && groupComponent.BoostEnabled)
+                    ? boostMaxSpeed
+                    : baseMaxSpeed;
+
+                var speed = Convert.ToSingle(Math.Sqrt(speedSq));
+                var direction = velocity / speed;
+
+                // Friction-based speed limiting (soft cap)
+                if (groupComponent.ShipCore != null
+                    && groupComponent.ShipCore.SpeedLimitType == SpeedLimitType.Friction
+                    && groupComponent.FrictionEnforcementEnabled)
+                {
+                    var minFrictionSpeed = Math.Max(0f, groupComponent.SpeedModifiers.MinimumFrictionSpeed);
+                    var maxFrictionSpeed = maxSpeed;
+
+                    // If configured, allow friction curve to be driven by the explicit max friction speed.
+                    // Boost always uses the current boost speed as the "max friction speed".
+                    if (!(groupComponent.ShipCore.SpeedBoostEnabled && groupComponent.BoostEnabled)
+                        && groupComponent.SpeedModifiers.MaximumFrictionSpeed > 0f)
+                    {
+                        maxFrictionSpeed = groupComponent.SpeedModifiers.MaximumFrictionSpeed;
+                    }
+
+                    if (maxFrictionSpeed > 0f && speed > minFrictionSpeed)
+                    {
+                        var denom = maxFrictionSpeed - minFrictionSpeed;
+                        var t = denom > 0.0001f ? (speed - minFrictionSpeed) / denom : 1f;
+                        t = MathHelper.Clamp(t, 0f, 1f);
+
+                        var maxDecel = Math.Max(0f, groupComponent.SpeedModifiers.MaximumFrictionDeceleration);
+                        var decel = maxDecel * t;
+
+                        if (decel > 0.0001f)
+                        {
+                            var force = -direction * (grid.Physics.Mass * decel);
+                            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+                            {
+                                try
+                                {
+                                    grid.Physics?.AddForce(MyPhysicsForceType.APPLY_WORLD_FORCE, force, null, null);
+                                }
+                                catch
+                                {
+                                    // ignore
+                                }
+                            });
+                        }
+                    }
+
+                    continue;
+                }
+
+                // Normal hard clamp
+                if (speedSq <= maxSpeed * maxSpeed) continue;
+
+                var clampedVelocity = direction * maxSpeed;
                 MyAPIGateway.Utilities.InvokeOnGameThread(() =>
                 {
                     try
                     {
-                        if (kvp?.Physics != null)
-                            kvp.Physics.SetSpeeds(velocity, kvp.Physics.AngularVelocity);
+                        grid.Physics?.SetSpeeds(clampedVelocity, grid.Physics.AngularVelocity);
                     }
-                    catch (Exception)
+                    catch
                     {
-                        // do nothing
+                        // ignore
                     }
                 });
             }

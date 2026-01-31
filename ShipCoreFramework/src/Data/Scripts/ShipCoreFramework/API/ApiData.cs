@@ -33,7 +33,7 @@ namespace ShipCoreFramework
         /// Increment when you add functionality in a backwards compatible way,
         /// but you still want consumers to update if you require exact matches.
         /// </summary>
-        public const int API_MINOR = 1;
+        public const int API_MINOR = 2;
 
         /// <summary>
         /// Encoded API version (Major.Minor) packed into a single int.
@@ -163,6 +163,18 @@ namespace ShipCoreFramework
         /// </summary>
         public const int GetBoostCooldown = 25;
 
+        /// <summary>
+        /// Enables/disables friction-based speed limiting for a logical grid group.
+        /// Signature: object -> bool (expects MyTuple&lt;IMyGridGroupData, bool&gt;).
+        /// </summary>
+        public const int SetFrictionEnabledForGroup = 26;
+
+        /// <summary>
+        /// Gets whether friction-based speed limiting is enabled for a logical grid group.
+        /// Signature: IMyGridGroupData -> bool.
+        /// </summary>
+        public const int GetFrictionEnabledForGroup = 27;
+
         // Optional: Field getters for "no parsing" access (primitives only).
         // These can be handy if a consumer only needs a single field and wants to avoid deserializing a full DTO.
         public const int GetGridCore_SubtypeId = 100;   // IMyCubeGrid -> string
@@ -234,8 +246,13 @@ namespace ShipCoreFramework
         [ProtoMember(3)] public float BoostDuration;
         [ProtoMember(4)] public float BoostCoolDown;
 
-        // Dynamic boost tuning
+        // Legacy field kept for backwards compatibility (previously BoostResistance).
         [ProtoMember(5)] public float BoostResistance;
+
+        // Friction tuning
+        [ProtoMember(6)] public float MinimumFrictionSpeed;
+        [ProtoMember(7)] public float MaximumFrictionSpeed;
+        [ProtoMember(8)] public float MaximumFrictionDeceleration;
     }
 
     /// <summary>

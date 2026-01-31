@@ -34,6 +34,10 @@ namespace ShipCoreFramework
             coreBlock.AddUpgradeValue("BoostResistance", 1f);
             coreBlock.AddUpgradeValue("BoostDuration", 1f);
             coreBlock.AddUpgradeValue("BoostCoolDown", 1f);
+            
+            coreBlock.AddUpgradeValue("MinimumFrictionSpeed", 1f);
+            coreBlock.AddUpgradeValue("MaximumFrictionSpeed", 1f);
+            coreBlock.AddUpgradeValue("MaximumFrictionDeceleration", 1f);
 
             coreBlock.AddUpgradeValue("PassiveBulletDamage", 1f);
             coreBlock.AddUpgradeValue("PassiveRocketDamage", 1f);
@@ -96,9 +100,13 @@ namespace ShipCoreFramework
             }
             enhancedModifiers.MaxSpeed = shipCore.SpeedModifiers.MaxSpeed * myBlock.CoreBlock.UpgradeValues["MaxSpeed"];
             enhancedModifiers.MaxBoost = shipCore.SpeedModifiers.MaxBoost * myBlock.CoreBlock.UpgradeValues["MaxBoost"];
-            enhancedModifiers.BoostResistance = shipCore.SpeedModifiers.BoostResistance * myBlock.CoreBlock.UpgradeValues["BoostResistance"];
             enhancedModifiers.BoostDuration = shipCore.SpeedModifiers.BoostDuration * myBlock.CoreBlock.UpgradeValues["BoostDuration"];
             enhancedModifiers.BoostCoolDown = shipCore.SpeedModifiers.BoostCoolDown * myBlock.CoreBlock.UpgradeValues["BoostCoolDown"];
+            enhancedModifiers.MinimumFrictionSpeed = shipCore.SpeedModifiers.MinimumFrictionSpeed * myBlock.CoreBlock.UpgradeValues["MinimumFrictionSpeed"];
+            enhancedModifiers.MaximumFrictionSpeed = shipCore.SpeedModifiers.MaximumFrictionSpeed * myBlock.CoreBlock.UpgradeValues["MaximumFrictionSpeed"];
+            enhancedModifiers.MaximumFrictionDeceleration = shipCore.SpeedModifiers.MaximumFrictionDeceleration
+                                                           * myBlock.CoreBlock.UpgradeValues["MaximumFrictionDeceleration"]
+                                                           * myBlock.CoreBlock.UpgradeValues["BoostResistance"];
 
             
             return enhancedModifiers;

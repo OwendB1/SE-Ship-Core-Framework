@@ -651,7 +651,9 @@ namespace ShipCoreFramework
             {
                 body += $"    Max Speed:       {speedmods.MaxSpeed:F2}\n";
                 body += $"    Max Boost Speed: {speedmods.MaxBoost:F2}\n";
-                body += $"    Speed Resist:    {speedmods.BoostResistance:F2}\n";
+                body += $"    Min Friction:    {speedmods.MinimumFrictionSpeed:F1} m/s\n";
+                body += $"    Max Friction:    {speedmods.MaximumFrictionSpeed:F1} m/s\n";
+                body += $"    Friction Decel:  {speedmods.MaximumFrictionDeceleration:F2} m/s^2\n";
                 body += $"    Boost Duration:  {speedmods.BoostDuration:F2}\n";
                 body += $"    Boost Cooldown:  {speedmods.BoostCoolDown:F2}\n";
             }

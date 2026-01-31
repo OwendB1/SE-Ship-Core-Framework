@@ -266,8 +266,8 @@ namespace ShipCoreFramework
         public GridDefenseModifiers PassiveDefenseModifiers = new GridDefenseModifiers();
         [XmlElement("SpeedBoostEnabled")]
         public bool SpeedBoostEnabled;
-        [XmlElement("DyamicBoostEnabled")]
-        public bool DyamicBoostEnabled;
+        [XmlElement("SpeedLimitType")]
+        public SpeedLimitType SpeedLimitType;
         [XmlElement("SpeedModifiers")]
         public SpeedModifiers SpeedModifiers = new SpeedModifiers();
         [XmlElement("EnableActiveDefenseModifiers")]
@@ -289,10 +289,14 @@ namespace ShipCoreFramework
         public float BoostDuration = 10f; 
         [XmlElement("BoostCoolDown")]
         public float BoostCoolDown = 60f;      
-        //Dyamic Boost Stuff
-        [XmlElement("BoostResistance")]
-        public float BoostResistance = 10f;    
+        [XmlElement("MinimumFrictionSpeed")]
+        public float MinimumFrictionSpeed = 100f;
+        [XmlElement("MaximumFrictionSpeed")]
+        public float MaximumFrictionSpeed = 290f;
+        [XmlElement("MaximumFrictionDeceleration")]
+        public float MaximumFrictionDeceleration= 1f;    
     }
+    
     [XmlRoot("GridModifiers")]
     public class GridModifiers
     {
@@ -341,11 +345,7 @@ namespace ShipCoreFramework
                 new ModifierNameValue("Refinery speed", RefineSpeed),
                 new ModifierNameValue("Assembler speed", AssemblerSpeed),
                 new ModifierNameValue("Power output", PowerProducersOutput),
-                new ModifierNameValue("Drill harvest", DrillHarvestMultiplier),
-                //new ModifierNameValue("Max speed", MaxSpeed),
-                //new ModifierNameValue("Max boost", MaxBoost),
-                //new ModifierNameValue("Boost duration", BoostDuration),
-                //new ModifierNameValue("Boost cooldown", BoostCoolDown)
+                new ModifierNameValue("Drill harvest", DrillHarvestMultiplier)
             };
         }
     }
@@ -360,14 +360,6 @@ namespace ShipCoreFramework
             Name = name;
             Value = value;
         }
-    }
-    
-    [XmlRoot("MobilityType")]
-    public enum MobilityType
-    {
-        Static = 0, 
-        Mobile = 1, 
-        Both = 2
     }
 
     [XmlRoot("BlockLimit")]
@@ -407,7 +399,6 @@ namespace ShipCoreFramework
                     }
                 }
             }
-
             return 0d;
         }
     }
@@ -467,6 +458,21 @@ namespace ShipCoreFramework
         public float Energy = 1f;
         [XmlElement("Kinetic")] 
         public float Kinetic = 1f;
+    }
+    
+    [XmlRoot("MobilityType")]
+    public enum MobilityType
+    {
+        Static = 0, 
+        Mobile = 1, 
+        Both = 2
+    }
+    
+    [XmlRoot("SpeedLimitType")]
+    public enum SpeedLimitType
+    {
+        Normal = 0, 
+        Friction = 1
     }
 
     [XmlRoot("PunishmentType")]

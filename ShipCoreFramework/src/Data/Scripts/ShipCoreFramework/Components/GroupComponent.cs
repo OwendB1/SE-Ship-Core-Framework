@@ -41,6 +41,8 @@ namespace ShipCoreFramework
         internal bool PunishModifiers;
         internal bool PunishSpeed;
         internal bool BoostEnabled;
+        
+        internal bool FrictionEnforcementEnabled = true;
 
         private float _boostCooldownTimer;
         private float _boostDurationTimer;

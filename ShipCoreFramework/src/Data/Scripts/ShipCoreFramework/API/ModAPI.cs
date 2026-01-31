@@ -156,6 +156,16 @@ namespace ShipCoreFramework
                 case ApiMethodId.GetBoostCooldown:
                     return arg => GetBoostCooldown(arg as IMyCubeGrid);
 
+                case ApiMethodId.SetFrictionEnabledForGroup:
+                    return arg =>
+                    {
+                        var t = (MyTuple<IMyGridGroupData, bool>)arg;
+                        return SetFrictionEnabledForGroup(t.Item1, t.Item2);
+                    };
+
+                case ApiMethodId.GetFrictionEnabledForGroup:
+                    return arg => GetFrictionEnabledForGroup(arg as IMyGridGroupData);
+
                 // Optional primitive getters:
                 case ApiMethodId.GetGridCore_SubtypeId:
                     return arg =>
@@ -487,37 +497,66 @@ namespace ShipCoreFramework
 
         /// <summary>
         /// Returns true if Dynamic Boost is enabled for the grid's active core.
+        /// NOTE: Dynamic boost has been deprecated; this currently always returns false.
         /// </summary>
         public static bool IsDynamicBoostEnabled(IMyCubeGrid grid)
         {
-            if (grid == null) return false;
-
-            try
-            {
-                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, grid);
-                if (groupData == null) return false;
-
-                GroupComponent groupComponent;
-                if (!Session.GroupDict.TryGetValue(groupData, out groupComponent))
-                    return false;
-
-                var core = groupComponent.ShipCore;
-                return core != null && core.DyamicBoostEnabled;
-            }
-            catch (Exception ex)
-            {
-                Utils.Log($"ModAPI.IsDynamicBoostEnabled: Exception - {ex}");
-                return false;
-            }
+            return false;
         }
 
         /// <summary>
         /// Gets BoostResistance from the grid's active core speed modifiers.
+        /// NOTE: This is a legacy value; it maps to MaximumFrictionDeceleration for newer configs.
         /// </summary>
         public static float GetBoostResistance(IMyCubeGrid grid)
         {
             var s = GetSpeedModifiers(grid);
             return s?.BoostResistance ?? 0f;
+        }
+
+        /// <summary>
+        /// Enables/disables friction-based speed limiting for a logical grid group.
+        /// </summary>
+        public static bool SetFrictionEnabledForGroup(IMyGridGroupData groupData, bool enabled)
+        {
+            if (groupData == null) return false;
+
+            try
+            {
+                GroupComponent groupComponent;
+                if (!Session.GroupDict.TryGetValue(groupData, out groupComponent))
+                    return false;
+
+                groupComponent.FrictionEnforcementEnabled = enabled;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Utils.Log($"ModAPI.SetFrictionEnabledForGroup: Exception - {ex}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Gets whether friction-based speed limiting is enabled for a logical grid group.
+        /// </summary>
+        public static bool GetFrictionEnabledForGroup(IMyGridGroupData groupData)
+        {
+            if (groupData == null) return false;
+
+            try
+            {
+                GroupComponent groupComponent;
+                if (!Session.GroupDict.TryGetValue(groupData, out groupComponent))
+                    return false;
+
+                return groupComponent.FrictionEnforcementEnabled;
+            }
+            catch (Exception ex)
+            {
+                Utils.Log($"ModAPI.GetFrictionEnabledForGroup: Exception - {ex}");
+                return false;
+            }
         }
 
         /// <summary>
@@ -606,7 +645,10 @@ namespace ShipCoreFramework
                         MaxBoost = 0.0f,
                         BoostDuration = 10f,
                         BoostCoolDown = 60f,
-                        BoostResistance = 10f
+                        BoostResistance = 0f,
+                        MinimumFrictionSpeed = 0f,
+                        MaximumFrictionSpeed = 0f,
+                        MaximumFrictionDeceleration = 0f
                     }
                 };
             }
@@ -629,7 +671,7 @@ namespace ShipCoreFramework
                 SpeedBoostEnabled = core.SpeedBoostEnabled,
                 EnableActiveDefenseModifiers = core.EnableActiveDefenseModifiers,
                 ActiveDefenseModifiers = ConvertToDefenseModifiersData(core.ActiveDefenseModifiers),
-                DynamicBoostEnabled = core.DyamicBoostEnabled,
+                DynamicBoostEnabled = false,
                 SpeedModifiers = ConvertToSpeedModifiersData(core.SpeedModifiers),
             };
         }
@@ -676,7 +718,10 @@ namespace ShipCoreFramework
                     MaxBoost = 0.0f,
                     BoostDuration = 10f,
                     BoostCoolDown = 60f,
-                    BoostResistance = 10f
+                    BoostResistance = 0f,
+                    MinimumFrictionSpeed = 0f,
+                    MaximumFrictionSpeed = 0f,
+                    MaximumFrictionDeceleration = 0f
                 };
             }
 
@@ -686,7 +731,10 @@ namespace ShipCoreFramework
                 MaxBoost = modifiers.MaxBoost,
                 BoostDuration = modifiers.BoostDuration,
                 BoostCoolDown = modifiers.BoostCoolDown,
-                BoostResistance = modifiers.BoostResistance
+                BoostResistance = modifiers.MaximumFrictionDeceleration,
+                MinimumFrictionSpeed = modifiers.MinimumFrictionSpeed,
+                MaximumFrictionSpeed = modifiers.MaximumFrictionSpeed,
+                MaximumFrictionDeceleration = modifiers.MaximumFrictionDeceleration
             };
         }
 
