@@ -23,16 +23,16 @@
     <ThrusterEfficiency>2</ThrusterEfficiency>
     <ThrusterForce>2</ThrusterForce>
   </Modifiers>
-  <SpeedBoostEnabled>true</SpeedBoostEnabled>
+  <SpeedBoostEnabled>false</SpeedBoostEnabled>
   <SpeedLimitType>Friction</SpeedLimitType>
   <SpeedModifiers>
-    <MaxSpeed>0.2</MaxSpeed>
+    <MaxSpeed>0.3</MaxSpeed>
     <MaxBoost>0.9</MaxBoost>
     <BoostDuration>5</BoostDuration>
     <BoostCoolDown>5</BoostCoolDown>
-    <MinimumFrictionSpeed>5</MinimumFrictionSpeed>
-    <MaximumFrictionSpeed>290</MaximumFrictionSpeed>
-    <MaximumFrictionDeceleration>1</MaximumFrictionDeceleration>
+    <MinimumFrictionSpeed>0.2</MinimumFrictionSpeed>
+    <MaximumFrictionSpeed>0.7</MaximumFrictionSpeed>
+    <MaximumFrictionDeceleration>0.1</MaximumFrictionDeceleration>
   </SpeedModifiers>
   <PassiveDefenseModifiers>
     <Bullet>0.5</Bullet>

@@ -22,13 +22,16 @@
     <ThrusterEfficiency>1</ThrusterEfficiency>
     <ThrusterForce>0.1</ThrusterForce>
   </Modifiers>
-  <DyamicBoostEnabled>true</DyamicBoostEnabled>
+  <SpeedBoostEnabled>false</SpeedBoostEnabled>
+  <SpeedLimitType>Normal</SpeedLimitType>
   <SpeedModifiers>
     <MaxSpeed>0</MaxSpeed>
     <MaxBoost>0</MaxBoost>
-    <BoostResistance>10</BoostResistance>
-    <BoostDuration>15</BoostDuration>
-    <BoostCoolDown>15</BoostCoolDown>
+    <BoostDuration>5</BoostDuration>
+    <BoostCoolDown>10</BoostCoolDown>
+    <MinimumFrictionSpeed>0</MinimumFrictionSpeed>
+    <MaximumFrictionSpeed>0</MaximumFrictionSpeed>
+    <MaximumFrictionDeceleration>0</MaximumFrictionDeceleration>
   </SpeedModifiers>
   <PassiveDefenseModifiers>
     <Bullet>1</Bullet>
@@ -38,7 +41,6 @@
     <Explosion>1</Explosion>
     <Environment>0.5</Environment>
   </PassiveDefenseModifiers>
-  <SpeedBoostEnabled>false</SpeedBoostEnabled>
   <EnableActiveDefenseModifiers>true</EnableActiveDefenseModifiers>
   <ActiveDefenseModifiers>
     <Bullet>0.5</Bullet>

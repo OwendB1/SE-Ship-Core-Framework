@@ -38,7 +38,8 @@ namespace ShipCoreFramework
                 var velocity = grid.Physics.LinearVelocity;
                 var speedSq = velocity.LengthSquared();
                 if (speedSq < 0.0001f) continue;
-
+                
+                //does this work!?!?!
                 if (groupComponent.PunishSpeed)
                 {
                     var punishedVelocity = velocity / 4f;
