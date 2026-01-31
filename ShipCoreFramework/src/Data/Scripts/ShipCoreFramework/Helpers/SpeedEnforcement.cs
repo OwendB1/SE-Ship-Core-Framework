@@ -98,14 +98,14 @@ namespace ShipCoreFramework
                     && groupComponent.ShipCore.SpeedLimitType == SpeedLimitType.Friction
                     && groupComponent.FrictionEnforcementEnabled)
                 {
-                    var minFrictionSpeed = Math.Max(0f, groupComponent.SpeedModifiers.MinimumFrictionSpeed);
+                    var minFrictionSpeed = Math.Max(0f, groupComponent.SpeedModifiers.MinimumFrictionSpeed*Session.Config.MaxPossibleSpeedMetersPerSecond);
                     var maxFrictionSpeed = maxSpeed;
 
                     // Allow an explicit max-friction speed, but never above the current max speed (base).
                     // Boost always uses the current boost speed as the "max friction speed".
-                    if (!boostActive && groupComponent.SpeedModifiers.MaximumFrictionSpeed > 0f)
+                    if (!boostActive && groupComponent.SpeedModifiers.MaximumFrictionSpeed*Session.Config.MaxPossibleSpeedMetersPerSecond > 0f)
                     {
-                        maxFrictionSpeed = Math.Min(maxFrictionSpeed, groupComponent.SpeedModifiers.MaximumFrictionSpeed);
+                        maxFrictionSpeed = Math.Min(maxFrictionSpeed, groupComponent.SpeedModifiers.MaximumFrictionSpeed*Session.Config.MaxPossibleSpeedMetersPerSecond);
                     }
 
                     if (maxFrictionSpeed > 0f && speed > minFrictionSpeed)
@@ -114,7 +114,7 @@ namespace ShipCoreFramework
                         var t = denom > 0.0001f ? (speed - minFrictionSpeed) / denom : 1f;
                         t = MathHelper.Clamp(t, 0f, 1f);
 
-                        var maxDecel = Math.Max(0f, groupComponent.SpeedModifiers.MaximumFrictionDeceleration);
+                        var maxDecel = Math.Max(0f, groupComponent.SpeedModifiers.MaximumFrictionDeceleration*Session.Config.MaxPossibleSpeedMetersPerSecond);
                         if (groupComponent.FrictionMaximumDecelerationOverride >= 0f)
                         {
                             maxDecel = groupComponent.FrictionMaximumDecelerationOverride;

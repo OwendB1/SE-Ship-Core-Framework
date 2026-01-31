@@ -282,19 +282,21 @@ namespace ShipCoreFramework
     public class SpeedModifiers
     {
         [XmlElement("MaxSpeed")]
-        public float MaxSpeed = 0.0f;
+        public float MaxSpeed = 0.3f;
         [XmlElement("MaxBoost")]
-        public float MaxBoost = 0.0f;
+        public float MaxBoost = 0.5f;
         [XmlElement("BoostDuration")]
         public float BoostDuration = 10f; 
         [XmlElement("BoostCoolDown")]
-        public float BoostCoolDown = 60f;      
+        public float BoostCoolDown = 60f;
+        //We use out of decimals out of 1 for speed to support configuration changes (yes I know this may make vanir cranky)
         [XmlElement("MinimumFrictionSpeed")]
-        public float MinimumFrictionSpeed = 100f;
+        public float MinimumFrictionSpeed = 0.3f;
         [XmlElement("MaximumFrictionSpeed")]
-        public float MaximumFrictionSpeed = 290f;
+        public float MaximumFrictionSpeed = 0.9f;
+        //This one I'm willing to negotiate on whether it should be true M/S, however it's way more in line to have it scale like everything else.
         [XmlElement("MaximumFrictionDeceleration")]
-        public float MaximumFrictionDeceleration= 1f;    
+        public float MaximumFrictionDeceleration= 0.01f;    
     }
     
     [XmlRoot("GridModifiers")]

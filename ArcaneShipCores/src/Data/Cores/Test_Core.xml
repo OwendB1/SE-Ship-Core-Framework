@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-16"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <ShipCore xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <SubtypeId>Test_Core</SubtypeId>
   <UniqueName>Test Grid Core</UniqueName>
@@ -23,13 +23,16 @@
     <ThrusterEfficiency>2</ThrusterEfficiency>
     <ThrusterForce>2</ThrusterForce>
   </Modifiers>
-  <DyamicBoostEnabled>true</DyamicBoostEnabled>
+  <SpeedBoostEnabled>true</SpeedBoostEnabled>
+  <SpeedLimitType>Friction</SpeedLimitType>
   <SpeedModifiers>
     <MaxSpeed>0.2</MaxSpeed>
     <MaxBoost>0.9</MaxBoost>
-    <BoostResistance>1000</BoostResistance>
     <BoostDuration>5</BoostDuration>
     <BoostCoolDown>5</BoostCoolDown>
+    <MinimumFrictionSpeed>5</MinimumFrictionSpeed>
+    <MaximumFrictionSpeed>290</MaximumFrictionSpeed>
+    <MaximumFrictionDeceleration>1</MaximumFrictionDeceleration>
   </SpeedModifiers>
   <PassiveDefenseModifiers>
     <Bullet>0.5</Bullet>
@@ -39,7 +42,6 @@
     <Explosion>0.5</Explosion>
     <Environment>0.5</Environment>
   </PassiveDefenseModifiers>
-  <SpeedBoostEnabled>true</SpeedBoostEnabled>
   <EnableActiveDefenseModifiers>true</EnableActiveDefenseModifiers>
   <ActiveDefenseModifiers>
     <Bullet>0.5</Bullet>
