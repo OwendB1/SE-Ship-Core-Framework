@@ -33,7 +33,8 @@ namespace ShipCoreFramework
         
         internal override void Received()
         {
-            var group = Session.GroupDict[ActionData.Group];
+            GroupComponent group;
+            if (!Utils.TryFindByGridId(ActionData.CubegridEntityId, out group)) return;
             if (ActionData.IsBoost)
             {
                 group.ActivateBoost();
@@ -157,7 +158,7 @@ namespace ShipCoreFramework
     internal struct ButtonAction
     {
         [ProtoMember(1)]
-        internal IMyGridGroupData Group;
+        internal long CubegridEntityId;
         [ProtoMember(2)]
         internal bool IsBoost;
     }

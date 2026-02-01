@@ -38,29 +38,16 @@ namespace ShipCoreFramework
                 var velocity = grid.Physics.LinearVelocity;
                 var speedSq = velocity.LengthSquared();
                 if (speedSq < 0.0001f) continue;
-                
-                //does this work!?!?!
-                if (groupComponent.PunishSpeed)
-                {
-                    var punishedVelocity = velocity / 4f;
-                    MyAPIGateway.Utilities.InvokeOnGameThread(() =>
-                    {
-                        try
-                        {
-                            grid.Physics?.SetSpeeds(punishedVelocity, grid.Physics.AngularVelocity);
-                        }
-                        catch
-                        {
-                            // ignore
-                        }
-                    });
-                    continue;
-                }
 
                 var baseMaxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.SpeedModifiers.MaxSpeed;
                 var boostMaxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.SpeedModifiers.MaxBoost;
                 var boostActive = groupComponent.ShipCore != null && groupComponent.ShipCore.SpeedBoostEnabled && groupComponent.BoostEnabled;
                 var maxSpeed = boostActive ? boostMaxSpeed : baseMaxSpeed;
+                
+                if (groupComponent.PunishSpeed)
+                {
+                    maxSpeed = baseMaxSpeed / 4;
+                }
 
                 // If the core uses normal speed limiting, and a boost just ended, ramp the effective cap down smoothly.
                 if (groupComponent.ShipCore != null
@@ -99,14 +86,14 @@ namespace ShipCoreFramework
                     && groupComponent.ShipCore.SpeedLimitType == SpeedLimitType.Friction
                     && groupComponent.FrictionEnforcementEnabled)
                 {
-                    var minFrictionSpeed = Math.Max(0f, groupComponent.SpeedModifiers.MinimumFrictionSpeed*Session.Config.MaxPossibleSpeedMetersPerSecond);
+                    var minFrictionSpeed = Math.Max(0f, groupComponent.SpeedModifiers.MinimumFrictionSpeed);
                     var maxFrictionSpeed = maxSpeed;
 
                     // Allow an explicit max-friction speed, but never above the current max speed (base).
                     // Boost always uses the current boost speed as the "max friction speed".
-                    if (!boostActive && groupComponent.SpeedModifiers.MaximumFrictionSpeed*Session.Config.MaxPossibleSpeedMetersPerSecond > 0f)
+                    if (!boostActive && groupComponent.SpeedModifiers.MaximumFrictionSpeed > 0f)
                     {
-                        maxFrictionSpeed = Math.Min(maxFrictionSpeed, groupComponent.SpeedModifiers.MaximumFrictionSpeed*Session.Config.MaxPossibleSpeedMetersPerSecond);
+                        maxFrictionSpeed = Math.Min(maxFrictionSpeed, groupComponent.SpeedModifiers.MaximumFrictionSpeed);
                     }
 
                     if (maxFrictionSpeed > 0f && speed > minFrictionSpeed)
@@ -115,7 +102,7 @@ namespace ShipCoreFramework
                         var t = denom > 0.0001f ? (speed - minFrictionSpeed) / denom : 1f;
                         t = MathHelper.Clamp(t, 0f, 1f);
 
-                        var maxDecel = Math.Max(0f, groupComponent.SpeedModifiers.MaximumFrictionDeceleration*Session.Config.MaxPossibleSpeedMetersPerSecond);
+                        var maxDecel = Math.Max(0f, groupComponent.SpeedModifiers.MaximumFrictionDeceleration);
                         if (groupComponent.FrictionMaximumDecelerationOverride >= 0f)
                         {
                             maxDecel = groupComponent.FrictionMaximumDecelerationOverride;

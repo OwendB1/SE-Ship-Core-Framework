@@ -217,7 +217,8 @@ namespace ShipCoreFramework
             }
             RecalculateAllLimits();
             
-            ModAPI.BroadcastGridAddedToGroup(grid, addedTo);
+            var groupGrid = GetRepresentativeGrid();
+            ModAPI.BroadcastGridAddedToGroup(grid, groupGrid);
         }
 
         internal void OnGridRemoved(IMyGridGroupData removedFrom, IMyCubeGrid grid, IMyGridGroupData addedTo)
@@ -235,7 +236,8 @@ namespace ShipCoreFramework
             }
             RecalculateAllLimits();
             
-            ModAPI.BroadcastGridRemovedFromGroup(grid, removedFrom);
+            var groupGrid = GetRepresentativeGrid();
+            ModAPI.BroadcastGridRemovedFromGroup(grid, groupGrid);
         }
 
         private void EnforceGroupPunishment()
@@ -302,7 +304,7 @@ namespace ShipCoreFramework
             
             if (totalBlocksPunished > 0 && MyGroup != null)
             {
-                ModAPI.BroadcastLimitsEnforced(MyGroup, totalBlocksPunished);
+                ModAPI.BroadcastLimitsEnforced(GetRepresentativeGrid(), totalBlocksPunished);
             }
         }
 
@@ -657,8 +659,21 @@ namespace ShipCoreFramework
             
             if (MyGroup != null)
             {
-                ModAPI.BroadcastLimitsRecalculated(MyGroup);
+                ModAPI.BroadcastLimitsRecalculated(GetRepresentativeGrid());
             }
+        }
+
+        private IMyCubeGrid GetRepresentativeGrid()
+        {
+            var main = MainCoreComponent?.GridComponent?.Grid;
+            if (main != null) return main;
+
+            foreach (var g in GridDictionary.Keys)
+            {
+                if (g != null) return g;
+            }
+
+            return null;
         }
 
         internal void Clean()

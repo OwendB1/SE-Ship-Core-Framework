@@ -165,33 +165,33 @@ namespace ShipCoreFramework
 
         /// <summary>
         /// Enables/disables friction-based speed limiting for a logical grid group.
-        /// Signature: object -> bool (expects MyTuple&lt;IMyGridGroupData, bool&gt;).
+        /// Signature: object -> bool (expects MyTuple&lt;IMyCubeGrid, bool&gt;).
         /// </summary>
         public const int SetFrictionEnabledForGroup = 26;
 
         /// <summary>
         /// Gets whether friction-based speed limiting is enabled for a logical grid group.
-        /// Signature: IMyGridGroupData -> bool.
+        /// Signature: IMyCubeGrid -> bool.
         /// </summary>
         public const int GetFrictionEnabledForGroup = 27;
 
         /// <summary>
         /// Sets the maximum friction deceleration (m/s^2) override for a logical grid group.
         /// Use a value &gt;= 0 to override the core/config value.
-        /// Signature: object -> bool (expects MyTuple&lt;IMyGridGroupData, float&gt;).
+        /// Signature: object -> bool (expects MyTuple&lt;IMyCubeGrid, float&gt;).
         /// </summary>
         public const int SetFrictionMaximumDecelerationForGroup = 28;
 
         /// <summary>
         /// Clears the maximum friction deceleration override for a logical grid group.
-        /// Signature: IMyGridGroupData -> bool.
+        /// Signature: IMyCubeGrid -> bool.
         /// </summary>
         public const int ClearFrictionMaximumDecelerationForGroup = 29;
 
         /// <summary>
         /// Gets the maximum friction deceleration override for a logical grid group.
         /// Returns -1 if no override is set.
-        /// Signature: IMyGridGroupData -> float.
+        /// Signature: IMyCubeGrid -> float.
         /// </summary>
         public const int GetFrictionMaximumDecelerationForGroup = 30;
 
@@ -358,7 +358,7 @@ namespace ShipCoreFramework
     [ProtoContract]
     public class LimitsRecalculatedEventArgs
     {
-        [ProtoMember(1)] public IMyGridGroupData GroupData;
+        [ProtoMember(1)] public IMyCubeGrid GroupGrid;
         [ProtoMember(2)] public DateTime Timestamp;
     }
 
@@ -369,7 +369,7 @@ namespace ShipCoreFramework
     [ProtoContract]
     public class LimitsEnforcedEventArgs
     {
-        [ProtoMember(1)] public IMyGridGroupData GroupData;
+        [ProtoMember(1)] public IMyCubeGrid GroupGrid;
         [ProtoMember(2)] public int BlocksPunished;
         [ProtoMember(3)] public DateTime Timestamp;
     }
@@ -401,7 +401,7 @@ namespace ShipCoreFramework
     public class GridGroupEventArgs
     {
         [ProtoMember(1)] public IMyCubeGrid Grid;
-        [ProtoMember(2)] public IMyGridGroupData GroupData;
+        [ProtoMember(2)] public IMyCubeGrid GroupGrid;
         [ProtoMember(3)] public DateTime Timestamp;
     }
 }

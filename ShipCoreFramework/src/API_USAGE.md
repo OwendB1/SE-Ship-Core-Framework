@@ -313,7 +313,7 @@ public class CoreDeactivatedEventArgs
 ```csharp
 public class LimitsRecalculatedEventArgs
 {
-    public IMyGridGroupData GroupData;
+    public IMyCubeGrid GroupGrid; // Any grid in the affected logical group
     public DateTime Timestamp;
 }
 ```
@@ -322,7 +322,7 @@ public class LimitsRecalculatedEventArgs
 ```csharp
 public class LimitsEnforcedEventArgs
 {
-    public IMyGridGroupData GroupData;
+    public IMyCubeGrid GroupGrid; // Any grid in the affected logical group
     public int BlocksPunished;
     public DateTime Timestamp;
 }
@@ -348,7 +348,7 @@ public class ActiveDefenseEventArgs
 public class GridGroupEventArgs
 {
     public IMyCubeGrid Grid;             // Grid that was added/removed
-    public IMyGridGroupData GroupData;   // The grid group
+    public IMyCubeGrid GroupGrid;        // Any grid in the affected logical group
     public DateTime Timestamp;
 }
 ```
@@ -387,8 +387,9 @@ namespace YourModNamespace
 
         private void OnCoreActivated(object payload)
         {
-            // Cast to the specific event args type
-            var eventArgs = payload as CoreActivatedEventArgs;
+            var bytes = payload as byte[];
+            if (bytes == null) return;
+            var eventArgs = MyAPIGateway.Utilities.SerializeFromBinary<CoreActivatedEventArgs>(bytes);
             if (eventArgs == null) return;
 
             MyAPIGateway.Utilities.ShowMessage("Event",
@@ -397,7 +398,9 @@ namespace YourModNamespace
 
         private void OnCoreDeactivated(object payload)
         {
-            var eventArgs = payload as CoreDeactivatedEventArgs;
+            var bytes = payload as byte[];
+            if (bytes == null) return;
+            var eventArgs = MyAPIGateway.Utilities.SerializeFromBinary<CoreDeactivatedEventArgs>(bytes);
             if (eventArgs == null) return;
 
             MyAPIGateway.Utilities.ShowMessage("Event",
@@ -406,7 +409,9 @@ namespace YourModNamespace
 
         private void OnBoostActivated(object payload)
         {
-            var eventArgs = payload as BoostEventArgs;
+            var bytes = payload as byte[];
+            if (bytes == null) return;
+            var eventArgs = MyAPIGateway.Utilities.SerializeFromBinary<BoostEventArgs>(bytes);
             if (eventArgs == null) return;
 
             MyAPIGateway.Utilities.ShowMessage("Event",

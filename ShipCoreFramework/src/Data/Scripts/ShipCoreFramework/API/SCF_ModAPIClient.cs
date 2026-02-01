@@ -343,45 +343,45 @@ namespace ShipCoreFramework
         /// <summary>
         /// Enables/disables friction-based speed limiting for a logical grid group.
         /// </summary>
-        public bool SetFrictionEnabledForGroup(IMyGridGroupData groupData, bool enabled)
+        public bool SetFrictionEnabledForGroup(IMyCubeGrid grid, bool enabled)
         {
-            var result = Invoke(ApiMethodId.SetFrictionEnabledForGroup, MyTuple.Create(groupData, enabled));
+            var result = Invoke(ApiMethodId.SetFrictionEnabledForGroup, MyTuple.Create(grid, enabled));
             return result is bool && (bool)result;
         }
 
         /// <summary>
         /// Gets whether friction-based speed limiting is enabled for a logical grid group.
         /// </summary>
-        public bool GetFrictionEnabledForGroup(IMyGridGroupData groupData)
+        public bool GetFrictionEnabledForGroup(IMyCubeGrid grid)
         {
-            var result = Invoke(ApiMethodId.GetFrictionEnabledForGroup, groupData);
+            var result = Invoke(ApiMethodId.GetFrictionEnabledForGroup, grid);
             return result is bool && (bool)result;
         }
 
         /// <summary>
         /// Sets the maximum friction deceleration override (m/s^2) for a logical grid group.
         /// </summary>
-        public bool SetFrictionMaximumDecelerationForGroup(IMyGridGroupData groupData, float deceleration)
+        public bool SetFrictionMaximumDecelerationForGroup(IMyCubeGrid grid, float deceleration)
         {
-            var result = Invoke(ApiMethodId.SetFrictionMaximumDecelerationForGroup, MyTuple.Create(groupData, deceleration));
+            var result = Invoke(ApiMethodId.SetFrictionMaximumDecelerationForGroup, MyTuple.Create(grid, deceleration));
             return result is bool && (bool)result;
         }
 
         /// <summary>
         /// Clears the maximum friction deceleration override for a logical grid group.
         /// </summary>
-        public bool ClearFrictionMaximumDecelerationForGroup(IMyGridGroupData groupData)
+        public bool ClearFrictionMaximumDecelerationForGroup(IMyCubeGrid grid)
         {
-            var result = Invoke(ApiMethodId.ClearFrictionMaximumDecelerationForGroup, groupData);
+            var result = Invoke(ApiMethodId.ClearFrictionMaximumDecelerationForGroup, grid);
             return result is bool && (bool)result;
         }
 
         /// <summary>
         /// Gets the maximum friction deceleration override (m/s^2) for a logical grid group, or -1 if none.
         /// </summary>
-        public float GetFrictionMaximumDecelerationForGroup(IMyGridGroupData groupData)
+        public float GetFrictionMaximumDecelerationForGroup(IMyCubeGrid grid)
         {
-            var result = Invoke(ApiMethodId.GetFrictionMaximumDecelerationForGroup, groupData);
+            var result = Invoke(ApiMethodId.GetFrictionMaximumDecelerationForGroup, grid);
             return result as float? ?? -1f;
         }
 
