@@ -26,14 +26,14 @@ namespace ShipCoreFramework
         /// API Major version.
         /// Increment when you make breaking changes to the API contract.
         /// </summary>
-        public const int API_MAJOR = 2;
+        public const int API_MAJOR = 3;
 
         /// <summary>
         /// API Minor version.
         /// Increment when you add functionality in a backwards compatible way,
         /// but you still want consumers to update if you require exact matches.
         /// </summary>
-        public const int API_MINOR = 2;
+        public const int API_MINOR = 1;
 
         /// <summary>
         /// Encoded API version (Major.Minor) packed into a single int.
@@ -195,6 +195,69 @@ namespace ShipCoreFramework
         /// </summary>
         public const int GetFrictionMaximumDecelerationForGroup = 30;
 
+        /// <summary>
+        /// Gets the current world setting for how friction speeds are interpreted.
+        /// 0 = Modifier, 1 = Absolute.
+        /// Signature: object -> int (arg ignored).
+        /// </summary>
+        public const int GetFrictionSpeedValueMode = 31;
+
+        /// <summary>
+        /// Sets the minimum friction speed override (absolute m/s) for a logical grid group.
+        /// Use a value &lt; 0 to clear the override.
+        /// Signature: object -> object (expects MyTuple&lt;IMyCubeGrid, float&gt;, returns MyTuple&lt;bool, string&gt;).
+        /// </summary>
+        public const int SetFrictionMinimumSpeedAbsoluteForGroup = 32;
+
+        /// <summary>
+        /// Sets the maximum friction speed override (absolute m/s) for a logical grid group.
+        /// Use a value &lt; 0 to clear the override.
+        /// Signature: object -> object (expects MyTuple&lt;IMyCubeGrid, float&gt;, returns MyTuple&lt;bool, string&gt;).
+        /// </summary>
+        public const int SetFrictionMaximumSpeedAbsoluteForGroup = 33;
+
+        /// <summary>
+        /// Gets the minimum friction speed override (absolute m/s) for a logical grid group.
+        /// Returns -1 if no override is set.
+        /// Signature: IMyCubeGrid -> object (returns MyTuple&lt;float, string&gt;).
+        /// </summary>
+        public const int GetFrictionMinimumSpeedAbsoluteForGroup = 34;
+
+        /// <summary>
+        /// Gets the maximum friction speed override (absolute m/s) for a logical grid group.
+        /// Returns -1 if no override is set.
+        /// Signature: IMyCubeGrid -> object (returns MyTuple&lt;float, string&gt;).
+        /// </summary>
+        public const int GetFrictionMaximumSpeedAbsoluteForGroup = 35;
+
+        /// <summary>
+        /// Sets the minimum friction speed override (modifier) for a logical grid group.
+        /// Use a value &lt; 0 to clear the override.
+        /// Signature: object -> object (expects MyTuple&lt;IMyCubeGrid, float&gt;, returns MyTuple&lt;bool, string&gt;).
+        /// </summary>
+        public const int SetFrictionMinimumSpeedModifierForGroup = 36;
+
+        /// <summary>
+        /// Sets the maximum friction speed override (modifier) for a logical grid group.
+        /// Use a value &lt; 0 to clear the override.
+        /// Signature: object -> object (expects MyTuple&lt;IMyCubeGrid, float&gt;, returns MyTuple&lt;bool, string&gt;).
+        /// </summary>
+        public const int SetFrictionMaximumSpeedModifierForGroup = 37;
+
+        /// <summary>
+        /// Gets the minimum friction speed override (modifier) for a logical grid group.
+        /// Returns -1 if no override is set.
+        /// Signature: IMyCubeGrid -> object (returns MyTuple&lt;float, string&gt;).
+        /// </summary>
+        public const int GetFrictionMinimumSpeedModifierForGroup = 38;
+
+        /// <summary>
+        /// Gets the maximum friction speed override (modifier) for a logical grid group.
+        /// Returns -1 if no override is set.
+        /// Signature: IMyCubeGrid -> object (returns MyTuple&lt;float, string&gt;).
+        /// </summary>
+        public const int GetFrictionMaximumSpeedModifierForGroup = 39;
+
         // Optional: Field getters for "no parsing" access (primitives only).
         // These can be handy if a consumer only needs a single field and wants to avoid deserializing a full DTO.
         public const int GetGridCore_SubtypeId = 100;   // IMyCubeGrid -> string
@@ -270,9 +333,11 @@ namespace ShipCoreFramework
         [ProtoMember(5)] public float BoostResistance;
 
         // Friction tuning
-        [ProtoMember(6)] public float MinimumFrictionSpeed;
-        [ProtoMember(7)] public float MaximumFrictionSpeed;
+        [ProtoMember(6)] public float MinimumFrictionSpeedAbsolute;
+        [ProtoMember(7)] public float MaximumFrictionSpeedAbsolute;
         [ProtoMember(8)] public float MaximumFrictionDeceleration;
+        [ProtoMember(9)] public float MinimumFrictionSpeedModifier;
+        [ProtoMember(10)] public float MaximumFrictionSpeedModifier;
     }
 
     /// <summary>
@@ -317,6 +382,12 @@ namespace ShipCoreFramework
         Static = 0,
         Mobile = 1,
         Both = 2
+    }
+
+    public enum FrictionSpeedValueModeData
+    {
+        Modifier = 0,
+        Absolute = 1
     }
 
     // ===== Event Argument Classes =====

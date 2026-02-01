@@ -30,8 +30,8 @@
     <MaxBoost>0.8</MaxBoost>
     <BoostDuration>10</BoostDuration>
     <BoostCoolDown>60</BoostCoolDown>
-    <MinimumFrictionSpeed>0.55</MinimumFrictionSpeed>
-    <MaximumFrictionSpeed>1</MaximumFrictionSpeed>
+    <MinimumFrictionSpeedModifier>0.55</MinimumFrictionSpeedModifier>
+    <MaximumFrictionSpeedModifier>1</MaximumFrictionSpeedModifier>
     <MaximumFrictionDeceleration>0.1</MaximumFrictionDeceleration>
   </SpeedModifiers>
   <PassiveDefenseModifiers>

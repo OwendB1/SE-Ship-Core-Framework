@@ -86,14 +86,41 @@ namespace ShipCoreFramework
                     && groupComponent.ShipCore.SpeedLimitType == SpeedLimitType.Friction
                     && groupComponent.FrictionEnforcementEnabled)
                 {
-                    var minFrictionSpeed = Math.Max(0f, groupComponent.SpeedModifiers.MinimumFrictionSpeed);
+                    float minFrictionSpeed;
+                    float configuredMaxFrictionSpeed;
+
+                    if (Session.Config.FrictionSpeedValueMode == FrictionSpeedValueMode.Absolute)
+                    {
+                        minFrictionSpeed = groupComponent.MinimumFrictionSpeedAbsoluteOverride >= 0f
+                            ? groupComponent.MinimumFrictionSpeedAbsoluteOverride
+                            : groupComponent.SpeedModifiers.MinimumFrictionSpeedAbsolute;
+
+                        configuredMaxFrictionSpeed = groupComponent.MaximumFrictionSpeedAbsoluteOverride >= 0f
+                            ? groupComponent.MaximumFrictionSpeedAbsoluteOverride
+                            : groupComponent.SpeedModifiers.MaximumFrictionSpeedAbsolute;
+                    }
+                    else
+                    {
+                        var minMod = groupComponent.MinimumFrictionSpeedModifierOverride >= 0f
+                            ? groupComponent.MinimumFrictionSpeedModifierOverride
+                            : groupComponent.SpeedModifiers.MinimumFrictionSpeedModifier;
+
+                        var maxMod = groupComponent.MaximumFrictionSpeedModifierOverride >= 0f
+                            ? groupComponent.MaximumFrictionSpeedModifierOverride
+                            : groupComponent.SpeedModifiers.MaximumFrictionSpeedModifier;
+
+                        minFrictionSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * minMod;
+                        configuredMaxFrictionSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * maxMod;
+                    }
+
+                    minFrictionSpeed = Math.Max(0f, minFrictionSpeed);
                     var maxFrictionSpeed = maxSpeed;
 
                     // Allow an explicit max-friction speed, but never above the current max speed (base).
                     // Boost always uses the current boost speed as the "max friction speed".
-                    if (!boostActive && groupComponent.SpeedModifiers.MaximumFrictionSpeed > 0f)
+                    if (!boostActive && configuredMaxFrictionSpeed > 0f)
                     {
-                        maxFrictionSpeed = Math.Min(maxFrictionSpeed, groupComponent.SpeedModifiers.MaximumFrictionSpeed);
+                        maxFrictionSpeed = Math.Min(maxFrictionSpeed, configuredMaxFrictionSpeed);
                     }
 
                     if (maxFrictionSpeed > 0f && speed > minFrictionSpeed)

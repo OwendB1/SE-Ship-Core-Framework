@@ -51,6 +51,10 @@ namespace ShipCoreFramework
         // Optional runtime overrides (per logical group).
         // -1 means "no override, use config-derived values".
         internal float FrictionMaximumDecelerationOverride = -1f;
+        internal float MinimumFrictionSpeedAbsoluteOverride = -1f;
+        internal float MaximumFrictionSpeedAbsoluteOverride = -1f;
+        internal float MinimumFrictionSpeedModifierOverride = -1f;
+        internal float MaximumFrictionSpeedModifierOverride = -1f;
 
         private float _boostCooldownTimer;
         private float _boostDurationTimer;

@@ -651,8 +651,32 @@ namespace ShipCoreFramework
             {
                 body += $"    Max Speed:       {speedmods.MaxSpeed:F2}\n";
                 body += $"    Max Boost Speed: {speedmods.MaxBoost:F2}\n";
-                body += $"    Min Friction:    {speedmods.MinimumFrictionSpeed:F1} m/s\n";
-                body += $"    Max Friction:    {speedmods.MaximumFrictionSpeed:F1} m/s\n";
+                if (Session.Config.FrictionSpeedValueMode == FrictionSpeedValueMode.Modifier)
+                {
+                    var minMod = groupKvp.Value.MinimumFrictionSpeedModifierOverride >= 0f
+                        ? groupKvp.Value.MinimumFrictionSpeedModifierOverride
+                        : speedmods.MinimumFrictionSpeedModifier;
+                    var maxMod = groupKvp.Value.MaximumFrictionSpeedModifierOverride >= 0f
+                        ? groupKvp.Value.MaximumFrictionSpeedModifierOverride
+                        : speedmods.MaximumFrictionSpeedModifier;
+
+                    var minReal = Session.Config.MaxPossibleSpeedMetersPerSecond * minMod;
+                    var maxReal = Session.Config.MaxPossibleSpeedMetersPerSecond * maxMod;
+                    body += $"    Min Friction:    {minReal:F1} m/s (x{minMod:F2})\n";
+                    body += $"    Max Friction:    {maxReal:F1} m/s (x{maxMod:F2})\n";
+                }
+                else
+                {
+                    var minAbs = groupKvp.Value.MinimumFrictionSpeedAbsoluteOverride >= 0f
+                        ? groupKvp.Value.MinimumFrictionSpeedAbsoluteOverride
+                        : speedmods.MinimumFrictionSpeedAbsolute;
+                    var maxAbs = groupKvp.Value.MaximumFrictionSpeedAbsoluteOverride >= 0f
+                        ? groupKvp.Value.MaximumFrictionSpeedAbsoluteOverride
+                        : speedmods.MaximumFrictionSpeedAbsolute;
+
+                    body += $"    Min Friction:    {minAbs:F1} m/s\n";
+                    body += $"    Max Friction:    {maxAbs:F1} m/s\n";
+                }
                 body += $"    Friction Decel:  {speedmods.MaximumFrictionDeceleration:F2} m/s^2\n";
                 body += $"    Boost Duration:  {speedmods.BoostDuration:F2}\n";
                 body += $"    Boost Cooldown:  {speedmods.BoostCoolDown:F2}\n";

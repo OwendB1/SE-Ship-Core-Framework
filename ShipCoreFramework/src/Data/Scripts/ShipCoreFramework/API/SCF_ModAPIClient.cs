@@ -385,6 +385,147 @@ namespace ShipCoreFramework
             return result as float? ?? -1f;
         }
 
+        /// <summary>
+        /// Gets the current world friction speed value mode (Modifier vs Absolute).
+        /// </summary>
+        public FrictionSpeedValueModeData GetFrictionSpeedValueMode()
+        {
+            var result = Invoke(ApiMethodId.GetFrictionSpeedValueMode, null);
+            if (result is int)
+            {
+                return (FrictionSpeedValueModeData)(int)result;
+            }
+            return FrictionSpeedValueModeData.Modifier;
+        }
+
+        public bool SetFrictionMinimumSpeedAbsoluteForGroup(IMyCubeGrid grid, float speedMetersPerSecond, out string error)
+        {
+            error = null;
+            var result = Invoke(ApiMethodId.SetFrictionMinimumSpeedAbsoluteForGroup, MyTuple.Create(grid, speedMetersPerSecond));
+            if (result is MyTuple<bool, string>)
+            {
+                var t = (MyTuple<bool, string>)result;
+                error = t.Item2;
+                return t.Item1;
+            }
+            error = "Invalid response.";
+            return false;
+        }
+
+        public bool SetFrictionMaximumSpeedAbsoluteForGroup(IMyCubeGrid grid, float speedMetersPerSecond, out string error)
+        {
+            error = null;
+            var result = Invoke(ApiMethodId.SetFrictionMaximumSpeedAbsoluteForGroup, MyTuple.Create(grid, speedMetersPerSecond));
+            if (result is MyTuple<bool, string>)
+            {
+                var t = (MyTuple<bool, string>)result;
+                error = t.Item2;
+                return t.Item1;
+            }
+            error = "Invalid response.";
+            return false;
+        }
+
+        public bool TryGetFrictionMinimumSpeedAbsoluteForGroup(IMyCubeGrid grid, out float speedMetersPerSecond, out string error)
+        {
+            speedMetersPerSecond = -1f;
+            error = null;
+
+            var result = Invoke(ApiMethodId.GetFrictionMinimumSpeedAbsoluteForGroup, grid);
+            if (result is MyTuple<float, string>)
+            {
+                var t = (MyTuple<float, string>)result;
+                speedMetersPerSecond = t.Item1;
+                error = t.Item2;
+                return string.IsNullOrEmpty(error);
+            }
+
+            error = "Invalid response.";
+            return false;
+        }
+
+        public bool TryGetFrictionMaximumSpeedAbsoluteForGroup(IMyCubeGrid grid, out float speedMetersPerSecond, out string error)
+        {
+            speedMetersPerSecond = -1f;
+            error = null;
+
+            var result = Invoke(ApiMethodId.GetFrictionMaximumSpeedAbsoluteForGroup, grid);
+            if (result is MyTuple<float, string>)
+            {
+                var t = (MyTuple<float, string>)result;
+                speedMetersPerSecond = t.Item1;
+                error = t.Item2;
+                return string.IsNullOrEmpty(error);
+            }
+
+            error = "Invalid response.";
+            return false;
+        }
+
+        public bool SetFrictionMinimumSpeedModifierForGroup(IMyCubeGrid grid, float modifier, out string error)
+        {
+            error = null;
+            var result = Invoke(ApiMethodId.SetFrictionMinimumSpeedModifierForGroup, MyTuple.Create(grid, modifier));
+            if (result is MyTuple<bool, string>)
+            {
+                var t = (MyTuple<bool, string>)result;
+                error = t.Item2;
+                return t.Item1;
+            }
+            error = "Invalid response.";
+            return false;
+        }
+
+        public bool SetFrictionMaximumSpeedModifierForGroup(IMyCubeGrid grid, float modifier, out string error)
+        {
+            error = null;
+            var result = Invoke(ApiMethodId.SetFrictionMaximumSpeedModifierForGroup, MyTuple.Create(grid, modifier));
+            if (result is MyTuple<bool, string>)
+            {
+                var t = (MyTuple<bool, string>)result;
+                error = t.Item2;
+                return t.Item1;
+            }
+            error = "Invalid response.";
+            return false;
+        }
+
+        public bool TryGetFrictionMinimumSpeedModifierForGroup(IMyCubeGrid grid, out float modifier, out string error)
+        {
+            modifier = -1f;
+            error = null;
+
+            var result = Invoke(ApiMethodId.GetFrictionMinimumSpeedModifierForGroup, grid);
+            if (result is MyTuple<float, string>)
+            {
+                var t = (MyTuple<float, string>)result;
+                modifier = t.Item1;
+                error = t.Item2;
+                return string.IsNullOrEmpty(error);
+            }
+
+            error = "Invalid response.";
+            return false;
+        }
+
+        public bool TryGetFrictionMaximumSpeedModifierForGroup(IMyCubeGrid grid, out float modifier, out string error)
+        {
+            modifier = -1f;
+            error = null;
+
+            var result = Invoke(ApiMethodId.GetFrictionMaximumSpeedModifierForGroup, grid);
+            if (result is MyTuple<float, string>)
+            {
+                var t = (MyTuple<float, string>)result;
+                modifier = t.Item1;
+                error = t.Item2;
+                return string.IsNullOrEmpty(error);
+            }
+
+            error = "Invalid response.";
+            return false;
+        }
+
 
         // ===== Internals =====
 

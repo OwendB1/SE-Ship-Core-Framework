@@ -179,6 +179,49 @@ namespace ShipCoreFramework
                 case ApiMethodId.GetFrictionMaximumDecelerationForGroup:
                     return arg => GetFrictionMaximumDecelerationForGroup(arg as IMyCubeGrid);
 
+                case ApiMethodId.GetFrictionSpeedValueMode:
+                    return _ => (int)Session.Config.FrictionSpeedValueMode;
+
+                case ApiMethodId.SetFrictionMinimumSpeedAbsoluteForGroup:
+                    return arg =>
+                    {
+                        var t = (MyTuple<IMyCubeGrid, float>)arg;
+                        return SetFrictionMinimumSpeedAbsoluteForGroup(t.Item1, t.Item2);
+                    };
+
+                case ApiMethodId.SetFrictionMaximumSpeedAbsoluteForGroup:
+                    return arg =>
+                    {
+                        var t = (MyTuple<IMyCubeGrid, float>)arg;
+                        return SetFrictionMaximumSpeedAbsoluteForGroup(t.Item1, t.Item2);
+                    };
+
+                case ApiMethodId.GetFrictionMinimumSpeedAbsoluteForGroup:
+                    return arg => GetFrictionMinimumSpeedAbsoluteForGroup(arg as IMyCubeGrid);
+
+                case ApiMethodId.GetFrictionMaximumSpeedAbsoluteForGroup:
+                    return arg => GetFrictionMaximumSpeedAbsoluteForGroup(arg as IMyCubeGrid);
+
+                case ApiMethodId.SetFrictionMinimumSpeedModifierForGroup:
+                    return arg =>
+                    {
+                        var t = (MyTuple<IMyCubeGrid, float>)arg;
+                        return SetFrictionMinimumSpeedModifierForGroup(t.Item1, t.Item2);
+                    };
+
+                case ApiMethodId.SetFrictionMaximumSpeedModifierForGroup:
+                    return arg =>
+                    {
+                        var t = (MyTuple<IMyCubeGrid, float>)arg;
+                        return SetFrictionMaximumSpeedModifierForGroup(t.Item1, t.Item2);
+                    };
+
+                case ApiMethodId.GetFrictionMinimumSpeedModifierForGroup:
+                    return arg => GetFrictionMinimumSpeedModifierForGroup(arg as IMyCubeGrid);
+
+                case ApiMethodId.GetFrictionMaximumSpeedModifierForGroup:
+                    return arg => GetFrictionMaximumSpeedModifierForGroup(arg as IMyCubeGrid);
+
                 // Optional primitive getters:
                 case ApiMethodId.GetGridCore_SubtypeId:
                     return arg =>
@@ -623,6 +666,130 @@ namespace ShipCoreFramework
             }
         }
 
+        public static MyTuple<bool, string> SetFrictionMinimumSpeedAbsoluteForGroup(IMyCubeGrid grid, float speedMetersPerSecond)
+        {
+            if (Session.Config.FrictionSpeedValueMode != FrictionSpeedValueMode.Absolute)
+                return MyTuple.Create(false, "World config uses modifier-based friction speeds; use SetFrictionMinimumSpeedModifierForGroup.");
+
+            GroupComponent groupComponent;
+            if (!TryGetGroupComponent(grid, out groupComponent))
+                return MyTuple.Create(false, "Could not resolve logical grid group for the provided grid.");
+
+            if (speedMetersPerSecond < 0f)
+            {
+                groupComponent.MinimumFrictionSpeedAbsoluteOverride = -1f;
+                return MyTuple.Create(true, string.Empty);
+            }
+
+            groupComponent.MinimumFrictionSpeedAbsoluteOverride = speedMetersPerSecond;
+            return MyTuple.Create(true, string.Empty);
+        }
+
+        public static MyTuple<bool, string> SetFrictionMaximumSpeedAbsoluteForGroup(IMyCubeGrid grid, float speedMetersPerSecond)
+        {
+            if (Session.Config.FrictionSpeedValueMode != FrictionSpeedValueMode.Absolute)
+                return MyTuple.Create(false, "World config uses modifier-based friction speeds; use SetFrictionMaximumSpeedModifierForGroup.");
+
+            GroupComponent groupComponent;
+            if (!TryGetGroupComponent(grid, out groupComponent))
+                return MyTuple.Create(false, "Could not resolve logical grid group for the provided grid.");
+
+            if (speedMetersPerSecond < 0f)
+            {
+                groupComponent.MaximumFrictionSpeedAbsoluteOverride = -1f;
+                return MyTuple.Create(true, string.Empty);
+            }
+
+            groupComponent.MaximumFrictionSpeedAbsoluteOverride = speedMetersPerSecond;
+            return MyTuple.Create(true, string.Empty);
+        }
+
+        public static MyTuple<float, string> GetFrictionMinimumSpeedAbsoluteForGroup(IMyCubeGrid grid)
+        {
+            if (Session.Config.FrictionSpeedValueMode != FrictionSpeedValueMode.Absolute)
+                return MyTuple.Create(-1f, "World config uses modifier-based friction speeds; use GetFrictionMinimumSpeedModifierForGroup.");
+
+            GroupComponent groupComponent;
+            if (!TryGetGroupComponent(grid, out groupComponent))
+                return MyTuple.Create(-1f, "Could not resolve logical grid group for the provided grid.");
+
+            return MyTuple.Create(groupComponent.MinimumFrictionSpeedAbsoluteOverride, string.Empty);
+        }
+
+        public static MyTuple<float, string> GetFrictionMaximumSpeedAbsoluteForGroup(IMyCubeGrid grid)
+        {
+            if (Session.Config.FrictionSpeedValueMode != FrictionSpeedValueMode.Absolute)
+                return MyTuple.Create(-1f, "World config uses modifier-based friction speeds; use GetFrictionMaximumSpeedModifierForGroup.");
+
+            GroupComponent groupComponent;
+            if (!TryGetGroupComponent(grid, out groupComponent))
+                return MyTuple.Create(-1f, "Could not resolve logical grid group for the provided grid.");
+
+            return MyTuple.Create(groupComponent.MaximumFrictionSpeedAbsoluteOverride, string.Empty);
+        }
+
+        public static MyTuple<bool, string> SetFrictionMinimumSpeedModifierForGroup(IMyCubeGrid grid, float modifier)
+        {
+            if (Session.Config.FrictionSpeedValueMode != FrictionSpeedValueMode.Modifier)
+                return MyTuple.Create(false, "World config uses absolute friction speeds; use SetFrictionMinimumSpeedAbsoluteForGroup.");
+
+            GroupComponent groupComponent;
+            if (!TryGetGroupComponent(grid, out groupComponent))
+                return MyTuple.Create(false, "Could not resolve logical grid group for the provided grid.");
+
+            if (modifier < 0f)
+            {
+                groupComponent.MinimumFrictionSpeedModifierOverride = -1f;
+                return MyTuple.Create(true, string.Empty);
+            }
+
+            groupComponent.MinimumFrictionSpeedModifierOverride = modifier;
+            return MyTuple.Create(true, string.Empty);
+        }
+
+        public static MyTuple<bool, string> SetFrictionMaximumSpeedModifierForGroup(IMyCubeGrid grid, float modifier)
+        {
+            if (Session.Config.FrictionSpeedValueMode != FrictionSpeedValueMode.Modifier)
+                return MyTuple.Create(false, "World config uses absolute friction speeds; use SetFrictionMaximumSpeedAbsoluteForGroup.");
+
+            GroupComponent groupComponent;
+            if (!TryGetGroupComponent(grid, out groupComponent))
+                return MyTuple.Create(false, "Could not resolve logical grid group for the provided grid.");
+
+            if (modifier < 0f)
+            {
+                groupComponent.MaximumFrictionSpeedModifierOverride = -1f;
+                return MyTuple.Create(true, string.Empty);
+            }
+
+            groupComponent.MaximumFrictionSpeedModifierOverride = modifier;
+            return MyTuple.Create(true, string.Empty);
+        }
+
+        public static MyTuple<float, string> GetFrictionMinimumSpeedModifierForGroup(IMyCubeGrid grid)
+        {
+            if (Session.Config.FrictionSpeedValueMode != FrictionSpeedValueMode.Modifier)
+                return MyTuple.Create(-1f, "World config uses absolute friction speeds; use GetFrictionMinimumSpeedAbsoluteForGroup.");
+
+            GroupComponent groupComponent;
+            if (!TryGetGroupComponent(grid, out groupComponent))
+                return MyTuple.Create(-1f, "Could not resolve logical grid group for the provided grid.");
+
+            return MyTuple.Create(groupComponent.MinimumFrictionSpeedModifierOverride, string.Empty);
+        }
+
+        public static MyTuple<float, string> GetFrictionMaximumSpeedModifierForGroup(IMyCubeGrid grid)
+        {
+            if (Session.Config.FrictionSpeedValueMode != FrictionSpeedValueMode.Modifier)
+                return MyTuple.Create(-1f, "World config uses absolute friction speeds; use GetFrictionMaximumSpeedAbsoluteForGroup.");
+
+            GroupComponent groupComponent;
+            if (!TryGetGroupComponent(grid, out groupComponent))
+                return MyTuple.Create(-1f, "Could not resolve logical grid group for the provided grid.");
+
+            return MyTuple.Create(groupComponent.MaximumFrictionSpeedModifierOverride, string.Empty);
+        }
+
         private static bool TryGetGroupComponent(IMyCubeGrid grid, out GroupComponent groupComponent)
         {
             groupComponent = null;
@@ -727,9 +894,11 @@ namespace ShipCoreFramework
                         BoostDuration = 10f,
                         BoostCoolDown = 60f,
                         BoostResistance = 0f,
-                        MinimumFrictionSpeed = 0f,
-                        MaximumFrictionSpeed = 0f,
-                        MaximumFrictionDeceleration = 0f
+                        MinimumFrictionSpeedAbsolute = 0f,
+                        MaximumFrictionSpeedAbsolute = 0f,
+                        MaximumFrictionDeceleration = 0f,
+                        MinimumFrictionSpeedModifier = 0f,
+                        MaximumFrictionSpeedModifier = 0f
                     }
                 };
             }
@@ -800,9 +969,11 @@ namespace ShipCoreFramework
                     BoostDuration = 10f,
                     BoostCoolDown = 60f,
                     BoostResistance = 0f,
-                    MinimumFrictionSpeed = 0f,
-                    MaximumFrictionSpeed = 0f,
-                    MaximumFrictionDeceleration = 0f
+                    MinimumFrictionSpeedAbsolute = 0f,
+                    MaximumFrictionSpeedAbsolute = 0f,
+                    MaximumFrictionDeceleration = 0f,
+                    MinimumFrictionSpeedModifier = 0f,
+                    MaximumFrictionSpeedModifier = 0f
                 };
             }
 
@@ -813,9 +984,11 @@ namespace ShipCoreFramework
                 BoostDuration = modifiers.BoostDuration,
                 BoostCoolDown = modifiers.BoostCoolDown,
                 BoostResistance = modifiers.MaximumFrictionDeceleration,
-                MinimumFrictionSpeed = modifiers.MinimumFrictionSpeed,
-                MaximumFrictionSpeed = modifiers.MaximumFrictionSpeed,
-                MaximumFrictionDeceleration = modifiers.MaximumFrictionDeceleration
+                MinimumFrictionSpeedAbsolute = modifiers.MinimumFrictionSpeedAbsolute,
+                MaximumFrictionSpeedAbsolute = modifiers.MaximumFrictionSpeedAbsolute,
+                MaximumFrictionDeceleration = modifiers.MaximumFrictionDeceleration,
+                MinimumFrictionSpeedModifier = modifiers.MinimumFrictionSpeedModifier,
+                MaximumFrictionSpeedModifier = modifiers.MaximumFrictionSpeedModifier
             };
         }
 

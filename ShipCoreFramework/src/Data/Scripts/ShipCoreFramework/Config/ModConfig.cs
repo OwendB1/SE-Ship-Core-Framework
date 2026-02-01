@@ -34,6 +34,7 @@ namespace ShipCoreFramework
         [XmlElement("CLIENT_OUTPUT_LOG_LEVEL")]public int ClientOutputLogLevel = 2; //messages with logPriority >= this will get output to clients
 
         [XmlElement("MaxPossibleSpeedMetersPerSecond")] public float MaxPossibleSpeedMetersPerSecond = 300;
+        [XmlElement("FrictionSpeedValueMode")] public FrictionSpeedValueMode FrictionSpeedValueMode = FrictionSpeedValueMode.Modifier;
         [XmlElement("NoFlyZones")] public List<Zones> NoFlyZones = new List<Zones>();
         
         public ShipCore GetShipCoreByTypeId(string coreTypeId)
@@ -99,6 +100,7 @@ namespace ShipCoreFramework
                         MaxPossibleSpeedMetersPerSecond = import.MaxPossibleSpeedMetersPerSecond;
                     }
 
+                    FrictionSpeedValueMode = import.FrictionSpeedValueMode;
                     NoFlyZones = import.NoFlyZones;
                 }
             }
@@ -289,10 +291,14 @@ namespace ShipCoreFramework
         public float BoostDuration = 10f; 
         [XmlElement("BoostCoolDown")]
         public float BoostCoolDown = 60f;      
-        [XmlElement("MinimumFrictionSpeed")]
-        public float MinimumFrictionSpeed = 100f;
-        [XmlElement("MaximumFrictionSpeed")]
-        public float MaximumFrictionSpeed = 290f;
+        [XmlElement("MinimumFrictionSpeedAbsolute")]
+        public float MinimumFrictionSpeedAbsolute = 100f;
+        [XmlElement("MaximumFrictionSpeedAbsolute")]
+        public float MaximumFrictionSpeedAbsolute = 290f;
+        [XmlElement("MinimumFrictionSpeedModifier")]
+        public float MinimumFrictionSpeedModifier = 0.3f;
+        [XmlElement("MaximumFrictionSpeedModifier")]
+        public float MaximumFrictionSpeedModifier = 0.8f;
         [XmlElement("MaximumFrictionDeceleration")]
         public float MaximumFrictionDeceleration= 1f;  
     }
@@ -473,6 +479,13 @@ namespace ShipCoreFramework
     {
         Normal = 0, 
         Friction = 1
+    }
+
+    [XmlRoot("FrictionSpeedValueMode")]
+    public enum FrictionSpeedValueMode
+    {
+        Modifier = 0,
+        Absolute = 1
     }
 
     [XmlRoot("PunishmentType")]
