@@ -34,6 +34,10 @@
 				<Model BuildPercentUpperBound="0.50" File="Models\SG_GridCore_Upgrade_BS1.mwm"/>
 				<Model BuildPercentUpperBound="1.00" File="Models\SG_GridCore_Upgrade_BS2.mwm"/>
 			</BuildProgressModels>
+			<ScreenAreas>
+				<ScreenArea Name="CockpitScreen_01" DisplayName="Screen" TextureResolution="512" ScreenWidth="5" ScreenHeight="3" Script="CoreTypeLCDScript"/>
+				<ScreenArea Name="CockpitScreen_02" DisplayName="Keyboard" TextureResolution="512" ScreenWidth="5" ScreenHeight="3" />
+			</ScreenAreas>
 			<BlockPairName>GridCore_Module_Handling</BlockPairName>
 			<MirroringX>Z</MirroringX>
 			<MirroringZ>X</MirroringZ>

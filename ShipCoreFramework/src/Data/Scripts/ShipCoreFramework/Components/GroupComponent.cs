@@ -5,7 +5,6 @@ using System.Linq;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
-using VRage.Utils;
 using VRageMath;
 
 namespace ShipCoreFramework
@@ -62,8 +61,6 @@ namespace ShipCoreFramework
         private bool _activeDefenseEnabled;
         private float _activeDefenseCooldownTimer;
         private float _activeDefenseDurationTimer;
-
-        private static readonly MyStringHash DamageTypeBlockLimit = MyStringHash.GetOrCompute("BlockLimitsViolation");
 
         internal float ActiveDefenseDuration
         {
@@ -139,7 +136,7 @@ namespace ShipCoreFramework
                 EnforceGroupPunishment();
                 EnforceOverCapacity();
                 
-                ModAPI.BroadcastCoreActivated(grid, ShipCore.SubtypeId, ShipCore.UniqueName);
+                ModAPI.BroadcastCoreActivated(GetRepresentativeGridId(), ShipCore.SubtypeId, ShipCore.UniqueName);
             });
         }
 
@@ -165,7 +162,7 @@ namespace ShipCoreFramework
             
             if (oldGrid != null)
             {
-                ModAPI.BroadcastCoreDeactivated(oldGrid, oldCoreSubtype, oldCoreName);
+                ModAPI.BroadcastCoreDeactivated(GetRepresentativeGridId(), oldCoreSubtype, oldCoreName);
             }
 
             if (!Session.HasStarted || Session.IsShuttingDown) return;
@@ -220,9 +217,7 @@ namespace ShipCoreFramework
                 return;
             }
             RecalculateAllLimits();
-            
-            var groupGrid = GetRepresentativeGrid();
-            ModAPI.BroadcastGridAddedToGroup(grid, groupGrid);
+            ModAPI.BroadcastGridAddedToGroup(grid.EntityId);
         }
 
         internal void OnGridRemoved(IMyGridGroupData removedFrom, IMyCubeGrid grid, IMyGridGroupData addedTo)
@@ -239,9 +234,7 @@ namespace ShipCoreFramework
                 GridDictionary.Remove(g);
             }
             RecalculateAllLimits();
-            
-            var groupGrid = GetRepresentativeGrid();
-            ModAPI.BroadcastGridRemovedFromGroup(grid, groupGrid);
+            ModAPI.BroadcastGridRemovedFromGroup(grid.EntityId, GetRepresentativeGridId());
         }
 
         private void EnforceGroupPunishment()
@@ -283,7 +276,7 @@ namespace ShipCoreFramework
                     {
                         if (!IsValidDirection(MainCoreComponent.CoreBlock, blk, limit.AllowedDirections))
                         {
-                            WhackABlock(blk, limit.PunishmentType);
+                            blk.WhackABlock(limit.PunishmentType);
                             totalBlocksPunished++;
                             continue;
                         }
@@ -300,7 +293,7 @@ namespace ShipCoreFramework
                     if (over <= 0d) break;
                     if (t.Key == null) continue;
 
-                    WhackABlock(t.Key, limit.PunishmentType);
+                    t.Key.WhackABlock(limit.PunishmentType);
                     totalBlocksPunished++;
                     over -= t.Value;
                 }
@@ -308,33 +301,7 @@ namespace ShipCoreFramework
             
             if (totalBlocksPunished > 0 && MyGroup != null)
             {
-                ModAPI.BroadcastLimitsEnforced(GetRepresentativeGrid(), totalBlocksPunished);
-            }
-        }
-
-        internal void WhackABlock(IMySlimBlock block, PunishmentType harm, MyStringHash? customDamageType = null)
-        {
-            var damageType = customDamageType ?? DamageTypeBlockLimit;
-            var func = block.FatBlock as IMyFunctionalBlock;
-
-            switch (harm)
-            {
-                case PunishmentType.Damage:
-                    var damageRequired = block.Integrity - block.MaxIntegrity * 0.5;
-                    if (damageRequired < 0) damageRequired = 0;
-                    block.DoDamage((float)damageRequired, damageType, true);
-                    break;
-                case PunishmentType.Delete:
-                    if (func != null) func.Enabled = false;
-                    block.RemoveAndRefund();
-                    break;
-                case PunishmentType.Explode:
-                    block.DoDamage(block.Integrity, damageType, true);
-                    break;
-                case PunishmentType.ShutOff:
-                default:
-                    if (func != null) func.Enabled = false;
-                    break;
+                ModAPI.BroadcastLimitsEnforced(GetRepresentativeGridId(), totalBlocksPunished);
             }
         }
 
@@ -459,7 +426,7 @@ namespace ShipCoreFramework
                 
                 if (MainCoreComponent?.GridComponent?.Grid != null)
                 {
-                    ModAPI.BroadcastBoostDeactivated(MainCoreComponent.GridComponent.Grid);
+                    ModAPI.BroadcastBoostDeactivated(GetRepresentativeGridId());
                 }
             }
             else if (_boostCooldownTimer > 0f)
@@ -488,7 +455,7 @@ namespace ShipCoreFramework
                 
                 if (MainCoreComponent?.GridComponent?.Grid != null)
                 {
-                    ModAPI.BroadcastActiveDefenseDeactivated(MainCoreComponent.GridComponent.Grid);
+                    ModAPI.BroadcastActiveDefenseDeactivated(GetRepresentativeGridId());
                 }
             }
             else if (_activeDefenseCooldownTimer > 0f)
@@ -528,7 +495,7 @@ namespace ShipCoreFramework
             
             if (MainCoreComponent?.GridComponent?.Grid != null)
             {
-                ModAPI.BroadcastActiveDefenseActivated(MainCoreComponent.GridComponent.Grid);
+                ModAPI.BroadcastActiveDefenseActivated(GetRepresentativeGridId());
             }
         }
 
@@ -556,7 +523,7 @@ namespace ShipCoreFramework
             
             if (MainCoreComponent?.GridComponent?.Grid != null)
             {
-                ModAPI.BroadcastBoostActivated(MainCoreComponent.GridComponent.Grid);
+                ModAPI.BroadcastBoostActivated(MainCoreComponent.GridComponent.Grid.EntityId);
             }
         }
 
@@ -663,21 +630,15 @@ namespace ShipCoreFramework
             
             if (MyGroup != null)
             {
-                ModAPI.BroadcastLimitsRecalculated(GetRepresentativeGrid());
+                ModAPI.BroadcastLimitsRecalculated(GetRepresentativeGridId());
             }
         }
 
-        private IMyCubeGrid GetRepresentativeGrid()
+        private long GetRepresentativeGridId()
         {
             var main = MainCoreComponent?.GridComponent?.Grid;
-            if (main != null) return main;
-
-            foreach (var g in GridDictionary.Keys)
-            {
-                if (g != null) return g;
-            }
-
-            return null;
+            var grid = main ?? GridDictionary.Keys.FirstOrDefault();
+            return grid?.EntityId ?? 0;
         }
 
         internal void Clean()

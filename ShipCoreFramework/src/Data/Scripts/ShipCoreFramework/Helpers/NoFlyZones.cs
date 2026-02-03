@@ -48,7 +48,7 @@ namespace ShipCoreFramework
 
                         if (zone.ForceOff)
                         {
-                            MyAPIGateway.Utilities.InvokeOnGameThread(() => groupComponent.WhackABlock(block, PunishmentType.ShutOff, DamageTypeNoFlyZone));
+                            MyAPIGateway.Utilities.InvokeOnGameThread(() => block.WhackABlock(PunishmentType.ShutOff, DamageTypeNoFlyZone));
                         }
                         else
                         {
@@ -65,7 +65,7 @@ namespace ShipCoreFramework
                                               (b.SubtypeId == "any" || b.SubtypeId == Utils.GetBlockSubtypeId(block)));
 
                                 if (!match) continue;
-                                if (limit.PunishByNoFlyZone) MyAPIGateway.Utilities.InvokeOnGameThread(() => groupComponent.WhackABlock(block, limit.PunishmentType, DamageTypeNoFlyZone));
+                                if (limit.PunishByNoFlyZone) MyAPIGateway.Utilities.InvokeOnGameThread(() => block.WhackABlock(limit.PunishmentType, DamageTypeNoFlyZone));
                             }
                         }
                     }

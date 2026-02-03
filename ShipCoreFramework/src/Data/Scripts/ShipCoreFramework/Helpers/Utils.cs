@@ -3,10 +3,14 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using Sandbox.Definitions;
 using Sandbox.Game;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage;
 using VRage.Game;
 using VRage.Game.ModAPI;
+using VRage.ObjectBuilders;
 using VRage.Utils;
 using VRageMath;
 
@@ -14,6 +18,8 @@ namespace ShipCoreFramework
 {
     internal static class Utils
     {
+        private static readonly MyStringHash DamageTypeBlockLimit = MyStringHash.GetOrCompute("BlockLimitsViolation");
+        
         public static Dictionary<TKey, TValue> Flatten<TKey, TValue, TOuter>(
             IEnumerable<TOuter> outers,
             Func<TOuter, IDictionary<TKey, TValue>> selector,
@@ -136,35 +142,113 @@ namespace ShipCoreFramework
         internal static void RemoveAndRefund(this IMySlimBlock block)
         {
             var grid = block.CubeGrid;
+            if (grid == null) return;
+            
             var cargoContainers = new List<IMyCargoContainer>();
             MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(grid).GetBlocksOfType(cargoContainers);
-            if (cargoContainers.Count != 0)
+            var thisCargo = block.FatBlock as IMyCargoContainer;
+            if (thisCargo != null) cargoContainers.Remove(thisCargo);
+
+            IMyInventory selectedInventory = null;
+            var maxAvailableVolume = -1f;
+            foreach (var cargo in cargoContainers)
             {
-                IMyCargoContainer selectedCargo = null;
-                var maxAvailableVolume = -1.0f;
-                foreach (var cargo in cargoContainers)
-                {
-                    var inventory = cargo.GetInventory();
-                    if (inventory == null) continue;
+                var inv = cargo.GetInventory();
+                if (inv == null) continue;
 
-                    var availableVolume = (float)inventory.MaxVolume - (float)inventory.CurrentVolume;
+                var avail = (float)inv.MaxVolume - (float)inv.CurrentVolume;
+                if (avail <= maxAvailableVolume) continue;
 
-                    if (!(availableVolume > maxAvailableVolume)) continue;
-                    maxAvailableVolume = availableVolume;
-                    selectedCargo = cargo;
-                }
-                if (selectedCargo != null)
-                {
-                    var cargoInventory = selectedCargo.GetInventory();
-                    block.DecreaseMountLevel(block.Integrity, cargoInventory, true);
-                    block.MoveItemsFromConstructionStockpile(cargoInventory);
-                }
+                maxAvailableVolume = avail;
+                selectedInventory = inv;
+            }
+            
+            if (selectedInventory != null)
+            {
+                var refund = ComputeRefundComponents(block);
+                PutComponentsIntoInventory(selectedInventory, refund);
             }
             grid.RemoveBlock(block, updatePhysics: true);
+            
+            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+            {
+                var projectors = new List<IMyProjector>();
+                MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(grid).GetBlocksOfType(projectors);
+                foreach (var p in projectors) p.Enabled = false;
+            });
+        }
+        
+        private static Dictionary<string, int> ComputeRefundComponents(IMySlimBlock block)
+        {
+            var result = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-            var projectors = new List<IMyProjector>();
-            MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(grid).GetBlocksOfType(projectors);
-            projectors.ForEach(p => p.Enabled = false);
+            var def = block.BlockDefinition as MyCubeBlockDefinition;
+            if (def == null) return result;
+            
+            var full = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var comps = def.Components;
+            foreach (var t in comps)
+            {
+                var subtype = t.Definition.Id.SubtypeName;
+                int existing;
+                if (!full.TryGetValue(subtype, out existing)) full[subtype] = t.Count;
+                else full[subtype] = existing + t.Count;
+            }
+            
+            var missing = new Dictionary<string, int>();
+            block.ComponentStack.GetAllMissingComponents(missing);
+            
+            foreach (var kv in full)
+            {
+                int miss;
+                missing.TryGetValue(kv.Key, out miss);
+
+                var built = kv.Value - miss;
+                if (built > 0) result[kv.Key] = built;
+            }
+
+            return result;
+        }
+
+        private static void PutComponentsIntoInventory(IMyInventory inv, Dictionary<string, int> refund)
+        {
+            foreach (var kv in refund)
+            {
+                var subtype = kv.Key;
+                var amount = kv.Value;
+
+                var id = new MyDefinitionId(typeof(MyObjectBuilder_Component), subtype);
+                var builder = (MyObjectBuilder_PhysicalObject)MyObjectBuilderSerializer.CreateNewObject(id);
+                if (builder == null) continue;
+
+                inv.AddItems(amount, builder);
+            }
+        }
+        
+        internal static void WhackABlock(this IMySlimBlock block, PunishmentType harm, MyStringHash? customDamageType = null)
+        {
+            var damageType = customDamageType ?? DamageTypeBlockLimit;
+            var func = block.FatBlock as IMyFunctionalBlock;
+
+            switch (harm)
+            {
+                case PunishmentType.Damage:
+                    var damageRequired = block.Integrity - block.MaxIntegrity * 0.5;
+                    if (damageRequired < 0) damageRequired = 0;
+                    block.DoDamage((float)damageRequired, damageType, true);
+                    break;
+                case PunishmentType.Delete:
+                    if (func != null) func.Enabled = false;
+                    block.RemoveAndRefund();
+                    break;
+                case PunishmentType.Explode:
+                    block.DoDamage(block.Integrity, damageType, true);
+                    break;
+                case PunishmentType.ShutOff:
+                default:
+                    if (func != null) func.Enabled = false;
+                    break;
+            }
         }
         
         internal static T LoadFromSandbox<T>(string keyName)
@@ -271,7 +355,6 @@ namespace ShipCoreFramework
         private static int NumLines(string text)
         {
             var charDiff = text.Length - text.Replace("\n", string.Empty).Length;
-
             return charDiff + 1;
         }
     }

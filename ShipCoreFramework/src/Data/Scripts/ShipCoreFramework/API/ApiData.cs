@@ -1,6 +1,6 @@
 using System;
 using ProtoBuf;
-using VRage.Game.ModAPI;
+using Sandbox.Game.Entities;
 
 // ReSharper disable InconsistentNaming
 // ReSharper disable MemberCanBePrivate.Global
@@ -33,7 +33,7 @@ namespace ShipCoreFramework
         /// Increment when you add functionality in a backwards compatible way,
         /// but you still want consumers to update if you require exact matches.
         /// </summary>
-        public const int API_MINOR = 1;
+        public const int API_MINOR = 0;
 
         /// <summary>
         /// Encoded API version (Major.Minor) packed into a single int.
@@ -126,137 +126,132 @@ namespace ShipCoreFramework
         /// Signature: IMyCubeGrid -> byte[] (SpeedModifiersData).
         /// </summary>
         public const int GetSpeedModifiers_Binary = 19;
-
-        /// <summary>
-        /// Gets whether Dynamic Boost is enabled for the grid's active core.
-        /// Signature: IMyCubeGrid -> bool.
-        /// </summary>
-        public const int IsDynamicBoostEnabled = 20;
+        
 
         /// <summary>
         /// Gets BoostResistance from the grid's active core SpeedModifiers.
         /// Signature: IMyCubeGrid -> float.
         /// </summary>
-        public const int GetBoostResistance = 21;
+        public const int GetBoostResistance = 20;
 
         /// <summary>
         /// Gets base max speed in m/s (without boost), based on core SpeedModifiers.
         /// Signature: IMyCubeGrid -> float.
         /// </summary>
-        public const int GetBaseMaxSpeed = 22;
+        public const int GetBaseMaxSpeed = 21;
 
         /// <summary>
         /// Gets max boost multiplier (core SpeedModifiers.MaxBoost).
         /// Signature: IMyCubeGrid -> float.
         /// </summary>
-        public const int GetMaxBoostMultiplier = 23;
+        public const int GetMaxBoostMultiplier = 22;
 
         /// <summary>
         /// Gets boost duration in seconds (core SpeedModifiers.BoostDuration).
         /// Signature: IMyCubeGrid -> float.
         /// </summary>
-        public const int GetBoostDuration = 24;
+        public const int GetBoostDuration = 23;
 
         /// <summary>
         /// Gets boost cooldown in seconds (core SpeedModifiers.BoostCoolDown).
         /// Signature: IMyCubeGrid -> float.
         /// </summary>
-        public const int GetBoostCooldown = 25;
+        public const int GetBoostCooldown = 24;
 
         /// <summary>
         /// Enables/disables friction-based speed limiting for a logical grid group.
         /// Signature: object -> bool (expects MyTuple&lt;IMyCubeGrid, bool&gt;).
         /// </summary>
-        public const int SetFrictionEnabledForGroup = 26;
+        public const int SetFrictionEnabledForGroup = 25;
 
         /// <summary>
         /// Gets whether friction-based speed limiting is enabled for a logical grid group.
         /// Signature: IMyCubeGrid -> bool.
         /// </summary>
-        public const int GetFrictionEnabledForGroup = 27;
+        public const int GetFrictionEnabledForGroup = 26;
 
         /// <summary>
         /// Sets the maximum friction deceleration (m/s^2) override for a logical grid group.
         /// Use a value &gt;= 0 to override the core/config value.
         /// Signature: object -> bool (expects MyTuple&lt;IMyCubeGrid, float&gt;).
         /// </summary>
-        public const int SetFrictionMaximumDecelerationForGroup = 28;
+        public const int SetFrictionMaximumDecelerationForGroup = 27;
 
         /// <summary>
         /// Clears the maximum friction deceleration override for a logical grid group.
         /// Signature: IMyCubeGrid -> bool.
         /// </summary>
-        public const int ClearFrictionMaximumDecelerationForGroup = 29;
+        public const int ClearFrictionMaximumDecelerationForGroup = 28;
 
         /// <summary>
         /// Gets the maximum friction deceleration override for a logical grid group.
         /// Returns -1 if no override is set.
         /// Signature: IMyCubeGrid -> float.
         /// </summary>
-        public const int GetFrictionMaximumDecelerationForGroup = 30;
+        public const int GetFrictionMaximumDecelerationForGroup = 29;
 
         /// <summary>
         /// Gets the current world setting for how friction speeds are interpreted.
         /// 0 = Modifier, 1 = Absolute.
         /// Signature: object -> int (arg ignored).
         /// </summary>
-        public const int GetFrictionSpeedValueMode = 31;
+        public const int GetFrictionSpeedValueMode = 30;
 
         /// <summary>
         /// Sets the minimum friction speed override (absolute m/s) for a logical grid group.
         /// Use a value &lt; 0 to clear the override.
         /// Signature: object -> object (expects MyTuple&lt;IMyCubeGrid, float&gt;, returns MyTuple&lt;bool, string&gt;).
         /// </summary>
-        public const int SetFrictionMinimumSpeedAbsoluteForGroup = 32;
+        public const int SetFrictionMinimumSpeedAbsoluteForGroup = 31;
 
         /// <summary>
         /// Sets the maximum friction speed override (absolute m/s) for a logical grid group.
         /// Use a value &lt; 0 to clear the override.
         /// Signature: object -> object (expects MyTuple&lt;IMyCubeGrid, float&gt;, returns MyTuple&lt;bool, string&gt;).
         /// </summary>
-        public const int SetFrictionMaximumSpeedAbsoluteForGroup = 33;
+        public const int SetFrictionMaximumSpeedAbsoluteForGroup = 32;
 
         /// <summary>
         /// Gets the minimum friction speed override (absolute m/s) for a logical grid group.
         /// Returns -1 if no override is set.
         /// Signature: IMyCubeGrid -> object (returns MyTuple&lt;float, string&gt;).
         /// </summary>
-        public const int GetFrictionMinimumSpeedAbsoluteForGroup = 34;
+        public const int GetFrictionMinimumSpeedAbsoluteForGroup = 33;
 
         /// <summary>
         /// Gets the maximum friction speed override (absolute m/s) for a logical grid group.
         /// Returns -1 if no override is set.
         /// Signature: IMyCubeGrid -> object (returns MyTuple&lt;float, string&gt;).
         /// </summary>
-        public const int GetFrictionMaximumSpeedAbsoluteForGroup = 35;
+        public const int GetFrictionMaximumSpeedAbsoluteForGroup = 34;
 
         /// <summary>
         /// Sets the minimum friction speed override (modifier) for a logical grid group.
         /// Use a value &lt; 0 to clear the override.
         /// Signature: object -> object (expects MyTuple&lt;IMyCubeGrid, float&gt;, returns MyTuple&lt;bool, string&gt;).
         /// </summary>
-        public const int SetFrictionMinimumSpeedModifierForGroup = 36;
+        public const int SetFrictionMinimumSpeedModifierForGroup = 35;
 
         /// <summary>
         /// Sets the maximum friction speed override (modifier) for a logical grid group.
         /// Use a value &lt; 0 to clear the override.
         /// Signature: object -> object (expects MyTuple&lt;IMyCubeGrid, float&gt;, returns MyTuple&lt;bool, string&gt;).
         /// </summary>
-        public const int SetFrictionMaximumSpeedModifierForGroup = 37;
+        public const int SetFrictionMaximumSpeedModifierForGroup = 36;
 
         /// <summary>
         /// Gets the minimum friction speed override (modifier) for a logical grid group.
         /// Returns -1 if no override is set.
         /// Signature: IMyCubeGrid -> object (returns MyTuple&lt;float, string&gt;).
         /// </summary>
-        public const int GetFrictionMinimumSpeedModifierForGroup = 38;
+        public const int GetFrictionMinimumSpeedModifierForGroup = 37;
 
         /// <summary>
         /// Gets the maximum friction speed override (modifier) for a logical grid group.
         /// Returns -1 if no override is set.
         /// Signature: IMyCubeGrid -> object (returns MyTuple&lt;float, string&gt;).
         /// </summary>
-        public const int GetFrictionMaximumSpeedModifierForGroup = 39;
+        public const int GetFrictionMaximumSpeedModifierForGroup = 38;
 
         // Optional: Field getters for "no parsing" access (primitives only).
         // These can be handy if a consumer only needs a single field and wants to avoid deserializing a full DTO.
@@ -403,7 +398,7 @@ namespace ShipCoreFramework
     [ProtoContract]
     public class CoreActivatedEventArgs
     {
-        [ProtoMember(1)] public IMyCubeGrid Grid;
+        [ProtoMember(1)] public long GroupGridId;
         [ProtoMember(2)] public string CoreSubtypeId;
         [ProtoMember(3)] public string CoreName;
         [ProtoMember(4)] public DateTime Timestamp;
@@ -416,7 +411,7 @@ namespace ShipCoreFramework
     [ProtoContract]
     public class CoreDeactivatedEventArgs
     {
-        [ProtoMember(1)] public IMyCubeGrid Grid;
+        [ProtoMember(1)] public long GroupGridId;
         [ProtoMember(2)] public string PreviousCoreSubtypeId;
         [ProtoMember(3)] public string PreviousCoreName;
         [ProtoMember(4)] public DateTime Timestamp;
@@ -429,7 +424,7 @@ namespace ShipCoreFramework
     [ProtoContract]
     public class LimitsRecalculatedEventArgs
     {
-        [ProtoMember(1)] public IMyCubeGrid GroupGrid;
+        [ProtoMember(1)] public long GroupGridId;
         [ProtoMember(2)] public DateTime Timestamp;
     }
 
@@ -440,7 +435,7 @@ namespace ShipCoreFramework
     [ProtoContract]
     public class LimitsEnforcedEventArgs
     {
-        [ProtoMember(1)] public IMyCubeGrid GroupGrid;
+        [ProtoMember(1)] public long GroupGridId;
         [ProtoMember(2)] public int BlocksPunished;
         [ProtoMember(3)] public DateTime Timestamp;
     }
@@ -451,7 +446,7 @@ namespace ShipCoreFramework
     [ProtoContract]
     public class BoostEventArgs
     {
-        [ProtoMember(1)] public IMyCubeGrid Grid;
+        [ProtoMember(1)] public long GroupGridId;
         [ProtoMember(2)] public DateTime Timestamp;
     }
 
@@ -461,7 +456,7 @@ namespace ShipCoreFramework
     [ProtoContract]
     public class ActiveDefenseEventArgs
     {
-        [ProtoMember(1)] public IMyCubeGrid Grid;
+        [ProtoMember(1)] public long GroupGridId;
         [ProtoMember(2)] public DateTime Timestamp;
     }
 
@@ -471,8 +466,8 @@ namespace ShipCoreFramework
     [ProtoContract]
     public class GridGroupEventArgs
     {
-        [ProtoMember(1)] public IMyCubeGrid Grid;
-        [ProtoMember(2)] public IMyCubeGrid GroupGrid;
+        [ProtoMember(1)] public long GridId;
+        [ProtoMember(2)] public long GroupGridId;
         [ProtoMember(3)] public DateTime Timestamp;
     }
 }

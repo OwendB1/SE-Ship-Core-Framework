@@ -1,5 +1,6 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="utf-16"?>
 <ArrayOfBlockGroup xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <!--weaponry-->
   <BlockGroup>
     <Name>Weaponry</Name>
     <BlockTypes>
@@ -58,8 +59,18 @@
       <CountWeight>1</CountWeight>
     </BlockTypes>
     <BlockTypes>
+      <TypeId>LargeMissileTurret</TypeId>
+      <SubtypeId>SmallMissileTurretReskin</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
       <TypeId>LargeGatlingTurret</TypeId>
       <SubtypeId>SmallGatlingTurret</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>LargeGatlingTurret</TypeId>
+      <SubtypeId>SmallGatlingTurretReskin</SubtypeId>
       <CountWeight>1</CountWeight>
     </BlockTypes>
     <BlockTypes>
@@ -84,6 +95,11 @@
     </BlockTypes>
     <BlockTypes>
       <TypeId>LargeMissileTurret</TypeId>
+      <SubtypeId>LargeMissileTurretReskin</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>LargeMissileTurret</TypeId>
       <SubtypeId>LargeBlockMediumCalibreTurret</SubtypeId>
       <CountWeight>1</CountWeight>
     </BlockTypes>
@@ -96,11 +112,19 @@
       <TypeId>LargeGatlingTurret</TypeId>
       <SubtypeId />
       <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>LargeGatlingTurret</TypeId>
+      <SubtypeId>LargeGatlingTurretReskin</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
       <TypeId>InteriorTurret</TypeId>
       <SubtypeId>LargeInteriorTurret</SubtypeId>
       <CountWeight>1</CountWeight>
     </BlockTypes>
   </BlockGroup>
+  <!--turrets-->
   <BlockGroup>
     <Name>Turrets</Name>
     <BlockTypes>
@@ -124,6 +148,11 @@
       <CountWeight>1</CountWeight>
     </BlockTypes>
     <BlockTypes>
+      <TypeId>LargeGatlingTurret</TypeId>
+      <SubtypeId>SmallGatlingTurretReskin</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
       <TypeId>LargeMissileTurret</TypeId>
       <SubtypeId />
       <CountWeight>1</CountWeight>
@@ -143,7 +172,13 @@
       <SubtypeId />
       <CountWeight>1</CountWeight>
     </BlockTypes>
+    <BlockTypes>
+      <TypeId>LargeGatlingTurret</TypeId>
+      <SubtypeId>LargeGatlingTurretReskin</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
   </BlockGroup>
+  <!--small grid fixed weapons-->
   <BlockGroup>
     <Name>VanillaSmallGridFixedWeapons</Name>
     <BlockTypes>
@@ -187,6 +222,7 @@
       <CountWeight>1</CountWeight>
     </BlockTypes>
   </BlockGroup>
+  <!--small grid turrets-->
   <BlockGroup>
     <Name>VanillaSmallGridTurretWeapons</Name>
     <BlockTypes>
@@ -209,7 +245,13 @@
       <SubtypeId>SmallGatlingTurret</SubtypeId>
       <CountWeight>1</CountWeight>
     </BlockTypes>
+    <BlockTypes>
+      <TypeId>LargeGatlingTurret</TypeId>
+      <SubtypeId>SmallGatlingTurretReskin</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
   </BlockGroup>
+  <!--large grid fixed weapons-->
   <BlockGroup>
     <Name>VanillaLargeGridFixedWeapons</Name>
     <BlockTypes>
@@ -228,6 +270,7 @@
       <CountWeight>1</CountWeight>
     </BlockTypes>
   </BlockGroup>
+  <!--large grid turrets-->
   <BlockGroup>
     <Name>VanillaLargeGridTurretWeapons</Name>
     <BlockTypes>
@@ -251,11 +294,172 @@
       <CountWeight>1</CountWeight>
     </BlockTypes>
     <BlockTypes>
+      <TypeId>LargeGatlingTurret</TypeId>
+      <SubtypeId>LargeGatlingTurretReskin</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
       <TypeId>InteriorTurret</TypeId>
       <SubtypeId>LargeInteriorTurret</SubtypeId>
       <CountWeight>1</CountWeight>
     </BlockTypes>
   </BlockGroup>
+  <!--assault cannons-->
+  <BlockGroup>
+    <Name>AssaultCannons</Name>
+    <BlockTypes>
+      <TypeId>SmallMissileLauncherReload</TypeId>
+      <SubtypeId>SmallBlockMediumCalibreGun</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>LargeMissileTurret</TypeId>
+      <SubtypeId>SmallBlockMediumCalibreTurret</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>LargeMissileTurret</TypeId>
+      <SubtypeId>LargeCalibreTurret</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+  </BlockGroup>
+  <!--railguns-->
+  <BlockGroup>
+    <Name>VanillaRailguns</Name>
+    <BlockTypes>
+      <TypeId>SmallMissileLauncherReload</TypeId>
+      <SubtypeId>SmallRailgun</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>SmallMissileLauncherReload</TypeId>
+      <SubtypeId>LargeRailgun</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+  </BlockGroup>
+  <!--artillery-->
+  <BlockGroup>
+    <Name>VanillaArtillery</Name>
+    <BlockTypes>
+      <TypeId>LargeMissileTurret</TypeId>
+      <SubtypeId>LargeCalibreTurret</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>SmallMissileLauncher</TypeId>
+      <SubtypeId>LargeBlockLargeCalibreGun</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+  </BlockGroup>
+  <!--brawl type: gatlings, missiles, autocannons-->
+  <BlockGroup>
+    <Name>VanillaBrawl</Name>
+    <BlockTypes>
+      <TypeId>SmallGatlingGun</TypeId>
+      <SubtypeId />
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>SmallGatlingGun</TypeId>
+      <SubtypeId>SmallGatlingGunWarfare2</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>SmallGatlingGun</TypeId>
+      <SubtypeId>SmallBlockAutocannon</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>LargeMissileTurret</TypeId>
+      <SubtypeId>AutoCannonTurret</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>SmallMissileLauncher</TypeId>
+      <SubtypeId />
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>SmallMissileLauncher</TypeId>
+      <SubtypeId>SmallMissileLauncherWarfare2</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>SmallMissileLauncherReload</TypeId>
+      <SubtypeId>SmallMissileLauncherReload</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>LargeMissileTurret</TypeId>
+      <SubtypeId>SmallMissileTurret</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>LargeMissileTurret</TypeId>
+      <SubtypeId>SmallMissileTurretReskin</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>LargeGatlingTurret</TypeId>
+      <SubtypeId>SmallGatlingTurret</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>LargeGatlingTurret</TypeId>
+      <SubtypeId>SmallGatlingTurretReskin</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>LargeMissileTurret</TypeId>
+      <SubtypeId />
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>LargeMissileTurret</TypeId>
+      <SubtypeId>LargeMissileTurretReskin</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>LargeGatlingTurret</TypeId>
+      <SubtypeId />
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>LargeGatlingTurret</TypeId>
+      <SubtypeId>LargeGatlingTurretReskin</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+  </BlockGroup>
+  <!--pdc (interior turrets)-->
+  <BlockGroup>
+    <Name>VanillaPDC</Name>
+    <BlockTypes>
+      <TypeId>InteriorTurret</TypeId>
+      <SubtypeId>LargeInteriorTurret</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+  </BlockGroup>
+  <!--warheads-->
+  <BlockGroup>
+    <Name>VanillaWarheads</Name>
+    <BlockTypes>
+      <TypeId>Warhead</TypeId>
+      <SubtypeId>LargeWarhead</SubtypeId>
+      <SubtypeId>SmallWarhead</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+  </BlockGroup>
+  <!--decoys-->
+  <BlockGroup>
+    <Name>VanillaDecoys</Name>
+    <BlockTypes>
+      <TypeId>Decoy</TypeId>
+      <SubtypeId>LargeDecoy</SubtypeId>
+      <SubtypeId>SmallDecoy</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+  </BlockGroup>
+  <!--all tools-->
   <BlockGroup>
     <Name>Tools</Name>
     <BlockTypes>
@@ -265,7 +469,17 @@
     </BlockTypes>
     <BlockTypes>
       <TypeId>Drill</TypeId>
+      <SubtypeId>SmallBlockDrillReskin</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>Drill</TypeId>
       <SubtypeId>LargeBlockDrill</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>Drill</TypeId>
+      <SubtypeId>LargeBlockDrillReskin</SubtypeId>
       <CountWeight>1</CountWeight>
     </BlockTypes>
     <BlockTypes>
@@ -275,7 +489,17 @@
     </BlockTypes>
     <BlockTypes>
       <TypeId>ShipWelder</TypeId>
+      <SubtypeId>SmallShipWelderReskin</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>ShipWelder</TypeId>
       <SubtypeId>LargeShipWelder</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>ShipWelder</TypeId>
+      <SubtypeId>LargeShipWelderReskin</SubtypeId>
       <CountWeight>1</CountWeight>
     </BlockTypes>
     <BlockTypes>
@@ -285,10 +509,21 @@
     </BlockTypes>
     <BlockTypes>
       <TypeId>ShipGrinder</TypeId>
+      <SubtypeId>SmallShipGrinderReskin</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>ShipGrinder</TypeId>
       <SubtypeId>LargeShipGrinder</SubtypeId>
       <CountWeight>1</CountWeight>
     </BlockTypes>
+    <BlockTypes>
+      <TypeId>ShipGrinder</TypeId>
+      <SubtypeId>LargeShipGrinderReskin</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
   </BlockGroup>
+  <!--drills-->
   <BlockGroup>
     <Name>Drills</Name>
     <BlockTypes>
@@ -298,10 +533,21 @@
     </BlockTypes>
     <BlockTypes>
       <TypeId>Drill</TypeId>
+      <SubtypeId>SmallBlockDrillReskin</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>Drill</TypeId>
       <SubtypeId>LargeBlockDrill</SubtypeId>
       <CountWeight>1</CountWeight>
     </BlockTypes>
+    <BlockTypes>
+      <TypeId>Drill</TypeId>
+      <SubtypeId>LargeBlockDrillReskin</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
   </BlockGroup>
+  <!--welders-->
   <BlockGroup>
     <Name>Welders</Name>
     <BlockTypes>
@@ -311,10 +557,21 @@
     </BlockTypes>
     <BlockTypes>
       <TypeId>ShipWelder</TypeId>
+      <SubtypeId>SmallShipWelderReskin</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>ShipWelder</TypeId>
       <SubtypeId>LargeShipWelder</SubtypeId>
       <CountWeight>1</CountWeight>
     </BlockTypes>
+    <BlockTypes>
+      <TypeId>ShipWelder</TypeId>
+      <SubtypeId>LargeShipWelderReskin</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
   </BlockGroup>
+  <!--grinders-->
   <BlockGroup>
     <Name>Grinders</Name>
     <BlockTypes>
@@ -324,10 +581,21 @@
     </BlockTypes>
     <BlockTypes>
       <TypeId>ShipGrinder</TypeId>
+      <SubtypeId>SmallShipGrinderReskin</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>ShipGrinder</TypeId>
       <SubtypeId>LargeShipGrinder</SubtypeId>
       <CountWeight>1</CountWeight>
     </BlockTypes>
+    <BlockTypes>
+      <TypeId>ShipGrinder</TypeId>
+      <SubtypeId>LargeShipGrinderReskin</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
   </BlockGroup>
+  <!--safe zones-->
   <BlockGroup>
     <Name>SafeZone</Name>
     <BlockTypes>
@@ -336,6 +604,7 @@
       <CountWeight>1</CountWeight>
     </BlockTypes>
   </BlockGroup>
+  <!--programmable blocks-->
   <BlockGroup>
     <Name>ProgrammableBlocks</Name>
     <BlockTypes>
@@ -359,6 +628,7 @@
       <CountWeight>1</CountWeight>
     </BlockTypes>
   </BlockGroup>
+  <!--assemblers-->
   <BlockGroup>
     <Name>Assemblers</Name>
     <BlockTypes>
@@ -377,6 +647,7 @@
       <CountWeight>1</CountWeight>
     </BlockTypes>
   </BlockGroup>
+  <!--refineries-->
   <BlockGroup>
     <Name>Refineries</Name>
     <BlockTypes>
@@ -395,6 +666,7 @@
       <CountWeight>1</CountWeight>
     </BlockTypes>
   </BlockGroup>
+  <!--large h2 tanks-->
   <BlockGroup>
     <Name>LargeHydrogenTanks</Name>
     <BlockTypes>
@@ -413,6 +685,7 @@
       <CountWeight>1</CountWeight>
     </BlockTypes>
   </BlockGroup>
+  <!--small h2 tanks-->
   <BlockGroup>
     <Name>SmallHydrogenTanks</Name>
     <BlockTypes>
@@ -426,6 +699,7 @@
       <CountWeight>1</CountWeight>
     </BlockTypes>
   </BlockGroup>
+  <!--small cargo-->
   <BlockGroup>
     <Name>SmallCargoContainers</Name>
     <BlockTypes>
@@ -439,6 +713,7 @@
       <CountWeight>1</CountWeight>
     </BlockTypes>
   </BlockGroup>
+  <!--medium cargo-->
   <BlockGroup>
     <Name>MediumCargoContainers</Name>
     <BlockTypes>
@@ -447,6 +722,7 @@
       <CountWeight>1</CountWeight>
     </BlockTypes>
   </BlockGroup>
+  <!--large cargo-->
   <BlockGroup>
     <Name>LargeCargoContainers</Name>
     <BlockTypes>
@@ -465,6 +741,7 @@
       <CountWeight>1</CountWeight>
     </BlockTypes>
   </BlockGroup>
+  <!--gyroscopes-->
   <BlockGroup>
     <Name>Gyros</Name>
     <BlockTypes>
@@ -478,6 +755,7 @@
       <CountWeight>1</CountWeight>
     </BlockTypes>
   </BlockGroup>
+  <!--collectors-->
   <BlockGroup>
     <Name>Collectors</Name>
     <BlockTypes>
@@ -486,103 +764,17 @@
       <CountWeight>1</CountWeight>
     </BlockTypes>
   </BlockGroup>
+  <!--jump drives-->
   <BlockGroup>
-    <Name>ConveyorJunctions</Name>
+    <Name>VanillaJumpDrives</Name>
     <BlockTypes>
-      <TypeId>Conveyor</TypeId>
-      <SubtypeId>SmallShipConveyorHub</SubtypeId>
+      <TypeId>JumpDrive</TypeId>
+      <SubtypeId>LargeJumpDrive</SubtypeId>
       <CountWeight>1</CountWeight>
     </BlockTypes>
     <BlockTypes>
-      <TypeId>Conveyor</TypeId>
-      <SubtypeId>SmallBlockConveyor</SubtypeId>
-      <CountWeight>1</CountWeight>
-    </BlockTypes>
-    <BlockTypes>
-      <TypeId>Conveyor</TypeId>
-      <SubtypeId>LargeBlockConveyor</SubtypeId>
-      <CountWeight>1</CountWeight>
-    </BlockTypes>
-    <BlockTypes>
-      <TypeId>Conveyor</TypeId>
-      <SubtypeId>LargeBlockConveyorPipeJunction</SubtypeId>
-      <CountWeight>1</CountWeight>
-    </BlockTypes>
-    <BlockTypes>
-      <TypeId>AirVent</TypeId>
-      <SubtypeId>AirVentFull</SubtypeId>
-      <CountWeight>1</CountWeight>
-    </BlockTypes>
-  </BlockGroup>
-  <BlockGroup>
-    <Name>VanillaRailguns</Name>
-    <BlockTypes>
-      <TypeId>SmallMissileLauncherReload</TypeId>
-      <SubtypeId>SmallRailgun</SubtypeId>
-      <CountWeight>1</CountWeight>
-    </BlockTypes>
-    <BlockTypes>
-      <TypeId>SmallMissileLauncherReload</TypeId>
-      <SubtypeId>LargeRailgun</SubtypeId>
-      <CountWeight>1</CountWeight>
-    </BlockTypes>
-  </BlockGroup>
-  <BlockGroup>
-    <Name>VanillaArtillery</Name>
-    <BlockTypes>
-      <TypeId>LargeMissileTurret</TypeId>
-      <SubtypeId>LargeCalibreTurret</SubtypeId>
-      <CountWeight>1</CountWeight>
-    </BlockTypes>
-    <BlockTypes>
-      <TypeId>SmallMissileLauncher</TypeId>
-      <SubtypeId>LargeBlockLargeCalibreGun</SubtypeId>
-      <CountWeight>1</CountWeight>
-    </BlockTypes>
-  </BlockGroup>
-  <BlockGroup>
-    <Name>VanillaBrawl</Name>
-    <BlockTypes>
-      <TypeId>SmallGatlingGun</TypeId>
-      <SubtypeId>SmallGatlingGunWarfare2</SubtypeId>
-      <CountWeight>1</CountWeight>
-    </BlockTypes>
-    <BlockTypes>
-      <TypeId>SmallGatlingGun</TypeId>
-      <SubtypeId>SmallBlockAutocannon</SubtypeId>
-      <CountWeight>1</CountWeight>
-    </BlockTypes>
-    <BlockTypes>
-      <TypeId>LargeGatlingTurret</TypeId>
-      <SubtypeId />
-      <CountWeight>1</CountWeight>
-    </BlockTypes>
-    <BlockTypes>
-      <TypeId>LargeMissileTurret</TypeId>
-      <SubtypeId>AutoCannonTurret</SubtypeId>
-      <CountWeight>1</CountWeight>
-    </BlockTypes>
-    <BlockTypes>
-      <TypeId>SmallMissileLauncherReload</TypeId>
-      <SubtypeId>SmallBlockMediumCalibreGun</SubtypeId>
-      <CountWeight>1</CountWeight>
-    </BlockTypes>
-    <BlockTypes>
-      <TypeId>LargeMissileTurret</TypeId>
-      <SubtypeId>SmallBlockMediumCalibreTurret</SubtypeId>
-      <CountWeight>1</CountWeight>
-    </BlockTypes>
-    <BlockTypes>
-      <TypeId>LargeMissileTurret</TypeId>
-      <SubtypeId>LargeBlockMediumCalibreTurret</SubtypeId>
-      <CountWeight>1</CountWeight>
-    </BlockTypes>
-  </BlockGroup>
-  <BlockGroup>
-    <Name>VanillaPDC</Name>
-    <BlockTypes>
-      <TypeId>InteriorTurret</TypeId>
-      <SubtypeId>LargeInteriorTurret</SubtypeId>
+      <TypeId>JumpDrive</TypeId>
+      <SubtypeId>LargeJumpDriveReskin</SubtypeId>
       <CountWeight>1</CountWeight>
     </BlockTypes>
   </BlockGroup>

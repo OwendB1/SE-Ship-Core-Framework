@@ -73,8 +73,7 @@ namespace ShipCoreFramework
                 case ApiMethodId.GetGridCore_Binary:
                     return arg =>
                     {
-                        var grid = arg as IMyCubeGrid;
-                        var dto = GetGridCore(grid);
+                        var dto = GetGridCore(arg as long? ?? 0);
                         return MyAPIGateway.Utilities.SerializeToBinary(dto);
                     };
 
@@ -96,32 +95,31 @@ namespace ShipCoreFramework
                 case ApiMethodId.GetBlockLimitsStatus_Binary:
                     return arg =>
                     {
-                        var grid = arg as IMyCubeGrid;
-                        var dict = GetBlockLimitsStatus(grid);
+                        var dict = GetBlockLimitsStatus(arg as long? ?? 0);
                         return MyAPIGateway.Utilities.SerializeToBinary(dict);
                     };
 
                 case ApiMethodId.IsBlockAllowed:
                     return arg =>
                     {
-                        // Expect MyTuple<IMyCubeGrid, string, string, int>
-                        var t = (MyTuple<IMyCubeGrid, string, string, int>)arg;
+                        // Expect MyTuple<MyCubeGrid, string, string, int>
+                        var t = (MyTuple<long, string, string, int>)arg;
                         return IsBlockAllowed(t.Item1, t.Item2, t.Item3, t.Item4);
                     };
 
                 case ApiMethodId.GetGridModifiers_Binary:
                     return arg =>
                     {
-                        var grid = arg as IMyCubeGrid;
-                        var dto = GetGridModifiers(grid);
+                        var gridId = arg as long? ?? 0;
+                        var dto = GetGridModifiers(gridId);
                         return MyAPIGateway.Utilities.SerializeToBinary(dto);
                     };
 
                 case ApiMethodId.GetMaxSpeed:
-                    return arg => GetMaxSpeed(arg as IMyCubeGrid);
+                    return arg => GetMaxSpeed(arg as long? ?? 0);
 
                 case ApiMethodId.IsBoostActive:
-                    return arg => IsBoostActive(arg as IMyCubeGrid);
+                    return arg => IsBoostActive(arg as long? ?? 0);
 
                 case ApiMethodId.GetNoCoreConfig_Binary:
                     return _ =>
@@ -133,51 +131,47 @@ namespace ShipCoreFramework
                 case ApiMethodId.GetSpeedModifiers_Binary:
                     return arg =>
                     {
-                        var grid = arg as IMyCubeGrid;
-                        var dto = GetSpeedModifiers(grid);
+                        var dto = GetSpeedModifiers(arg as long? ?? 0);
                         return MyAPIGateway.Utilities.SerializeToBinary(dto);
                     };
 
-                case ApiMethodId.IsDynamicBoostEnabled:
-                    return arg => IsDynamicBoostEnabled(arg as IMyCubeGrid);
-
                 case ApiMethodId.GetBoostResistance:
-                    return arg => GetBoostResistance(arg as IMyCubeGrid);
+                    return arg => GetBoostResistance(arg as long? ?? 0);
 
                 case ApiMethodId.GetBaseMaxSpeed:
-                    return arg => GetBaseMaxSpeed(arg as IMyCubeGrid);
+                    return arg => GetBaseMaxSpeed(arg as long? ?? 0);
 
                 case ApiMethodId.GetMaxBoostMultiplier:
-                    return arg => GetMaxBoostMultiplier(arg as IMyCubeGrid);
+                    return arg => GetMaxBoostMultiplier(arg as long? ?? 0);
 
                 case ApiMethodId.GetBoostDuration:
-                    return arg => GetBoostDuration(arg as IMyCubeGrid);
+                    return arg => GetBoostDuration(arg as long? ?? 0);
 
                 case ApiMethodId.GetBoostCooldown:
-                    return arg => GetBoostCooldown(arg as IMyCubeGrid);
+                    return arg => GetBoostCooldown(arg as long? ?? 0);
 
                 case ApiMethodId.SetFrictionEnabledForGroup:
                     return arg =>
                     {
-                        var t = (MyTuple<IMyCubeGrid, bool>)arg;
+                        var t = (MyTuple<long, bool>)arg;
                         return SetFrictionEnabledForGroup(t.Item1, t.Item2);
                     };
 
                 case ApiMethodId.GetFrictionEnabledForGroup:
-                    return arg => GetFrictionEnabledForGroup(arg as IMyCubeGrid);
+                    return arg => GetFrictionEnabledForGroup(arg as long? ?? 0);
 
                 case ApiMethodId.SetFrictionMaximumDecelerationForGroup:
                     return arg =>
                     {
-                        var t = (MyTuple<IMyCubeGrid, float>)arg;
+                        var t = (MyTuple<long, float>)arg;
                         return SetFrictionMaximumDecelerationForGroup(t.Item1, t.Item2);
                     };
 
                 case ApiMethodId.ClearFrictionMaximumDecelerationForGroup:
-                    return arg => ClearFrictionMaximumDecelerationForGroup(arg as IMyCubeGrid);
+                    return arg => ClearFrictionMaximumDecelerationForGroup(arg as long? ?? 0);
 
                 case ApiMethodId.GetFrictionMaximumDecelerationForGroup:
-                    return arg => GetFrictionMaximumDecelerationForGroup(arg as IMyCubeGrid);
+                    return arg => GetFrictionMaximumDecelerationForGroup(arg as long? ?? 0);
 
                 case ApiMethodId.GetFrictionSpeedValueMode:
                     return _ => (int)Session.Config.FrictionSpeedValueMode;
@@ -185,65 +179,62 @@ namespace ShipCoreFramework
                 case ApiMethodId.SetFrictionMinimumSpeedAbsoluteForGroup:
                     return arg =>
                     {
-                        var t = (MyTuple<IMyCubeGrid, float>)arg;
+                        var t = (MyTuple<long, float>)arg;
                         return SetFrictionMinimumSpeedAbsoluteForGroup(t.Item1, t.Item2);
                     };
 
                 case ApiMethodId.SetFrictionMaximumSpeedAbsoluteForGroup:
                     return arg =>
                     {
-                        var t = (MyTuple<IMyCubeGrid, float>)arg;
+                        var t = (MyTuple<long, float>)arg;
                         return SetFrictionMaximumSpeedAbsoluteForGroup(t.Item1, t.Item2);
                     };
 
                 case ApiMethodId.GetFrictionMinimumSpeedAbsoluteForGroup:
-                    return arg => GetFrictionMinimumSpeedAbsoluteForGroup(arg as IMyCubeGrid);
+                    return arg => GetFrictionMinimumSpeedAbsoluteForGroup(arg as long? ?? 0);
 
                 case ApiMethodId.GetFrictionMaximumSpeedAbsoluteForGroup:
-                    return arg => GetFrictionMaximumSpeedAbsoluteForGroup(arg as IMyCubeGrid);
+                    return arg => GetFrictionMaximumSpeedAbsoluteForGroup(arg as long? ?? 0);
 
                 case ApiMethodId.SetFrictionMinimumSpeedModifierForGroup:
                     return arg =>
                     {
-                        var t = (MyTuple<IMyCubeGrid, float>)arg;
+                        var t = (MyTuple<long, float>)arg;
                         return SetFrictionMinimumSpeedModifierForGroup(t.Item1, t.Item2);
                     };
 
                 case ApiMethodId.SetFrictionMaximumSpeedModifierForGroup:
                     return arg =>
                     {
-                        var t = (MyTuple<IMyCubeGrid, float>)arg;
+                        var t = (MyTuple<long, float>)arg;
                         return SetFrictionMaximumSpeedModifierForGroup(t.Item1, t.Item2);
                     };
 
                 case ApiMethodId.GetFrictionMinimumSpeedModifierForGroup:
-                    return arg => GetFrictionMinimumSpeedModifierForGroup(arg as IMyCubeGrid);
+                    return arg => GetFrictionMinimumSpeedModifierForGroup(arg as long? ?? 0);
 
                 case ApiMethodId.GetFrictionMaximumSpeedModifierForGroup:
-                    return arg => GetFrictionMaximumSpeedModifierForGroup(arg as IMyCubeGrid);
+                    return arg => GetFrictionMaximumSpeedModifierForGroup(arg as long? ?? 0);
 
                 // Optional primitive getters:
                 case ApiMethodId.GetGridCore_SubtypeId:
                     return arg =>
                     {
-                        var grid = arg as IMyCubeGrid;
-                        var dto = GetGridCore(grid);
+                        var dto = GetGridCore(arg as long? ?? 0);
                         return dto?.SubtypeId ?? string.Empty;
                     };
 
                 case ApiMethodId.GetGridCore_UniqueName:
                     return arg =>
                     {
-                        var grid = arg as IMyCubeGrid;
-                        var dto = GetGridCore(grid);
+                        var dto = GetGridCore(arg as long? ?? 0);
                         return dto?.UniqueName ?? string.Empty;
                     };
 
                 case ApiMethodId.GetGridCore_MaxBlocks:
                     return arg =>
                     {
-                        var grid = arg as IMyCubeGrid;
-                        var dto = GetGridCore(grid);
+                        var dto = GetGridCore(arg as long? ?? 0);
                         return dto?.MaxBlocks ?? 0;
                     };
 
@@ -262,7 +253,7 @@ namespace ShipCoreFramework
         /// <summary>
         /// Broadcasts the CoreActivated event to all subscribed mods.
         /// </summary>
-        internal static void BroadcastCoreActivated(IMyCubeGrid grid, string coreSubtypeId, string coreName)
+        internal static void BroadcastCoreActivated(long groupGridId, string coreSubtypeId, string coreName)
         {
             if (!_isInitialized) return;
 
@@ -270,7 +261,7 @@ namespace ShipCoreFramework
             {
                 var eventData = new CoreActivatedEventArgs
                 {
-                    Grid = grid,
+                    GroupGridId = groupGridId,
                     CoreSubtypeId = coreSubtypeId,
                     CoreName = coreName,
                     Timestamp = DateTime.UtcNow
@@ -279,7 +270,7 @@ namespace ShipCoreFramework
                 var payload = MyAPIGateway.Utilities.SerializeToBinary(eventData);
                 MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_CORE_ACTIVATED, payload);
 
-                Utils.Log($"ModAPI Event: CoreActivated for grid {(grid != null ? grid.DisplayName : "Unknown")}", 1);
+                Utils.Log($"ModAPI Event: CoreActivated for grid Entity ID: {groupGridId}", 1);
             }
             catch (Exception ex)
             {
@@ -290,7 +281,7 @@ namespace ShipCoreFramework
         /// <summary>
         /// Broadcasts the CoreDeactivated event to all subscribed mods.
         /// </summary>
-        internal static void BroadcastCoreDeactivated(IMyCubeGrid grid, string previousCoreSubtypeId, string previousCoreName)
+        internal static void BroadcastCoreDeactivated(long groupGridId, string previousCoreSubtypeId, string previousCoreName)
         {
             if (!_isInitialized) return;
 
@@ -298,7 +289,7 @@ namespace ShipCoreFramework
             {
                 var eventData = new CoreDeactivatedEventArgs
                 {
-                    Grid = grid,
+                    GroupGridId = groupGridId,
                     PreviousCoreSubtypeId = previousCoreSubtypeId,
                     PreviousCoreName = previousCoreName,
                     Timestamp = DateTime.UtcNow
@@ -307,7 +298,7 @@ namespace ShipCoreFramework
                 var payload = MyAPIGateway.Utilities.SerializeToBinary(eventData);
                 MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_CORE_DEACTIVATED, payload);
 
-                Utils.Log($"ModAPI Event: CoreDeactivated for grid {(grid != null ? grid.DisplayName : "Unknown")}", 1);
+                Utils.Log($"ModAPI Event: CoreDeactivated for grid Entity ID: {groupGridId}", 1);
             }
             catch (Exception ex)
             {
@@ -318,7 +309,7 @@ namespace ShipCoreFramework
         /// <summary>
         /// Broadcasts the LimitsRecalculated event to all subscribed mods.
         /// </summary>
-        internal static void BroadcastLimitsRecalculated(IMyCubeGrid groupGrid)
+        internal static void BroadcastLimitsRecalculated(long groupGridId)
         {
             if (!_isInitialized) return;
 
@@ -326,7 +317,7 @@ namespace ShipCoreFramework
             {
                 var eventData = new LimitsRecalculatedEventArgs
                 {
-                    GroupGrid = groupGrid,
+                    GroupGridId = groupGridId,
                     Timestamp = DateTime.UtcNow
                 };
 
@@ -344,7 +335,7 @@ namespace ShipCoreFramework
         /// <summary>
         /// Broadcasts the LimitsEnforced event to all subscribed mods.
         /// </summary>
-        internal static void BroadcastLimitsEnforced(IMyCubeGrid groupGrid, int blocksPunished)
+        internal static void BroadcastLimitsEnforced(long groupGridId, int blocksPunished)
         {
             if (!_isInitialized) return;
 
@@ -352,7 +343,7 @@ namespace ShipCoreFramework
             {
                 var eventData = new LimitsEnforcedEventArgs
                 {
-                    GroupGrid = groupGrid,
+                    GroupGridId = groupGridId,
                     BlocksPunished = blocksPunished,
                     Timestamp = DateTime.UtcNow
                 };
@@ -371,7 +362,7 @@ namespace ShipCoreFramework
         /// <summary>
         /// Broadcasts the BoostActivated event to all subscribed mods.
         /// </summary>
-        internal static void BroadcastBoostActivated(IMyCubeGrid grid)
+        internal static void BroadcastBoostActivated(long groupGridId)
         {
             if (!_isInitialized) return;
 
@@ -379,14 +370,14 @@ namespace ShipCoreFramework
             {
                 var eventData = new BoostEventArgs
                 {
-                    Grid = grid,
+                    GroupGridId = groupGridId,
                     Timestamp = DateTime.UtcNow
                 };
 
                 var payload = MyAPIGateway.Utilities.SerializeToBinary(eventData);
                 MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_BOOST_ACTIVATED, payload);
 
-                Utils.Log($"ModAPI Event: BoostActivated for grid {(grid != null ? grid.DisplayName : "Unknown")}", 1);
+                Utils.Log($"ModAPI Event: BoostActivated for grid Entity ID: {groupGridId}", 1);
             }
             catch (Exception ex)
             {
@@ -397,7 +388,7 @@ namespace ShipCoreFramework
         /// <summary>
         /// Broadcasts the BoostDeactivated event to all subscribed mods.
         /// </summary>
-        internal static void BroadcastBoostDeactivated(IMyCubeGrid grid)
+        internal static void BroadcastBoostDeactivated(long groupGridId)
         {
             if (!_isInitialized) return;
 
@@ -405,14 +396,14 @@ namespace ShipCoreFramework
             {
                 var eventData = new BoostEventArgs
                 {
-                    Grid = grid,
+                    GroupGridId = groupGridId,
                     Timestamp = DateTime.UtcNow
                 };
 
                 var payload = MyAPIGateway.Utilities.SerializeToBinary(eventData);
                 MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_BOOST_DEACTIVATED, payload);
 
-                Utils.Log($"ModAPI Event: BoostDeactivated for grid {(grid != null ? grid.DisplayName : "Unknown")}", 1);
+                Utils.Log($"ModAPI Event: BoostDeactivated for grid Entity ID: {groupGridId}", 1);
             }
             catch (Exception ex)
             {
@@ -423,7 +414,7 @@ namespace ShipCoreFramework
         /// <summary>
         /// Broadcasts the ActiveDefenseActivated event to all subscribed mods.
         /// </summary>
-        internal static void BroadcastActiveDefenseActivated(IMyCubeGrid grid)
+        internal static void BroadcastActiveDefenseActivated(long groupGridId)
         {
             if (!_isInitialized) return;
 
@@ -431,14 +422,14 @@ namespace ShipCoreFramework
             {
                 var eventData = new ActiveDefenseEventArgs
                 {
-                    Grid = grid,
+                    GroupGridId = groupGridId,
                     Timestamp = DateTime.UtcNow
                 };
 
                 var payload = MyAPIGateway.Utilities.SerializeToBinary(eventData);
                 MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_ACTIVE_DEFENSE_ACTIVATED, payload);
 
-                Utils.Log($"ModAPI Event: ActiveDefenseActivated for grid {(grid != null ? grid.DisplayName : "Unknown")}", 1);
+                Utils.Log($"ModAPI Event: ActiveDefenseActivated for grid Entity ID: {groupGridId}", 1);
             }
             catch (Exception ex)
             {
@@ -449,7 +440,7 @@ namespace ShipCoreFramework
         /// <summary>
         /// Broadcasts the ActiveDefenseDeactivated event to all subscribed mods.
         /// </summary>
-        internal static void BroadcastActiveDefenseDeactivated(IMyCubeGrid grid)
+        internal static void BroadcastActiveDefenseDeactivated(long groupGridId)
         {
             if (!_isInitialized) return;
 
@@ -457,14 +448,14 @@ namespace ShipCoreFramework
             {
                 var eventData = new ActiveDefenseEventArgs
                 {
-                    Grid = grid,
+                    GroupGridId = groupGridId,
                     Timestamp = DateTime.UtcNow
                 };
 
                 var payload = MyAPIGateway.Utilities.SerializeToBinary(eventData);
                 MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_ACTIVE_DEFENSE_DEACTIVATED, payload);
 
-                Utils.Log($"ModAPI Event: ActiveDefenseDeactivated for grid {(grid != null ? grid.DisplayName : "Unknown")}", 1);
+                Utils.Log($"ModAPI Event: ActiveDefenseDeactivated for grid Entity ID: {groupGridId}", 1);
             }
             catch (Exception ex)
             {
@@ -475,7 +466,7 @@ namespace ShipCoreFramework
         /// <summary>
         /// Broadcasts the GridAddedToGroup event to all subscribed mods.
         /// </summary>
-        internal static void BroadcastGridAddedToGroup(IMyCubeGrid grid, IMyCubeGrid groupGrid)
+        internal static void BroadcastGridAddedToGroup(long gridId)
         {
             if (!_isInitialized) return;
 
@@ -483,15 +474,15 @@ namespace ShipCoreFramework
             {
                 var eventData = new GridGroupEventArgs
                 {
-                    Grid = grid,
-                    GroupGrid = groupGrid,
+                    GridId = gridId,
+                    GroupGridId = gridId,
                     Timestamp = DateTime.UtcNow
                 };
 
                 var payload = MyAPIGateway.Utilities.SerializeToBinary(eventData);
                 MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_GRID_ADDED_TO_GROUP, payload);
 
-                Utils.Log($"ModAPI Event: GridAddedToGroup {(grid != null ? grid.DisplayName : "Unknown")}", 1);
+                Utils.Log($"ModAPI Event: GridAddedToGroup Entity ID: {gridId}", 1);
             }
             catch (Exception ex)
             {
@@ -502,7 +493,7 @@ namespace ShipCoreFramework
         /// <summary>
         /// Broadcasts the GridRemovedFromGroup event to all subscribed mods.
         /// </summary>
-        internal static void BroadcastGridRemovedFromGroup(IMyCubeGrid grid, IMyCubeGrid groupGrid)
+        internal static void BroadcastGridRemovedFromGroup(long gridId, long groupGridId)
         {
             if (!_isInitialized) return;
 
@@ -510,15 +501,15 @@ namespace ShipCoreFramework
             {
                 var eventData = new GridGroupEventArgs
                 {
-                    Grid = grid,
-                    GroupGrid = groupGrid,
+                    GridId = gridId,
+                    GroupGridId = groupGridId,
                     Timestamp = DateTime.UtcNow
                 };
 
                 var payload = MyAPIGateway.Utilities.SerializeToBinary(eventData);
                 MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_GRID_REMOVED_FROM_GROUP, payload);
 
-                Utils.Log($"ModAPI Event: GridRemovedFromGroup {(grid != null ? grid.DisplayName : "Unknown")}", 1);
+                Utils.Log($"ModAPI Event: GridRemovedFromGroup Entity ID: {gridId}", 1);
             }
             catch (Exception ex)
             {
@@ -529,8 +520,9 @@ namespace ShipCoreFramework
         /// <summary>
         /// Gets the speed modifiers for a grid's active core.
         /// </summary>
-        public static SpeedModifiersData GetSpeedModifiers(IMyCubeGrid grid)
+        public static SpeedModifiersData GetSpeedModifiers(long gridId)
         {
+            var grid = MyAPIGateway.Entities.GetEntityById(gridId) as MyCubeGrid;
             if (grid == null) return ConvertToSpeedModifiersData(null);
 
             try
@@ -552,33 +544,24 @@ namespace ShipCoreFramework
         }
 
         /// <summary>
-        /// Returns true if Dynamic Boost is enabled for the grid's active core.
-        /// NOTE: Dynamic boost has been deprecated; this currently always returns false.
-        /// </summary>
-        public static bool IsDynamicBoostEnabled(IMyCubeGrid grid)
-        {
-            return false;
-        }
-
-        /// <summary>
         /// Gets BoostResistance from the grid's active core speed modifiers.
         /// NOTE: This is a legacy value; it maps to MaximumFrictionDeceleration for newer configs.
         /// </summary>
-        public static float GetBoostResistance(IMyCubeGrid grid)
+        public static float GetBoostResistance(long gridId)
         {
-            var s = GetSpeedModifiers(grid);
+            var s = GetSpeedModifiers(gridId);
             return s?.BoostResistance ?? 0f;
         }
 
         /// <summary>
         /// Enables/disables friction-based speed limiting for a logical grid group.
         /// </summary>
-        public static bool SetFrictionEnabledForGroup(IMyCubeGrid grid, bool enabled)
+        public static bool SetFrictionEnabledForGroup(long gridId, bool enabled)
         {
             try
             {
                 GroupComponent groupComponent;
-                if (!TryGetGroupComponent(grid, out groupComponent)) return false;
+                if (!TryGetGroupComponent(gridId, out groupComponent)) return false;
 
                 groupComponent.FrictionEnforcementEnabled = enabled;
                 return true;
@@ -593,12 +576,12 @@ namespace ShipCoreFramework
         /// <summary>
         /// Gets whether friction-based speed limiting is enabled for a logical grid group.
         /// </summary>
-        public static bool GetFrictionEnabledForGroup(IMyCubeGrid grid)
+        public static bool GetFrictionEnabledForGroup(long gridId)
         {
             try
             {
                 GroupComponent groupComponent;
-                return TryGetGroupComponent(grid, out groupComponent) && groupComponent.FrictionEnforcementEnabled;
+                return TryGetGroupComponent(gridId, out groupComponent) && groupComponent.FrictionEnforcementEnabled;
             }
             catch (Exception ex)
             {
@@ -610,14 +593,14 @@ namespace ShipCoreFramework
         /// <summary>
         /// Sets the maximum friction deceleration override (m/s^2) for a logical grid group.
         /// </summary>
-        public static bool SetFrictionMaximumDecelerationForGroup(IMyCubeGrid grid, float deceleration)
+        public static bool SetFrictionMaximumDecelerationForGroup(long gridId, float deceleration)
         {
             if (deceleration < 0f) return false;
 
             try
             {
                 GroupComponent groupComponent;
-                if (!TryGetGroupComponent(grid, out groupComponent)) return false;
+                if (!TryGetGroupComponent(gridId, out groupComponent)) return false;
 
                 groupComponent.FrictionMaximumDecelerationOverride = deceleration;
                 return true;
@@ -632,12 +615,12 @@ namespace ShipCoreFramework
         /// <summary>
         /// Clears the maximum friction deceleration override for a logical grid group.
         /// </summary>
-        public static bool ClearFrictionMaximumDecelerationForGroup(IMyCubeGrid grid)
+        public static bool ClearFrictionMaximumDecelerationForGroup(long gridId)
         {
             try
             {
                 GroupComponent groupComponent;
-                if (!TryGetGroupComponent(grid, out groupComponent)) return false;
+                if (!TryGetGroupComponent(gridId, out groupComponent)) return false;
 
                 groupComponent.FrictionMaximumDecelerationOverride = -1f;
                 return true;
@@ -652,12 +635,12 @@ namespace ShipCoreFramework
         /// <summary>
         /// Gets the maximum friction deceleration override for a logical grid group (or -1 if none).
         /// </summary>
-        public static float GetFrictionMaximumDecelerationForGroup(IMyCubeGrid grid)
+        public static float GetFrictionMaximumDecelerationForGroup(long gridId)
         {
             try
             {
                 GroupComponent groupComponent;
-                return TryGetGroupComponent(grid, out groupComponent) ? groupComponent.FrictionMaximumDecelerationOverride : -1f;
+                return TryGetGroupComponent(gridId, out groupComponent) ? groupComponent.FrictionMaximumDecelerationOverride : -1f;
             }
             catch (Exception ex)
             {
@@ -666,13 +649,13 @@ namespace ShipCoreFramework
             }
         }
 
-        public static MyTuple<bool, string> SetFrictionMinimumSpeedAbsoluteForGroup(IMyCubeGrid grid, float speedMetersPerSecond)
+        public static MyTuple<bool, string> SetFrictionMinimumSpeedAbsoluteForGroup(long gridId, float speedMetersPerSecond)
         {
             if (Session.Config.FrictionSpeedValueMode != FrictionSpeedValueMode.Absolute)
                 return MyTuple.Create(false, "World config uses modifier-based friction speeds; use SetFrictionMinimumSpeedModifierForGroup.");
 
             GroupComponent groupComponent;
-            if (!TryGetGroupComponent(grid, out groupComponent))
+            if (!TryGetGroupComponent(gridId, out groupComponent))
                 return MyTuple.Create(false, "Could not resolve logical grid group for the provided grid.");
 
             if (speedMetersPerSecond < 0f)
@@ -685,13 +668,13 @@ namespace ShipCoreFramework
             return MyTuple.Create(true, string.Empty);
         }
 
-        public static MyTuple<bool, string> SetFrictionMaximumSpeedAbsoluteForGroup(IMyCubeGrid grid, float speedMetersPerSecond)
+        public static MyTuple<bool, string> SetFrictionMaximumSpeedAbsoluteForGroup(long gridId, float speedMetersPerSecond)
         {
             if (Session.Config.FrictionSpeedValueMode != FrictionSpeedValueMode.Absolute)
                 return MyTuple.Create(false, "World config uses modifier-based friction speeds; use SetFrictionMaximumSpeedModifierForGroup.");
 
             GroupComponent groupComponent;
-            if (!TryGetGroupComponent(grid, out groupComponent))
+            if (!TryGetGroupComponent(gridId, out groupComponent))
                 return MyTuple.Create(false, "Could not resolve logical grid group for the provided grid.");
 
             if (speedMetersPerSecond < 0f)
@@ -704,37 +687,31 @@ namespace ShipCoreFramework
             return MyTuple.Create(true, string.Empty);
         }
 
-        public static MyTuple<float, string> GetFrictionMinimumSpeedAbsoluteForGroup(IMyCubeGrid grid)
+        public static MyTuple<float, string> GetFrictionMinimumSpeedAbsoluteForGroup(long gridId)
         {
             if (Session.Config.FrictionSpeedValueMode != FrictionSpeedValueMode.Absolute)
                 return MyTuple.Create(-1f, "World config uses modifier-based friction speeds; use GetFrictionMinimumSpeedModifierForGroup.");
 
             GroupComponent groupComponent;
-            if (!TryGetGroupComponent(grid, out groupComponent))
-                return MyTuple.Create(-1f, "Could not resolve logical grid group for the provided grid.");
-
-            return MyTuple.Create(groupComponent.MinimumFrictionSpeedAbsoluteOverride, string.Empty);
+            return !TryGetGroupComponent(gridId, out groupComponent) ? MyTuple.Create(-1f, "Could not resolve logical grid group for the provided grid.") : MyTuple.Create(groupComponent.MinimumFrictionSpeedAbsoluteOverride, string.Empty);
         }
 
-        public static MyTuple<float, string> GetFrictionMaximumSpeedAbsoluteForGroup(IMyCubeGrid grid)
+        public static MyTuple<float, string> GetFrictionMaximumSpeedAbsoluteForGroup(long gridId)
         {
             if (Session.Config.FrictionSpeedValueMode != FrictionSpeedValueMode.Absolute)
                 return MyTuple.Create(-1f, "World config uses modifier-based friction speeds; use GetFrictionMaximumSpeedModifierForGroup.");
 
             GroupComponent groupComponent;
-            if (!TryGetGroupComponent(grid, out groupComponent))
-                return MyTuple.Create(-1f, "Could not resolve logical grid group for the provided grid.");
-
-            return MyTuple.Create(groupComponent.MaximumFrictionSpeedAbsoluteOverride, string.Empty);
+            return !TryGetGroupComponent(gridId, out groupComponent) ? MyTuple.Create(-1f, "Could not resolve logical grid group for the provided grid.") : MyTuple.Create(groupComponent.MaximumFrictionSpeedAbsoluteOverride, string.Empty);
         }
 
-        public static MyTuple<bool, string> SetFrictionMinimumSpeedModifierForGroup(IMyCubeGrid grid, float modifier)
+        public static MyTuple<bool, string> SetFrictionMinimumSpeedModifierForGroup(long gridId, float modifier)
         {
             if (Session.Config.FrictionSpeedValueMode != FrictionSpeedValueMode.Modifier)
                 return MyTuple.Create(false, "World config uses absolute friction speeds; use SetFrictionMinimumSpeedAbsoluteForGroup.");
 
             GroupComponent groupComponent;
-            if (!TryGetGroupComponent(grid, out groupComponent))
+            if (!TryGetGroupComponent(gridId, out groupComponent))
                 return MyTuple.Create(false, "Could not resolve logical grid group for the provided grid.");
 
             if (modifier < 0f)
@@ -747,13 +724,13 @@ namespace ShipCoreFramework
             return MyTuple.Create(true, string.Empty);
         }
 
-        public static MyTuple<bool, string> SetFrictionMaximumSpeedModifierForGroup(IMyCubeGrid grid, float modifier)
+        public static MyTuple<bool, string> SetFrictionMaximumSpeedModifierForGroup(long gridId, float modifier)
         {
             if (Session.Config.FrictionSpeedValueMode != FrictionSpeedValueMode.Modifier)
                 return MyTuple.Create(false, "World config uses absolute friction speeds; use SetFrictionMaximumSpeedAbsoluteForGroup.");
 
             GroupComponent groupComponent;
-            if (!TryGetGroupComponent(grid, out groupComponent))
+            if (!TryGetGroupComponent(gridId, out groupComponent))
                 return MyTuple.Create(false, "Could not resolve logical grid group for the provided grid.");
 
             if (modifier < 0f)
@@ -766,37 +743,31 @@ namespace ShipCoreFramework
             return MyTuple.Create(true, string.Empty);
         }
 
-        public static MyTuple<float, string> GetFrictionMinimumSpeedModifierForGroup(IMyCubeGrid grid)
+        public static MyTuple<float, string> GetFrictionMinimumSpeedModifierForGroup(long gridId)
         {
             if (Session.Config.FrictionSpeedValueMode != FrictionSpeedValueMode.Modifier)
                 return MyTuple.Create(-1f, "World config uses absolute friction speeds; use GetFrictionMinimumSpeedAbsoluteForGroup.");
 
             GroupComponent groupComponent;
-            if (!TryGetGroupComponent(grid, out groupComponent))
-                return MyTuple.Create(-1f, "Could not resolve logical grid group for the provided grid.");
-
-            return MyTuple.Create(groupComponent.MinimumFrictionSpeedModifierOverride, string.Empty);
+            return !TryGetGroupComponent(gridId, out groupComponent) ? MyTuple.Create(-1f, "Could not resolve logical grid group for the provided grid.") : MyTuple.Create(groupComponent.MinimumFrictionSpeedModifierOverride, string.Empty);
         }
 
-        public static MyTuple<float, string> GetFrictionMaximumSpeedModifierForGroup(IMyCubeGrid grid)
+        public static MyTuple<float, string> GetFrictionMaximumSpeedModifierForGroup(long gridId)
         {
             if (Session.Config.FrictionSpeedValueMode != FrictionSpeedValueMode.Modifier)
                 return MyTuple.Create(-1f, "World config uses absolute friction speeds; use GetFrictionMaximumSpeedAbsoluteForGroup.");
 
             GroupComponent groupComponent;
-            if (!TryGetGroupComponent(grid, out groupComponent))
-                return MyTuple.Create(-1f, "Could not resolve logical grid group for the provided grid.");
-
-            return MyTuple.Create(groupComponent.MaximumFrictionSpeedModifierOverride, string.Empty);
+            return !TryGetGroupComponent(gridId, out groupComponent) ? MyTuple.Create(-1f, "Could not resolve logical grid group for the provided grid.") : MyTuple.Create(groupComponent.MaximumFrictionSpeedModifierOverride, string.Empty);
         }
 
-        private static bool TryGetGroupComponent(IMyCubeGrid grid, out GroupComponent groupComponent)
+        private static bool TryGetGroupComponent(long gridId, out GroupComponent groupComponent)
         {
             groupComponent = null;
-            if (grid == null) return false;
 
             try
             {
+                var grid = MyAPIGateway.Entities.GetEntityById(gridId) as MyCubeGrid;
                 var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, grid);
                 return groupData != null && Session.GroupDict.TryGetValue(groupData, out groupComponent);
             }
@@ -810,8 +781,9 @@ namespace ShipCoreFramework
         /// <summary>
         /// Gets base max speed in m/s without boost applied.
         /// </summary>
-        public static float GetBaseMaxSpeed(IMyCubeGrid grid)
+        public static float GetBaseMaxSpeed(long gridId)
         {
+            var grid = MyAPIGateway.Entities.GetEntityById(gridId) as MyCubeGrid;
             if (grid == null) return 100f;
 
             try
@@ -824,7 +796,7 @@ namespace ShipCoreFramework
                     return 100f;
 
                 var core = groupComponent.ShipCore;
-                if (core == null || core.SpeedModifiers == null)
+                if (core?.SpeedModifiers == null)
                     return 100f;
 
                 return core.SpeedModifiers.MaxSpeed * Session.Config.MaxPossibleSpeedMetersPerSecond;
@@ -839,31 +811,29 @@ namespace ShipCoreFramework
         /// <summary>
         /// Gets max boost multiplier for the grid's active core.
         /// </summary>
-        public static float GetMaxBoostMultiplier(IMyCubeGrid grid)
+        public static float GetMaxBoostMultiplier(long gridId)
         {
-            var s = GetSpeedModifiers(grid);
+            var s = GetSpeedModifiers(gridId);
             return s?.MaxBoost ?? 0f;
         }
 
         /// <summary>
         /// Gets boost duration in seconds for the grid's active core.
         /// </summary>
-        public static float GetBoostDuration(IMyCubeGrid grid)
+        public static float GetBoostDuration(long gridId)
         {
-            var s = GetSpeedModifiers(grid);
+            var s = GetSpeedModifiers(gridId);
             return s?.BoostDuration ?? 0f;
         }
 
         /// <summary>
         /// Gets boost cooldown in seconds for the grid's active core.
         /// </summary>
-        public static float GetBoostCooldown(IMyCubeGrid grid)
+        public static float GetBoostCooldown(long gridId)
         {
-            var s = GetSpeedModifiers(grid);
+            var s = GetSpeedModifiers(gridId);
             return s?.BoostCoolDown ?? 0f;
         }
-
-
 
         // ===== Helper Methods =====
 
@@ -1030,15 +1000,13 @@ namespace ShipCoreFramework
         // These methods are still useful internally, and the factory wraps them.
         // Consumers should NOT call them directly across assemblies.
 
-        public static ShipCoreData GetGridCore(IMyCubeGrid grid)
+        public static ShipCoreData GetGridCore(long gridId)
         {
+            var grid = MyAPIGateway.Entities.GetEntityById(gridId) as MyCubeGrid;
             if (grid == null) return ConvertToShipCoreData(Session.Config.SelectedNoCore);
 
             try
             {
-                var myCubeGrid = grid as MyCubeGrid;
-                if (myCubeGrid == null) return ConvertToShipCoreData(Session.Config.SelectedNoCore);
-
                 var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, grid);
                 if (groupData == null) return ConvertToShipCoreData(Session.Config.SelectedNoCore);
 
@@ -1082,9 +1050,10 @@ namespace ShipCoreFramework
             }
         }
 
-        public static Dictionary<string, LimitStatusData> GetBlockLimitsStatus(IMyCubeGrid grid)
+        public static Dictionary<string, LimitStatusData> GetBlockLimitsStatus(long gridId)
         {
             var result = new Dictionary<string, LimitStatusData>();
+            var grid = MyAPIGateway.Entities.GetEntityById(gridId) as MyCubeGrid;
             if (grid == null) return result;
 
             try
@@ -1125,8 +1094,9 @@ namespace ShipCoreFramework
             return result;
         }
 
-        public static bool IsBlockAllowed(IMyCubeGrid grid, string typeId, string subtypeId, int count)
+        public static bool IsBlockAllowed(long gridId, string typeId, string subtypeId, int count)
         {
+            var grid = MyAPIGateway.Entities.GetEntityById(gridId) as MyCubeGrid;
             if (grid == null || string.IsNullOrEmpty(typeId)) return true;
 
             try
@@ -1168,8 +1138,9 @@ namespace ShipCoreFramework
             }
         }
 
-        public static GridModifiersData GetGridModifiers(IMyCubeGrid grid)
+        public static GridModifiersData GetGridModifiers(long gridId)
         {
+            var grid = MyAPIGateway.Entities.GetEntityById(gridId) as MyCubeGrid;
             if (grid == null) return ConvertToGridModifiersData(null);
             try
             {
@@ -1186,8 +1157,9 @@ namespace ShipCoreFramework
             }
         }
 
-        public static float GetMaxSpeed(IMyCubeGrid grid)
+        public static float GetMaxSpeed(long gridId)
         {
+            var grid = MyAPIGateway.Entities.GetEntityById(gridId) as MyCubeGrid;
             if (grid == null) return 100f;
 
             try
@@ -1214,8 +1186,9 @@ namespace ShipCoreFramework
             }
         }
 
-        public static bool IsBoostActive(IMyCubeGrid grid)
+        public static bool IsBoostActive(long gridId)
         {
+            var grid = MyAPIGateway.Entities.GetEntityById(gridId) as MyCubeGrid;
             if (grid == null) return false;
 
             try
@@ -1224,10 +1197,7 @@ namespace ShipCoreFramework
                 if (groupData == null) return false;
 
                 GroupComponent groupComponent;
-                if (!Session.GroupDict.TryGetValue(groupData, out groupComponent))
-                    return false;
-
-                return groupComponent.BoostEnabled;
+                return Session.GroupDict.TryGetValue(groupData, out groupComponent) && groupComponent.BoostEnabled;
             }
             catch (Exception ex)
             {

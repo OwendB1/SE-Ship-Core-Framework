@@ -52,11 +52,11 @@ namespace ShipCoreFramework
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
                 var otherBlocks = blocks.Where(b => !(b.FatBlock is IMyBeacon)).ToList();
+                // MyAPIGateway.Parallel.ForEach(otherBlocks, block => BlockAdded(block));
                 foreach (var block in otherBlocks)
                 {
                     BlockAdded(block);
                 }
-                MyAPIGateway.Parallel.ForEach(otherBlocks, block => BlockAdded(block));
             });
         }
 
@@ -136,7 +136,7 @@ namespace ShipCoreFramework
                     }
                 }
                 
-                TryApplyLimitsOnAdd(block, limitBasedPunish);
+                if(!TryApplyLimitsOnAdd(block, limitBasedPunish)) return;
 
                 lock (_blocksLock)
                 {
@@ -149,12 +149,12 @@ namespace ShipCoreFramework
             }
         }
 
-        private void TryApplyLimitsOnAdd(IMySlimBlock block, bool limitBasedPunish)
+        private bool TryApplyLimitsOnAdd(IMySlimBlock block, bool limitBasedPunish)
         {
             var firstOwner = Grid.BigOwners.FirstOrDefault();
 
             var limits = GroupComponent.ShipCore.BlockLimits;
-            if (limits == null) return;
+            if (limits == null) return false;
 
             var blockKey = KeyOf(block);
 
@@ -172,8 +172,8 @@ namespace ShipCoreFramework
                     if (!GroupComponent.IsValidDirection(GroupComponent.MainCoreComponent.CoreBlock, block, limit.AllowedDirections))
                     {
                         Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violated directional locking!");
-                        GroupComponent.WhackABlock(block, limitBasedPunish ? limit.PunishmentType: PunishmentType.Delete);
-                        continue; // Don't add punished blocks to the limit buckets
+                        block.WhackABlock(limitBasedPunish ? limit.PunishmentType: PunishmentType.Delete);
+                        return false; // Don't add punished blocks to the limit buckets
                     }
                 }
 
@@ -193,8 +193,8 @@ namespace ShipCoreFramework
                 if (cur + w > limit.MaxCount)
                 {
                     Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates Block limit " + limit.Name + ": " + (cur + w) + "/" + limit.MaxCount, 10000, firstOwner);
-                    GroupComponent.WhackABlock(block, limitBasedPunish ? limit.PunishmentType: PunishmentType.Delete);
-                    continue; // Don't add punished blocks to the limit buckets
+                    block.WhackABlock(limitBasedPunish ? limit.PunishmentType: PunishmentType.Delete);
+                    return false; // Don't add punished blocks to the limit buckets
                 }
 
                 LimitBucket gridBucket;
@@ -216,6 +216,7 @@ namespace ShipCoreFramework
                     groupBucket.Members.Add(block);
                 }
             }
+            return true;
         }
 
         internal void BlockRemoved(IMySlimBlock block)
@@ -227,7 +228,7 @@ namespace ShipCoreFramework
                 CoreDictionary.Remove(beacon);
                 value.CoreDestroyed();
             }
-
+            
             var limits = GroupComponent.Limits;
             if (limits != null)
             {
@@ -256,15 +257,13 @@ namespace ShipCoreFramework
                     }
 
                     LimitBucket groupBucket;
-                    if (GroupComponent.Limits.TryGetValue(limit, out groupBucket))
+                    if (!GroupComponent.Limits.TryGetValue(limit, out groupBucket)) continue;
+                    lock (groupBucket.BucketLock)
                     {
-                        lock (groupBucket.BucketLock)
-                        {
-                            var idx = groupBucket.Members.IndexOf(block);
-                            if (idx < 0) continue;
-                            groupBucket.Members.RemoveAt(idx);
-                            groupBucket.TotalWeight -= w;
-                        }
+                        var idx = groupBucket.Members.IndexOf(block);
+                        if (idx < 0) continue;
+                        groupBucket.Members.RemoveAt(idx);
+                        groupBucket.TotalWeight -= w;
                     }
                 }
             }
@@ -305,7 +304,7 @@ namespace ShipCoreFramework
                 var over = total - limit.MaxCount;
                 
                 if (over <= 0d) break;
-                GroupComponent.WhackABlock(obj.SlimBlock, PunishmentType.ShutOff);
+                obj.SlimBlock.WhackABlock(PunishmentType.ShutOff);
             }
         }
 
