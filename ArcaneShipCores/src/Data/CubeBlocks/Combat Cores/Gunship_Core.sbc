@@ -53,7 +53,10 @@
             <Flare></Flare>
             <MaxBroadcastPowerDrainkW>20</MaxBroadcastPowerDrainkW>
             <!-- End Beacon Props-->
-
+            <ScreenAreas>
+                <ScreenArea Name="CockpitScreen_01" DisplayName="Screen" TextureResolution="512" ScreenWidth="5" ScreenHeight="3" Script="CoreTypeLCDScript"/>
+                <ScreenArea Name="CockpitScreen_02" DisplayName="Keyboard" TextureResolution="512" ScreenWidth="5" ScreenHeight="3" />
+            </ScreenAreas>
             <EmissiveColorPreset>Beacon</EmissiveColorPreset>
             <DestroyEffect>BlockDestroyedExplosion_Small</DestroyEffect>
             <DestroySound>WepSmallWarheadExpl</DestroySound>
