@@ -229,7 +229,7 @@ namespace ShipCoreFramework
             GridComponent comp;
             if (GridDictionary.TryGetValue(g, out comp))
             {
-                if (MainCoreComponent?.GridComponent.Grid.EntityId == g.EntityId) CoreRemoved(MainCoreComponent);
+                if (MainCoreComponent?.GridComponent.Grid.EntityId == g.EntityId) ResetCore();
                 comp.Clean();
                 GridDictionary.Remove(g);
             }
