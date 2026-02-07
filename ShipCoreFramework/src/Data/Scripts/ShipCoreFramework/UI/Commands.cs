@@ -402,7 +402,7 @@ namespace ShipCoreFramework
 
             Session.Config.SelectedNoCore = found;
             Session.Config.SaveConfig(true);
-            return $"Selected 'no core' config: {found.UniqueName} ({found.SubtypeId})";
+            return $"Selected 'no core' config: {found.UniqueName} ({found.SubtypeId}). Please save the world and reload the save file afterwards.";
         }
 
         private static string SetWorldSpeed(string[] args)
@@ -876,8 +876,8 @@ Raycasts from crosshairs to find a grid and displays all its core information.";
         }
         private static string RandomConsent()
         {
-            string[] options = {"Cool Beans","I Understand","I Understand","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","I Don't like reading","It's MoMo's fault"};
-            Random rng = new Random();
+            string[] options = {"Cool Beans","I Understand","I Understand","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","I Don't like reading","It's MoMo's fault"};
+            var rng = new Random();
             return options[rng.Next(options.Length)];
         }
     }

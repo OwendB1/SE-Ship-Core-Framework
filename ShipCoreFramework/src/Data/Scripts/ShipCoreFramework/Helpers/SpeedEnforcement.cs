@@ -16,15 +16,10 @@ namespace ShipCoreFramework
     {
         internal static void EnforceSpeedLimit(GroupComponent groupComponent)
         {
-            // Skip speed enforcement for ignored factions/AI
-            if (Utils.IsIgnoredGroup(groupComponent))
-            {
-                return;
-            }
-            
+            if (Utils.IsIgnoredGroup(groupComponent)) return;
             if (groupComponent.GridDictionary.Count == 0) return;
 
-            var physicalGroup = groupComponent.GridDictionary.First().Key.GetGridGroup(GridLinkTypeEnum.Physical);
+            var physicalGroup = groupComponent.GridDictionary.Keys.First().GetGridGroup(GridLinkTypeEnum.Physical);
             if (physicalGroup == null) return;
 
             var attachedGrids = new List<IMyCubeGrid>();

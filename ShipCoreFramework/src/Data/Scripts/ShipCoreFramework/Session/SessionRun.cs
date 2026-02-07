@@ -176,14 +176,14 @@ namespace ShipCoreFramework
 
             MyAPIGateway.Parallel.StartBackground(() =>
             {
-                foreach (var kvp in GroupDict)
+                MyAPIGateway.Parallel.ForEach(GroupDict, kvp =>
                 {
                     kvp.Value.RunBoostTimerTick();
                     kvp.Value.RunActiveDefenseTimerTick();
                     SpeedEnforcement.EnforceSpeedLimit(kvp.Value);
                     
                     if (runNfz) NoFlyZones.EnforceNoFlyZones(kvp.Value, doPunish);
-                }
+                });
             });
         }
     }

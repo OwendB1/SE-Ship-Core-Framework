@@ -34,9 +34,10 @@ namespace ShipCoreFramework
         internal CoreComponent MainCoreComponent;
         
         internal readonly ConcurrentDictionary<BlockLimit, LimitBucket> Limits = new ConcurrentDictionary<BlockLimit, LimitBucket>();
-        internal Dictionary<IMyCubeBlock, CoreComponent> CoreDictionary => Utils.Flatten(GridDictionary.Values, component => component.CoreDictionary);
         internal readonly ConcurrentDictionary<MyCubeGrid, GridComponent> GridDictionary = new ConcurrentDictionary<MyCubeGrid, GridComponent>();
-
+        
+        internal Dictionary<IMyCubeBlock, CoreComponent> CoreDictionary => Utils.Flatten(GridDictionary.Values, component => component.CoreDictionary);
+        
         internal bool PunishModifiers;
         internal bool PunishSpeed;
         internal bool BoostEnabled;
