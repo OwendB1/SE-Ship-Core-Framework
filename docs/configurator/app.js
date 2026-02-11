@@ -193,9 +193,9 @@ function resetEditor(seed = true) {
 
 function blockTypeEditor(groupIdx, blockType, blockTypeIdx) {
   return `<div class="row wrap">
-    <input data-action="bt-type" data-g="${groupIdx}" data-i="${blockTypeIdx}" class="small" placeholder="TypeId" value="${escapeXml(blockType.typeId)}" />
-    <input data-action="bt-subtype" data-g="${groupIdx}" data-i="${blockTypeIdx}" class="small" placeholder="SubtypeId (or any)" value="${escapeXml(blockType.subtypeId)}" />
-    <input data-action="bt-weight" data-g="${groupIdx}" data-i="${blockTypeIdx}" class="small" type="number" step="0.1" value="${blockType.countWeight}" />
+    <input data-action="bt-type" data-g="${groupIdx}" data-i="${blockTypeIdx}" class="small" placeholder="TypeId" title="Block TypeId. Example: SmallGatlingGun." value="${escapeXml(blockType.typeId)}" />
+    <input data-action="bt-subtype" data-g="${groupIdx}" data-i="${blockTypeIdx}" class="small" placeholder="SubtypeId (or any)" title="Optional block subtype filter. Use &quot;any&quot; to match all subtypes." value="${escapeXml(blockType.subtypeId)}" />
+    <input data-action="bt-weight" data-g="${groupIdx}" data-i="${blockTypeIdx}" class="small" type="number" step="0.1" title="Weight contribution for matching blocks in this group." value="${blockType.countWeight}" />
     <button data-action="remove-bt" data-g="${groupIdx}" data-i="${blockTypeIdx}">Remove BlockType</button>
   </div>`;
 }
@@ -227,7 +227,7 @@ function renderBlockGroups() {
   ids("blockGroups").innerHTML = `
     <div class="card">
       <div class="row wrap">
-        <input data-action="group-name" data-g="${groupIndex}" placeholder="Group Name" value="${escapeXml(group.name)}" />
+        <input data-action="group-name" data-g="${groupIndex}" placeholder="Group Name" title="Reusable block group name referenced by block limits." value="${escapeXml(group.name)}" />
         <button data-action="add-bt" data-g="${groupIndex}">Add BlockType</button>
         <button data-action="remove-group" data-g="${groupIndex}">Delete Group</button>
       </div>
@@ -288,9 +288,9 @@ function renderShipCores() {
   ids("shipCores").innerHTML = `
     <div class="card">
       <div class="row wrap">
-        <input data-action="core-subtype" data-c="${coreIndex}" class="small" placeholder="SubtypeId" value="${escapeXml(core.subtypeId)}" />
-        <input data-action="core-unique" data-c="${coreIndex}" class="small" placeholder="UniqueName" value="${escapeXml(core.uniqueName)}" />
-        <select data-action="core-mobility" data-c="${coreIndex}" class="small">
+        <input data-action="core-subtype" data-c="${coreIndex}" class="small" placeholder="SubtypeId" title="Core subtype used by the in-game block and manifest filename mapping." value="${escapeXml(core.subtypeId)}" />
+        <input data-action="core-unique" data-c="${coreIndex}" class="small" placeholder="UniqueName" title="Display name for this core definition." value="${escapeXml(core.uniqueName)}" />
+        <select data-action="core-mobility" data-c="${coreIndex}" class="small" title="Allowed grid mobility for this core: Static, Mobile, or Both.">
           ${["Static", "Mobile", "Both"].map((value) => `<option ${core.mobilityType === value ? "selected" : ""}>${value}</option>`).join("")}
         </select>
         <button data-action="remove-core" data-c="${coreIndex}">Delete Core</button>
@@ -357,7 +357,7 @@ function renderShipCores() {
           </div>
           <div>
             <label>Reusable Block Groups</label>
-            <select data-action="limit-groups" data-c="${coreIndex}" data-l="${limitIndex}" multiple>
+            <select data-action="limit-groups" data-c="${coreIndex}" data-l="${limitIndex}" title="Select one or more reusable block groups to apply to this limit." multiple>
               ${blockGroupOptions(limit.blockGroups)}
             </select>
           </div>
