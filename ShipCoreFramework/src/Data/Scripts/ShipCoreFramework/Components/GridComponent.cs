@@ -48,16 +48,9 @@ namespace ShipCoreFramework
             {
                 BlockAdded(beacon);
             }
-
-            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
-            {
-                var otherBlocks = blocks.Where(b => !(b.FatBlock is IMyBeacon)).ToList();
-                // MyAPIGateway.Parallel.ForEach(otherBlocks, block => BlockAdded(block));
-                foreach (var block in otherBlocks)
-                {
-                    BlockAdded(block);
-                }
-            });
+            
+            var otherBlocks = blocks.Where(b => !(b.FatBlock is IMyBeacon)).ToList();
+            MyAPIGateway.Parallel.ForEach(otherBlocks, block => BlockAdded(block));
         }
 
         private void BlockAddedEvent(IMySlimBlock block)
@@ -151,8 +144,9 @@ namespace ShipCoreFramework
 
         private bool TryApplyLimitsOnAdd(IMySlimBlock block, bool limitBasedPunish)
         {
-            var firstOwner = Grid.BigOwners.FirstOrDefault();
-
+            var firstOwner = Grid?.BigOwners.FirstOrDefault() ?? 0;
+            if(firstOwner == 0) return false;
+            
             var limits = GroupComponent.ShipCore.BlockLimits;
             if (limits == null) return false;
 

@@ -22,7 +22,7 @@ namespace ShipCoreFramework
             MyAPIGateway.GridGroups.OnGridGroupDestroyed += GridGroupsOnOnGridGroupDestroyed;
             
             var groupStartList = new List<IMyGridGroupData>();
-            MyAPIGateway.GridGroups.GetGridGroups(GridLinkTypeEnum.Logical, groupStartList);
+            MyAPIGateway.GridGroups.GetGridGroups(GridLinkTypeEnum.Mechanical, groupStartList);
             //Debug purposes got a world crash while loading
             /*foreach(IMyGridGroupData Data in groupStartList)
             {

@@ -527,7 +527,7 @@ namespace ShipCoreFramework
 
             try
             {
-                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, grid);
+                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Mechanical, grid);
                 if (groupData == null) return ConvertToSpeedModifiersData(null);
 
                 GroupComponent groupComponent;
@@ -768,7 +768,7 @@ namespace ShipCoreFramework
             try
             {
                 var grid = MyAPIGateway.Entities.GetEntityById(gridId) as MyCubeGrid;
-                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, grid);
+                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Mechanical, grid);
                 return groupData != null && Session.GroupDict.TryGetValue(groupData, out groupComponent);
             }
             catch
@@ -788,7 +788,7 @@ namespace ShipCoreFramework
 
             try
             {
-                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, grid);
+                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Mechanical, grid);
                 if (groupData == null) return 100f;
 
                 GroupComponent groupComponent;
@@ -1007,7 +1007,7 @@ namespace ShipCoreFramework
 
             try
             {
-                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, grid);
+                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Mechanical, grid);
                 if (groupData == null) return ConvertToShipCoreData(Session.Config.SelectedNoCore);
 
                 GroupComponent groupComponent;
@@ -1058,7 +1058,7 @@ namespace ShipCoreFramework
 
             try
             {
-                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, grid);
+                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Mechanical, grid);
                 if (groupData == null) return result;
 
                 GroupComponent groupComponent;
@@ -1101,7 +1101,7 @@ namespace ShipCoreFramework
 
             try
             {
-                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, grid);
+                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Mechanical, grid);
                 if (groupData == null) return true;
 
                 GroupComponent groupComponent;
@@ -1144,7 +1144,7 @@ namespace ShipCoreFramework
             if (grid == null) return ConvertToGridModifiersData(null);
             try
             {
-                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, grid);
+                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Mechanical, grid);
                 if (groupData == null) return ConvertToGridModifiersData(null);
 
                 GroupComponent groupComponent;
@@ -1164,7 +1164,7 @@ namespace ShipCoreFramework
 
             try
             {
-                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, grid);
+                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Mechanical, grid);
                 if (groupData == null) return 100f;
 
                 GroupComponent groupComponent;
@@ -1193,7 +1193,7 @@ namespace ShipCoreFramework
 
             try
             {
-                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, grid);
+                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Mechanical, grid);
                 if (groupData == null) return false;
 
                 GroupComponent groupComponent;

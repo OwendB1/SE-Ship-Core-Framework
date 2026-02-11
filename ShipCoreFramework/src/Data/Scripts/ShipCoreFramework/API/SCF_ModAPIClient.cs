@@ -208,7 +208,7 @@ namespace ShipCoreFramework
         public static IMyGridGroupData ResolveLogicalGroup(IMyCubeGrid anyGridInGroup)
         {
             if (anyGridInGroup == null) return null;
-            return MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Logical, anyGridInGroup);
+            return MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Mechanical, anyGridInGroup);
         }
 
         private static long GetEntityId(IMyCubeGrid grid) => grid?.EntityId ?? 0L;

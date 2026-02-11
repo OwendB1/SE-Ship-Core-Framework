@@ -98,7 +98,7 @@ namespace ShipCoreFramework
         
         internal static GroupComponent GetGroupComponent(this IMyTerminalBlock block)
         {
-            var groupData = block?.CubeGrid.GetGridGroup(GridLinkTypeEnum.Logical);
+            var groupData = block?.CubeGrid.GetGridGroup(GridLinkTypeEnum.Mechanical);
             if(groupData == null) return null;
             GroupComponent groupComponent;
             var success = Session.GroupDict.TryGetValue(groupData, out groupComponent);
@@ -107,7 +107,7 @@ namespace ShipCoreFramework
         
         internal static GroupComponent GetGroupComponent(this IMyCubeGrid grid)
         {
-            var groupData = grid.GetGridGroup(GridLinkTypeEnum.Logical);
+            var groupData = grid.GetGridGroup(GridLinkTypeEnum.Mechanical);
             if(groupData == null) return null;
             GroupComponent groupComponent;
             var success = Session.GroupDict.TryGetValue(groupData, out groupComponent);

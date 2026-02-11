@@ -10,7 +10,7 @@ namespace ShipCoreFramework
     {
         private static void GridGroupsOnOnGridGroupCreated(IMyGridGroupData group)
         {
-            if (group.LinkType != GridLinkTypeEnum.Logical) return;
+            if (group.LinkType != GridLinkTypeEnum.Mechanical) return;
             var gComp = new GroupComponent
             {
                 MyGroup = group
@@ -25,7 +25,7 @@ namespace ShipCoreFramework
         
         private static void GridGroupsOnOnGridGroupDestroyed(IMyGridGroupData group)
         {
-            if (group.LinkType != GridLinkTypeEnum.Logical) return;
+            if (group.LinkType != GridLinkTypeEnum.Mechanical) return;
             GroupComponent gComp;
             if (!GroupDict.TryGetValue(group, out gComp)) return;
             group.OnGridAdded -= gComp.OnGridAdded;
