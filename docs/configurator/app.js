@@ -685,19 +685,10 @@ document.addEventListener("input", (event) => {
   const coreIndex = Number(target.dataset.c);
   const limitIndex = Number(target.dataset.l);
 
-  if (action === "group-name") {
-    const previousName = state.blockGroups[groupIndex].name;
-    state.blockGroups[groupIndex].name = target.value;
-    renameBlockGroupReferences(previousName, target.value);
-  }
   if (action === "bt-type") state.blockGroups[groupIndex].blockTypes[blockTypeIndex].typeId = target.value;
   if (action === "bt-subtype") state.blockGroups[groupIndex].blockTypes[blockTypeIndex].subtypeId = target.value;
   if (action === "bt-weight") state.blockGroups[groupIndex].blockTypes[blockTypeIndex].countWeight = Number(target.value || 0);
 
-  if (action === "core-subtype") {
-    state.shipCores[coreIndex].subtypeId = target.value;
-    if (!state.shipCores[coreIndex].originalFileName) renderShipCores();
-  }
   if (action === "core-unique") state.shipCores[coreIndex].uniqueName = target.value;
   if (action === "core-maxblocks") state.shipCores[coreIndex].maxBlocks = Number(target.value || -1);
   if (action === "core-maxmass") state.shipCores[coreIndex].maxMass = Number(target.value || -1);
@@ -713,16 +704,49 @@ document.addEventListener("input", (event) => {
   if (action === "limit-name") state.shipCores[coreIndex].blockLimits[limitIndex].name = target.value;
   if (action === "limit-max") state.shipCores[coreIndex].blockLimits[limitIndex].maxCount = Number(target.value || 0);
 
+  generateXml();
+});
+
+function commitDeferredTextInput(target) {
+  if (!(target instanceof HTMLInputElement)) return;
+
+  const action = target.dataset.action;
+  const groupIndex = Number(target.dataset.g);
+  const coreIndex = Number(target.dataset.c);
+
   if (action === "group-name") {
+    const previousName = state.blockGroups[groupIndex].name;
+    const nextName = target.value;
+    if (previousName === nextName) return;
+
+    state.blockGroups[groupIndex].name = nextName;
+    renameBlockGroupReferences(previousName, nextName);
     renderGroupSelector();
     renderShipCores();
+    generateXml();
   }
 
   if (action === "core-subtype") {
-    renderShipCores();
-  }
+    const previousSubtype = state.shipCores[coreIndex].subtypeId;
+    const nextSubtype = target.value;
+    if (previousSubtype === nextSubtype) return;
 
-  generateXml();
+    state.shipCores[coreIndex].subtypeId = nextSubtype;
+    renderShipCores();
+    generateXml();
+  }
+}
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement)) return;
+
+  const action = target.dataset.action;
+  if (action !== "group-name" && action !== "core-subtype") return;
+
+  target.blur();
 });
 
 document.addEventListener("change", (event) => {
@@ -734,6 +758,11 @@ document.addEventListener("change", (event) => {
 
   const inputElement = target instanceof HTMLInputElement ? target : null;
   const selectElement = target instanceof HTMLSelectElement ? target : null;
+
+  if (action === "group-name" || action === "core-subtype") {
+    commitDeferredTextInput(target);
+    return;
+  }
 
   if (action === "core-fb" && inputElement) state.shipCores[coreIndex].forceBroadcast = inputElement.checked;
   if (action === "core-mobility" && selectElement) state.shipCores[coreIndex].mobilityType = selectElement.value;
