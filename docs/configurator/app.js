@@ -148,6 +148,26 @@ function addBlockGroup(group = { name: "", blockTypes: [] }) {
   renderShipCores();
 }
 
+function renameBlockGroupReferences(previousName, nextName) {
+  if (!previousName || previousName === nextName) return;
+  state.shipCores.forEach((core) => {
+    core.blockLimits.forEach((limit) => {
+      if (!Array.isArray(limit.blockGroups)) return;
+      limit.blockGroups = limit.blockGroups.map((groupName) => (groupName === previousName ? nextName : groupName));
+    });
+  });
+}
+
+function removeBlockGroupReferences(groupNameToRemove) {
+  if (!groupNameToRemove) return;
+  state.shipCores.forEach((core) => {
+    core.blockLimits.forEach((limit) => {
+      if (!Array.isArray(limit.blockGroups)) return;
+      limit.blockGroups = limit.blockGroups.filter((groupName) => groupName !== groupNameToRemove);
+    });
+  });
+}
+
 function addShipCore(core = createDefaultCore()) {
   state.shipCores.push({ ...createDefaultCore(), ...core });
   state.selectedCoreIndex = state.shipCores.length - 1;
@@ -627,6 +647,8 @@ document.addEventListener("click", (event) => {
     didMutate = true;
   }
   if (action === "remove-group") {
+    const removedGroupName = state.blockGroups[groupIndex]?.name || "";
+    removeBlockGroupReferences(removedGroupName);
     state.blockGroups.splice(groupIndex, 1);
     if (state.selectedGroupIndex >= state.blockGroups.length) state.selectedGroupIndex = state.blockGroups.length - 1;
     didMutate = true;
@@ -663,7 +685,11 @@ document.addEventListener("input", (event) => {
   const coreIndex = Number(target.dataset.c);
   const limitIndex = Number(target.dataset.l);
 
-  if (action === "group-name") state.blockGroups[groupIndex].name = target.value;
+  if (action === "group-name") {
+    const previousName = state.blockGroups[groupIndex].name;
+    state.blockGroups[groupIndex].name = target.value;
+    renameBlockGroupReferences(previousName, target.value);
+  }
   if (action === "bt-type") state.blockGroups[groupIndex].blockTypes[blockTypeIndex].typeId = target.value;
   if (action === "bt-subtype") state.blockGroups[groupIndex].blockTypes[blockTypeIndex].subtypeId = target.value;
   if (action === "bt-weight") state.blockGroups[groupIndex].blockTypes[blockTypeIndex].countWeight = Number(target.value || 0);
@@ -687,8 +713,12 @@ document.addEventListener("input", (event) => {
   if (action === "limit-name") state.shipCores[coreIndex].blockLimits[limitIndex].name = target.value;
   if (action === "limit-max") state.shipCores[coreIndex].blockLimits[limitIndex].maxCount = Number(target.value || 0);
 
-  if (action === "group-name" || action === "core-subtype") {
-    renderBlockGroups();
+  if (action === "group-name") {
+    renderGroupSelector();
+    renderShipCores();
+  }
+
+  if (action === "core-subtype") {
     renderShipCores();
   }
 
