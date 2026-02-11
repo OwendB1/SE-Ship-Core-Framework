@@ -116,3 +116,20 @@ button:hover { background: #0d9488; }
   min-width: 0;
 }
 .muted { color: var(--muted); }
+
+.group-checklist {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.35rem 0.75rem;
+  margin-top: 0.35rem;
+}
+.group-checklist-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.2rem 0;
+}
+.group-checklist-item input {
+  width: auto;
+  margin: 0;
+}

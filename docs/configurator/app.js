@@ -236,13 +236,15 @@ function renderBlockGroups() {
   `;
 }
 
-function blockGroupOptions(selected = []) {
+function blockGroupCheckboxes(coreIndex, limitIndex, selected = []) {
   return state.blockGroups
     .filter((group) => group.name.trim())
-    .map((group) => `<option value="${escapeXml(group.name)}" ${selected.includes(group.name) ? "selected" : ""}>${escapeXml(group.name)}</option>`)
+    .map((group) => `<label class="group-checklist-item">
+      <input data-action="limit-group-toggle" data-c="${coreIndex}" data-l="${limitIndex}" data-group-name="${escapeXml(group.name)}" type="checkbox" ${selected.includes(group.name) ? "checked" : ""} />
+      <span>${escapeXml(group.name)}</span>
+    </label>`)
     .join("");
 }
-
 function modifierFieldColumn({ title, fields, action, step = 0.01, dataAttrs = "" }) {
   return `
     <div class="modifier-column card">
@@ -359,9 +361,9 @@ function renderShipCores() {
           </div>
           <div>
             <label>Reusable Block Groups</label>
-            <select data-action="limit-groups" data-c="${coreIndex}" data-l="${limitIndex}" multiple>
-              ${blockGroupOptions(limit.blockGroups)}
-            </select>
+            <div class="group-checklist">
+              ${blockGroupCheckboxes(coreIndex, limitIndex, limit.blockGroups)}
+            </div>
           </div>
         </div>
       `).join("")}
@@ -611,6 +613,7 @@ document.addEventListener("click", (event) => {
 
   renderBlockGroups();
   renderShipCores();
+  generateXml();
 });
 
 document.addEventListener("input", (event) => {
@@ -653,6 +656,8 @@ document.addEventListener("input", (event) => {
     renderBlockGroups();
     renderShipCores();
   }
+
+  generateXml();
 });
 
 document.addEventListener("change", (event) => {
@@ -669,17 +674,31 @@ document.addEventListener("change", (event) => {
   if (action === "core-speed-limit-type") state.shipCores[coreIndex].speedLimitType = target.value;
   if (action === "limit-punish") state.shipCores[coreIndex].blockLimits[limitIndex].punishByNoFlyZone = target.checked;
   if (action === "limit-type") state.shipCores[coreIndex].blockLimits[limitIndex].punishmentType = target.value;
-  if (action === "limit-groups") state.shipCores[coreIndex].blockLimits[limitIndex].blockGroups = Array.from(target.selectedOptions).map((o) => o.value);
+  if (action === "limit-group-toggle") {
+    const limit = state.shipCores[coreIndex].blockLimits[limitIndex];
+    const groupName = target.dataset.groupName || "";
+    if (!groupName) return;
+
+    const selectedSet = new Set(limit.blockGroups || []);
+    if (target.checked) selectedSet.add(groupName);
+    else selectedSet.delete(groupName);
+    limit.blockGroups = Array.from(selectedSet);
+    renderShipCores();
+  }
+
+  generateXml();
 });
 
 ids("selectedGroup").addEventListener("change", (event) => {
   state.selectedGroupIndex = Number(event.target.value);
   renderBlockGroups();
+  generateXml();
 });
 
 ids("selectedCore").addEventListener("change", (event) => {
   state.selectedCoreIndex = Number(event.target.value);
   renderShipCores();
+  generateXml();
 });
 
 ids("addGroup").addEventListener("click", () => addBlockGroup({ name: "", blockTypes: [] }));
