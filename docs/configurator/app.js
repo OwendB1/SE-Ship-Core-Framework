@@ -257,7 +257,6 @@ function directionCheckboxes(coreIndex, limitIndex, selected = []) {
     </label>`)
     .join("");
 }
-
 function modifierFieldColumn({ title, fields, action, step = 0.01, dataAttrs = "" }) {
   return `
     <div class="modifier-column card">
