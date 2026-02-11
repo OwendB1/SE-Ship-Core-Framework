@@ -23,7 +23,7 @@
     <section class="panel">
       <h2>2) Renovate Existing XML (optional)</h2>
       <p class="muted">Upload existing XML files. Recognized tags are loaded into the editor; unknown tags are ignored.</p>
-      <div class="row wrap">
+      <div class="row wrap file-upload-row">
         <label class="file-label">Groups XML
           <input id="groupsXmlFile" type="file" accept=".xml" />
         </label>
@@ -43,13 +43,19 @@
 
     <section class="panel">
       <h2>3) Reusable Block Groups</h2>
-      <button id="addGroup">Add Block Group</button>
+      <div class="menu-controls">
+        <button id="addGroup">Add Block Group</button>
+        <select id="selectedGroup" aria-label="Selected Group"></select>
+      </div>
       <div id="blockGroups"></div>
     </section>
 
     <section class="panel">
       <h2>4) Ship Cores</h2>
-      <button id="addCore">Add Ship Core</button>
+      <div class="menu-controls">
+        <button id="addCore">Add Ship Core</button>
+        <select id="selectedCore" aria-label="Selected Core"></select>
+      </div>
       <div id="shipCores"></div>
     </section>
 
@@ -59,7 +65,7 @@
         <button id="generateXml">Generate</button>
         <button id="downloadGroups">Download ShipCoreConfig_Groups.xml</button>
         <button id="downloadManifest">Download ShipCoreConfig_Manifest.xml</button>
-        <button id="downloadCores">Download all ShipCore XMLs (.zip-like text bundle)</button>
+        <button id="downloadCores">Download all ShipCore XMLs (.zip)</button>
       </div>
       <h3>ShipCoreConfig_Groups.xml</h3>
       <pre id="groupsXml" class="code-block"></pre>
