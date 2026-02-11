@@ -16,6 +16,7 @@ namespace ShipCoreFramework
         public override void BeforeStart()
         {
             Networking.Register();
+            ModAPI.Initialize();
             if (Config.SelectedNoCore == null) return;
             MyAPIGateway.GridGroups.OnGridGroupCreated += GridGroupsOnOnGridGroupCreated;
             MyAPIGateway.GridGroups.OnGridGroupDestroyed += GridGroupsOnOnGridGroupDestroyed;
@@ -37,7 +38,6 @@ namespace ShipCoreFramework
             IsClient = (MpActive && !MyAPIGateway.Utilities.IsDedicated) || !MpActive;
             
             Config.LoadConfig();
-            ModAPI.Initialize();
             _myNexusApi = new NexusAPI(OnNexusEnabled);
             MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed = Config.MaxPossibleSpeedMetersPerSecond;
             MyDefinitionManager.Static.EnvironmentDefinition.SmallShipMaxSpeed = Config.MaxPossibleSpeedMetersPerSecond;

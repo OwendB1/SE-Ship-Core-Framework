@@ -18,6 +18,8 @@ This keeps your mod strongly-typed without referencing the Ship Core Framework a
 
 Create a single `ShipCoreFrameworkClient`, call `Register()` in `LoadData()`, and `Unregister()` in `UnloadData()`:
 
+Note: Ship Core Framework broadcasts its API payload in `BeforeStart()`, so `IsReady` may still be false during your `LoadData()`. Use `IsReady` checks in `BeforeStart()`/`Update...()` before calling API methods.
+
 ```csharp
 using System;
 using Sandbox.ModAPI;

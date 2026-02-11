@@ -1,14 +1,10 @@
-﻿#region
-
-using System;
+﻿using System;
 using System.Linq;
 using System.Collections.Generic;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.Game.Components;
 using VRageMath;
-
-#endregion
 
 namespace ShipCoreFramework
 {

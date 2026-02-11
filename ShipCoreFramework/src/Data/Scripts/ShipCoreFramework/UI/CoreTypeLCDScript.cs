@@ -1,6 +1,4 @@
-﻿#region
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -11,8 +9,6 @@ using VRage.Game.GUI.TextPanel;
 using VRageMath;
 using IngameCubeBlock = VRage.Game.ModAPI.Ingame.IMyCubeBlock;
 using IngameIMyEntity = VRage.Game.ModAPI.Ingame.IMyEntity;
-
-#endregion
 
 namespace ShipCoreFramework
 {

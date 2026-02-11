@@ -28,7 +28,7 @@ namespace ShipCoreFramework
 
         /// <summary>
         /// Initializes the API and broadcasts it to other mods.
-        /// Called internally by Session component during LoadData.
+        /// Called internally by Session component during BeforeStart.
         /// </summary>
         internal static void Initialize()
         {
