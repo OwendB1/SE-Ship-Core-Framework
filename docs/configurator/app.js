@@ -42,6 +42,9 @@ const DEFAULT_DEFENSE_MODIFIERS = {
   Kinetic: 1
 };
 
+
+const VALID_DIRECTIONS = ["Forward", "Backward", "Up", "Down", "Left", "Right"];
+
 const ids = (id) => document.getElementById(id);
 
 function escapeXml(value) {
@@ -245,6 +248,15 @@ function blockGroupCheckboxes(coreIndex, limitIndex, selected = []) {
     </label>`)
     .join("");
 }
+
+function directionCheckboxes(coreIndex, limitIndex, selected = []) {
+  return VALID_DIRECTIONS
+    .map((direction) => `<label class="group-checklist-item">
+      <input data-action="limit-direction-toggle" data-c="${coreIndex}" data-l="${limitIndex}" data-direction="${escapeXml(direction)}" type="checkbox" ${selected.includes(direction) ? "checked" : ""} />
+      <span>${escapeXml(direction)}</span>
+    </label>`)
+    .join("");
+}
 function modifierFieldColumn({ title, fields, action, step = 0.01, dataAttrs = "" }) {
   return `
     <div class="modifier-column card">
@@ -354,10 +366,17 @@ function renderShipCores() {
           </div>
           <div class="row wrap">
             <label class="inline">PunishByNoFlyZone <input data-action="limit-punish" data-c="${coreIndex}" data-l="${limitIndex}" type="checkbox" ${limit.punishByNoFlyZone ? "checked" : ""}/></label>
-            <select data-action="limit-type" data-c="${coreIndex}" data-l="${limitIndex}" class="small">
-              ${["ShutOff", "Damage", "Delete", "Explode"].map((value) => `<option ${limit.punishmentType === value ? "selected" : ""}>${value}</option>`).join("")}
-            </select>
-            <input data-action="limit-dir" data-c="${coreIndex}" data-l="${limitIndex}" class="small" placeholder="AllowedDirections csv (Forward,Up)" value="${escapeXml((limit.allowedDirections || []).join(","))}" />
+            <label class="inline">Punishment Type
+              <select data-action="limit-type" data-c="${coreIndex}" data-l="${limitIndex}" class="small">
+                ${["ShutOff", "Damage", "Delete", "Explode"].map((value) => `<option ${limit.punishmentType === value ? "selected" : ""}>${value}</option>`).join("")}
+              </select>
+            </label>
+          </div>
+          <div>
+            <label>Valid Directions</label>
+            <div class="group-checklist">
+              ${directionCheckboxes(coreIndex, limitIndex, limit.allowedDirections || [])}
+            </div>
           </div>
           <div>
             <label>Reusable Block Groups</label>
@@ -597,19 +616,36 @@ document.addEventListener("click", (event) => {
   const blockTypeIndex = Number(target.dataset.i);
   const coreIndex = Number(target.dataset.c);
   const limitIndex = Number(target.dataset.l);
+  let didMutate = false;
 
-  if (action === "add-bt") state.blockGroups[groupIndex].blockTypes.push({ typeId: "", subtypeId: "", countWeight: 1 });
-  if (action === "remove-bt") state.blockGroups[groupIndex].blockTypes.splice(blockTypeIndex, 1);
+  if (action === "add-bt") {
+    state.blockGroups[groupIndex].blockTypes.push({ typeId: "", subtypeId: "", countWeight: 1 });
+    didMutate = true;
+  }
+  if (action === "remove-bt") {
+    state.blockGroups[groupIndex].blockTypes.splice(blockTypeIndex, 1);
+    didMutate = true;
+  }
   if (action === "remove-group") {
     state.blockGroups.splice(groupIndex, 1);
     if (state.selectedGroupIndex >= state.blockGroups.length) state.selectedGroupIndex = state.blockGroups.length - 1;
+    didMutate = true;
   }
   if (action === "remove-core") {
     state.shipCores.splice(coreIndex, 1);
     if (state.selectedCoreIndex >= state.shipCores.length) state.selectedCoreIndex = state.shipCores.length - 1;
+    didMutate = true;
   }
-  if (action === "add-limit") state.shipCores[coreIndex].blockLimits.push({ name: "", maxCount: 0, punishByNoFlyZone: false, punishmentType: "ShutOff", allowedDirections: [], blockGroups: [] });
-  if (action === "remove-limit") state.shipCores[coreIndex].blockLimits.splice(limitIndex, 1);
+  if (action === "add-limit") {
+    state.shipCores[coreIndex].blockLimits.push({ name: "", maxCount: 0, punishByNoFlyZone: false, punishmentType: "ShutOff", allowedDirections: [], blockGroups: [] });
+    didMutate = true;
+  }
+  if (action === "remove-limit") {
+    state.shipCores[coreIndex].blockLimits.splice(limitIndex, 1);
+    didMutate = true;
+  }
+
+  if (!didMutate) return;
 
   renderBlockGroups();
   renderShipCores();
@@ -650,7 +686,6 @@ document.addEventListener("input", (event) => {
 
   if (action === "limit-name") state.shipCores[coreIndex].blockLimits[limitIndex].name = target.value;
   if (action === "limit-max") state.shipCores[coreIndex].blockLimits[limitIndex].maxCount = Number(target.value || 0);
-  if (action === "limit-dir") state.shipCores[coreIndex].blockLimits[limitIndex].allowedDirections = target.value.split(",").map((v) => v.trim()).filter(Boolean);
 
   if (action === "group-name" || action === "core-subtype") {
     renderBlockGroups();
@@ -667,20 +702,40 @@ document.addEventListener("change", (event) => {
   const coreIndex = Number(target.dataset.c);
   const limitIndex = Number(target.dataset.l);
 
-  if (action === "core-fb") state.shipCores[coreIndex].forceBroadcast = target.checked;
-  if (action === "core-mobility") state.shipCores[coreIndex].mobilityType = target.value;
-  if (action === "core-speedboost") state.shipCores[coreIndex].speedBoostEnabled = target.checked;
-  if (action === "core-enable-active-defense") state.shipCores[coreIndex].enableActiveDefenseModifiers = target.checked;
-  if (action === "core-speed-limit-type") state.shipCores[coreIndex].speedLimitType = target.value;
-  if (action === "limit-punish") state.shipCores[coreIndex].blockLimits[limitIndex].punishByNoFlyZone = target.checked;
-  if (action === "limit-type") state.shipCores[coreIndex].blockLimits[limitIndex].punishmentType = target.value;
-  if (action === "limit-group-toggle") {
+  const inputElement = target instanceof HTMLInputElement ? target : null;
+  const selectElement = target instanceof HTMLSelectElement ? target : null;
+
+  if (action === "core-fb" && inputElement) state.shipCores[coreIndex].forceBroadcast = inputElement.checked;
+  if (action === "core-mobility" && selectElement) state.shipCores[coreIndex].mobilityType = selectElement.value;
+  if (action === "core-speedboost" && inputElement) state.shipCores[coreIndex].speedBoostEnabled = inputElement.checked;
+  if (action === "core-enable-active-defense" && inputElement) state.shipCores[coreIndex].enableActiveDefenseModifiers = inputElement.checked;
+  if (action === "core-speed-limit-type" && selectElement) state.shipCores[coreIndex].speedLimitType = selectElement.value;
+  if (action === "limit-punish" && inputElement) {
+    state.shipCores[coreIndex].blockLimits[limitIndex].punishByNoFlyZone = inputElement.checked;
+    renderShipCores();
+  }
+  if (action === "limit-type" && selectElement) {
+    state.shipCores[coreIndex].blockLimits[limitIndex].punishmentType = selectElement.value;
+    renderShipCores();
+  }
+  if (action === "limit-direction-toggle" && inputElement) {
     const limit = state.shipCores[coreIndex].blockLimits[limitIndex];
-    const groupName = target.dataset.groupName || "";
+    const direction = inputElement.dataset.direction || "";
+    if (!direction) return;
+
+    const selectedSet = new Set(limit.allowedDirections || []);
+    if (inputElement.checked) selectedSet.add(direction);
+    else selectedSet.delete(direction);
+    limit.allowedDirections = VALID_DIRECTIONS.filter((value) => selectedSet.has(value));
+    renderShipCores();
+  }
+  if (action === "limit-group-toggle" && inputElement) {
+    const limit = state.shipCores[coreIndex].blockLimits[limitIndex];
+    const groupName = inputElement.dataset.groupName || "";
     if (!groupName) return;
 
     const selectedSet = new Set(limit.blockGroups || []);
-    if (target.checked) selectedSet.add(groupName);
+    if (inputElement.checked) selectedSet.add(groupName);
     else selectedSet.delete(groupName);
     limit.blockGroups = Array.from(selectedSet);
     renderShipCores();
