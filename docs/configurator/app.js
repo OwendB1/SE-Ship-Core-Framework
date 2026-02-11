@@ -758,7 +758,6 @@ ids("selectedCore").addEventListener("change", (event) => {
 
 ids("addGroup").addEventListener("click", () => addBlockGroup({ name: "", blockTypes: [] }));
 ids("addCore").addEventListener("click", () => addShipCore());
-ids("generateXml").addEventListener("click", () => generateXml());
 ids("resetEditor").addEventListener("click", () => {
   resetEditor(true);
   setImportStatus(["Editor reset to starter seed data."]);
