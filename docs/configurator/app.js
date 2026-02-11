@@ -226,7 +226,6 @@ function renderBlockGroups() {
 
   ids("blockGroups").innerHTML = `
     <div class="card">
-      <h4>Group ${groupIndex + 1} of ${state.blockGroups.length}</h4>
       <div class="row wrap">
         <input data-action="group-name" data-g="${groupIndex}" placeholder="Group Name" value="${escapeXml(group.name)}" />
         <button data-action="add-bt" data-g="${groupIndex}">Add BlockType</button>
@@ -288,7 +287,6 @@ function renderShipCores() {
 
   ids("shipCores").innerHTML = `
     <div class="card">
-      <h4>Core ${coreIndex + 1} of ${state.shipCores.length}</h4>
       <div class="row wrap">
         <input data-action="core-subtype" data-c="${coreIndex}" class="small" placeholder="SubtypeId" value="${escapeXml(core.subtypeId)}" />
         <input data-action="core-unique" data-c="${coreIndex}" class="small" placeholder="UniqueName" value="${escapeXml(core.uniqueName)}" />
