@@ -50,7 +50,10 @@ namespace ShipCoreFramework
             }
             
             var otherBlocks = blocks.Where(b => !(b.FatBlock is IMyBeacon)).ToList();
-            MyAPIGateway.Parallel.ForEach(otherBlocks, block => BlockAdded(block));
+            foreach (var beacon in otherBlocks)
+            {
+                BlockAdded(beacon);
+            }
         }
 
         private void BlockAddedEvent(IMySlimBlock block)
