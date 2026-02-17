@@ -122,19 +122,19 @@ namespace ShipCoreFramework
                     var maxPCU = groupComponent.ShipCore.MaxPCU;
                     var maxMass = groupComponent.ShipCore.MaxMass;
 
-                    if (groupComponent.GroupBlocksCount >= maxBlocks && maxBlocks > 0)
+                    if (groupComponent.GroupBlocksCount > maxBlocks && maxBlocks > 0)
                     {
                         Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxBlocks: " + (groupComponent.GroupBlocksCount > maxBlocks), 10000, firstBigOwner);
                         block.RemoveAndRefund();
                         return;
                     }
-                    if (groupComponent.GroupPCU >= maxPCU && maxPCU > 0)
+                    if (groupComponent.GroupPCU > maxPCU && maxPCU > 0)
                     {
                         Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxPCU: " + (groupComponent.GroupPCU > maxPCU), 10000, firstBigOwner);
                         block.RemoveAndRefund();
                         return;
                     }
-                    if (groupComponent.GroupMass >= maxMass && maxMass > 0f)
+                    if (groupComponent.GroupMass > maxMass && maxMass > 0f)
                     {
                         Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxMass: " + (groupComponent.GroupMass > maxMass), 10000, firstBigOwner);
                         block.RemoveAndRefund();
