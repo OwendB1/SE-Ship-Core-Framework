@@ -130,12 +130,15 @@ namespace ShipCoreFramework
             GridsPerFactionManager.AddGridGroup(this);
             GridsPerPlayerManager.AddGridGroup(this);
             
-            RecalculateAllLimits();
-            ApplyModifiers(Modifiers);
-            EnforceGroupPunishment();
-            EnforceOverCapacity();
-            
-            ModAPI.BroadcastCoreActivated(GetRepresentativeGridId(), ShipCore.SubtypeId, ShipCore.UniqueName);
+            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+            {
+                RecalculateAllLimits();
+                ApplyModifiers(Modifiers);
+                EnforceGroupPunishment();
+                EnforceOverCapacity();
+                
+                ModAPI.BroadcastCoreActivated(GetRepresentativeGridId(), ShipCore.SubtypeId, ShipCore.UniqueName);
+            });
         }
 
         internal void ResetCore()
@@ -165,10 +168,13 @@ namespace ShipCoreFramework
 
             if (!Session.HasStarted || Session.IsShuttingDown) return;
             
-            RecalculateAllLimits();
-            ApplyModifiers(Modifiers);
-            EnforceGroupPunishment();
-            EnforceOverCapacity();
+            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+            {
+                RecalculateAllLimits();
+                ApplyModifiers(Modifiers);
+                EnforceGroupPunishment();
+                EnforceOverCapacity();
+            });
         }
 
         internal void OnGridAdded(IMyGridGroupData addedTo, IMyCubeGrid grid, IMyGridGroupData removedFrom)
