@@ -44,7 +44,7 @@ namespace ShipCoreFramework
         
         internal bool FrictionEnforcementEnabled = true;
         
-        // When SpeedLimitType.Normal and a boost ends, slowly ramp the effective max speed down to the base max speed.
+        // When SpeedLimitType.Normal and boosting ends, slowly ramp the effective max speed down to the base max speed.
         internal bool PostBoostRampActive;
         internal float PostBoostSpeedCapMetersPerSecond;
         
@@ -129,16 +129,13 @@ namespace ShipCoreFramework
 
             GridsPerFactionManager.AddGridGroup(this);
             GridsPerPlayerManager.AddGridGroup(this);
-
-            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
-            {
-                RecalculateAllLimits();
-                ApplyModifiers(Modifiers);
-                EnforceGroupPunishment();
-                EnforceOverCapacity();
-                
-                ModAPI.BroadcastCoreActivated(GetRepresentativeGridId(), ShipCore.SubtypeId, ShipCore.UniqueName);
-            });
+            
+            RecalculateAllLimits();
+            ApplyModifiers(Modifiers);
+            EnforceGroupPunishment();
+            EnforceOverCapacity();
+            
+            ModAPI.BroadcastCoreActivated(GetRepresentativeGridId(), ShipCore.SubtypeId, ShipCore.UniqueName);
         }
 
         internal void ResetCore()
@@ -167,14 +164,11 @@ namespace ShipCoreFramework
             }
 
             if (!Session.HasStarted || Session.IsShuttingDown) return;
-
-            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
-            {
-                RecalculateAllLimits();
-                ApplyModifiers(Modifiers);
-                EnforceGroupPunishment();
-                EnforceOverCapacity();
-            });
+            
+            RecalculateAllLimits();
+            ApplyModifiers(Modifiers);
+            EnforceGroupPunishment();
+            EnforceOverCapacity();
         }
 
         internal void OnGridAdded(IMyGridGroupData addedTo, IMyCubeGrid grid, IMyGridGroupData removedFrom)

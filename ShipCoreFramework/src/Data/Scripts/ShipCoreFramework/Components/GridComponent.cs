@@ -16,7 +16,15 @@ namespace ShipCoreFramework
         internal readonly ConcurrentDictionary<BlockLimit, LimitBucket> Limits = new ConcurrentDictionary<BlockLimit, LimitBucket>();
         internal readonly ConcurrentDictionary<IMyCubeBlock, CoreComponent> CoreDictionary = new ConcurrentDictionary<IMyCubeBlock, CoreComponent>();
 
-        private GroupComponent GroupComponent => Session.GroupDict.FirstOrDefault(kvp => kvp.Key == GroupData).Value;
+        private GroupComponent GroupComponent
+        {
+            get
+            {
+                if (GroupData == null) return null;
+                GroupComponent groupComponent;
+                return Session.GroupDict.TryGetValue(GroupData, out groupComponent) ? groupComponent : null;
+            }
+        }
 
         internal static BlockKey KeyOf(IMySlimBlock b)
         {
@@ -46,23 +54,28 @@ namespace ShipCoreFramework
             var beaconBlocks = blocks.Where(b => b.FatBlock is IMyBeacon).ToList();
             foreach (var beacon in beaconBlocks)
             {
-                BlockAdded(beacon);
+                BlockAddedInternal(beacon);
             }
             
             var otherBlocks = blocks.Where(b => !(b.FatBlock is IMyBeacon)).ToList();
             foreach (var beacon in otherBlocks)
             {
-                BlockAdded(beacon);
+                BlockAddedInternal(beacon);
             }
         }
 
         private void BlockAddedEvent(IMySlimBlock block)
         {
-            BlockAdded(block, false);
+            BlockAddedInternal(block, false);
         }
 
-        private void BlockAdded(IMySlimBlock block, bool limitBasedPunish = true)
+        private void BlockAddedInternal(IMySlimBlock block, bool limitBasedPunish = true)
         {
+            if (block?.CubeGrid == null || Grid == null || block.CubeGrid != Grid) return;
+
+            var groupComponent = GroupComponent;
+            if (groupComponent == null) return;
+
             var builderId = block.BuiltBy;
 
             var players = new List<IMyPlayer>();
@@ -85,48 +98,45 @@ namespace ShipCoreFramework
             if (beacon != null && Session.Config.ShipCores.Any(core => core.SubtypeId == block.FatBlock.BlockDefinition.SubtypeId))
             {
                 var newCore = new CoreComponent();
-                MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+                var success = newCore.Init(beacon, this, groupComponent);
+                if (!success) return;
+
+                CoreDictionary.TryAdd(block.FatBlock, newCore);
+
+                if (!TryApplyLimitsOnAdd(block, limitBasedPunish)) return;
+
+                lock (_blocksLock)
                 {
-                    if (GroupComponent == null) return;
-                    var success = newCore.Init(beacon, this, GroupComponent);
-                    if (success) CoreDictionary.TryAdd(block.FatBlock, newCore);
-                
-                    TryApplyLimitsOnAdd(block, limitBasedPunish);
+                    _blocks.Add(block);
+                }
 
-                    lock (_blocksLock)
-                    {
-                        _blocks.Add(block);
-                    }
-
-                    var funcBlock = block.FatBlock as IMyFunctionalBlock;
-                    if (funcBlock != null) funcBlock.EnabledChanged += FuncBlockOnEnabledChanged;
-                    GroupComponent.ApplyModifiers(GroupComponent.Modifiers);
-                });
+                var funcBlock = block.FatBlock as IMyFunctionalBlock;
+                if (funcBlock != null) funcBlock.EnabledChanged += FuncBlockOnEnabledChanged;
             }
             else
             {
                 if (!limitBasedPunish)
                 {
                     var firstBigOwner = Grid.BigOwners.FirstOrDefault();
-                    var maxBlocks = GroupComponent.ShipCore.MaxBlocks;
-                    var maxPCU = GroupComponent.ShipCore.MaxPCU;
-                    var maxMass = GroupComponent.ShipCore.MaxMass;
+                    var maxBlocks = groupComponent.ShipCore.MaxBlocks;
+                    var maxPCU = groupComponent.ShipCore.MaxPCU;
+                    var maxMass = groupComponent.ShipCore.MaxMass;
 
-                    if (GroupComponent.GroupBlocksCount >= maxBlocks && maxBlocks > 0)
+                    if (groupComponent.GroupBlocksCount >= maxBlocks && maxBlocks > 0)
                     {
-                        Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxBlocks: " + (GroupComponent.GroupBlocksCount > maxBlocks), 10000, firstBigOwner);
+                        Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxBlocks: " + (groupComponent.GroupBlocksCount > maxBlocks), 10000, firstBigOwner);
                         block.RemoveAndRefund();
                         return;
                     }
-                    if (GroupComponent.GroupPCU >= maxPCU && maxPCU > 0)
+                    if (groupComponent.GroupPCU >= maxPCU && maxPCU > 0)
                     {
-                        Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxPCU: " + (GroupComponent.GroupPCU > maxPCU), 10000, firstBigOwner);
+                        Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxPCU: " + (groupComponent.GroupPCU > maxPCU), 10000, firstBigOwner);
                         block.RemoveAndRefund();
                         return;
                     }
-                    if (GroupComponent.GroupMass >= maxMass && maxMass > 0f)
+                    if (groupComponent.GroupMass >= maxMass && maxMass > 0f)
                     {
-                        Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxMass: " + (GroupComponent.GroupMass > maxMass), 10000, firstBigOwner);
+                        Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxMass: " + (groupComponent.GroupMass > maxMass), 10000, firstBigOwner);
                         block.RemoveAndRefund();
                         return;
                     }
@@ -141,17 +151,17 @@ namespace ShipCoreFramework
 
                 var funcBlock = block.FatBlock as IMyFunctionalBlock;
                 if (funcBlock != null) funcBlock.EnabledChanged += FuncBlockOnEnabledChanged;
-                GroupComponent.ApplyModifiers(GroupComponent.Modifiers);
             }
+
+            groupComponent.ApplyModifiers(groupComponent.Modifiers);
         }
 
         private bool TryApplyLimitsOnAdd(IMySlimBlock block, bool limitBasedPunish)
         {
             var firstOwner = Grid?.BigOwners.FirstOrDefault() ?? 0;
-            if(firstOwner == 0) return false;
             
             var limits = GroupComponent.ShipCore.BlockLimits;
-            if (limits == null) return false;
+            if (limits == null || limits.Length == 0) return true;
 
             var blockKey = KeyOf(block);
 
@@ -189,9 +199,16 @@ namespace ShipCoreFramework
 
                 if (cur + w > limit.MaxCount)
                 {
-                    Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates Block limit " + limit.Name + ": " + (cur + w) + "/" + limit.MaxCount, 10000, firstOwner);
-                    block.WhackABlock(limitBasedPunish ? limit.PunishmentType: PunishmentType.Delete);
-                    return false; // Don't add punished blocks to the limit buckets
+                    var message = Utils.GetBlockSubtypeId(block) + " violates Block limit " + limit.Name + ": " + (cur + w) + "/" + limit.MaxCount;
+                    if (firstOwner != 0) Utils.ShowNotification(message, 10000, firstOwner);
+                    else Utils.ShowNotification(message);
+                    var punishmentType = limitBasedPunish ? limit.PunishmentType : PunishmentType.Delete;
+                    block.WhackABlock(punishmentType);
+
+                    if (punishmentType == PunishmentType.Delete || punishmentType == PunishmentType.Explode)
+                    {
+                        return false; // Don't add destroyed or removed blocks to the limit buckets
+                    }
                 }
 
                 LimitBucket gridBucket;
@@ -218,6 +235,9 @@ namespace ShipCoreFramework
 
         internal void BlockRemoved(IMySlimBlock block)
         {
+            var groupComponent = GroupComponent;
+            if (groupComponent == null) return;
+
             var beacon = block.FatBlock as IMyBeacon;
             CoreComponent value;
             if (beacon != null && CoreDictionary.TryGetValue(beacon, out value))
@@ -226,7 +246,7 @@ namespace ShipCoreFramework
                 value.CoreDestroyed();
             }
             
-            var limits = GroupComponent.Limits;
+            var limits = groupComponent.Limits;
             if (limits != null)
             {
                 var blockKey = KeyOf(block);
@@ -254,7 +274,7 @@ namespace ShipCoreFramework
                     }
 
                     LimitBucket groupBucket;
-                    if (!GroupComponent.Limits.TryGetValue(limit, out groupBucket)) continue;
+                    if (!groupComponent.Limits.TryGetValue(limit, out groupBucket)) continue;
                     lock (groupBucket.BucketLock)
                     {
                         var idx = groupBucket.Members.IndexOf(block);
@@ -272,7 +292,7 @@ namespace ShipCoreFramework
 
             var funcBlock = block.FatBlock as IMyFunctionalBlock;
             if (funcBlock != null) funcBlock.EnabledChanged -= FuncBlockOnEnabledChanged;
-            GroupComponent.ApplyModifiers(GroupComponent.Modifiers);
+            groupComponent.ApplyModifiers(groupComponent.Modifiers);
         }
 
         private void FuncBlockOnEnabledChanged(IMyTerminalBlock obj)

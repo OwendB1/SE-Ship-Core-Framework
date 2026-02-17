@@ -23,8 +23,8 @@ namespace ShipCoreFramework
             Func<TOuter, IDictionary<TKey, TValue>> selector,
             int initialCapacity = 0)
         {
-            if (outers == null) throw new ArgumentNullException("outers");
-            if (selector == null) throw new ArgumentNullException("selector");
+            if (outers == null) throw new ArgumentNullException(nameof(outers));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
 
             var result = initialCapacity > 0
                 ? new Dictionary<TKey, TValue>(initialCapacity)
