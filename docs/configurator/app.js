@@ -118,6 +118,9 @@ function createDefaultCore() {
     maxBlocks: -1,
     maxMass: -1,
     maxPcu: -1,
+    maxBackupCores: -1,
+    maxPerFaction: -1,
+    minPerFaction: -1,
     maxPerPlayer: -1,
     forceBroadcast: false,
     forceBroadcastRange: 2000,
@@ -335,7 +338,12 @@ function renderShipCores() {
         <label class="inline">MaxBlocks <input data-action="core-maxblocks" data-c="${coreIndex}" class="small" type="number" value="${core.maxBlocks}" /></label>
         <label class="inline">MaxMass <input data-action="core-maxmass" data-c="${coreIndex}" class="small" type="number" value="${core.maxMass}" /></label>
         <label class="inline">MaxPCU <input data-action="core-maxpcu" data-c="${coreIndex}" class="small" type="number" value="${core.maxPcu}" /></label>
+      </div>
+      <div class="row wrap">
+        <label class="inline">MaxBackupCores <input data-action="core-maxbackupcores" data-c="${coreIndex}" class="small" type="number" value="${core.maxBackupCores}" /></label>
         <label class="inline">MaxPerPlayer <input data-action="core-maxpp" data-c="${coreIndex}" class="small" type="number" value="${core.maxPerPlayer}" /></label>
+        <label class="inline">MinPerFaction (MinPlayers) <input data-action="core-minpf" data-c="${coreIndex}" class="small" type="number" value="${core.minPerFaction}" /></label>
+        <label class="inline">MaxPerFaction <input data-action="core-maxpf" data-c="${coreIndex}" class="small" type="number" value="${core.maxPerFaction}" /></label>
       </div>
       <div class="row wrap">
         <label class="inline">ForceBroadcast <input data-action="core-fb" data-c="${coreIndex}" type="checkbox" ${core.forceBroadcast ? "checked" : ""}/></label>
@@ -438,6 +446,9 @@ function parseCoreXml(text, originalFileName = "") {
     maxBlocks: numberOf(coreNode, "MaxBlocks", -1),
     maxMass: numberOf(coreNode, "MaxMass", -1),
     maxPcu: numberOf(coreNode, "MaxPCU", -1),
+    maxBackupCores: numberOf(coreNode, "MaxBackupCores", -1),
+    maxPerFaction: numberOf(coreNode, "MaxPerFaction", -1),
+    minPerFaction: numberOf(coreNode, "MinPlayers", numberOf(coreNode, "MinPerFaction", -1)),
     maxPerPlayer: numberOf(coreNode, "MaxPerPlayer", -1),
     forceBroadcast: boolOf(coreNode, "ForceBroadCast", false),
     forceBroadcastRange: numberOf(coreNode, "ForceBroadCastRange", 2000),
@@ -615,7 +626,7 @@ function generateXml() {
 
   const cores = state.shipCores.map((core) => ({
     file: deriveCoreFilename(core),
-    body: `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(core.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(core.uniqueName)}</UniqueName>\n  <ForceBroadCast>${core.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${core.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(core.mobilityType)}</MobilityType>\n  <MaxBlocks>${core.maxBlocks}</MaxBlocks>\n  <MaxMass>${core.maxMass}</MaxMass>\n  <MaxPCU>${core.maxPcu}</MaxPCU>\n  <MaxPerPlayer>${core.maxPerPlayer}</MaxPerPlayer>\n  <SpeedBoostEnabled>${core.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(core.speedLimitType)}</SpeedLimitType>\n  <EnableActiveDefenseModifiers>${core.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeModifierXml("Modifiers", core.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeModifierXml("SpeedModifiers", core.speedModifiers, DEFAULT_SPEED_MODIFIERS)}\n${writeModifierXml("PassiveDefenseModifiers", core.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", core.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${core.blockLimits
+    body: `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(core.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(core.uniqueName)}</UniqueName>\n  <ForceBroadCast>${core.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${core.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(core.mobilityType)}</MobilityType>\n  <MaxBlocks>${core.maxBlocks}</MaxBlocks>\n  <MaxMass>${core.maxMass}</MaxMass>\n  <MaxPCU>${core.maxPcu}</MaxPCU>\n  <MaxBackupCores>${core.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${core.maxPerPlayer}</MaxPerPlayer>\n  <MinPlayers>${core.minPerFaction}</MinPlayers>\n  <MaxPerFaction>${core.maxPerFaction}</MaxPerFaction>\n  <SpeedBoostEnabled>${core.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(core.speedLimitType)}</SpeedLimitType>\n  <EnableActiveDefenseModifiers>${core.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeModifierXml("Modifiers", core.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeModifierXml("SpeedModifiers", core.speedModifiers, DEFAULT_SPEED_MODIFIERS)}\n${writeModifierXml("PassiveDefenseModifiers", core.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", core.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${core.blockLimits
       .map((limit) => `  <BlockLimits>\n    <Name>${escapeXml(limit.name)}</Name>\n${limit.blockGroups.map((g) => `    <BlockGroups>${escapeXml(g)}</BlockGroups>`).join("\n")}\n    <MaxCount>${limit.maxCount}</MaxCount>\n    <PunishByNoFlyZone>${limit.punishByNoFlyZone}</PunishByNoFlyZone>\n    <PunishmentType>${escapeXml(limit.punishmentType)}</PunishmentType>\n${(limit.allowedDirections || []).filter(Boolean).map((d) => `    <AllowedDirections>${escapeXml(d)}</AllowedDirections>`).join("\n")}\n  </BlockLimits>`)
       .join("\n")}\n</ShipCore>`
   }));
@@ -693,6 +704,9 @@ document.addEventListener("input", (event) => {
   if (action === "core-maxblocks") state.shipCores[coreIndex].maxBlocks = Number(target.value || -1);
   if (action === "core-maxmass") state.shipCores[coreIndex].maxMass = Number(target.value || -1);
   if (action === "core-maxpcu") state.shipCores[coreIndex].maxPcu = Number(target.value || -1);
+  if (action === "core-maxbackupcores") state.shipCores[coreIndex].maxBackupCores = Number(target.value || -1);
+  if (action === "core-maxpf") state.shipCores[coreIndex].maxPerFaction = Number(target.value || -1);
+  if (action === "core-minpf") state.shipCores[coreIndex].minPerFaction = Number(target.value || -1);
   if (action === "core-maxpp") state.shipCores[coreIndex].maxPerPlayer = Number(target.value || -1);
   if (action === "core-fbr") state.shipCores[coreIndex].forceBroadcastRange = Number(target.value || 0);
 
