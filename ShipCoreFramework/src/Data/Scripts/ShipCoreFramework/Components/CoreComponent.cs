@@ -32,26 +32,27 @@ namespace ShipCoreFramework
         public bool Init(IMyBeacon beacon, GridComponent gridComponent, GroupComponent groupComponent)
         {   
             CoreBlock = beacon;
-            if (CoreBlock.OwnerId == 0)
+            var builder = CoreBlock.SlimBlock.BuiltBy;
+            if (builder == 0)
             {
-                var found = false;
-                for (var i = 0; i < CoreBlock.SlimBlock.ComponentStack.GroupCount; i++)
-                {
-                    if (CoreBlock.SlimBlock.ComponentStack.GetComponentStackInfo(i).ComponentName != "Computer") continue;
-                    found = true;
-                    break;
-                }
-                
-                if (found)
-                {
-                    var name = CoreBlock.CustomName;
-                    Utils.ShowChatMessage($"Was not able to determine ownership of core { name }, removing from world!");
-                }
-                else
-                {
-                    var subType = Utils.GetBlockSubtypeId(CoreBlock.SlimBlock);
-                    Utils.ShowChatMessage($"Core {subType} does not have any computer components for its build thus it will never have ownership, removing from world!");
-                }
+                var name = CoreBlock.CustomName;
+                Utils.ShowChatMessage($"Was not able to determine builder of core { name }, removing from world!");
+                CoreBlock.SlimBlock.RemoveAndRefund();
+                return false;
+            }
+            
+            var foundComputerComps = false;
+            for (var i = 0; i < CoreBlock.SlimBlock.ComponentStack.GroupCount; i++)
+            {
+                if (CoreBlock.SlimBlock.ComponentStack.GetComponentStackInfo(i).ComponentName != "Computer") continue;
+                foundComputerComps = true;
+                break;
+            }
+
+            if (!foundComputerComps)
+            {
+                var subType = Utils.GetBlockSubtypeId(CoreBlock.SlimBlock);
+                Utils.ShowChatMessage($"Core {subType} does not have any computer components for its build thus it will never have ownership, removing from world!");
                 CoreBlock.SlimBlock.RemoveAndRefund();
                 return false;
             }
@@ -73,6 +74,8 @@ namespace ShipCoreFramework
                         return false;
                     }
                     break;
+                case MobilityType.Both:
+                default: break;
             }
             
             if (Session.Config.SelectedNoCore == null)
@@ -117,14 +120,14 @@ namespace ShipCoreFramework
                 MyAPIGateway.Players.GetPlayers(players);
                 if (players.Count > 0)
                 {
-                    var myPlayer = players.FirstOrDefault(p => p.IdentityId == CoreBlock.OwnerId);
+                    var myPlayer = players.FirstOrDefault(p => p.IdentityId == builder);
                     if (myPlayer != null && MyAPIGateway.Session.IsUserAdmin(myPlayer.SteamUserId) && MyAPIGateway.Session.IsUserIgnorePCULimit(myPlayer.SteamUserId))
                     {
                         Utils.ShowNotification("WARNING CORE IS PLACED BY ADMIN NOT OWNED!");
                     }
                     else
                     {
-                        Utils.ShowNotification("Cores can only be built by the grid owner!", 10000, CoreBlock.OwnerId, true);
+                        Utils.ShowNotification("Cores can only be built by the grid owner!", 10000, builder, true);
                         CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
                         return false;
                     }

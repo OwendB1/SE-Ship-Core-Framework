@@ -19,7 +19,8 @@ namespace ShipCoreFramework
             get
             {
                 var ownerId = MainCoreComponent?.CoreBlock.OwnerId ?? 0;
-                return ownerId != 0 ? ownerId : this.GetMajorityOwnerId();
+                ownerId = ownerId == 0 ? this.GetMajorityOwnerId() : ownerId;
+                return ownerId == 0 ? MainCoreComponent?.CoreBlock.SlimBlock.BuiltBy ?? 0 : ownerId;
             }
         }
         internal IMyFaction OwningFaction => MyAPIGateway.Session.Factions.TryGetPlayerFaction(OwnerId);
