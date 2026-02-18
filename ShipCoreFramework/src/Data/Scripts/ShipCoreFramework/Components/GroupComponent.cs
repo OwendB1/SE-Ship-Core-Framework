@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage.Game;
+using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRageMath;
 
@@ -14,13 +16,55 @@ namespace ShipCoreFramework
         internal ShipCore ShipCore => Session.Config.GetShipCoreByTypeId(MainCoreComponent?.SubtypeId ?? string.Empty);
         internal GridModifiers Modifiers => CubeGridModifiers.GetActiveModifiers(this);
         internal SpeedModifiers SpeedModifiers => CubeGridModifiers.GetActiveSpeedModifiers(this);
+        private long _lastOwnerId;
         internal long OwnerId
         {
             get
             {
                 var ownerId = MainCoreComponent?.CoreBlock.OwnerId ?? 0;
                 ownerId = ownerId == 0 ? this.GetMajorityOwnerId() : ownerId;
-                return ownerId == 0 ? MainCoreComponent?.CoreBlock.SlimBlock.BuiltBy ?? 0 : ownerId;
+                ownerId = ownerId == 0 ? MainCoreComponent?.CoreBlock.SlimBlock.BuiltBy ?? 0 : ownerId;
+                if (_lastOwnerId != 0 && ownerId != 0 && _lastOwnerId != ownerId)
+                {
+                    var relation = MyIDModule.GetRelationPlayerPlayer(_lastOwnerId, ownerId);
+                    if (relation != MyRelationsBetweenPlayers.Allies)
+                    {
+                        Utils.ShowChatMessage($"Not changing ownership to {ownerId} because it's not an ally!");
+                        var cube = MainCoreComponent?.CoreBlock as MyCubeBlock;
+                        cube?.ChangeOwner(_lastOwnerId, MyOwnershipShareModeEnum.Faction);
+                        return _lastOwnerId;
+                    }
+                    
+                    Utils.Log($"OwnerId: Changed from {_lastOwnerId} to {ownerId}", 2);
+                    var newOwningFaction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(ownerId);
+                    var oldOwningFaction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(_lastOwnerId);
+                    
+                    var coreType = ShipCore.SubtypeId;
+                    GridsPerFactionManager.RemoveGridGroup(oldOwningFaction, coreType);
+                    GridsPerPlayerManager.RemoveGridGroup(_lastOwnerId, coreType);
+                    
+                    GridsPerFactionManager.AddGridGroup(newOwningFaction, coreType);
+                    GridsPerPlayerManager.AddGridGroup(ownerId, coreType);
+                    
+                    var isWithinFactionLimits = GridsPerFactionManager.IsGroupWithinFactionLimits(newOwningFaction, ownerId, coreType);
+                    var isWithinPlayerLimits = GridsPerPlayerManager.IsGroupWithinPlayerLimits(ownerId, coreType);
+                    if (!isWithinFactionLimits || !isWithinPlayerLimits)
+                    {
+                        var cube = MainCoreComponent?.CoreBlock as MyCubeBlock;
+                        cube?.ChangeOwner(_lastOwnerId, MyOwnershipShareModeEnum.Faction);
+                        Utils.ShowChatMessage($"Changed ownership back from {ownerId} to {_lastOwnerId}, does not fit faction/player limits!");
+                        
+                        GridsPerFactionManager.RemoveGridGroup(newOwningFaction, coreType);
+                        GridsPerPlayerManager.RemoveGridGroup(ownerId, coreType);
+                    
+                        GridsPerFactionManager.AddGridGroup(oldOwningFaction, coreType);
+                        GridsPerPlayerManager.AddGridGroup(_lastOwnerId, coreType);
+                        
+                        ownerId = _lastOwnerId;
+                    }
+                }
+                _lastOwnerId = ownerId;
+                return ownerId;
             }
         }
         internal IMyFaction OwningFaction => MyAPIGateway.Session.Factions.TryGetPlayerFaction(OwnerId);
@@ -34,8 +78,8 @@ namespace ShipCoreFramework
         internal IMyGridGroupData MyGroup;
         internal CoreComponent MainCoreComponent;
         
-        internal readonly ConcurrentDictionary<BlockLimit, LimitBucket> Limits = new ConcurrentDictionary<BlockLimit, LimitBucket>();
-        internal readonly ConcurrentDictionary<MyCubeGrid, GridComponent> GridDictionary = new ConcurrentDictionary<MyCubeGrid, GridComponent>();
+        internal readonly Dictionary<BlockLimit, LimitBucket> Limits = new Dictionary<BlockLimit, LimitBucket>();
+        internal readonly Dictionary<MyCubeGrid, GridComponent> GridDictionary = new Dictionary<MyCubeGrid, GridComponent>();
         
         internal Dictionary<IMyCubeBlock, CoreComponent> CoreDictionary => Utils.Flatten(GridDictionary.Values, component => component.CoreDictionary);
         
@@ -90,23 +134,16 @@ namespace ShipCoreFramework
         
         internal void InitGrids()
         {
-            // Skip initialization for ignored factions/AI
-            if (Utils.IsIgnoredGroup(this))
-            {
-                Utils.Log($"InitGrids: Skipping ignored group (Faction: {OwningFaction?.Tag ?? "None"})", 2);
-                return;
-            }
-
             var tempGridList = new List<IMyCubeGrid>();
             MyGroup.GetGrids(tempGridList);
-
+            
             foreach (var myCubeGrid in tempGridList)
             {
                 var startGrid = (MyCubeGrid)myCubeGrid;
                 if (startGrid.IsPreview) return;
 
                 var gridComp = new GridComponent();
-                GridDictionary.TryAdd(startGrid, gridComp);
+                GridDictionary.Add(startGrid, gridComp);
                 gridComp.Init(startGrid, MyGroup);
             }
             
@@ -128,8 +165,8 @@ namespace ShipCoreFramework
             var grid = MainCoreComponent.GridComponent.Grid;
             Utils.Log($"Activate: Activating logic for {((IMyCubeGrid)grid).CustomName}!", 1);
 
-            GridsPerFactionManager.AddGridGroup(this);
-            GridsPerPlayerManager.AddGridGroup(this);
+            GridsPerFactionManager.AddGridGroup(OwningFaction, ShipCore.SubtypeId);
+            GridsPerPlayerManager.AddGridGroup(OwnerId, ShipCore.SubtypeId);
             
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
@@ -156,8 +193,8 @@ namespace ShipCoreFramework
                 var oldCore = Session.Config.GetShipCoreByTypeId(oldCoreSubtype);
                 oldCoreName = oldCore?.UniqueName ?? string.Empty;
                 Utils.Log($"Reset: Resetting logic for {oldGrid.CustomName}!", 2);
-                GridsPerFactionManager.RemoveGridGroup(this);
-                GridsPerPlayerManager.RemoveGridGroup(this);
+                GridsPerFactionManager.RemoveGridGroup(OwningFaction, oldCoreSubtype);
+                GridsPerPlayerManager.RemoveGridGroup(OwnerId, oldCoreSubtype);
                 old.IsMainCore = false;
             }
             MainCoreComponent = null;
@@ -180,6 +217,12 @@ namespace ShipCoreFramework
 
         internal void OnGridAdded(IMyGridGroupData addedTo, IMyCubeGrid grid, IMyGridGroupData removedFrom)
         {
+            if (Utils.IsIgnoredGroup(this))
+            {
+                Utils.Log($"OnGridAdded: Skipping ignored group (Faction: {OwningFaction?.Tag ?? "None"})", 2);
+                return;
+            }
+            
             var g = grid as MyCubeGrid;
             if (g == null || g.IsPreview) return;
 
@@ -209,15 +252,6 @@ namespace ShipCoreFramework
                 GridDictionary[g] = gc;
             }
             
-            if (Utils.IsIgnoredGroup(this))
-            {
-                Utils.Log($"OnGridAdded: Group became ignored after grid addition (Faction: {OwningFaction?.Tag ?? "None"})", 2);
-                if (MainCoreComponent != null)
-                {
-                    ResetCore();
-                }
-                return;
-            }
             RecalculateAllLimits();
             ModAPI.BroadcastGridAddedToGroup(grid.EntityId);
         }
@@ -225,6 +259,12 @@ namespace ShipCoreFramework
         internal void OnGridRemoved(IMyGridGroupData removedFrom, IMyCubeGrid grid, IMyGridGroupData addedTo)
         {
             if (addedTo != null) return;
+            if (Utils.IsIgnoredGroup(this))
+            {
+                Utils.Log($"OnGridAdded: Skipping ignored group (Faction: {OwningFaction?.Tag ?? "None"})", 2);
+                return;
+            }
+            
             var g = grid as MyCubeGrid;
             if (g == null) return;
 
@@ -394,8 +434,7 @@ namespace ShipCoreFramework
                 DirectionType.Down;
 
             var isValid = allowedDirections.Contains(xyDirection);
-            if (!isValid)
-                Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + ": the direction " + xyDirection + " is invalid",
+            if (!isValid) Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + ": the direction " + xyDirection + " is invalid",
                     10000, myCore.CubeGrid.BigOwners.FirstOrDefault(), true);
 
             return isValid;
@@ -647,8 +686,8 @@ namespace ShipCoreFramework
         {
             try
             {
-                GridsPerFactionManager.RemoveGridGroup(this);
-                GridsPerPlayerManager.RemoveGridGroup(this);
+                GridsPerFactionManager.RemoveGridGroup(OwningFaction, ShipCore.SubtypeId);
+                GridsPerPlayerManager.RemoveGridGroup(OwnerId, ShipCore.SubtypeId);
             }
             catch (Exception e)
             {

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
 {
@@ -17,10 +18,9 @@ namespace ShipCoreFramework
 
         private static ModConfig Config => Session.Config;
 
-        internal static bool IsGroupWithinFactionLimits(GroupComponent group, string coreType)
+        internal static bool IsGroupWithinFactionLimits(IMyFaction owningFaction, long ownerId, string coreType)
         {
-            if (!IsApplicableGrid(group)) return true;
-            var factionId = group.OwningFaction?.FactionId ?? -1;
+            var factionId = owningFaction?.FactionId ?? -1;
             if (!Config.IsValidCoreType(coreType))
             {
                 Utils.Log($"GridsPerFactionClass::IsGridWithinFactionLimits: Unknown core type id {coreType}", 3);
@@ -29,18 +29,17 @@ namespace ShipCoreFramework
 
             var maxAllowedGrids = Config.GetShipCoreByTypeId(coreType).MaxPerFaction;
             var minNeededPlayers = Config.GetShipCoreByTypeId(coreType).MinPlayers;
-            var firstBigOwner = group.OwnerId;
 
             if (maxAllowedGrids < 0) return true;
             if (factionId == -1 && minNeededPlayers > 1)
             {
-                Utils.ShowChatMessage($"Player is not in Faction [OwningPlayer:{firstBigOwner}] and therefore cannot build faction limited core: {coreType}");
+                Utils.ShowChatMessage($"Player is not in Faction [OwningPlayer:{ownerId}] and therefore cannot build faction limited core: {coreType}");
                 return false;
             }
 
-            if (group.OwningFaction?.Members.Count < minNeededPlayers)
+            if (owningFaction?.Members.Count < minNeededPlayers)
             {
-                Utils.ShowChatMessage($"{group.OwningFaction?.Members.Count}/{minNeededPlayers} players needed to build: {coreType}");
+                Utils.ShowChatMessage($"{owningFaction.Members.Count}/{minNeededPlayers} players needed to build: {coreType}");
                 return false;
             }
 
@@ -51,43 +50,41 @@ namespace ShipCoreFramework
             return false;
         }
 
-        internal static void AddGridGroup(GroupComponent group)
+        internal static void AddGridGroup(IMyFaction owningFaction, string coreType)
         {
-            if (!IsApplicableGrid(group)) return;
-            var factionId = group.OwningFaction?.FactionId ?? -1;
-            var coreType = group.ShipCore.SubtypeId;
+            Utils.Log($"GridsPerFactionClass::AddCubeGrid: Adding grid for faction {owningFaction?.FactionId} with core type {coreType}", 1);
+            if (owningFaction == null) return;
 
             Dictionary<string, int> perGroup;
-            if (!PerFaction.TryGetValue(factionId, out perGroup))
+            if (!PerFaction.TryGetValue(owningFaction.FactionId, out perGroup))
             {
                 perGroup = GetDefaultFactionGridsSet();
-                PerFaction[factionId] = perGroup;
+                PerFaction[owningFaction.FactionId] = perGroup;
             }
 
             if (!perGroup.ContainsKey(coreType))
             {
-                Utils.Log($"GridsPerFactionClass::AddCubeGrid: Missing entry for core type {coreType} in faction {factionId}", 1);
+                Utils.Log($"GridsPerFactionClass::AddCubeGrid: Missing entry for core type {coreType} in faction {owningFaction.FactionId}", 1);
                 perGroup[coreType] = 0;
             }
 
             perGroup[coreType]++;
-            if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = factionId, CoreType = coreType, Delta = 1 });
+            if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = owningFaction.FactionId, CoreType = coreType, Delta = 1 });
         }
 
-        internal static void RemoveGridGroup(GroupComponent group)
+        internal static void RemoveGridGroup(IMyFaction owningFaction, string coreType)
         {
-            var factionId = group.OwningFaction?.FactionId ?? -1;
-            var gridClassId = group.ShipCore.SubtypeId;
+            if (owningFaction == null) return;
             
             Dictionary<string, int> perGroup;
-            if (!PerFaction.TryGetValue(factionId, out perGroup)) return;
+            if (!PerFaction.TryGetValue(owningFaction.FactionId, out perGroup)) return;
             
             int value;
-            if (!perGroup.TryGetValue(gridClassId, out value)) return;
+            if (!perGroup.TryGetValue(coreType, out value)) return;
             if (value <= 0) return;
             
-            perGroup[gridClassId]--;
-            if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = factionId, CoreType = gridClassId, Delta = -1 });
+            perGroup[coreType]--;
+            if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = owningFaction.FactionId, CoreType = coreType, Delta = -1 });
         }
 
         internal static void Reset()
@@ -103,12 +100,6 @@ namespace ShipCoreFramework
 
         internal static void BeginExternalUpdate() { _suppressEvents = true; }
         internal static void EndExternalUpdate() { _suppressEvents = false; }
-
-        private static bool IsApplicableGrid(GroupComponent group)
-        {
-            if (Config.IgnoreAiFactions && group.OwningFaction != null && group.OwningFaction.IsEveryoneNpc()) return false;
-            return Config.IgnoredFactionTags == null || group.OwningFaction == null || !Config.IgnoredFactionTags.Contains(group.OwningFaction.Tag);
-        }
 
         private static Dictionary<string, int> GetDefaultFactionGridsSet()
         {

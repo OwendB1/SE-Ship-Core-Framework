@@ -316,17 +316,11 @@ namespace ShipCoreFramework
         internal static bool IsIgnoredGroup(GroupComponent group)
         {
             var faction = group.OwningFaction;
-            if (faction != null)
-            {
-                if (Session.Config.IgnoreAiFactions && faction.IsEveryoneNpc()) return true;
-                if (Session.Config.IgnoredFactionTags != null && Session.Config.IgnoredFactionTags.Contains(faction.Tag)) return true;
-            }
-            else if(group.OwnerId != 0)
-            {
-                var player = MyAPIGateway.Players.TryGetIdentityId(group.OwnerId);
-                if(player != null && player.IsBot && Session.Config.IgnoreAiFactions) return true;
-            }
-            return false;
+            if (Session.Config.IgnoredFactionTags != null && Session.Config.IgnoredFactionTags.Contains(faction?.Tag)) return true;
+
+            if (group.OwnerId == 0) return true;
+            var player = MyAPIGateway.Players.TryGetIdentityId(group.OwnerId);
+            return player.PromoteLevel == MyPromoteLevel.Admin && MyAPIGateway.Session.IsUserIgnorePCULimit(player.SteamUserId);
         }
     }
 

@@ -1,10 +1,8 @@
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI;
 using VRage.Game;
-using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
 {
@@ -95,8 +93,6 @@ namespace ShipCoreFramework
                                 && CoreBlock.Storage[Session.CoreStateStorageGUID] == "1";
             var groupHasMain = _groupComponent.MainCoreComponent != null;
             
-            CoreBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged;
-            CoreBlock.AppendingCustomInfo += AppendingCustomInfo;
             if (CheckIfCoreOfOtherTypeExists())
             {
                 Utils.Log($"Other Core Exist: {CoreBlock.CubeGrid.CustomName}", 3);
@@ -116,21 +112,16 @@ namespace ShipCoreFramework
             var relationship = CoreBlock.GetUserRelationToOwner(CoreBlock.CubeGrid.BigOwners.FirstOrDefault());
             if (relationship == MyRelationsBetweenPlayerAndBlock.Neutral || relationship == MyRelationsBetweenPlayerAndBlock.Enemies)
             {
-                var players = new List<IMyPlayer>();
-                MyAPIGateway.Players.GetPlayers(players);
-                if (players.Count > 0)
+                var builderSteamId = MyAPIGateway.Players.TryGetSteamId(builder);
+                if (MyAPIGateway.Session.IsUserAdmin(builderSteamId) && MyAPIGateway.Session.IsUserIgnorePCULimit(builderSteamId))
                 {
-                    var myPlayer = players.FirstOrDefault(p => p.IdentityId == builder);
-                    if (myPlayer != null && MyAPIGateway.Session.IsUserAdmin(myPlayer.SteamUserId) && MyAPIGateway.Session.IsUserIgnorePCULimit(myPlayer.SteamUserId))
-                    {
-                        Utils.ShowNotification("WARNING CORE IS PLACED BY ADMIN NOT OWNED!");
-                    }
-                    else
-                    {
-                        Utils.ShowNotification("Cores can only be built by the grid owner!", 10000, builder, true);
-                        CoreBlock.CubeGrid.RemoveBlock(CoreBlock.SlimBlock, true);
-                        return false;
-                    }
+                    Utils.ShowNotification("WARNING CORE IS PLACED BY ADMIN NOT OWNED!");
+                }
+                else
+                {
+                    Utils.ShowNotification("Cores can only be built by friendlies!", 10000, builder, true);
+                    CoreBlock.SlimBlock.RemoveAndRefund();
+                    return false;
                 }
             }
             
@@ -145,13 +136,15 @@ namespace ShipCoreFramework
                 IsMainCore = false;
             }
 
-            if (!GridsPerFactionManager.IsGroupWithinFactionLimits(_groupComponent, SubtypeId) || !GridsPerPlayerManager.IsGroupWithinPlayerLimits(_groupComponent, SubtypeId))
+            if (!GridsPerFactionManager.IsGroupWithinFactionLimits(_groupComponent.OwningFaction, _groupComponent.OwnerId, SubtypeId) || !GridsPerPlayerManager.IsGroupWithinPlayerLimits(_groupComponent.OwnerId, SubtypeId))
             {
                 CoreBlock.SlimBlock.RemoveAndRefund();
-                GridComponent.BlockRemoved(CoreBlock.SlimBlock);
                 _groupComponent.ResetCore();
                 return false;
             }
+            
+            CoreBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged;
+            CoreBlock.AppendingCustomInfo += AppendingCustomInfo;
 
             _groupComponent.DefenseValuesChanged();
             return true;

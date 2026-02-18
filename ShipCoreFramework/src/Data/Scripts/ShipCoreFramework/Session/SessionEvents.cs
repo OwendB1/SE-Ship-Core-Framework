@@ -11,11 +11,16 @@ namespace ShipCoreFramework
         private static void GridGroupsOnOnGridGroupCreated(IMyGridGroupData group)
         {
             if (group.LinkType != GridLinkTypeEnum.Mechanical) return;
+            
+            var tempGridList = new List<IMyCubeGrid>();
+            group.GetGrids(tempGridList);
+            if (Config.IgnoreAiFactions && tempGridList.Any(g => g.IsNpcSpawnedGrid)) return;
+            
             var gComp = new GroupComponent
             {
                 MyGroup = group
             };
-            GroupDict.TryAdd(group, gComp);
+            GroupDict.Add(group, gComp);
             
             gComp.InitGrids();
 

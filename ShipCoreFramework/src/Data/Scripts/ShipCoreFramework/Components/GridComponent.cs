@@ -13,8 +13,8 @@ namespace ShipCoreFramework
         internal IMyGridGroupData GroupData;
         private readonly object _blocksLock = new object();
         private readonly List<IMySlimBlock> _blocks = new List<IMySlimBlock>();
-        internal readonly ConcurrentDictionary<BlockLimit, LimitBucket> Limits = new ConcurrentDictionary<BlockLimit, LimitBucket>();
-        internal readonly ConcurrentDictionary<IMyCubeBlock, CoreComponent> CoreDictionary = new ConcurrentDictionary<IMyCubeBlock, CoreComponent>();
+        internal readonly Dictionary<BlockLimit, LimitBucket> Limits = new Dictionary<BlockLimit, LimitBucket>();
+        internal readonly Dictionary<IMyCubeBlock, CoreComponent> CoreDictionary = new Dictionary<IMyCubeBlock, CoreComponent>();
 
         private GroupComponent GroupComponent
         {
@@ -101,7 +101,7 @@ namespace ShipCoreFramework
                 var success = newCore.Init(beacon, this, groupComponent);
                 if (!success) return;
 
-                CoreDictionary.TryAdd(block.FatBlock, newCore);
+                CoreDictionary.Add(block.FatBlock, newCore);
 
                 if (!TryApplyLimitsOnAdd(block, limitBasedPunish)) return;
 

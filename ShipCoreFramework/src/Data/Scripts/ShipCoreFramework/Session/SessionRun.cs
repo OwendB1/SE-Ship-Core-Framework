@@ -23,12 +23,11 @@ namespace ShipCoreFramework
             
             var groupStartList = new List<IMyGridGroupData>();
             MyAPIGateway.GridGroups.GetGridGroups(GridLinkTypeEnum.Mechanical, groupStartList);
-            //Debug purposes got a world crash while loading
-            /*foreach(IMyGridGroupData Data in groupStartList)
+
+            foreach(var group in groupStartList)
             {
-                GridGroupsOnOnGridGroupCreated(Data);
-            }*/
-            MyAPIGateway.Parallel.ForEach(groupStartList, GridGroupsOnOnGridGroupCreated);
+                GridGroupsOnOnGridGroupCreated(group);
+            }
         }
         
         public override void LoadData()
