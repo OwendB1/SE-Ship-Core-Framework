@@ -52,7 +52,6 @@ namespace ShipCoreFramework
                     {
                         var cube = MainCoreComponent?.CoreBlock as MyCubeBlock;
                         cube?.ChangeOwner(_lastOwnerId, MyOwnershipShareModeEnum.Faction);
-                        Utils.ShowChatMessage($"Changed ownership back from {ownerId} to {_lastOwnerId}, does not fit faction/player limits!");
                         
                         GridsPerFactionManager.RemoveGridGroup(newOwningFaction, coreType);
                         GridsPerPlayerManager.RemoveGridGroup(ownerId, coreType);
@@ -217,12 +216,6 @@ namespace ShipCoreFramework
 
         internal void OnGridAdded(IMyGridGroupData addedTo, IMyCubeGrid grid, IMyGridGroupData removedFrom)
         {
-            if (Utils.IsIgnoredGroup(this))
-            {
-                Utils.Log($"OnGridAdded: Skipping ignored group (Faction: {OwningFaction?.Tag ?? "None"})", 2);
-                return;
-            }
-            
             var g = grid as MyCubeGrid;
             if (g == null || g.IsPreview) return;
 
@@ -252,8 +245,22 @@ namespace ShipCoreFramework
                 GridDictionary[g] = gc;
             }
             
-            RecalculateAllLimits();
-            ModAPI.BroadcastGridAddedToGroup(grid.EntityId);
+            // Needs to be done full frame later as otherwise not all grids have gone through activation
+            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+            {
+                if (Utils.IsIgnoredGroup(this))
+                {
+                    Utils.Log($"OnGridAdded: Group became ignored after grid addition (Faction: {OwningFaction?.Tag ?? "None"})", 2);
+                    if (MainCoreComponent != null)
+                    {
+                        ResetCore();
+                    }
+                    return;
+                }
+            
+                RecalculateAllLimits();
+                ModAPI.BroadcastGridAddedToGroup(grid.EntityId);
+            });
         }
 
         internal void OnGridRemoved(IMyGridGroupData removedFrom, IMyCubeGrid grid, IMyGridGroupData addedTo)

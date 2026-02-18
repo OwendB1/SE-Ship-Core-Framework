@@ -46,7 +46,7 @@ namespace ShipCoreFramework
             if (!PerFaction.ContainsKey(factionId) || !PerFaction[factionId].ContainsKey(coreType)) return true;
             var currentCount = PerFaction[factionId][coreType];
             if (currentCount <= maxAllowedGrids) return true;
-            Utils.ShowChatMessage($"Faction limit reached, you have {currentCount}/{maxAllowedGrids} {coreType} built!");
+            Utils.ShowChatMessage($"Faction limit reached, you already have {currentCount - 1}/{maxAllowedGrids} {coreType} built!");
             return false;
         }
 

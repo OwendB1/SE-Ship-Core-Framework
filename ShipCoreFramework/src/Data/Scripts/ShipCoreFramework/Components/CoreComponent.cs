@@ -136,7 +136,8 @@ namespace ShipCoreFramework
                 IsMainCore = false;
             }
 
-            if (!GridsPerFactionManager.IsGroupWithinFactionLimits(_groupComponent.OwningFaction, _groupComponent.OwnerId, SubtypeId) || !GridsPerPlayerManager.IsGroupWithinPlayerLimits(_groupComponent.OwnerId, SubtypeId))
+            if (!GridsPerFactionManager.IsGroupWithinFactionLimits(_groupComponent.OwningFaction, _groupComponent.OwnerId, SubtypeId) 
+                || !GridsPerPlayerManager.IsGroupWithinPlayerLimits(_groupComponent.OwnerId, SubtypeId))
             {
                 CoreBlock.SlimBlock.RemoveAndRefund();
                 _groupComponent.ResetCore();
@@ -155,7 +156,7 @@ namespace ShipCoreFramework
             _groupComponent.DefenseValuesChanged();
         }
         
-        private void AppendingCustomInfo(IMyTerminalBlock block, StringBuilder myText)
+        private static void AppendingCustomInfo(IMyTerminalBlock block, StringBuilder myText)
         {
             var targetGrid=block.CubeGrid;
             var groupKvp = Session.GroupDict.FirstOrDefault(gk => gk.Value.GridDictionary.Any(kvp => kvp.Key == targetGrid));

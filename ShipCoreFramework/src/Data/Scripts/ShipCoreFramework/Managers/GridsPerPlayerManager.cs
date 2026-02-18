@@ -17,21 +17,21 @@ namespace ShipCoreFramework
 
         private static ModConfig Config => Session.Config;
 
-        internal static bool IsGroupWithinPlayerLimits(long ownerId, string newCoreType)
+        internal static bool IsGroupWithinPlayerLimits(long ownerId, string coreType)
         {
-            if (!Config.IsValidCoreType(newCoreType))
+            if (!Config.IsValidCoreType(coreType))
             {
-                Utils.ShowChatMessage($"GridsPerPlayerClass::IsGridWithinPlayerLimits: Unknown core type id {newCoreType}");
+                Utils.ShowChatMessage($"GridsPerPlayerClass::IsGridWithinPlayerLimits: Unknown core type id {coreType}");
                 return false;
             }
 
-            if (PerPlayer.ContainsKey(ownerId) && PerPlayer[ownerId].ContainsKey(newCoreType))
+            if (PerPlayer.ContainsKey(ownerId) && PerPlayer[ownerId].ContainsKey(coreType))
             {
-                var maxAllowedGrids = Config.GetShipCoreByTypeId(newCoreType).MaxPerPlayer;
+                var maxAllowedGrids = Config.GetShipCoreByTypeId(coreType).MaxPerPlayer;
                 if (maxAllowedGrids < 0) return true;
-                var currentCount = PerPlayer[ownerId][newCoreType];
+                var currentCount = PerPlayer[ownerId][coreType];
                 if (currentCount <= maxAllowedGrids) return true;
-                Utils.ShowChatMessage("Per player limit of this core has been hit!");
+                Utils.ShowChatMessage($"Player limit reached, you already have {currentCount - 1}/{maxAllowedGrids} {coreType} built!");
                 return false;
             }
 
