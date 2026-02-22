@@ -110,6 +110,8 @@ namespace ShipCoreFramework
         private float _activeDefenseCooldownTimer;
         private float _activeDefenseDurationTimer;
 
+        private bool _closing;
+
         internal float ActiveDefenseDuration
         {
             get
@@ -152,6 +154,7 @@ namespace ShipCoreFramework
             // Needs to be done full frame later as otherwise not all grids have gone through activation
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
+                if(_closing) return;
                 RecalculateAllLimits();
                 EnforceGroupPunishment();
             });
@@ -176,6 +179,7 @@ namespace ShipCoreFramework
             
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
+                if(_closing) return;
                 RecalculateAllLimits();
                 ApplyModifiers(Modifiers);
                 EnforceGroupPunishment();
@@ -214,6 +218,7 @@ namespace ShipCoreFramework
             
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
+                if(_closing) return;
                 RecalculateAllLimits();
                 ApplyModifiers(Modifiers);
                 EnforceGroupPunishment();
@@ -698,6 +703,7 @@ namespace ShipCoreFramework
 
         internal void Clean()
         {
+            _closing = true;
             try
             {
                 GridsPerFactionManager.RemoveGridGroup(OwningFaction, ShipCore.SubtypeId);

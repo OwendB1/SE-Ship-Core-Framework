@@ -303,8 +303,7 @@ namespace ShipCoreFramework
         internal static bool TryFindByGridId(long gridEntityId, out GroupComponent group)
         {
             foreach (var gc in Session.GroupDict.Select(kv => kv.Value)
-                         .Where(gc => gc.GridDictionary.Keys
-                             .Any(g => g != null && g.EntityId == gridEntityId)))
+                         .Where(gc => gc.GridDictionary.Keys.Any(g => g != null && g.EntityId == gridEntityId)))
             {
                 group = gc;
                 return true;
@@ -317,8 +316,8 @@ namespace ShipCoreFramework
         {
             if (group.OwnerId == 0) return true;
             var player = MyAPIGateway.Players.TryGetIdentityId(group.OwnerId);
-            if (player.PromoteLevel == MyPromoteLevel.Admin && MyAPIGateway.Session.IsUserIgnorePCULimit(player.SteamUserId)) return true;
-            
+            if (player != null && player.PromoteLevel == MyPromoteLevel.Admin && MyAPIGateway.Session.IsUserIgnorePCULimit(player.SteamUserId)) return true;
+
             var faction = group.OwningFaction;
             return Session.Config.IgnoredFactionTags != null && Session.Config.IgnoredFactionTags.Contains(faction?.Tag);
         }
