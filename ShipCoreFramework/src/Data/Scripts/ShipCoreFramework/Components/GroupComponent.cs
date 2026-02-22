@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.Entities;
@@ -21,9 +20,13 @@ namespace ShipCoreFramework
         {
             get
             {
-                var ownerId = MainCoreComponent?.CoreBlock.OwnerId ?? 0;
-                ownerId = ownerId == 0 ? this.GetMajorityOwnerId() : ownerId;
-                ownerId = ownerId == 0 ? MainCoreComponent?.CoreBlock.SlimBlock.BuiltBy ?? 0 : ownerId;
+                long ownerId;
+                if (MainCoreComponent != null)
+                {
+                    ownerId = MainCoreComponent.CoreBlock.OwnerId;
+                    ownerId = ownerId == 0 ? MainCoreComponent.CoreBlock.SlimBlock.BuiltBy : ownerId;
+                } else ownerId = this.GetMajorityOwnerId();
+                
                 if (_lastOwnerId != 0 && ownerId != 0 && _lastOwnerId != ownerId)
                 {
                     var relation = MyIDModule.GetRelationPlayerPlayer(_lastOwnerId, ownerId);
@@ -145,9 +148,13 @@ namespace ShipCoreFramework
                 GridDictionary.Add(startGrid, gridComp);
                 gridComp.Init(startGrid, MyGroup);
             }
-            
-            RecalculateAllLimits();
-            EnforceGroupPunishment();
+
+            // Needs to be done full frame later as otherwise not all grids have gone through activation
+            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+            {
+                RecalculateAllLimits();
+                EnforceGroupPunishment();
+            });
         }
 
         internal void Activate(CoreComponent coreComponent)
@@ -248,7 +255,7 @@ namespace ShipCoreFramework
             // Needs to be done full frame later as otherwise not all grids have gone through activation
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
-                if (Utils.IsIgnoredGroup(this))
+                if (this.IsIgnoredGroup())
                 {
                     Utils.Log($"OnGridAdded: Group became ignored after grid addition (Faction: {OwningFaction?.Tag ?? "None"})", 2);
                     if (MainCoreComponent != null)
@@ -266,7 +273,7 @@ namespace ShipCoreFramework
         internal void OnGridRemoved(IMyGridGroupData removedFrom, IMyCubeGrid grid, IMyGridGroupData addedTo)
         {
             if (addedTo != null) return;
-            if (Utils.IsIgnoredGroup(this))
+            if (this.IsIgnoredGroup())
             {
                 Utils.Log($"OnGridAdded: Skipping ignored group (Faction: {OwningFaction?.Tag ?? "None"})", 2);
                 return;
@@ -289,7 +296,7 @@ namespace ShipCoreFramework
         private void EnforceGroupPunishment()
         {
             // Skip block limit enforcement for ignored factions/AI
-            if (Utils.IsIgnoredGroup(this))
+            if (this.IsIgnoredGroup())
             {
                 return;
             }

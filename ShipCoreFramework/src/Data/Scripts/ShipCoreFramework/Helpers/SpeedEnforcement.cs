@@ -12,7 +12,7 @@ namespace ShipCoreFramework
     {
         internal static void EnforceSpeedLimit(GroupComponent groupComponent)
         {
-            if (Utils.IsIgnoredGroup(groupComponent)) return;
+            if (groupComponent.IsIgnoredGroup()) return;
             if (groupComponent.GridDictionary.Count == 0) return;
 
             var physicalGroup = groupComponent.GridDictionary.Keys.First().GetGridGroup(GridLinkTypeEnum.Physical);

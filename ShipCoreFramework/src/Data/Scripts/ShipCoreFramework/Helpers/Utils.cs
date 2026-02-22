@@ -313,14 +313,14 @@ namespace ShipCoreFramework
             return false;
         }
 
-        internal static bool IsIgnoredGroup(GroupComponent group)
+        internal static bool IsIgnoredGroup(this GroupComponent group)
         {
-            var faction = group.OwningFaction;
-            if (Session.Config.IgnoredFactionTags != null && Session.Config.IgnoredFactionTags.Contains(faction?.Tag)) return true;
-
             if (group.OwnerId == 0) return true;
             var player = MyAPIGateway.Players.TryGetIdentityId(group.OwnerId);
-            return player.PromoteLevel == MyPromoteLevel.Admin && MyAPIGateway.Session.IsUserIgnorePCULimit(player.SteamUserId);
+            if (player.PromoteLevel == MyPromoteLevel.Admin && MyAPIGateway.Session.IsUserIgnorePCULimit(player.SteamUserId)) return true;
+            
+            var faction = group.OwningFaction;
+            return Session.Config.IgnoredFactionTags != null && Session.Config.IgnoredFactionTags.Contains(faction?.Tag);
         }
     }
 

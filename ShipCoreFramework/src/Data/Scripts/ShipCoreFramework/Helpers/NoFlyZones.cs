@@ -16,7 +16,7 @@ namespace ShipCoreFramework
             if (Session.Config.NoFlyZones == null || Session.Config.NoFlyZones.Count == 0) return;
 
             // Skip no-fly zone enforcement for ignored factions/AI
-            if (Utils.IsIgnoredGroup(groupComponent))
+            if (groupComponent.IsIgnoredGroup())
             {
                 return;
             }
