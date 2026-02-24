@@ -399,9 +399,9 @@ namespace ShipCoreFramework
                 var mainCoreBlock = MainCoreComponent?.CoreBlock;
                 if (mainCoreBlock != null)
                 {
-                    if (!mainCoreBlock.IsFunctional)
+                    if (!mainCoreBlock.IsWorking)
                     {
-                        var newMain = CoreDictionary.Values.FirstOrDefault(core => !core.IsMainCore && core.CoreBlock.IsFunctional);
+                        var newMain = CoreDictionary.Values.FirstOrDefault(core => !core.IsMainCore && core.CoreBlock.IsWorking);
                         if (newMain != null)
                         {
                             Utils.ShowNotification($"Switching to new main core: {newMain.CoreBlock.CustomName}, old one was no longer functional!");
@@ -682,6 +682,7 @@ namespace ShipCoreFramework
                 MainCoreComponent = newMain;
                 MainCoreComponent.IsMainCore = true;
             }
+            EnforceOverCapacity();
         }
         
         private void RecalculateAllLimits()

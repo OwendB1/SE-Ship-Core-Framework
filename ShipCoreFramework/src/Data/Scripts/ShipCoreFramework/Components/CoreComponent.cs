@@ -3,6 +3,7 @@ using System.Text;
 using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI;
 using VRage.Game;
+using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
 {
@@ -146,14 +147,31 @@ namespace ShipCoreFramework
             
             CoreBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged;
             CoreBlock.AppendingCustomInfo += AppendingCustomInfo;
+            CoreBlock.IsWorkingChanged += OnIsWorkingChanged;
+            CoreBlock.PropertiesChanged += CoreBlockOnPropertiesChanged;
 
             _groupComponent.DefenseValuesChanged();
             return true;
         }
-        
+
+        private void OnIsWorkingChanged(IMyCubeBlock obj)
+        {
+            _groupComponent.EnforceOverCapacity();
+        }
+
         private void OnUpgradeValuesChanged()
         {
             _groupComponent.DefenseValuesChanged();
+        }
+        
+        private void CoreBlockOnPropertiesChanged(IMyTerminalBlock obj)
+        {
+            var core = _groupComponent.ShipCore;
+            if (core == null) return;
+            if (!core.ForceBroadCast || !IsMainCore) return;
+            
+            CoreBlock.Radius = core.ForceBroadCastRange;
+            if(!CoreBlock.HudText.Contains(core.UniqueName)) CoreBlock.HudText = $"{CoreBlock.CubeGrid.DisplayName} : {core.UniqueName}";
         }
         
         private static void AppendingCustomInfo(IMyTerminalBlock block, StringBuilder myText)
@@ -183,7 +201,7 @@ namespace ShipCoreFramework
             if (CoreBlock.Storage == null) CoreBlock.Storage = new MyModStorageComponent();
             CoreBlock.Storage[Session.CoreStateStorageGUID] = IsMainCore ? "1" : "0";
         }
-        
+
         internal void CoreDestroyed()
         {
             var grid = CoreBlock.CubeGrid;
@@ -192,6 +210,11 @@ namespace ShipCoreFramework
                     ? $"Main core of grid {grid.CustomName} was destroyed!"
                     : $"A backup core of grid {grid.CustomName} was destroyed!",
                 10000, grid.BigOwners.FirstOrDefault(), true);
+
+            CoreBlock.OnUpgradeValuesChanged -= OnUpgradeValuesChanged;
+            CoreBlock.AppendingCustomInfo -= AppendingCustomInfo;
+            CoreBlock.IsWorkingChanged -= OnIsWorkingChanged;
+            CoreBlock.PropertiesChanged -= CoreBlockOnPropertiesChanged;
 
             // Delegate to a group to handle removal and failover deterministically
             _groupComponent.CoreRemoved(this);
