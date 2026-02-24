@@ -171,6 +171,7 @@ namespace ShipCoreFramework
 
             _tick++;
             var runNfz = _tick % 10 == 0;
+            var runBroadcast = _tick % 10 == 0;
             var doPunish = _tick % 60 == 0;
 
             MyAPIGateway.Parallel.StartBackground(() =>
@@ -180,8 +181,8 @@ namespace ShipCoreFramework
                     kvp.Value.RunBoostTimerTick();
                     kvp.Value.RunActiveDefenseTimerTick();
                     SpeedEnforcement.EnforceSpeedLimit(kvp.Value);
-                    
-                    if (runNfz) NoFlyZones.EnforceNoFlyZones(kvp.Value, doPunish);
+                    if(runBroadcast) BroadcastEnforcement.EnforceBroadcast(kvp.Value);
+                    if (runNfz) NoFlyZoneEnforcement.EnforceNoFlyZones(kvp.Value, doPunish);
                 });
             });
         }

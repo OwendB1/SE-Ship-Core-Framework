@@ -81,13 +81,10 @@ namespace ShipCoreFramework
                 if (old != null)
                 {
                     old.IsMainCore = false;
-                    old.SaveCoreState();
-                    old.CoreBlock?.RefreshCustomInfo();
                 }
-
-                newMain.IsMainCore = true;
-                newMain.SaveCoreState();
-                newMain.CoreBlock?.RefreshCustomInfo();
+                
+                group.MainCoreComponent = newMain;
+                group.MainCoreComponent.IsMainCore = true;
             }
             
             var players = new List<IMyPlayer>();
@@ -129,9 +126,6 @@ namespace ShipCoreFramework
             {
                 var isMain = kv.Key == block;
                 kv.Value.IsMainCore = isMain;
-                kv.Value.SaveCoreState();
-                var terminal = kv.Key as IMyTerminalBlock;
-                terminal?.RefreshCustomInfo();
             }
         }
     }

@@ -366,7 +366,7 @@ namespace ShipCoreFramework
             }
         }
 
-        private void EnforceOverCapacity()
+        internal void EnforceOverCapacity()
         {
             if ((ShipCore.MaxBlocks > 0 && GroupBlocksCount >= ShipCore.MaxBlocks) ||
                 (ShipCore.MaxPCU > 0 && GroupPCU >= ShipCore.MaxPCU) ||
@@ -380,7 +380,7 @@ namespace ShipCoreFramework
                     PunishSpeed = true;
                 }
                 
-                var modifiers = GetPassiveDefenseModifiers();
+                var modifiers = _activeDefenseEnabled ? GetActiveDefenseModifiers() : GetPassiveDefenseModifiers();
                 foreach (var kvp in GridDictionary)
                 {
                     CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
@@ -395,17 +395,34 @@ namespace ShipCoreFramework
                     PunishModifiers = false;
                     PunishSpeed = false;
                 }
-                var modifiers1 = GetPassiveDefenseModifiers();
-                foreach (var kvp in GridDictionary)
+                
+                var mainCoreBlock = MainCoreComponent?.CoreBlock;
+                if (mainCoreBlock != null)
                 {
-                    CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers1;
+                    if (!mainCoreBlock.IsFunctional)
+                    {
+                        var newMain = CoreDictionary.Values.FirstOrDefault(core => !core.IsMainCore && core.CoreBlock.IsFunctional);
+                        if (newMain != null)
+                        {
+                            Utils.ShowNotification($"Switching to new main core: {newMain.CoreBlock.CustomName}, old one was no longer functional!");
+                            MainCoreComponent.IsMainCore = false;
+                            
+                            MainCoreComponent = newMain;
+                            MainCoreComponent.IsMainCore = true;
+                        }
+                        else
+                        {
+                            PunishModifiers = true;
+                            PunishSpeed = true;
+                            ApplyModifiers(Modifiers);
+                        }
+                    }
                 }
-
-                if (!ShipCore.ForceBroadCast || CoreDictionary.Select(kvp => kvp.Key as IMyFunctionalBlock).Any(func => func != null && func.Enabled)) return;
-                var modifiers2 = GetPassiveDefenseModifiers();
+                
+                var modifiers = _activeDefenseEnabled ? GetActiveDefenseModifiers() : GetPassiveDefenseModifiers();
                 foreach (var kvp in GridDictionary)
                 {
-                    CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers2;
+                    CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
                 }
             }
         }
@@ -419,8 +436,7 @@ namespace ShipCoreFramework
                 {
                     var fatBlock = bl?.FatBlock;
                     var terminalBlock = fatBlock as IMyTerminalBlock;
-                    if (terminalBlock != null)
-                        CubeGridModifiers.ApplyModifiers(terminalBlock, modifiers);
+                    if (terminalBlock != null) CubeGridModifiers.ApplyModifiers(terminalBlock, modifiers);
                 }
             }
         }
@@ -594,6 +610,20 @@ namespace ShipCoreFramework
                 return ShipCore.ActiveDefenseModifiers;
             }
 
+            if (PunishModifiers)
+            {
+                return new GridDefenseModifiers
+                {
+                    Bullet = ShipCore.ActiveDefenseModifiers.Bullet * MainCoreComponent.CoreBlock.UpgradeValues["ActiveBulletDamage"] * 2,
+                    Rocket = ShipCore.ActiveDefenseModifiers.Rocket * MainCoreComponent.CoreBlock.UpgradeValues["ActiveRocketDamage"] * 2,
+                    Explosion = ShipCore.ActiveDefenseModifiers.Explosion * MainCoreComponent.CoreBlock.UpgradeValues["ActiveExplosionDamage"] * 2,
+                    Environment = ShipCore.ActiveDefenseModifiers.Environment * MainCoreComponent.CoreBlock.UpgradeValues["ActiveEnvironmentDamage"] * 2,
+                    PostShield = ShipCore.ActiveDefenseModifiers.PostShield * MainCoreComponent.CoreBlock.UpgradeValues["ActivePostShieldDamage"] * 2,
+                    Kinetic = ShipCore.ActiveDefenseModifiers.Kinetic * MainCoreComponent.CoreBlock.UpgradeValues["ActiveKineticDamage"] * 2,
+                    Energy = ShipCore.ActiveDefenseModifiers.Energy * MainCoreComponent.CoreBlock.UpgradeValues["ActiveEnergyDamage"] * 2
+                };
+            }
+
             return new GridDefenseModifiers
             {
                 Bullet = ShipCore.ActiveDefenseModifiers.Bullet * MainCoreComponent.CoreBlock.UpgradeValues["ActiveBulletDamage"],
@@ -626,19 +656,17 @@ namespace ShipCoreFramework
                     Energy = ShipCore.PassiveDefenseModifiers.Energy * MainCoreComponent.CoreBlock.UpgradeValues["PassiveEnergyDamage"] * 2
                 };
             }
-            else
+
+            return new GridDefenseModifiers
             {
-                return new GridDefenseModifiers
-                {
-                    Bullet = ShipCore.PassiveDefenseModifiers.Bullet * MainCoreComponent.CoreBlock.UpgradeValues["PassiveBulletDamage"],
-                    Rocket = ShipCore.PassiveDefenseModifiers.Rocket * MainCoreComponent.CoreBlock.UpgradeValues["PassiveRocketDamage"],
-                    Explosion = ShipCore.PassiveDefenseModifiers.Explosion * MainCoreComponent.CoreBlock.UpgradeValues["PassiveExplosionDamage"],
-                    Environment = ShipCore.PassiveDefenseModifiers.Environment * MainCoreComponent.CoreBlock.UpgradeValues["PassiveEnvironmentDamage"],
-                    PostShield = ShipCore.PassiveDefenseModifiers.PostShield * MainCoreComponent.CoreBlock.UpgradeValues["PassivePostShieldDamage"],
-                    Kinetic = ShipCore.PassiveDefenseModifiers.Kinetic * MainCoreComponent.CoreBlock.UpgradeValues["PassiveKineticDamage"],
-                    Energy = ShipCore.PassiveDefenseModifiers.Energy * MainCoreComponent.CoreBlock.UpgradeValues["PassiveEnergyDamage"]
-                };
-            }
+                Bullet = ShipCore.PassiveDefenseModifiers.Bullet * MainCoreComponent.CoreBlock.UpgradeValues["PassiveBulletDamage"],
+                Rocket = ShipCore.PassiveDefenseModifiers.Rocket * MainCoreComponent.CoreBlock.UpgradeValues["PassiveRocketDamage"],
+                Explosion = ShipCore.PassiveDefenseModifiers.Explosion * MainCoreComponent.CoreBlock.UpgradeValues["PassiveExplosionDamage"],
+                Environment = ShipCore.PassiveDefenseModifiers.Environment * MainCoreComponent.CoreBlock.UpgradeValues["PassiveEnvironmentDamage"],
+                PostShield = ShipCore.PassiveDefenseModifiers.PostShield * MainCoreComponent.CoreBlock.UpgradeValues["PassivePostShieldDamage"],
+                Kinetic = ShipCore.PassiveDefenseModifiers.Kinetic * MainCoreComponent.CoreBlock.UpgradeValues["PassiveKineticDamage"],
+                Energy = ShipCore.PassiveDefenseModifiers.Energy * MainCoreComponent.CoreBlock.UpgradeValues["PassiveEnergyDamage"]
+            };
         }
 
         internal void CoreRemoved(CoreComponent lost)
@@ -653,8 +681,6 @@ namespace ShipCoreFramework
             {
                 MainCoreComponent = newMain;
                 MainCoreComponent.IsMainCore = true;
-                MainCoreComponent.SaveCoreState();
-                MainCoreComponent.CoreBlock?.RefreshCustomInfo();
             }
         }
         

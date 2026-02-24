@@ -38,12 +38,12 @@ namespace ShipCoreFramework
                        && cc.IsMainCore;
             };
 
-            checkbox.Enabled = b => {
+            checkbox.Enabled = TerminalChainedDelegate.Create(checkbox.Enabled, b => {
                 var group = b.GetGroupComponent();
                 if (group == null) return false;
                 CoreComponent cc;
                 return group.CoreDictionary.TryGetValue((MyCubeBlock)b, out cc) && !cc.IsMainCore;
-            };
+            });
 
             checkbox.Setter = (b, val) =>
             {

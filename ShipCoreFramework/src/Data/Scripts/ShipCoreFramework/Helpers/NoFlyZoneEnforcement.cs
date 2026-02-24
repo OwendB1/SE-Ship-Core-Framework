@@ -7,7 +7,7 @@ using VRageMath;
 
 namespace ShipCoreFramework
 {
-    internal static class NoFlyZones
+    internal static class NoFlyZoneEnforcement
     {
         private static readonly MyStringHash DamageTypeNoFlyZone = MyStringHash.GetOrCompute("NoFLyZoneViolation");
         

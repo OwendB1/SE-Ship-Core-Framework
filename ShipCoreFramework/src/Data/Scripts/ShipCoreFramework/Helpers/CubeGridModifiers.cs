@@ -87,6 +87,7 @@ namespace ShipCoreFramework
             
             return enhancedModifiers;
         }
+        
         internal static SpeedModifiers GetActiveSpeedModifiers(GroupComponent gridGroupComponentLogic)
         {
             if (gridGroupComponentLogic.PunishModifiers) return Session.Config.SelectedNoCore.SpeedModifiers;
@@ -111,10 +112,10 @@ namespace ShipCoreFramework
             enhancedModifiers.MaximumFrictionDeceleration = shipCore.SpeedModifiers.MaximumFrictionDeceleration
                                                            * myBlock.CoreBlock.UpgradeValues["MaximumFrictionDeceleration"]
                                                            * myBlock.CoreBlock.UpgradeValues["BoostResistance"];
-
             
             return enhancedModifiers;
         }
+        
         public static void ApplyModifiers(IMyCubeBlock block, GridModifiers modifiers)
         {
             var id = ((IMyTerminalBlock)block).BlockDefinition;
@@ -225,7 +226,7 @@ namespace ShipCoreFramework
             }
             
         }
-        //Works 100%
+        
         public static void GridCoreDamageHandler(object target, ref MyDamageInformation damageInfo)
         {
             var myBlock = target as IMySlimBlock;

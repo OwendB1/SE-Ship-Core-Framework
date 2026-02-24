@@ -178,7 +178,7 @@ namespace ShipCoreFramework
             });
         }
         
-        internal void SaveCoreState()
+        private void SaveCoreState()
         {
             if (CoreBlock.Storage == null) CoreBlock.Storage = new MyModStorageComponent();
             CoreBlock.Storage[Session.CoreStateStorageGUID] = IsMainCore ? "1" : "0";
