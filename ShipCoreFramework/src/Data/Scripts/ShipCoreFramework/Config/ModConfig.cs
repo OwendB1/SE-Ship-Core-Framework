@@ -47,6 +47,8 @@ namespace ShipCoreFramework
 
         public void SaveConfig(bool showInChat = false)
         {
+            if (!Session.IsServer) return;
+
             try
             {
                 var globalConfigWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig));
@@ -59,6 +61,8 @@ namespace ShipCoreFramework
                 Utils.Log($"Stored Data In World Config: : Saved {IgnoredFactionsKey}", showInChat ? 3 : 0);
                 Utils.SaveToSandbox(SelectedNoCoreKey, SelectedNoCore);
                 Utils.Log($"Stored Data In World Config: : Saved {SelectedNoCoreKey}", showInChat ? 3 : 0);
+
+                if (Session.MpActive) Session.BroadcastConfigToClients();
             }
             catch (Exception e)
             {
@@ -72,35 +76,23 @@ namespace ShipCoreFramework
         
         public void LoadConfig()
         {
+            LoadConfig(Session.IsServer);
+        }
+
+        public void LoadConfig(bool allowWorldStorageReadWrite)
+        {
             //Get World Settings
-            if (MyAPIGateway.Utilities.FileExistsInWorldStorage(GlobalConfigFileName, typeof(ModConfig)))
+            if (allowWorldStorageReadWrite && MyAPIGateway.Utilities.FileExistsInWorldStorage(GlobalConfigFileName, typeof(ModConfig)))
             {
                 using (var reader = MyAPIGateway.Utilities.ReadFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig)))
                 {
                     var text = reader.ReadToEnd();
                     var import = MyAPIGateway.Utilities.SerializeFromXML<ModConfig>(text);
                     if (import == null) throw new Exception("Failed to load world config.");
-
-                    DebugMode = !Session.IsClient && import.DebugMode;
-                    CombatLogging = import.CombatLogging;
-                    LogLevel = import.LogLevel;
-                    ClientOutputLogLevel = import.ClientOutputLogLevel;
-
-                    if (import.MaxPossibleSpeedMetersPerSecond <= 0 || import.MaxPossibleSpeedMetersPerSecond > 10000)
-                    {
-                        Utils.Log("MaxPossibleSpeedMetersPerSecond validation failed - using default 300", 0, "Config Validation");
-                        MaxPossibleSpeedMetersPerSecond = 300;
-                    }
-                    else
-                    {
-                        MaxPossibleSpeedMetersPerSecond = import.MaxPossibleSpeedMetersPerSecond;
-                    }
-
-                    FrictionSpeedValueMode = import.FrictionSpeedValueMode;
-                    NoFlyZones = import.NoFlyZones;
+                    ApplyWorldSettingsFrom(import);
                 }
             }
-            else
+            else if (allowWorldStorageReadWrite)
             {
                 //Write Global Settings using predefined values
                 var globalConfigWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig));
@@ -195,6 +187,27 @@ namespace ShipCoreFramework
                     }
                 }
             }
+        }
+
+        internal void ApplyWorldSettingsFrom(ModConfig import)
+        {
+            DebugMode = !Session.IsClient && import.DebugMode;
+            CombatLogging = import.CombatLogging;
+            LogLevel = import.LogLevel;
+            ClientOutputLogLevel = import.ClientOutputLogLevel;
+
+            if (import.MaxPossibleSpeedMetersPerSecond <= 0 || import.MaxPossibleSpeedMetersPerSecond > 10000)
+            {
+                Utils.Log("MaxPossibleSpeedMetersPerSecond validation failed - using default 300", 0, "Config Validation");
+                MaxPossibleSpeedMetersPerSecond = 300;
+            }
+            else
+            {
+                MaxPossibleSpeedMetersPerSecond = import.MaxPossibleSpeedMetersPerSecond;
+            }
+
+            FrictionSpeedValueMode = import.FrictionSpeedValueMode;
+            NoFlyZones = import.NoFlyZones;
         }
 
         private static void ThrowErrorIfDuplicates<T, TKey>(List<T> list, Func<T, TKey> selector)

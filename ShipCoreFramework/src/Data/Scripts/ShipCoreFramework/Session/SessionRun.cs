@@ -13,9 +13,14 @@ namespace ShipCoreFramework
     [MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation, 0)]
     public partial class Session : MySessionComponentBase
     {
+        private static readonly string[] AmmoDefinitionIds =
+        {
+            "Missile", "LargeCalibreShell", "MediumCalibreShell", "LargeCaliber", "AutocannonShell",
+            "LargeRailgunSlug", "SmallRailgunSlug", "SmallCaliber", "PistolCaliber", "Shrapnel"
+        };
+
         public override void BeforeStart()
         {
-            Networking.Register();
             ModAPI.Initialize();
             if (Config.SelectedNoCore == null) return;
             MyAPIGateway.GridGroups.OnGridGroupCreated += GridGroupsOnOnGridGroupCreated;
@@ -36,26 +41,24 @@ namespace ShipCoreFramework
             IsServer = (MpActive && MyAPIGateway.Multiplayer.IsServer) || !MpActive;
             IsClient = (MpActive && !MyAPIGateway.Utilities.IsDedicated) || !MpActive;
             
-            Config.LoadConfig();
+            Networking.Register();
+            Config.LoadConfig(IsServer);
             _myNexusApi = new NexusAPI(OnNexusEnabled);
-            MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed = Config.MaxPossibleSpeedMetersPerSecond;
-            MyDefinitionManager.Static.EnvironmentDefinition.SmallShipMaxSpeed = Config.MaxPossibleSpeedMetersPerSecond;
-            var speedDifferential = Config.MaxPossibleSpeedMetersPerSecond - 100.0f;
-            var ammoDefinitions = new List<string>
+
+            if (IsServer)
             {
-                "Missile", "LargeCalibreShell", "MediumCalibreShell", "LargeCaliber", "AutocannonShell",
-                "LargeRailgunSlug", "SmallRailgunSlug", "SmallCaliber", "PistolCaliber"
-            };
-            
-            foreach (var ammoId in ammoDefinitions)
+                ApplyConfigToDefinitions();
+                HasSyncedServerConfig = true;
+            }
+            else if (MpActive)
             {
-                var ammoDefinition =
-                    MyDefinitionManager.Static.GetAmmoDefinition(
-                        new MyDefinitionId(typeof(MyObjectBuilder_AmmoDefinition), ammoId));
-                if (ammoDefinition != null)
-                    ammoDefinition.DesiredSpeed += speedDifferential;
-                else
-                    Utils.Log($"AmmoType: {ammoId} was not successfully adjusted to match maxspeed", 2);
+                HasSyncedServerConfig = false;
+                Networking.SendToServer(new PacketRequestConfig());
+            }
+            else
+            {
+                ApplyConfigToDefinitions();
+                HasSyncedServerConfig = true;
             }
             
             MyAPIGateway.Session.OnSessionReady += SessionReady;
@@ -66,7 +69,7 @@ namespace ShipCoreFramework
                 MyAPIGateway.Multiplayer.RegisterSecureMessageHandler(CommandsSyncId, Commands.ServerMessageHandler);
                 Utils.Log("Ship Cores: Awaiting Commands From Clients");
             }
-            Config.SaveConfig();
+            if (IsServer) Config.SaveConfig();
         }
 
         protected override void UnloadData()
@@ -75,7 +78,6 @@ namespace ShipCoreFramework
             MyAPIGateway.Session.OnSessionReady -= SessionReady;
             MyAPIGateway.Session.Factions.FactionStateChanged -= FactionStateChanged;
             MyAPIGateway.Utilities.MessageEnteredSender -= Commands.OnChatCommand;
-            var speedDifferential = Config.MaxPossibleSpeedMetersPerSecond - 100.0f;
             MyAPIGateway.Multiplayer.UnregisterSecureMessageHandler(CommandsSyncId, Commands.ServerMessageHandler);
             
             try //Because this throws a NRE in keen code if you alt-F4
@@ -84,29 +86,8 @@ namespace ShipCoreFramework
                 MyAPIGateway.GridGroups.OnGridGroupDestroyed -= GridGroupsOnOnGridGroupDestroyed;
             }
             catch { /**/ }
-            
-            var ammoDefinitions = new List<string>
-            {
-                "Missile", "LargeCalibreShell", "MediumCalibreShell", "LargeCaliber", "AutocannonShell",
-                "LargeRailgunSlug", "SmallRailgunSlug", "SmallCaliber", "PistolCaliber", "Flare", "FireworkBlue",
-                "FireworkGreen", "FireworkRed", "FireworkPink", "FireworkYellow", "FireworkRainbow", "Shrapnel"
-            };
-            
-            foreach (var ammoId in ammoDefinitions)
-                try
-                {
-                    var ammoDefinition =
-                        MyDefinitionManager.Static.GetAmmoDefinition(
-                            new MyDefinitionId(typeof(MyObjectBuilder_AmmoDefinition), ammoId));
-                    if (ammoDefinition != null)
-                        ammoDefinition.DesiredSpeed -= speedDifferential;
-                    else
-                        Utils.Log($"AmmoType: {ammoId} was not sucessfully adjusted to match maxspeed");
-                }
-                catch
-                {
-                    Utils.Log($"Vanilla AmmoType {ammoId} is missing.");
-                }
+
+            RevertAmmoSpeedAdjustments();
             
             LimitsNexusSync.Stop();
             _myNexusApi?.Unload();
@@ -116,7 +97,7 @@ namespace ShipCoreFramework
 
             GridsPerFactionManager.Reset();
             GridsPerPlayerManager.Reset();
-            Config.SaveConfig();
+            if (IsServer) Config.SaveConfig();
             Networking?.Unregister();
             Networking = null;
             
@@ -183,6 +164,79 @@ namespace ShipCoreFramework
                     if (runNfz) NoFlyZoneEnforcement.EnforceNoFlyZones(kvp.Value, doPunish);
                 });
             });
+        }
+
+        internal static void ApplyConfigToDefinitions()
+        {
+            if (MyDefinitionManager.Static?.EnvironmentDefinition != null)
+            {
+                MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed = Config.MaxPossibleSpeedMetersPerSecond;
+                MyDefinitionManager.Static.EnvironmentDefinition.SmallShipMaxSpeed = Config.MaxPossibleSpeedMetersPerSecond;
+            }
+
+            var newDifferential = Config.MaxPossibleSpeedMetersPerSecond - 100.0f;
+            var delta = newDifferential - AppliedSpeedDifferential;
+            if (Math.Abs(delta) < 0.001f)
+                return;
+
+            foreach (var ammoId in AmmoDefinitionIds)
+            {
+                try
+                {
+                    var ammoDefinition = MyDefinitionManager.Static?.GetAmmoDefinition(
+                        new MyDefinitionId(typeof(MyObjectBuilder_AmmoDefinition), ammoId));
+                    if (ammoDefinition != null)
+                        ammoDefinition.DesiredSpeed += delta;
+                }
+                catch
+                {
+                    // Ignore missing ammo definitions.
+                }
+            }
+
+            AppliedSpeedDifferential = newDifferential;
+        }
+
+        private static void RevertAmmoSpeedAdjustments()
+        {
+            var delta = -AppliedSpeedDifferential;
+            if (Math.Abs(delta) < 0.001f)
+                return;
+
+            foreach (var ammoId in AmmoDefinitionIds)
+            {
+                try
+                {
+                    var ammoDefinition = MyDefinitionManager.Static.GetAmmoDefinition(
+                        new MyDefinitionId(typeof(MyObjectBuilder_AmmoDefinition), ammoId));
+                    if (ammoDefinition != null)
+                        ammoDefinition.DesiredSpeed += delta;
+                }
+                catch
+                {
+                    // Ignore missing ammo definitions.
+                }
+            }
+
+            AppliedSpeedDifferential = 0f;
+        }
+
+        internal static void BroadcastConfigToClients()
+        {
+            if (!IsServer || !MpActive)
+                return;
+
+            var players = new List<IMyPlayer>();
+            MyAPIGateway.Players.GetPlayers(players);
+
+            var packet = new PacketSendConfig(
+                MyAPIGateway.Utilities.SerializeToXML(Config),
+                Config.IgnoreAiFactions,
+                Config.IgnoredFactionTags,
+                Config.SelectedNoCore?.SubtypeId);
+
+            foreach (var p in players)
+                Networking.SendToPlayer(packet, p.SteamUserId);
         }
     }
 }

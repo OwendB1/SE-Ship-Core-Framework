@@ -5,23 +5,33 @@ namespace ShipCoreFramework
     internal class Networking
     {
         private readonly ushort _channelId;
+        private bool _registered;
         internal Networking(ushort channelId)
         {
             _channelId = channelId;
         }
         internal void Register()
         {
+            if (_registered)
+                return;
+            _registered = true;
             MyAPIGateway.Multiplayer.RegisterSecureMessageHandler(_channelId, ReceivedPacket);
         }
 
         internal void Unregister()
         {
+            if (!_registered)
+                return;
+            _registered = false;
             MyAPIGateway.Multiplayer.UnregisterSecureMessageHandler(_channelId, ReceivedPacket);
         }
 
         private static void ReceivedPacket(ushort handlerId, byte[] rawData, ulong id, bool server)
         {
             var packet = MyAPIGateway.Utilities.SerializeFromBinary<PacketBase>(rawData);
+            // Populate transient metadata for request/response style packets.
+            packet.SenderSteamId = id;
+            packet.SentFromServer = server;
             packet.Received();
         }
 

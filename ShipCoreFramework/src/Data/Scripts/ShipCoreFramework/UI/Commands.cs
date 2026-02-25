@@ -222,6 +222,8 @@ namespace ShipCoreFramework
             Session.Config = null;
             Session.Config = new ModConfig();
             Session.Config.LoadConfig();
+            if (Session.MpActive && !Session.IsServer)
+                Session.Networking.SendToServer(new PacketRequestConfig());
             return "Config reloaded from disk.";
         }
 

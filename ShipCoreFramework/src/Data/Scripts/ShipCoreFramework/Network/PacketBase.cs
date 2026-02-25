@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using ProtoBuf;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -11,11 +12,17 @@ namespace ShipCoreFramework
     [ProtoInclude(2000, typeof(PacketSetMainCore))]
     [ProtoInclude(3000, typeof(PacketSetMainCoreSync))]
     [ProtoInclude(4000, typeof(PacketNotify))]
-    // [ProtoInclude(5000, typeof(PacketRequestSettings))]
-    // [ProtoInclude(6000, typeof(PacketSendSettings))]
+    [ProtoInclude(5000, typeof(PacketRequestConfig))]
+    [ProtoInclude(6000, typeof(PacketSendConfig))]
     [ProtoContract]
     internal abstract class PacketBase
     {
+        [ProtoIgnore]
+        internal ulong SenderSteamId;
+
+        [ProtoIgnore]
+        internal bool SentFromServer;
+
         internal PacketBase() { } // Empty constructor required for deserialization
         internal abstract void Received();
     }
@@ -145,6 +152,91 @@ namespace ShipCoreFramework
             // Runs on the client that received it
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
                 NotificationInstance.ShowNotification(Text, TimeMs, Font));
+        }
+    }
+
+    [ProtoContract]
+    internal class PacketRequestConfig : PacketBase
+    {
+        internal PacketRequestConfig() { } // for deserialization
+
+        internal override void Received()
+        {
+            if (!MyAPIGateway.Multiplayer.IsServer)
+                return;
+
+            var response = new PacketSendConfig(
+                MyAPIGateway.Utilities.SerializeToXML(Session.Config),
+                Session.Config.IgnoreAiFactions,
+                Session.Config.IgnoredFactionTags,
+                Session.Config.SelectedNoCore?.SubtypeId);
+
+            Session.Networking.SendToPlayer(response, SenderSteamId);
+        }
+    }
+
+    [ProtoContract]
+    internal class PacketSendConfig : PacketBase
+    {
+        [ProtoMember(1)]
+        internal string ConfigXml;
+
+        [ProtoMember(2)]
+        internal bool IgnoreAiFactions;
+
+        [ProtoMember(3)]
+        internal List<string> IgnoredFactionTags;
+
+        [ProtoMember(4)]
+        internal string SelectedNoCoreSubtypeId;
+
+        internal PacketSendConfig() { } // for deserialization
+
+        internal PacketSendConfig(string configXml, bool ignoreAiFactions, List<string> ignoredFactionTags, string selectedNoCoreSubtypeId)
+        {
+            ConfigXml = configXml;
+            IgnoreAiFactions = ignoreAiFactions;
+            IgnoredFactionTags = ignoredFactionTags;
+            SelectedNoCoreSubtypeId = selectedNoCoreSubtypeId;
+        }
+
+        internal override void Received()
+        {
+            // Apply on game thread because we may touch definitions.
+            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+            {
+                try
+                {
+                    var import = MyAPIGateway.Utilities.SerializeFromXML<ModConfig>(ConfigXml);
+                    if (import != null)
+                    {
+                        // Only the [XmlElement] settings are present in the XML, so copy them onto the already-loaded config instance.
+                        Session.Config.ApplyWorldSettingsFrom(import);
+                    }
+
+                    Session.Config.IgnoreAiFactions = IgnoreAiFactions;
+                    Session.Config.IgnoredFactionTags = IgnoredFactionTags ?? new List<string>();
+
+                    if (!string.IsNullOrWhiteSpace(SelectedNoCoreSubtypeId))
+                    {
+                        var match = Session.Config.NoCoreConfigs.FirstOrDefault(c =>
+                            c.SubtypeId != null &&
+                            c.SubtypeId.Equals(SelectedNoCoreSubtypeId, System.StringComparison.OrdinalIgnoreCase));
+                        if (match != null)
+                            Session.Config.SelectedNoCore = match;
+                    }
+
+                    if (Session.Config.SelectedNoCore == null)
+                        Session.Config.SelectedNoCore = DefaultNoCoreConfig.ShipCore;
+
+                    Session.ApplyConfigToDefinitions();
+                    Session.HasSyncedServerConfig = true;
+                }
+                catch (System.Exception e)
+                {
+                    Utils.Log($"Config sync failed: {e}", 2, "Config Sync");
+                }
+            });
         }
     }
     
