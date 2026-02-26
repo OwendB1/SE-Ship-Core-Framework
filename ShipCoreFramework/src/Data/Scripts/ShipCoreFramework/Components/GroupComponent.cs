@@ -278,11 +278,6 @@ namespace ShipCoreFramework
         internal void OnGridRemoved(IMyGridGroupData removedFrom, IMyCubeGrid grid, IMyGridGroupData addedTo)
         {
             if (addedTo != null) return;
-            if (this.IsIgnoredGroup())
-            {
-                Utils.Log($"OnGridAdded: Skipping ignored group (Faction: {OwningFaction?.Tag ?? "None"})", 2);
-                return;
-            }
             
             var g = grid as MyCubeGrid;
             if (g == null) return;
