@@ -191,32 +191,19 @@ namespace ShipCoreFramework
 
         internal void ResetCore()
         {
-            Utils.Log($"Reset: Resetting logic for {MainCoreComponent.CoreBlock.CubeGrid.CustomName}!", 2);
             var old = MainCoreComponent;
-            IMyCubeGrid oldGrid = null;
-            var oldCoreSubtype = string.Empty;
-            var oldCoreName = string.Empty;
-
-            if (old != null)
-            {
-                oldGrid = old.GridComponent.Grid;
-                oldCoreSubtype = old.SubtypeId;
-                var oldCore = Session.Config.GetShipCoreByTypeId(oldCoreSubtype);
-                oldCoreName = oldCore?.UniqueName ?? string.Empty;
-                Utils.Log($"Reset: Resetting logic for {oldGrid.CustomName}!", 2);
-                GridsPerFactionManager.RemoveGridGroup(OwningFaction, oldCoreSubtype);
-                GridsPerPlayerManager.RemoveGridGroup(OwnerId, oldCoreSubtype);
-                old.IsMainCore = false;
-            }
-            MainCoreComponent = null;
+            var type = ShipCore.SubtypeId;
+            var grid = old.CoreBlock.CubeGrid;
+            Utils.Log($"Reset: Resetting logic for {grid.CustomName}!", 2);
             
-            if (oldGrid != null)
-            {
-                ModAPI.BroadcastCoreDeactivated(GetRepresentativeGridId(), oldCoreSubtype, oldCoreName);
-            }
+            GridsPerFactionManager.RemoveGridGroup(OwningFaction, type);
+            GridsPerPlayerManager.RemoveGridGroup(OwnerId, type);
+            
+            ModAPI.BroadcastCoreDeactivated(GetRepresentativeGridId(), type, old.CoreBlock.CustomName);
+            
+            MainCoreComponent = null;
 
             if (!Session.HasStarted || Session.IsShuttingDown) return;
-            
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
                 if(_closing) return;
