@@ -393,6 +393,12 @@ namespace ShipCoreFramework
                             ApplyModifiers(Modifiers);
                         }
                     }
+                    else
+                    {
+                        PunishModifiers = false;
+                        PunishSpeed = false;
+                        ApplyModifiers(Modifiers);
+                    }
                 }
                 
                 var modifiers = _activeDefenseEnabled ? GetActiveDefenseModifiers() : GetPassiveDefenseModifiers();
