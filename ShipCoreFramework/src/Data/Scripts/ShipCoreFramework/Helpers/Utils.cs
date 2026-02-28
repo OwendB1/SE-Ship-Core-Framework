@@ -66,6 +66,7 @@ namespace ShipCoreFramework
             }
             else
             {
+                if (playerEntityId == 0) playerEntityId = MyAPIGateway.Session.LocalHumanPlayer?.IdentityId ?? 0;
                 if (playerEntityId != 0 && MyAPIGateway.Session.LocalHumanPlayer?.IdentityId != playerEntityId) return;
                 var steamUserId = MyAPIGateway.Players.TryGetSteamId(playerEntityId);
                 Session.Networking.SendToPlayer(new PacketNotify(msg, disappearTime, font), steamUserId);
@@ -310,16 +311,6 @@ namespace ShipCoreFramework
             }
             group = null;
             return false;
-        }
-
-        internal static bool IsIgnoredGroup(this GroupComponent group)
-        {
-            if (group.OwnerId == 0) return true;
-            var player = MyAPIGateway.Players.TryGetIdentityId(group.OwnerId);
-            if (player != null && player.PromoteLevel == MyPromoteLevel.Admin && MyAPIGateway.Session.IsUserIgnorePCULimit(player.SteamUserId)) return true;
-
-            var faction = group.OwningFaction;
-            return Session.Config.IgnoredFactionTags != null && Session.Config.IgnoredFactionTags.Contains(faction?.Tag);
         }
     }
 

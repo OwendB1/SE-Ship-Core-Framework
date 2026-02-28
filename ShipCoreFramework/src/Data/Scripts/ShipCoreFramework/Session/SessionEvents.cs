@@ -21,7 +21,6 @@ namespace ShipCoreFramework
                 MyGroup = group
             };
             GroupDict.Add(group, gComp);
-            
             gComp.InitGrids();
 
             group.OnGridAdded += gComp.OnGridAdded;

@@ -1,4 +1,4 @@
-﻿using System;
+﻿﻿using System;
 using System.Linq;
 using System.Collections.Generic;
 using Sandbox.ModAPI;
@@ -21,53 +21,52 @@ namespace ShipCoreFramework
             var attachedGrids = new List<IMyCubeGrid>();
             physicalGroup.GetGrids(attachedGrids);
 
-            foreach (var grid in attachedGrids)
-            {
-                if (grid?.Physics == null) continue;
-                if (grid.IsStatic) continue;
+	            foreach (var grid in attachedGrids)
+	            {
+	                if (grid?.Physics == null) continue;
+	                if (grid.IsStatic) continue;
 
-                var velocity = grid.Physics.LinearVelocity;
-                var speedSq = velocity.LengthSquared();
-                if (speedSq < 0.0001f) continue;
+	                var velocity = grid.Physics.LinearVelocity;
+	                var speedSq = velocity.LengthSquared();
+	                if (speedSq < 0.0001f) continue;
 
-                var baseMaxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.SpeedModifiers.MaxSpeed;
-                var boostMaxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * groupComponent.SpeedModifiers.MaxBoost;
-                var boostActive = groupComponent.ShipCore != null && groupComponent.ShipCore.SpeedBoostEnabled && groupComponent.BoostEnabled;
-                var maxSpeed = boostActive ? boostMaxSpeed : baseMaxSpeed;
-                
-                if (groupComponent.PunishSpeed)
-                {
-                    maxSpeed = baseMaxSpeed / 4;
-                }
+	                var speedModifiers = CubeGridModifiers.GetActiveSpeedModifiers(groupComponent);
+	                var baseMaxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * speedModifiers.MaxSpeed;
+	                var boostMaxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * speedModifiers.MaxBoost;
+	                var boostActive = groupComponent.BoostEnabled;
+	                var maxSpeed = boostActive ? boostMaxSpeed : baseMaxSpeed;
+	                
+	                if (groupComponent.PunishSpeed)
+	                {
+	                    maxSpeed = baseMaxSpeed / 4;
+	                }
 
-                // If the core uses normal speed limiting, and a boost just ended, ramp the effective cap down smoothly.
-                if (groupComponent.ShipCore != null
-                    && groupComponent.ShipCore.SpeedLimitType == SpeedLimitType.Normal
-                    && groupComponent.ShipCore.SpeedBoostEnabled
-                    && !boostActive
-                    && groupComponent.PostBoostRampActive)
-                {
-                    var cap = groupComponent.PostBoostSpeedCapMetersPerSecond;
-                    if (cap <= 0f) cap = boostMaxSpeed;
+	                // If the core uses normal speed limiting, and a boost just ended, ramp the effective cap down smoothly.
+	                if (groupComponent.ShipCore != null
+	                    && groupComponent.ShipCore.SpeedLimitType == SpeedLimitType.Normal
+	                    && groupComponent.PostBoostRampActive)
+	                {
+	                    // Persist the cap across calls; start from boost max on first tick after boost ends.
+	                    var cap = groupComponent.PostBoostRampCap;
+	                    if (cap < 0f) cap = boostMaxSpeed;
 
-                    // Ramp time is based on BoostDuration, clamped to avoid being too slow/fast.
-                    var rampSeconds = MathHelper.Clamp(groupComponent.SpeedModifiers.BoostDuration, 0.5f, 10f);
-                    var stepPerTick = rampSeconds > 0f
-                        ? (boostMaxSpeed - baseMaxSpeed) / (rampSeconds * 60f)
-                        : (boostMaxSpeed - baseMaxSpeed);
+	                    // Ramp time is based on BoostDuration, clamped to avoid being too slow/fast.
+	                    var rampSeconds = MathHelper.Clamp(speedModifiers.BoostDuration, 0.5f, 10f);
+	                    var stepPerTick = (boostMaxSpeed - baseMaxSpeed) / (rampSeconds * 60f);
+	                    if (stepPerTick < 0f) stepPerTick = 0f;
 
-                    if (stepPerTick < 0f) stepPerTick = 0f;
-                    cap -= stepPerTick;
+	                    Utils.ShowNotification($"Boost ramp: {rampSeconds:0.0}s, {stepPerTick:0.000}m/s", 1000);
+	                    cap -= stepPerTick;
 
-                    if (cap <= baseMaxSpeed + 0.01f)
-                    {
-                        cap = baseMaxSpeed;
-                        groupComponent.PostBoostRampActive = false;
-                    }
+	                    if (cap <= baseMaxSpeed)
+	                    {
+	                        cap = baseMaxSpeed;
+	                        groupComponent.PostBoostRampActive = false;
+	                    }
 
-                    groupComponent.PostBoostSpeedCapMetersPerSecond = cap;
-                    maxSpeed = cap;
-                }
+	                    groupComponent.PostBoostRampCap = cap;
+	                    maxSpeed = cap;
+	                }
 
                 var speed = Convert.ToSingle(Math.Sqrt(speedSq));
                 var direction = velocity / speed;
@@ -84,21 +83,21 @@ namespace ShipCoreFramework
                     {
                         minFrictionSpeed = groupComponent.MinimumFrictionSpeedAbsoluteOverride >= 0f
                             ? groupComponent.MinimumFrictionSpeedAbsoluteOverride
-                            : groupComponent.SpeedModifiers.MinimumFrictionSpeedAbsolute;
+                            : speedModifiers.MinimumFrictionSpeedAbsolute;
 
                         configuredMaxFrictionSpeed = groupComponent.MaximumFrictionSpeedAbsoluteOverride >= 0f
                             ? groupComponent.MaximumFrictionSpeedAbsoluteOverride
-                            : groupComponent.SpeedModifiers.MaximumFrictionSpeedAbsolute;
+                            : speedModifiers.MaximumFrictionSpeedAbsolute;
                     }
                     else
                     {
                         var minMod = groupComponent.MinimumFrictionSpeedModifierOverride >= 0f
                             ? groupComponent.MinimumFrictionSpeedModifierOverride
-                            : groupComponent.SpeedModifiers.MinimumFrictionSpeedModifier;
+                            : speedModifiers.MinimumFrictionSpeedModifier;
 
                         var maxMod = groupComponent.MaximumFrictionSpeedModifierOverride >= 0f
                             ? groupComponent.MaximumFrictionSpeedModifierOverride
-                            : groupComponent.SpeedModifiers.MaximumFrictionSpeedModifier;
+                            : speedModifiers.MaximumFrictionSpeedModifier;
 
                         minFrictionSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * minMod;
                         configuredMaxFrictionSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * maxMod;

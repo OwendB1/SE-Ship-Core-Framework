@@ -91,9 +91,8 @@ namespace ShipCoreFramework
         
         internal bool FrictionEnforcementEnabled = true;
         
-        // When SpeedLimitType.Normal and boosting ends, slowly ramp the effective max speed down to the base max speed.
-        internal bool PostBoostRampActive;
-        internal float PostBoostSpeedCapMetersPerSecond;
+		internal bool PostBoostRampActive;
+		internal float PostBoostRampCap = -1f;
         
         // Optional runtime overrides (per logical group).
         // -1 means "no override, use config-derived values".
@@ -157,6 +156,7 @@ namespace ShipCoreFramework
                 if(_closing) return;
                 RecalculateAllLimits();
                 EnforceGroupPunishment();
+                EnforceOverCapacity();
             });
         }
 
@@ -191,6 +191,7 @@ namespace ShipCoreFramework
 
         internal void ResetCore()
         {
+            Utils.Log($"Reset: Resetting logic for {MainCoreComponent.CoreBlock.CubeGrid.CustomName}!", 2);
             var old = MainCoreComponent;
             IMyCubeGrid oldGrid = null;
             var oldCoreSubtype = string.Empty;
@@ -230,43 +231,23 @@ namespace ShipCoreFramework
         {
             var g = grid as MyCubeGrid;
             if (g == null || g.IsPreview) return;
-
-            if (removedFrom != null)
-            {
-                GroupComponent oldGroup;
-                GridComponent movedComp;
-                if (Session.GroupDict.TryGetValue(removedFrom, out oldGroup) && oldGroup.GridDictionary.TryGetValue(g, out movedComp))
-                {
-                    oldGroup.GridDictionary.Remove(g);
-                    movedComp.GroupData = addedTo;
-                    GridDictionary[g] = movedComp;
-                    
-                    oldGroup.RecalculateAllLimits();
-                }
-                else
-                {
-                    var gc = new GridComponent();
-                    gc.Init(g, addedTo);
-                    GridDictionary[g] = gc;
-                }
-            }
-            else
-            {
-                var gc = new GridComponent();
-                gc.Init(g, addedTo);
-                GridDictionary[g] = gc;
-            }
             
-            // Needs to be done full frame later as otherwise not all grids have gone through activation
+            if (GridDictionary.ContainsKey(g)) return;
+            var gc = new GridComponent();
+            gc.Init(g, addedTo);
+            GridDictionary.Add(g,gc);
+
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
-                if (this.IsIgnoredGroup())
+                if(grid.MarkedForClose) return;
+                if (IsIgnoredGroup())
                 {
+                    Utils.Log($"OnGridAdded: {grid.EntityId}, {OwnerId}, {grid.CustomName}", 2);
                     Utils.Log($"OnGridAdded: Group became ignored after grid addition (Faction: {OwningFaction?.Tag ?? "None"})", 2);
-                    if (MainCoreComponent != null)
-                    {
-                        ResetCore();
-                    }
+                
+                    if (MainCoreComponent == null) return;
+                    MainCoreComponent.CoreBlock.SlimBlock.RemoveAndRefund();
+                    ResetCore();
                     return;
                 }
             
@@ -280,7 +261,7 @@ namespace ShipCoreFramework
             if (addedTo != null) return;
             
             var g = grid as MyCubeGrid;
-            if (g == null) return;
+            if (g == null || g.IsPreview) return;
 
             GridComponent comp;
             if (GridDictionary.TryGetValue(g, out comp))
@@ -296,7 +277,7 @@ namespace ShipCoreFramework
         private void EnforceGroupPunishment()
         {
             // Skip block limit enforcement for ignored factions/AI
-            if (this.IsIgnoredGroup())
+            if (IsIgnoredGroup())
             {
                 return;
             }
@@ -479,26 +460,25 @@ namespace ShipCoreFramework
             }
         }
 
-        internal void RunBoostTimerTick()
-        {
-            if (BoostEnabled)
-            {
-                _boostDurationTimer -= 1f;
-                if (!(_boostDurationTimer <= 0f)) return;
-                BoostEnabled = false;
-                _boostCooldownTimer = BoostCoolDown * 60f;
-                Utils.ShowNotification("Boost Disengaged! Cooldown started.", 1000);
+	    internal void RunBoostTimerTick()
+	    {
+	        if (BoostEnabled)
+	        {
+	            _boostDurationTimer -= 1f;
+	            if (!(_boostDurationTimer <= 0f)) return;
+	            BoostEnabled = false;
+	            _boostCooldownTimer = BoostCoolDown * 60f;
+	            Utils.ShowNotification("Boost Disengaged! Cooldown started.", 1000);
 
-                // Start the post-boost ramp-down cap from boosted max speed.
-                // The enforcement loop will slowly reduce this cap back to base max.
-                var speedMods = SpeedModifiers;
-                PostBoostRampActive = true;
-                PostBoostSpeedCapMetersPerSecond = Session.Config.MaxPossibleSpeedMetersPerSecond * speedMods.MaxBoost;
-                
-                if (MainCoreComponent?.GridComponent?.Grid != null)
-                {
-                    ModAPI.BroadcastBoostDeactivated(GetRepresentativeGridId());
-                }
+		        // Start the post-boost ramp-down cap from boosted max speed.
+		        // The enforcement loop will slowly reduce this cap back to base max.
+		        PostBoostRampActive = true;
+		        PostBoostRampCap = -1f;
+		            
+		        if (MainCoreComponent?.GridComponent?.Grid != null)
+		        {
+		            ModAPI.BroadcastBoostDeactivated(GetRepresentativeGridId());
+	            }
             }
             else if (_boostCooldownTimer > 0f)
             {
@@ -570,12 +550,12 @@ namespace ShipCoreFramework
             }
         }
 
-        internal void ActivateBoost()
-        {
-            if (!ShipCore.SpeedBoostEnabled)
-            {
-                Utils.ShowNotification("Boosting is not allowed on this grid!", 1000);
-                return;
+	        internal void ActivateBoost()
+	        {
+	            if (!ShipCore.SpeedBoostEnabled)
+	            {
+	                Utils.ShowNotification("Boosting is not allowed on this grid!", 1000);
+	                return;
             }
             if (BoostEnabled)
             {
@@ -587,13 +567,15 @@ namespace ShipCoreFramework
                 Utils.ShowNotification("Boost is cooling down! Cooldown Time:" + (_boostCooldownTimer / 60f).ToString("0.0"), 1000);
                 return;
             }
-            BoostEnabled = true;
-            PostBoostRampActive = false;
-            _boostDurationTimer = BoostDuration * 60f;
-            Utils.ShowNotification("Boost Engaged!", 1000);
-            
-            if (MainCoreComponent?.GridComponent?.Grid != null)
-            {
+		    BoostEnabled = true;
+		    PostBoostRampActive = false;
+		    PostBoostRampCap = -1f;
+
+		    _boostDurationTimer = BoostDuration * 60f;
+		    Utils.ShowNotification("Boost Engaged!", 1000);
+		    
+		    if (MainCoreComponent?.GridComponent?.Grid != null)
+	        {
                 ModAPI.BroadcastBoostActivated(MainCoreComponent.GridComponent.Grid.EntityId);
             }
         }
@@ -721,6 +703,16 @@ namespace ShipCoreFramework
             var main = MainCoreComponent?.GridComponent?.Grid;
             var grid = main ?? GridDictionary.Keys.FirstOrDefault();
             return grid?.EntityId ?? 0;
+        }
+        
+        internal bool IsIgnoredGroup()
+        {
+            if (OwnerId == 0) return true;
+            var player = MyAPIGateway.Players.TryGetIdentityId(OwnerId);
+            if (player != null && player.PromoteLevel == MyPromoteLevel.Admin && MyAPIGateway.Session.IsUserIgnorePCULimit(player.SteamUserId)) return true;
+
+            var faction = OwningFaction;
+            return Session.Config.IgnoredFactionTags != null && Session.Config.IgnoredFactionTags.Contains(faction?.Tag);
         }
 
         internal void Clean()
