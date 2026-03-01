@@ -9,7 +9,7 @@ namespace ShipCoreFramework
     internal class GridComponent
     {
         internal MyCubeGrid Grid;
-        internal IMyGridGroupData GroupData;
+        private IMyGridGroupData _groupData;
         private readonly object _blocksLock = new object();
         private readonly List<IMySlimBlock> _blocks = new List<IMySlimBlock>();
         internal readonly Dictionary<BlockLimit, LimitBucket> Limits = new Dictionary<BlockLimit, LimitBucket>();
@@ -19,9 +19,9 @@ namespace ShipCoreFramework
         {
             get
             {
-                if (GroupData == null) return null;
+                if (_groupData == null) return null;
                 GroupComponent groupComponent;
-                return Session.GroupDict.TryGetValue(GroupData, out groupComponent) ? groupComponent : null;
+                return Session.GroupDict.TryGetValue(_groupData, out groupComponent) ? groupComponent : null;
             }
         }
 
@@ -41,7 +41,7 @@ namespace ShipCoreFramework
         internal void Init(IMyCubeGrid grid, IMyGridGroupData groupData)
         {
             Grid = (MyCubeGrid)grid;
-            GroupData = groupData;
+            _groupData = groupData;
 
             Grid.OnBlockAdded += BlockAddedEvent;
             Grid.OnBlockRemoved += BlockRemoved;
@@ -108,9 +108,6 @@ namespace ShipCoreFramework
                 {
                     _blocks.Add(block);
                 }
-
-                var funcBlock = block.FatBlock as IMyFunctionalBlock;
-                if (funcBlock != null) funcBlock.EnabledChanged += FuncBlockOnEnabledChanged;
             }
             else
             {
@@ -232,54 +229,56 @@ namespace ShipCoreFramework
             return true;
         }
 
-        internal void BlockRemoved(IMySlimBlock block)
+        private void BlockRemoved(IMySlimBlock block)
         {
             var groupComponent = GroupComponent;
             if (groupComponent == null) return;
 
             var beacon = block.FatBlock as IMyBeacon;
-            CoreComponent value;
+            CoreComponent value = null;
             if (beacon != null && CoreDictionary.TryGetValue(beacon, out value))
             {
-                CoreDictionary.Remove(beacon);
                 value.CoreDestroyed();
+                CoreDictionary.Remove(beacon);
             }
-            
-            var limits = groupComponent.Limits;
-            if (limits != null)
+            else
             {
-                var blockKey = KeyOf(block);
-
-                foreach (var kvp in limits)
+                var limits = groupComponent.Limits;
+                if (limits != null)
                 {
-                    var limit = kvp.Key;
-                    if (limit == null) continue;
+                    var blockKey = KeyOf(block);
 
-                    var w = limit.GetWeight(blockKey);
-                    if (w <= 0d) continue;
-
-                    LimitBucket gridBucket;
-                    if (Limits.TryGetValue(limit, out gridBucket))
+                    foreach (var kvp in limits)
                     {
-                        lock (gridBucket.BucketLock)
+                        var limit = kvp.Key;
+                        if (limit == null) continue;
+
+                        var w = limit.GetWeight(blockKey);
+                        if (w <= 0d) continue;
+
+                        LimitBucket gridBucket;
+                        if (Limits.TryGetValue(limit, out gridBucket))
                         {
-                            var idx = gridBucket.Members.IndexOf(block);
-                            if (idx >= 0)
+                            lock (gridBucket.BucketLock)
                             {
-                                gridBucket.Members.RemoveAt(idx);
-                                gridBucket.TotalWeight -= w;
+                                var idx = gridBucket.Members.IndexOf(block);
+                                if (idx >= 0)
+                                {
+                                    gridBucket.Members.RemoveAt(idx);
+                                    gridBucket.TotalWeight -= w;
+                                }
                             }
                         }
-                    }
 
-                    LimitBucket groupBucket;
-                    if (!groupComponent.Limits.TryGetValue(limit, out groupBucket)) continue;
-                    lock (groupBucket.BucketLock)
-                    {
-                        var idx = groupBucket.Members.IndexOf(block);
-                        if (idx < 0) continue;
-                        groupBucket.Members.RemoveAt(idx);
-                        groupBucket.TotalWeight -= w;
+                        LimitBucket groupBucket;
+                        if (!groupComponent.Limits.TryGetValue(limit, out groupBucket)) continue;
+                        lock (groupBucket.BucketLock)
+                        {
+                            var idx = groupBucket.Members.IndexOf(block);
+                            if (idx < 0) continue;
+                            groupBucket.Members.RemoveAt(idx);
+                            groupBucket.TotalWeight -= w;
+                        }
                     }
                 }
             }
@@ -290,7 +289,7 @@ namespace ShipCoreFramework
             }
 
             var funcBlock = block.FatBlock as IMyFunctionalBlock;
-            if (funcBlock != null) funcBlock.EnabledChanged -= FuncBlockOnEnabledChanged;
+            if (funcBlock != null && value == null) funcBlock.EnabledChanged -= FuncBlockOnEnabledChanged;
             groupComponent.ApplyModifiers(groupComponent.Modifiers);
         }
 

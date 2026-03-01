@@ -140,7 +140,7 @@ namespace ShipCoreFramework
         
         internal static void RemoveAndRefund(this IMySlimBlock block)
         {
-            var grid = block.CubeGrid;
+            var grid = block?.CubeGrid;
             if (grid == null) return;
             
             var cargoContainers = new List<IMyCargoContainer>();
