@@ -519,13 +519,32 @@ function parseLegacyMobility(gridClassNode) {
 }
 
 function normalizeBlockTypeSignature(blockTypes, mergeMode = "strict") {
-  return blockTypes
-    .map((blockType) => {
-      if (mergeMode === "typesOnly") return `${blockType.typeId}|${blockType.subtypeId}`;
-      return `${blockType.typeId}|${blockType.subtypeId}|${Number(blockType.countWeight)}`;
-    })
+  const normalized = (blockTypes || [])
+    .map((blockType) => ({
+      typeId: String(blockType?.typeId || "").trim(),
+      subtypeId: String(blockType?.subtypeId || "").trim(),
+      countWeight: Number(blockType?.countWeight)
+    }))
+    .filter((blockType) => blockType.typeId || blockType.subtypeId);
+
+  if (mergeMode === "typesOnly") {
+    return Array.from(new Set(normalized.map((blockType) => `${blockType.typeId}|${blockType.subtypeId}`)))
+      .sort((a, b) => a.localeCompare(b))
+      .join("\n");
+  }
+
+  return normalized
+    .map((blockType) => `${blockType.typeId}|${blockType.subtypeId}|${blockType.countWeight}`)
     .sort((a, b) => a.localeCompare(b))
     .join("\n");
+}
+
+function legacyCoreName(core) {
+  const uniqueName = String(core?.uniqueName || "").trim();
+  if (uniqueName) return uniqueName;
+  const subtypeId = String(core?.subtypeId || "").trim();
+  if (subtypeId) return subtypeId;
+  return "Core";
 }
 
 function parseLegacyBlockTypes(limitNode) {
@@ -582,33 +601,21 @@ function parseLegacyGridClass(gridClassNode, fallbackSubtype) {
 
 function applyLegacyGroupDedup(noCoreCore, shipCores, mergeMode = "strict") {
   const allCores = [noCoreCore, ...shipCores].filter(Boolean);
-  const perName = new Map();
+  const signatureToGroupName = new Map();
+  const generatedGroups = [];
 
   allCores.forEach((core) => {
     core.blockLimits.forEach((limit) => {
-      const name = limit.name?.trim() || "UnnamedLimit";
-      const list = perName.get(name) || [];
-      list.push({ core, limit, signature: normalizeBlockTypeSignature(limit.blockTypes, mergeMode) });
-      perName.set(name, list);
-    });
-  });
+      const signature = normalizeBlockTypeSignature(limit.blockTypes, mergeMode);
+      const existing = signatureToGroupName.get(signature);
+      if (existing) {
+        limit.blockGroups = [existing];
+        return;
+      }
 
-  const generatedGroups = [];
-
-  perName.forEach((entries, limitName) => {
-    const uniqueSignatures = new Set(entries.map((entry) => entry.signature));
-
-    if (uniqueSignatures.size <= 1) {
-      const groupName = sanitizeToken(limitName);
-      const representative = entries[0]?.limit?.blockTypes || [];
-      generatedGroups.push({ name: groupName, blockTypes: representative });
-      entries.forEach(({ limit }) => { limit.blockGroups = [groupName]; });
-      return;
-    }
-
-    entries.forEach(({ core, limit }) => {
-      const coreName = core.uniqueName || core.subtypeId || "Core";
-      const groupName = `${sanitizeToken(limitName)}__${sanitizeToken(coreName)}`;
+      const limitName = limit.name?.trim() || "UnnamedLimit";
+      const groupName = `${sanitizeToken(limitName)}__${sanitizeToken(legacyCoreName(core))}`;
+      signatureToGroupName.set(signature, groupName);
       generatedGroups.push({ name: groupName, blockTypes: limit.blockTypes });
       limit.blockGroups = [groupName];
     });
