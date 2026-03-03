@@ -178,6 +178,18 @@ function addShipCore(core = createDefaultCore()) {
   renderShipCores();
 }
 
+function createDefaultLimit() {
+  return {
+    name: "",
+    maxCount: 0,
+    punishByNoFlyZone: false,
+    punishmentType: "ShutOff",
+    allowedDirections: [],
+    blockGroups: [],
+    groupSearch: ""
+  };
+}
+
 function resetEditor(seed = true) {
   state.blockGroups = [];
   state.shipCores = [];
@@ -208,7 +220,8 @@ function resetEditor(seed = true) {
         punishByNoFlyZone: true,
         punishmentType: "Delete",
         allowedDirections: ["Forward"],
-        blockGroups: ["Weaponry"]
+        blockGroups: ["Weaponry"],
+        groupSearch: ""
       }]
     });
   } else {
@@ -264,9 +277,11 @@ function renderBlockGroups() {
   `;
 }
 
-function blockGroupCheckboxes(coreIndex, limitIndex, selected = []) {
+function blockGroupCheckboxes(coreIndex, limitIndex, selected = [], searchText = "") {
+  const normalizedSearch = searchText.trim().toLowerCase();
   return state.blockGroups
     .filter((group) => group.name.trim())
+    .filter((group) => !normalizedSearch || group.name.toLowerCase().includes(normalizedSearch))
     .map((group) => `<label class="group-checklist-item">
       <input data-action="limit-group-toggle" data-c="${coreIndex}" data-l="${limitIndex}" data-group-name="${escapeXml(group.name)}" type="checkbox" ${selected.includes(group.name) ? "checked" : ""} />
       <span>${escapeXml(group.name)}</span>
@@ -410,8 +425,9 @@ function renderShipCores() {
           </div>
           <div>
             <label>Reusable Block Groups</label>
+            <input data-action="limit-group-search" data-c="${coreIndex}" data-l="${limitIndex}" class="small group-search" placeholder="Search block groups" value="${escapeXml(limit.groupSearch || "")}" />
             <div class="group-checklist">
-              ${blockGroupCheckboxes(coreIndex, limitIndex, limit.blockGroups)}
+              ${blockGroupCheckboxes(coreIndex, limitIndex, limit.blockGroups, limit.groupSearch || "")}
             </div>
           </div>
         </div>
@@ -467,7 +483,8 @@ function parseCoreXml(text, originalFileName = "") {
       punishByNoFlyZone: boolOf(limitNode, "PunishByNoFlyZone", boolOf(limitNode, "TurnedOffByNoFlyZone", false)),
       punishmentType: textOf(limitNode, "PunishmentType") || "ShutOff",
       allowedDirections: Array.from(limitNode.querySelectorAll(":scope > AllowedDirections")).map((node) => node.textContent.trim()).filter(Boolean),
-      blockGroups: Array.from(limitNode.querySelectorAll(":scope > BlockGroups")).map((node) => node.textContent.trim()).filter(Boolean)
+      blockGroups: Array.from(limitNode.querySelectorAll(":scope > BlockGroups")).map((node) => node.textContent.trim()).filter(Boolean),
+      groupSearch: ""
     }))
   };
 }
@@ -501,9 +518,12 @@ function parseLegacyMobility(gridClassNode) {
   return "Both";
 }
 
-function normalizeBlockTypeSignature(blockTypes) {
+function normalizeBlockTypeSignature(blockTypes, mergeMode = "strict") {
   return blockTypes
-    .map((blockType) => `${blockType.typeId}|${blockType.subtypeId}|${Number(blockType.countWeight)}`)
+    .map((blockType) => {
+      if (mergeMode === "typesOnly") return `${blockType.typeId}|${blockType.subtypeId}`;
+      return `${blockType.typeId}|${blockType.subtypeId}|${Number(blockType.countWeight)}`;
+    })
     .sort((a, b) => a.localeCompare(b))
     .join("\n");
 }
@@ -526,7 +546,8 @@ function parseLegacyLimit(limitNode) {
     punishmentType: textOf(limitNode, "PunishmentType") || "ShutOff",
     allowedDirections: [],
     blockTypes: parseLegacyBlockTypes(limitNode),
-    blockGroups: []
+    blockGroups: [],
+    groupSearch: ""
   };
 }
 
@@ -559,7 +580,7 @@ function parseLegacyGridClass(gridClassNode, fallbackSubtype) {
   return mapped;
 }
 
-function applyLegacyGroupDedup(noCoreCore, shipCores) {
+function applyLegacyGroupDedup(noCoreCore, shipCores, mergeMode = "strict") {
   const allCores = [noCoreCore, ...shipCores].filter(Boolean);
   const perName = new Map();
 
@@ -567,7 +588,7 @@ function applyLegacyGroupDedup(noCoreCore, shipCores) {
     core.blockLimits.forEach((limit) => {
       const name = limit.name?.trim() || "UnnamedLimit";
       const list = perName.get(name) || [];
-      list.push({ core, limit, signature: normalizeBlockTypeSignature(limit.blockTypes) });
+      list.push({ core, limit, signature: normalizeBlockTypeSignature(limit.blockTypes, mergeMode) });
       perName.set(name, list);
     });
   });
@@ -578,7 +599,7 @@ function applyLegacyGroupDedup(noCoreCore, shipCores) {
     const uniqueSignatures = new Set(entries.map((entry) => entry.signature));
 
     if (uniqueSignatures.size <= 1) {
-      const groupName = `BL_${sanitizeToken(limitName)}`;
+      const groupName = sanitizeToken(limitName);
       const representative = entries[0]?.limit?.blockTypes || [];
       generatedGroups.push({ name: groupName, blockTypes: representative });
       entries.forEach(({ limit }) => { limit.blockGroups = [groupName]; });
@@ -587,7 +608,7 @@ function applyLegacyGroupDedup(noCoreCore, shipCores) {
 
     entries.forEach(({ core, limit }) => {
       const coreName = core.uniqueName || core.subtypeId || "Core";
-      const groupName = `BL_${sanitizeToken(limitName)}__${sanitizeToken(coreName)}`;
+      const groupName = `${sanitizeToken(limitName)}__${sanitizeToken(coreName)}`;
       generatedGroups.push({ name: groupName, blockTypes: limit.blockTypes });
       limit.blockGroups = [groupName];
     });
@@ -596,7 +617,7 @@ function applyLegacyGroupDedup(noCoreCore, shipCores) {
   const deduped = [];
   const seenByName = new Map();
   generatedGroups.forEach((group) => {
-    const signature = normalizeBlockTypeSignature(group.blockTypes);
+    const signature = normalizeBlockTypeSignature(group.blockTypes, mergeMode);
     const existing = seenByName.get(group.name);
     if (!existing) {
       seenByName.set(group.name, signature);
@@ -632,7 +653,7 @@ function applyLegacyGroupDedup(noCoreCore, shipCores) {
   return deduped;
 }
 
-function migrateLegacyModConfig(text, sourceName = "uploaded xml") {
+function migrateLegacyModConfig(text, sourceName = "uploaded xml", mergeMode = "strict") {
   const doc = parseXml(text);
   const root = doc.querySelector("ModConfig");
   if (!root) return { error: `No <ModConfig> root found in ${sourceName}.` };
@@ -652,13 +673,13 @@ function migrateLegacyModConfig(text, sourceName = "uploaded xml") {
   }
 
   const shipCores = gridClassNodes.map((node, index) => parseLegacyGridClass(node, `GridClass_${index + 1}`));
-  const blockGroups = applyLegacyGroupDedup(noCoreCore, shipCores);
+  const blockGroups = applyLegacyGroupDedup(noCoreCore, shipCores, mergeMode);
 
   const status = [
     `Migrated legacy file ${sourceName}.`,
     noCoreCore ? "Mapped DefaultGridClass into ShipCoreConfig_No_Core.xml." : "No DefaultGridClass found.",
     `Mapped ${shipCores.length} GridClass entries to ShipCore cores.`,
-    `Generated ${blockGroups.length} reusable block groups via cross-core limit dedupe.`
+    `Generated ${blockGroups.length} reusable block groups via cross-core limit dedupe (${mergeMode}).`
   ];
 
   return { noCoreCore, shipCores, blockGroups, status };
@@ -857,7 +878,7 @@ document.addEventListener("click", (event) => {
     didMutate = true;
   }
   if (action === "add-limit") {
-    state.shipCores[coreIndex].blockLimits.push({ name: "", maxCount: 0, punishByNoFlyZone: false, punishmentType: "ShutOff", allowedDirections: [], blockGroups: [] });
+    state.shipCores[coreIndex].blockLimits.push(createDefaultLimit());
     didMutate = true;
   }
   if (action === "remove-limit") {
@@ -904,6 +925,10 @@ document.addEventListener("input", (event) => {
 
   if (action === "limit-name") state.shipCores[coreIndex].blockLimits[limitIndex].name = target.value;
   if (action === "limit-max") state.shipCores[coreIndex].blockLimits[limitIndex].maxCount = Number(target.value || 0);
+  if (action === "limit-group-search") {
+    state.shipCores[coreIndex].blockLimits[limitIndex].groupSearch = target.value;
+    renderShipCores();
+  }
 
   generateXml();
 });
@@ -1035,12 +1060,13 @@ ids("downloadCores").addEventListener("click", () => {
 
 ids("loadLegacyModConfig").addEventListener("click", async () => {
   const legacyFile = ids("legacyModConfigFile").files?.[0];
+  const mergeMode = ids("legacyLimitMergeMode").value === "typesOnly" ? "typesOnly" : "strict";
   if (!legacyFile) {
     setImportStatus(["No legacy ModConfig XML selected."]);
     return;
   }
 
-  const migrated = migrateLegacyModConfig(await legacyFile.text(), legacyFile.name);
+  const migrated = migrateLegacyModConfig(await legacyFile.text(), legacyFile.name, mergeMode);
   if (migrated.error) {
     setImportStatus([migrated.error]);
     return;

@@ -48,6 +48,12 @@
         <label class="file-label">Legacy ModConfig XML
           <input id="legacyModConfigFile" type="file" accept=".xml" />
         </label>
+        <label class="file-label">Limit merge mode
+          <select id="legacyLimitMergeMode">
+            <option value="strict">Strict (TypeId + SubtypeId + CountWeight)</option>
+            <option value="typesOnly">Block types only (ignore CountWeight)</option>
+          </select>
+        </label>
       </div>
       <div class="row wrap">
         <button id="loadLegacyModConfig">Migrate Legacy ModConfig</button>
