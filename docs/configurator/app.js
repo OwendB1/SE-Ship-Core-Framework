@@ -3,7 +3,8 @@ const state = {
   blockGroups: [],
   shipCores: [],
   selectedGroupIndex: 0,
-  selectedCoreIndex: 0
+  selectedCoreIndex: 0,
+  noCoreCore: null
 };
 
 const DEFAULT_GRID_MODIFIERS = {
@@ -182,6 +183,7 @@ function resetEditor(seed = true) {
   state.shipCores = [];
   state.selectedGroupIndex = 0;
   state.selectedCoreIndex = 0;
+  state.noCoreCore = null;
 
   if (seed) {
     addBlockGroup({ name: "Weaponry", blockTypes: [{ typeId: "SmallGatlingGun", subtypeId: "", countWeight: 1 }] });
@@ -484,6 +486,184 @@ function sanitizeFilenamePart(value) {
     .replace(/^_+|_+$/g, "");
 }
 
+function sanitizeToken(value) {
+  return String(value ?? "")
+    .trim()
+    .replace(/[^a-zA-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "") || "Unnamed";
+}
+
+function parseLegacyMobility(gridClassNode) {
+  const largeStatic = boolOf(gridClassNode, "LargeGridStatic", true);
+  const largeMobile = boolOf(gridClassNode, "LargeGridMobile", true);
+  if (largeStatic && !largeMobile) return "Static";
+  if (!largeStatic && largeMobile) return "Mobile";
+  return "Both";
+}
+
+function normalizeBlockTypeSignature(blockTypes) {
+  return blockTypes
+    .map((blockType) => `${blockType.typeId}|${blockType.subtypeId}|${Number(blockType.countWeight)}`)
+    .sort((a, b) => a.localeCompare(b))
+    .join("\n");
+}
+
+function parseLegacyBlockTypes(limitNode) {
+  return Array.from(limitNode.querySelectorAll(":scope > BlockTypes > BlockType"))
+    .map((blockNode) => ({
+      typeId: textOf(blockNode, "TypeId"),
+      subtypeId: textOf(blockNode, "SubtypeId"),
+      countWeight: numberOf(blockNode, "CountWeight", 1)
+    }))
+    .filter((blockType) => blockType.typeId || blockType.subtypeId);
+}
+
+function parseLegacyLimit(limitNode) {
+  return {
+    name: textOf(limitNode, "Name"),
+    maxCount: numberOf(limitNode, "MaxCount", 0),
+    punishByNoFlyZone: boolOf(limitNode, "TurnedOffByNoFlyZone", boolOf(limitNode, "PunishByNoFlyZone", false)),
+    punishmentType: textOf(limitNode, "PunishmentType") || "ShutOff",
+    allowedDirections: [],
+    blockTypes: parseLegacyBlockTypes(limitNode),
+    blockGroups: []
+  };
+}
+
+function parseLegacyGridClass(gridClassNode, fallbackSubtype) {
+  const subtype = sanitizeToken(textOf(gridClassNode, "Name") || fallbackSubtype);
+  const mapped = {
+    ...createDefaultCore(),
+    subtypeId: subtype,
+    uniqueName: textOf(gridClassNode, "Name") || subtype,
+    mobilityType: parseLegacyMobility(gridClassNode),
+    maxBlocks: numberOf(gridClassNode, "MaxBlocks", -1),
+    maxMass: numberOf(gridClassNode, "MaxMass", -1),
+    maxPcu: numberOf(gridClassNode, "MaxPCU", -1),
+    maxPerFaction: numberOf(gridClassNode, "MaxPerFaction", -1),
+    minPerFaction: numberOf(gridClassNode, "MinPlayers", -1),
+    maxPerPlayer: numberOf(gridClassNode, "MaxPerPlayer", -1),
+    forceBroadcast: boolOf(gridClassNode, "ForceBroadCast", false),
+    forceBroadcastRange: numberOf(gridClassNode, "ForceBroadCastRange", 2000),
+    speedBoostEnabled: true,
+    modifiers: parseModifierNode(gridClassNode.querySelector(":scope > Modifiers"), DEFAULT_GRID_MODIFIERS),
+    passiveDefenseModifiers: parseModifierNode(gridClassNode.querySelector(":scope > DamageModifiers"), DEFAULT_DEFENSE_MODIFIERS),
+    blockLimits: Array.from(gridClassNode.querySelectorAll(":scope > BlockLimits > BlockLimit")).map(parseLegacyLimit)
+  };
+
+  if (mapped.modifiers.DrillHarvestMultiplier === DEFAULT_GRID_MODIFIERS.DrillHarvestMultiplier) {
+    const modifiersNode = gridClassNode.querySelector(":scope > Modifiers");
+    mapped.modifiers.DrillHarvestMultiplier = numberOf(modifiersNode, "DrillHarvestMultipler", mapped.modifiers.DrillHarvestMultiplier);
+  }
+
+  return mapped;
+}
+
+function applyLegacyGroupDedup(noCoreCore, shipCores) {
+  const allCores = [noCoreCore, ...shipCores].filter(Boolean);
+  const perName = new Map();
+
+  allCores.forEach((core) => {
+    core.blockLimits.forEach((limit) => {
+      const name = limit.name?.trim() || "UnnamedLimit";
+      const list = perName.get(name) || [];
+      list.push({ core, limit, signature: normalizeBlockTypeSignature(limit.blockTypes) });
+      perName.set(name, list);
+    });
+  });
+
+  const generatedGroups = [];
+
+  perName.forEach((entries, limitName) => {
+    const uniqueSignatures = new Set(entries.map((entry) => entry.signature));
+
+    if (uniqueSignatures.size <= 1) {
+      const groupName = `BL_${sanitizeToken(limitName)}`;
+      const representative = entries[0]?.limit?.blockTypes || [];
+      generatedGroups.push({ name: groupName, blockTypes: representative });
+      entries.forEach(({ limit }) => { limit.blockGroups = [groupName]; });
+      return;
+    }
+
+    entries.forEach(({ core, limit }) => {
+      const coreName = core.uniqueName || core.subtypeId || "Core";
+      const groupName = `BL_${sanitizeToken(limitName)}__${sanitizeToken(coreName)}`;
+      generatedGroups.push({ name: groupName, blockTypes: limit.blockTypes });
+      limit.blockGroups = [groupName];
+    });
+  });
+
+  const deduped = [];
+  const seenByName = new Map();
+  generatedGroups.forEach((group) => {
+    const signature = normalizeBlockTypeSignature(group.blockTypes);
+    const existing = seenByName.get(group.name);
+    if (!existing) {
+      seenByName.set(group.name, signature);
+      deduped.push(group);
+      return;
+    }
+
+    if (existing === signature) return;
+
+    let suffix = 2;
+    let nextName = `${group.name}_${suffix}`;
+    while (seenByName.has(nextName)) {
+      suffix += 1;
+      nextName = `${group.name}_${suffix}`;
+    }
+    seenByName.set(nextName, signature);
+    const oldName = group.name;
+    deduped.push({ ...group, name: nextName });
+
+    allCores.forEach((core) => {
+      core.blockLimits.forEach((limit) => {
+        if (Array.isArray(limit.blockGroups)) {
+          limit.blockGroups = limit.blockGroups.map((name) => (name === oldName ? nextName : name));
+        }
+      });
+    });
+  });
+
+  allCores.forEach((core) => {
+    core.blockLimits.forEach((limit) => { delete limit.blockTypes; });
+  });
+
+  return deduped;
+}
+
+function migrateLegacyModConfig(text, sourceName = "uploaded xml") {
+  const doc = parseXml(text);
+  const root = doc.querySelector("ModConfig");
+  if (!root) return { error: `No <ModConfig> root found in ${sourceName}.` };
+
+  const defaultGridClassNode = root.querySelector(":scope > DefaultGridClass");
+  const gridClassNodes = Array.from(root.querySelectorAll(":scope > GridClasses > GridClass"));
+
+  if (!defaultGridClassNode && gridClassNodes.length === 0) {
+    return { error: `No <DefaultGridClass> or <GridClass> entries found in ${sourceName}.` };
+  }
+
+  const noCoreCore = defaultGridClassNode ? parseLegacyGridClass(defaultGridClassNode, "NoCore") : null;
+  if (noCoreCore) {
+    noCoreCore.subtypeId = "NO_CORE_DEFAULT";
+    noCoreCore.uniqueName = noCoreCore.uniqueName || "No Core";
+    noCoreCore.originalFileName = "ShipCoreConfig_No_Core.xml";
+  }
+
+  const shipCores = gridClassNodes.map((node, index) => parseLegacyGridClass(node, `GridClass_${index + 1}`));
+  const blockGroups = applyLegacyGroupDedup(noCoreCore, shipCores);
+
+  const status = [
+    `Migrated legacy file ${sourceName}.`,
+    noCoreCore ? "Mapped DefaultGridClass into ShipCoreConfig_No_Core.xml." : "No DefaultGridClass found.",
+    `Mapped ${shipCores.length} GridClass entries to ShipCore cores.`,
+    `Generated ${blockGroups.length} reusable block groups via cross-core limit dedupe.`
+  ];
+
+  return { noCoreCore, shipCores, blockGroups, status };
+}
+
 function deriveCoreFilename(core) {
   if (core.originalFileName?.trim()) return core.originalFileName.trim();
 
@@ -613,6 +793,12 @@ function download(filename, content) {
 function generateXml() {
   const header = '<?xml version="1.0" encoding="UTF-8"?>';
 
+  const noCore = state.noCoreCore
+    ? `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(state.noCoreCore.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(state.noCoreCore.uniqueName)}</UniqueName>\n  <ForceBroadCast>${state.noCoreCore.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${state.noCoreCore.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(state.noCoreCore.mobilityType)}</MobilityType>\n  <MaxBlocks>${state.noCoreCore.maxBlocks}</MaxBlocks>\n  <MaxMass>${state.noCoreCore.maxMass}</MaxMass>\n  <MaxPCU>${state.noCoreCore.maxPcu}</MaxPCU>\n  <MaxBackupCores>${state.noCoreCore.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${state.noCoreCore.maxPerPlayer}</MaxPerPlayer>\n  <MinPlayers>${state.noCoreCore.minPerFaction}</MinPlayers>\n  <MaxPerFaction>${state.noCoreCore.maxPerFaction}</MaxPerFaction>\n  <SpeedBoostEnabled>${state.noCoreCore.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(state.noCoreCore.speedLimitType)}</SpeedLimitType>\n  <EnableActiveDefenseModifiers>${state.noCoreCore.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeModifierXml("Modifiers", state.noCoreCore.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeModifierXml("SpeedModifiers", state.noCoreCore.speedModifiers, DEFAULT_SPEED_MODIFIERS)}\n${writeModifierXml("PassiveDefenseModifiers", state.noCoreCore.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", state.noCoreCore.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${state.noCoreCore.blockLimits
+      .map((limit) => `  <BlockLimits>\n    <Name>${escapeXml(limit.name)}</Name>\n${limit.blockGroups.map((g) => `    <BlockGroups>${escapeXml(g)}</BlockGroups>`).join("\n")}\n    <MaxCount>${limit.maxCount}</MaxCount>\n    <PunishByNoFlyZone>${limit.punishByNoFlyZone}</PunishByNoFlyZone>\n    <PunishmentType>${escapeXml(limit.punishmentType)}</PunishmentType>\n${(limit.allowedDirections || []).filter(Boolean).map((d) => `    <AllowedDirections>${escapeXml(d)}</AllowedDirections>`).join("\n")}\n  </BlockLimits>`)
+      .join("\n")}\n</ShipCore>`
+    : `${header}\n<ShipCore />`;
+
   const groups = `${header}\n<ArrayOfBlockGroup>\n${state.blockGroups
     .map((group) => `  <BlockGroup>\n    <Name>${escapeXml(group.name)}</Name>\n${group.blockTypes
       .map((bt) => `    <BlockTypes>\n      <TypeId>${escapeXml(bt.typeId)}</TypeId>\n      <SubtypeId>${escapeXml(bt.subtypeId || "")}</SubtypeId>\n      <CountWeight>${bt.countWeight}</CountWeight>\n    </BlockTypes>`)
@@ -631,10 +817,11 @@ function generateXml() {
       .join("\n")}\n</ShipCore>`
   }));
 
+  ids("noCoreXml").textContent = noCore;
   ids("groupsXml").textContent = groups;
   ids("manifestXml").textContent = manifest;
   ids("coresXml").textContent = cores.map((core) => `===== ${core.file} =====\n${core.body}`).join("\n\n");
-  return { groups, manifest, cores };
+  return { noCore, groups, manifest, cores };
 }
 
 document.addEventListener("click", (event) => {
@@ -837,12 +1024,38 @@ ids("resetEditor").addEventListener("click", () => {
   setImportStatus(["Editor reset to starter seed data."]);
 });
 
+ids("downloadNoCore").addEventListener("click", () => download("ShipCoreConfig_No_Core.xml", generateXml().noCore));
 ids("downloadGroups").addEventListener("click", () => download("ShipCoreConfig_Groups.xml", generateXml().groups));
 ids("downloadManifest").addEventListener("click", () => download("ShipCoreConfig_Manifest.xml", generateXml().manifest));
 ids("downloadCores").addEventListener("click", () => {
   const xml = generateXml();
   const zip = createZip(xml.cores.map((core) => ({ name: core.file, content: core.body })));
   downloadBlob("ShipCore_XMLs.zip", zip);
+});
+
+ids("loadLegacyModConfig").addEventListener("click", async () => {
+  const legacyFile = ids("legacyModConfigFile").files?.[0];
+  if (!legacyFile) {
+    setImportStatus(["No legacy ModConfig XML selected."]);
+    return;
+  }
+
+  const migrated = migrateLegacyModConfig(await legacyFile.text(), legacyFile.name);
+  if (migrated.error) {
+    setImportStatus([migrated.error]);
+    return;
+  }
+
+  state.noCoreCore = migrated.noCoreCore;
+  state.shipCores = migrated.shipCores;
+  state.blockGroups = migrated.blockGroups;
+  state.selectedGroupIndex = 0;
+  state.selectedCoreIndex = 0;
+
+  renderBlockGroups();
+  renderShipCores();
+  generateXml();
+  setImportStatus(migrated.status);
 });
 
 ids("loadUploadedXml").addEventListener("click", async () => {
@@ -883,6 +1096,7 @@ ids("loadUploadedXml").addEventListener("click", async () => {
 
   state.selectedCoreIndex = 0;
 
+  if (state.noCoreCore) status.push(`Loaded no-core from ${state.noCoreCore.originalFileName || "legacy import"}.`);
   if (state.blockGroups.length === 0) status.push("No block groups loaded (you can still create them manually).");
   if (state.shipCores.length === 0) status.push("No cores loaded (you can still add cores manually).");
 
