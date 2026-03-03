@@ -133,3 +133,9 @@ button:hover { background: #0d9488; }
   width: auto;
   margin: 0;
 }
+
+.group-search {
+  margin-top: 0.35rem;
+  margin-bottom: 0.45rem;
+  max-width: 520px;
+}

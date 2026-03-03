@@ -42,7 +42,26 @@
     </section>
 
     <section class="panel">
-      <h2>3) Reusable Block Groups</h2>
+      <h2>3) Migrate Legacy GridClass ModConfig (optional)</h2>
+      <p class="muted">Load an older <code>&lt;ModConfig&gt;</code> file (with <code>DefaultGridClass</code> and <code>GridClasses</code>) and auto-populate no-core, cores, and block groups.</p>
+      <div class="row wrap file-upload-row">
+        <label class="file-label">Legacy ModConfig XML
+          <input id="legacyModConfigFile" type="file" accept=".xml" />
+        </label>
+        <label class="file-label">Limit merge mode
+          <select id="legacyLimitMergeMode">
+            <option value="strict">Strict (TypeId + SubtypeId + CountWeight)</option>
+            <option value="typesOnly">Block types only (ignore CountWeight)</option>
+          </select>
+        </label>
+      </div>
+      <div class="row wrap">
+        <button id="loadLegacyModConfig">Migrate Legacy ModConfig</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>4) Reusable Block Groups</h2>
       <div class="menu-controls">
         <button id="addGroup">Add Block Group</button>
         <select id="selectedGroup" aria-label="Selected Group"></select>
@@ -51,7 +70,7 @@
     </section>
 
     <section class="panel">
-      <h2>4) Ship Cores</h2>
+      <h2>5) Ship Cores</h2>
       <div class="menu-controls">
         <button id="addCore">Add Ship Core</button>
         <select id="selectedCore" aria-label="Selected Core"></select>
@@ -60,14 +79,17 @@
     </section>
 
     <section class="panel">
-      <h2>5) Generated XML</h2>
+      <h2>6) Generated XML</h2>
       <p class="muted">Generated XML previews update automatically as you edit.</p>
       <div class="row wrap">
         <button hidden="hidden" id="generateXml">Generate</button>
+        <button id="downloadNoCore">Download ShipCoreConfig_No_Core.xml</button>
         <button id="downloadGroups">Download ShipCoreConfig_Groups.xml</button>
         <button id="downloadManifest">Download ShipCoreConfig_Manifest.xml</button>
         <button id="downloadCores">Download all ShipCore XMLs (.zip)</button>
       </div>
+      <h3>ShipCoreConfig_No_Core.xml</h3>
+      <pre id="noCoreXml" class="code-block"></pre>
       <h3>ShipCoreConfig_Groups.xml</h3>
       <pre id="groupsXml" class="code-block"></pre>
       <h3>ShipCoreConfig_Manifest.xml</h3>
