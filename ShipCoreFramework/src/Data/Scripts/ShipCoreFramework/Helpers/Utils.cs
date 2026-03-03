@@ -144,7 +144,7 @@ namespace ShipCoreFramework
             if (grid == null) return;
             
             var cargoContainers = new List<IMyCargoContainer>();
-            MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(grid).GetBlocksOfType(cargoContainers);
+            MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(grid)?.GetBlocksOfType(cargoContainers);
             var thisCargo = block.FatBlock as IMyCargoContainer;
             if (thisCargo != null) cargoContainers.Remove(thisCargo);
 
@@ -171,8 +171,9 @@ namespace ShipCoreFramework
             
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
+                if(grid.MarkedForClose) return;
                 var projectors = new List<IMyProjector>();
-                MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(grid).GetBlocksOfType(projectors);
+                MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(grid)?.GetBlocksOfType(projectors);
                 foreach (var p in projectors) p.Enabled = false;
             });
         }

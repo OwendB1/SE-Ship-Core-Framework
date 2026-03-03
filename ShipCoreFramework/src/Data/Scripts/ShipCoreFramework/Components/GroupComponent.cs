@@ -224,12 +224,12 @@ namespace ShipCoreFramework
             gc.Init(g, addedTo);
             GridDictionary.Add(g,gc);
 
+            Utils.Log($"OnGridAdded: {grid.EntityId}, {OwnerId}, {grid.CustomName}", 2);
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
-                if(grid.MarkedForClose) return;
+                if(grid.MarkedForClose || grid.Closed) return;
                 if (IsIgnoredGroup())
                 {
-                    Utils.Log($"OnGridAdded: {grid.EntityId}, {OwnerId}, {grid.CustomName}", 2);
                     Utils.Log($"OnGridAdded: Group became ignored after grid addition (Faction: {OwningFaction?.Tag ?? "None"})", 2);
                 
                     if (MainCoreComponent == null) return;
@@ -253,7 +253,11 @@ namespace ShipCoreFramework
             GridComponent comp;
             if (GridDictionary.TryGetValue(g, out comp))
             {
-                if (MainCoreComponent?.GridComponent.Grid.EntityId == g.EntityId) ResetCore();
+                if (MainCoreComponent?.GridComponent.Grid.EntityId == g.EntityId)
+                {
+                    MainCoreComponent.CoreBlock.SlimBlock.RemoveAndRefund();
+                    ResetCore();
+                }
                 comp.Clean();
                 GridDictionary.Remove(g);
             }

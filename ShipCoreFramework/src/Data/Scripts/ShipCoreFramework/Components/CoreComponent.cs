@@ -98,7 +98,7 @@ namespace ShipCoreFramework
             {
                 Utils.Log($"Other Core Exist: {CoreBlock.CubeGrid.CustomName}", 3);
                 CoreBlock.SlimBlock.RemoveAndRefund();
-                Utils.ShowNotification("Other Core Type Exist On Grid", 10000, CoreBlock.CubeGrid.BigOwners.FirstOrDefault(), true);
+                Utils.ShowNotification("Other Core Type Exist On Grid");
                 return false;
             }
 
@@ -106,7 +106,7 @@ namespace ShipCoreFramework
             {
                 Utils.Log($"Exceeds max number of backup cores: {CoreBlock.CubeGrid.CustomName}", 2);
                 CoreBlock.SlimBlock.RemoveAndRefund();
-                Utils.ShowNotification("This core exceeds max backup cores", 10000, CoreBlock.CubeGrid.BigOwners.FirstOrDefault(), true);
+                Utils.ShowNotification("This core exceeds max backup cores");
                 return false;
             }
             
