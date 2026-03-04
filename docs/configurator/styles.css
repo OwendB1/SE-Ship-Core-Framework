@@ -90,6 +90,11 @@ button:hover { background: #0d9488; }
   font-weight: 600;
 }
 
+
+.block-limit-summary--missing-groups {
+  color: #f87171;
+}
+
 .block-limit-content {
   padding: 0 0.75rem 0.75rem;
 }
