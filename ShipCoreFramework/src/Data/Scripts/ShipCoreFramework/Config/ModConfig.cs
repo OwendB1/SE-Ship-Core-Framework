@@ -448,22 +448,28 @@ namespace ShipCoreFramework
         }
     }
 
-    [XmlRoot("BlockLimit")]
-    public class BlockLimit
-    {
-        [XmlElement("Name")]
-        public string Name = string.Empty;
-        [XmlElement("BlockGroups")]
-        public string[] BlockGroupsShortHand = Array.Empty<string>();
-        [XmlIgnore]
-        public List<BlockGroup> BlockGroups = new List<BlockGroup>();
-        [XmlElement("MaxCount")]
-        public float MaxCount;
-        [XmlElement("PunishByNoFlyZone")]
-        public bool PunishByNoFlyZone;
-        [XmlElement("PunishmentType")]
-        public PunishmentType PunishmentType = PunishmentType.ShutOff;
-        [XmlElement("AllowedDirections")]
+	    [XmlRoot("BlockLimit")]
+	    public class BlockLimit
+	    {
+	        [XmlElement("Name")]
+	        public string Name = string.Empty;
+	        [XmlElement("BlockGroups")]
+	        public string[] BlockGroupsShortHand = Array.Empty<string>();
+	        [XmlIgnore]
+	        public List<BlockGroup> BlockGroups = new List<BlockGroup>();
+	        [XmlElement("MaxCount")]
+	        public float MaxCount;
+	        /// <summary>
+	        /// If true, blocks on a connected "NoCore" mechanical group (via ship connectors) will be counted
+	        /// against this limit on the owning group while the connector remains attached.
+	        /// </summary>
+	        [XmlElement("CrossConnectorPunishment")]
+	        public bool CrossConnectorPunishment;
+	        [XmlElement("PunishByNoFlyZone")]
+	        public bool PunishByNoFlyZone;
+	        [XmlElement("PunishmentType")]
+	        public PunishmentType PunishmentType = PunishmentType.ShutOff;
+	        [XmlElement("AllowedDirections")]
         public List<DirectionType> AllowedDirections;
 
         internal double GetWeight(BlockKey key)

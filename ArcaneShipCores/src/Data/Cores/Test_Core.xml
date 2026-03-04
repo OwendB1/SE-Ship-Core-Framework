@@ -67,6 +67,7 @@
     <Name>Grinders</Name>
     <BlockGroups>Grinders</BlockGroups>
     <MaxCount>3</MaxCount>
+    <CrossConnectorPunishment>true</CrossConnectorPunishment>
     <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
     <PunishmentType>ShutOff</PunishmentType>
   </BlockLimits>
@@ -74,6 +75,7 @@
     <Name>Welders</Name>
     <BlockGroups>Welders</BlockGroups>
     <MaxCount>3</MaxCount>
+    <CrossConnectorPunishment>true</CrossConnectorPunishment>
     <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
     <PunishmentType>Damage</PunishmentType>
   </BlockLimits>
@@ -81,6 +83,7 @@
     <Name>Collectors</Name>
     <BlockGroups>Collectors</BlockGroups>
     <MaxCount>3</MaxCount>
+    <CrossConnectorPunishment>true</CrossConnectorPunishment>
     <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
     <PunishmentType>Damage</PunishmentType>
   </BlockLimits>

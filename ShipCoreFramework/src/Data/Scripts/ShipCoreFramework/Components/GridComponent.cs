@@ -13,7 +13,11 @@ namespace ShipCoreFramework
         private readonly object _blocksLock = new object();
         private readonly List<IMySlimBlock> _blocks = new List<IMySlimBlock>();
         internal readonly Dictionary<BlockLimit, LimitBucket> Limits = new Dictionary<BlockLimit, LimitBucket>();
-        internal readonly Dictionary<IMyCubeBlock, CoreComponent> CoreDictionary = new Dictionary<IMyCubeBlock, CoreComponent>();
+
+        internal readonly Dictionary<IMyCubeBlock, CoreComponent> CoreDictionary =
+            new Dictionary<IMyCubeBlock, CoreComponent>();
+
+        private readonly HashSet<long> _trackedConnectorIds = new HashSet<long>();
 
         private GroupComponent GroupComponent
         {
@@ -48,19 +52,13 @@ namespace ShipCoreFramework
 
             var blocks = new List<IMySlimBlock>();
             grid.GetBlocks(blocks);
-            
+
             //MUST get beacons before blocks or blocks will be added based on default class
             var beaconBlocks = blocks.Where(b => b.FatBlock is IMyBeacon).ToList();
-            foreach (var beacon in beaconBlocks)
-            {
-                BlockAddedInternal(beacon);
-            }
-            
+            foreach (var beacon in beaconBlocks) BlockAddedInternal(beacon);
+
             var otherBlocks = blocks.Where(b => !(b.FatBlock is IMyBeacon)).ToList();
-            foreach (var beacon in otherBlocks)
-            {
-                BlockAddedInternal(beacon);
-            }
+            foreach (var beacon in otherBlocks) BlockAddedInternal(beacon);
         }
 
         private void BlockAddedEvent(IMySlimBlock block)
@@ -91,10 +89,12 @@ namespace ShipCoreFramework
                 }
             }
 
-            Utils.Log(((IMyCubeGrid)Grid).CustomName + ": Block Added: " + Utils.GetBlockTypeId(block) + " | " + Utils.GetBlockSubtypeId(block));
-            
+            Utils.Log(((IMyCubeGrid)Grid).CustomName + ": Block Added: " + Utils.GetBlockTypeId(block) + " | " +
+                      Utils.GetBlockSubtypeId(block));
+
             var beacon = block.FatBlock as IMyBeacon;
-            if (beacon != null && Session.Config.ShipCores.Any(core => core.SubtypeId == block.FatBlock.BlockDefinition.SubtypeId))
+            if (beacon != null &&
+                Session.Config.ShipCores.Any(core => core.SubtypeId == block.FatBlock.BlockDefinition.SubtypeId))
             {
                 var newCore = new CoreComponent();
                 var success = newCore.Init(beacon, this, groupComponent);
@@ -120,25 +120,33 @@ namespace ShipCoreFramework
 
                     if (groupComponent.GroupBlocksCount > maxBlocks && maxBlocks > 0)
                     {
-                        Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxBlocks: " + (groupComponent.GroupBlocksCount > maxBlocks), 10000, firstBigOwner);
+                        Utils.ShowNotification(
+                            Utils.GetBlockSubtypeId(block) + " violates MaxBlocks: " +
+                            (groupComponent.GroupBlocksCount > maxBlocks), 10000, firstBigOwner);
                         block.RemoveAndRefund();
                         return;
                     }
+
                     if (groupComponent.GroupPCU > maxPCU && maxPCU > 0)
                     {
-                        Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxPCU: " + (groupComponent.GroupPCU > maxPCU), 10000, firstBigOwner);
+                        Utils.ShowNotification(
+                            Utils.GetBlockSubtypeId(block) + " violates MaxPCU: " + (groupComponent.GroupPCU > maxPCU),
+                            10000, firstBigOwner);
                         block.RemoveAndRefund();
                         return;
                     }
+
                     if (groupComponent.GroupMass > maxMass && maxMass > 0f)
                     {
-                        Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxMass: " + (groupComponent.GroupMass > maxMass), 10000, firstBigOwner);
+                        Utils.ShowNotification(
+                            Utils.GetBlockSubtypeId(block) + " violates MaxMass: " +
+                            (groupComponent.GroupMass > maxMass), 10000, firstBigOwner);
                         block.RemoveAndRefund();
                         return;
                     }
                 }
-                
-                if(!TryApplyLimitsOnAdd(block, limitBasedPunish)) return;
+
+                if (!TryApplyLimitsOnAdd(block, limitBasedPunish)) return;
 
                 lock (_blocksLock)
                 {
@@ -147,6 +155,9 @@ namespace ShipCoreFramework
 
                 var funcBlock = block.FatBlock as IMyFunctionalBlock;
                 if (funcBlock != null) funcBlock.EnabledChanged += FuncBlockOnEnabledChanged;
+
+                var connector = block.FatBlock as IMyShipConnector;
+                if (connector != null) TrackConnector(connector);
             }
 
             groupComponent.ApplyModifiers(groupComponent.Modifiers);
@@ -155,7 +166,7 @@ namespace ShipCoreFramework
         private bool TryApplyLimitsOnAdd(IMySlimBlock block, bool limitBasedPunish)
         {
             var firstOwner = Grid?.BigOwners.FirstOrDefault() ?? 0;
-            
+
             var limits = GroupComponent.ShipCore.BlockLimits;
             if (limits == null || limits.Length == 0) return true;
 
@@ -164,21 +175,21 @@ namespace ShipCoreFramework
             foreach (var limit in limits)
             {
                 if (limit == null) continue;
-                var hit = limit.BlockGroups.Any(g => g.BlockTypes.Any(b => b.TypeId == blockKey.TypeId && b.SubtypeId == blockKey.SubtypeId));
+                var hit = limit.BlockGroups.Any(g =>
+                    g.BlockTypes.Any(b => b.TypeId == blockKey.TypeId && b.SubtypeId == blockKey.SubtypeId));
                 if (!hit) continue;
-                
+
                 var w = limit.GetWeight(blockKey);
                 if (w <= 0d) continue;
 
                 if (GroupComponent.MainCoreComponent?.CoreBlock != null)
-                {
-                    if (!GroupComponent.IsValidDirection(GroupComponent.MainCoreComponent.CoreBlock, block, limit.AllowedDirections))
+                    if (!GroupComponent.IsValidDirection(GroupComponent.MainCoreComponent.CoreBlock, block,
+                            limit.AllowedDirections))
                     {
                         Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violated directional locking!");
-                        block.WhackABlock(limitBasedPunish ? limit.PunishmentType: PunishmentType.Delete);
+                        block.WhackABlock(limitBasedPunish ? limit.PunishmentType : PunishmentType.Delete);
                         return false; // Don't add punished blocks to the limit buckets
                     }
-                }
 
                 LimitBucket groupBucket;
                 if (!GroupComponent.Limits.TryGetValue(limit, out groupBucket))
@@ -195,16 +206,15 @@ namespace ShipCoreFramework
 
                 if (cur + w > limit.MaxCount)
                 {
-                    var message = Utils.GetBlockSubtypeId(block) + " violates Block limit " + limit.Name + ": " + (cur + w) + "/" + limit.MaxCount;
+                    var message = Utils.GetBlockSubtypeId(block) + " violates Block limit " + limit.Name + ": " +
+                                  (cur + w) + "/" + limit.MaxCount;
                     if (firstOwner != 0) Utils.ShowNotification(message, 10000, firstOwner);
                     else Utils.ShowNotification(message);
                     var punishmentType = limitBasedPunish ? limit.PunishmentType : PunishmentType.Delete;
                     block.WhackABlock(punishmentType);
 
                     if (punishmentType == PunishmentType.Delete || punishmentType == PunishmentType.Explode)
-                    {
                         return false; // Don't add destroyed or removed blocks to the limit buckets
-                    }
                 }
 
                 LimitBucket gridBucket;
@@ -226,6 +236,7 @@ namespace ShipCoreFramework
                     groupBucket.Members.Add(block);
                 }
             }
+
             return true;
         }
 
@@ -258,7 +269,6 @@ namespace ShipCoreFramework
 
                         LimitBucket gridBucket;
                         if (Limits.TryGetValue(limit, out gridBucket))
-                        {
                             lock (gridBucket.BucketLock)
                             {
                                 var idx = gridBucket.Members.IndexOf(block);
@@ -268,7 +278,6 @@ namespace ShipCoreFramework
                                     gridBucket.TotalWeight -= w;
                                 }
                             }
-                        }
 
                         LimitBucket groupBucket;
                         if (!groupComponent.Limits.TryGetValue(limit, out groupBucket)) continue;
@@ -290,7 +299,45 @@ namespace ShipCoreFramework
 
             var funcBlock = block.FatBlock as IMyFunctionalBlock;
             if (funcBlock != null && value == null) funcBlock.EnabledChanged -= FuncBlockOnEnabledChanged;
+
+            var connector = block.FatBlock as IMyShipConnector;
+            if (connector != null) UntrackConnector(connector);
             groupComponent.ApplyModifiers(groupComponent.Modifiers);
+        }
+
+        private void TrackConnector(IMyShipConnector connector)
+        {
+            if (connector == null) return;
+            if (!_trackedConnectorIds.Add(connector.EntityId)) return;
+
+            connector.IsConnectedChanged += ConnectorOnConnectionChanged;
+            connector.AttachFinished += ConnectorOnConnectionChanged;
+            connector.DetachFinished += ConnectorOnConnectionChanged;
+        }
+
+        private void UntrackConnector(IMyShipConnector connector)
+        {
+            if (connector == null) return;
+            if (!_trackedConnectorIds.Remove(connector.EntityId)) return;
+
+            connector.IsConnectedChanged -= ConnectorOnConnectionChanged;
+            connector.AttachFinished -= ConnectorOnConnectionChanged;
+            connector.DetachFinished -= ConnectorOnConnectionChanged;
+
+            var group = GroupComponent;
+            group?.OnConnectorsChanged();
+        }
+
+        private void ConnectorOnConnectionChanged(IMyShipConnector connector)
+        {
+            NotifyGroupConnectorChanged(connector);
+        }
+
+        private void NotifyGroupConnectorChanged(IMyShipConnector connector)
+        {
+            var group = GroupComponent;
+            if (group == null) return;
+            group.OnConnectorConnectionChanged(connector);
         }
 
         private void FuncBlockOnEnabledChanged(IMyTerminalBlock obj)
@@ -302,8 +349,8 @@ namespace ShipCoreFramework
             {
                 var limit = kv.Key;
                 var bucket = kv.Value;
-                
-                if(!bucket.Members.Contains(obj.SlimBlock)) continue;
+
+                if (!bucket.Members.Contains(obj.SlimBlock)) continue;
 
                 LimitBucket groupBucket;
                 if (!GroupComponent.Limits.TryGetValue(limit, out groupBucket)) continue;
@@ -317,7 +364,7 @@ namespace ShipCoreFramework
                 if (total <= limit.MaxCount) continue;
 
                 var over = total - limit.MaxCount;
-                
+
                 if (over <= 0d) break;
                 obj.SlimBlock.WhackABlock(PunishmentType.ShutOff);
             }
@@ -374,11 +421,18 @@ namespace ShipCoreFramework
             {
                 var fatBlock = bl?.FatBlock;
                 var func = fatBlock as IMyFunctionalBlock;
-                if (func != null)
+                if (func != null) func.EnabledChanged -= FuncBlockOnEnabledChanged;
+
+                var connector = fatBlock as IMyShipConnector;
+                if (connector != null)
                 {
-                    func.EnabledChanged -= FuncBlockOnEnabledChanged;
+                    connector.IsConnectedChanged -= ConnectorOnConnectionChanged;
+                    connector.AttachFinished -= ConnectorOnConnectionChanged;
+                    connector.DetachFinished -= ConnectorOnConnectionChanged;
                 }
             }
+
+            _trackedConnectorIds.Clear();
 
             Limits.Clear();
             CoreDictionary.Clear();
