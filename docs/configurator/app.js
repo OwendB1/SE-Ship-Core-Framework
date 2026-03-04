@@ -426,7 +426,7 @@ function renderShipCores() {
           <div>
             <label>Reusable Block Groups</label>
             <input data-action="limit-group-search" data-c="${coreIndex}" data-l="${limitIndex}" class="small group-search" placeholder="Search block groups" value="${escapeXml(limit.groupSearch || "")}" />
-            <div class="group-checklist">
+            <div class="group-checklist" data-limit-group-list data-c="${coreIndex}" data-l="${limitIndex}">
               ${blockGroupCheckboxes(coreIndex, limitIndex, limit.blockGroups, limit.groupSearch || "")}
             </div>
           </div>
@@ -434,6 +434,16 @@ function renderShipCores() {
       `).join("")}
     </div>
   `;
+}
+
+function renderLimitGroupChecklist(coreIndex, limitIndex) {
+  const limit = state.shipCores[coreIndex]?.blockLimits?.[limitIndex];
+  if (!limit) return;
+
+  const listElement = document.querySelector(`[data-limit-group-list][data-c="${coreIndex}"][data-l="${limitIndex}"]`);
+  if (!listElement) return;
+
+  listElement.innerHTML = blockGroupCheckboxes(coreIndex, limitIndex, limit.blockGroups, limit.groupSearch || "");
 }
 
 function parseGroupsXml(text) {
@@ -934,7 +944,7 @@ document.addEventListener("input", (event) => {
   if (action === "limit-max") state.shipCores[coreIndex].blockLimits[limitIndex].maxCount = Number(target.value || 0);
   if (action === "limit-group-search") {
     state.shipCores[coreIndex].blockLimits[limitIndex].groupSearch = target.value;
-    renderShipCores();
+    renderLimitGroupChecklist(coreIndex, limitIndex);
   }
 
   generateXml();
