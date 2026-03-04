@@ -152,6 +152,48 @@ function addBlockGroup(group = { name: "", blockTypes: [] }) {
   renderShipCores();
 }
 
+function cloneBlockType(blockType = {}) {
+  return {
+    typeId: String(blockType.typeId ?? ""),
+    subtypeId: String(blockType.subtypeId ?? ""),
+    countWeight: Number(blockType.countWeight ?? 1)
+  };
+}
+
+function cloneLimit(limit = createDefaultLimit()) {
+  return {
+    ...createDefaultLimit(),
+    ...limit,
+    allowedDirections: Array.isArray(limit.allowedDirections) ? [...limit.allowedDirections] : [],
+    blockGroups: Array.isArray(limit.blockGroups) ? [...limit.blockGroups] : [],
+    groupSearch: String(limit.groupSearch ?? "")
+  };
+}
+
+function createIncrementedDuplicateName(name, allNames, fallbackBase = "BlockGroup") {
+  const trimmedName = String(name ?? "").trim();
+  const sourceBase = trimmedName || fallbackBase;
+  const baseName = sourceBase.replace(/-\d+$/, "");
+  const escapedBase = baseName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const duplicateRegex = new RegExp(`^${escapedBase}-(\\d+)$`);
+
+  let maxDuplicateIndex = 0;
+  allNames.forEach((existingNameRaw) => {
+    const existingName = String(existingNameRaw ?? "").trim();
+    if (existingName === baseName) {
+      maxDuplicateIndex = Math.max(maxDuplicateIndex, 0);
+      return;
+    }
+
+    const match = existingName.match(duplicateRegex);
+    if (match) {
+      maxDuplicateIndex = Math.max(maxDuplicateIndex, Number(match[1]));
+    }
+  });
+
+  return `${baseName}-${maxDuplicateIndex + 1}`;
+}
+
 function renameBlockGroupReferences(previousName, nextName) {
   if (!previousName || previousName === nextName) return;
   state.shipCores.forEach((core) => {
@@ -176,6 +218,18 @@ function addShipCore(core = createDefaultCore()) {
   state.shipCores.push({ ...createDefaultCore(), ...core });
   state.selectedCoreIndex = state.shipCores.length - 1;
   renderShipCores();
+}
+
+function cloneShipCore(core = createDefaultCore()) {
+  return {
+    ...createDefaultCore(),
+    ...core,
+    modifiers: { ...DEFAULT_GRID_MODIFIERS, ...(core.modifiers || {}) },
+    speedModifiers: { ...DEFAULT_SPEED_MODIFIERS, ...(core.speedModifiers || {}) },
+    passiveDefenseModifiers: { ...DEFAULT_DEFENSE_MODIFIERS, ...(core.passiveDefenseModifiers || {}) },
+    activeDefenseModifiers: { ...DEFAULT_DEFENSE_MODIFIERS, ...(core.activeDefenseModifiers || {}) },
+    blockLimits: Array.isArray(core.blockLimits) ? core.blockLimits.map((limit) => cloneLimit(limit)) : []
+  };
 }
 
 function createDefaultLimit() {
@@ -270,6 +324,7 @@ function renderBlockGroups() {
       <div class="row wrap">
         <label class="inline">Group Name <input data-action="group-name" data-g="${groupIndex}" placeholder="Group Name" value="${escapeXml(group.name)}" /></label>
         <button data-action="add-bt" data-g="${groupIndex}">Add BlockType</button>
+        <button data-action="duplicate-group" data-g="${groupIndex}">Duplicate Group</button>
         <button data-action="remove-group" data-g="${groupIndex}">Delete Group</button>
       </div>
       ${group.blockTypes.map((bt, i) => blockTypeEditor(groupIndex, bt, i)).join("")}
@@ -349,6 +404,7 @@ function renderShipCores() {
             ${["Static", "Mobile", "Both"].map((value) => `<option ${core.mobilityType === value ? "selected" : ""}>${value}</option>`).join("")}
           </select>
         </label>
+        <button data-action="duplicate-core" data-c="${coreIndex}">Duplicate Core</button>
         <button data-action="remove-core" data-c="${coreIndex}">Delete Core</button>
       </div>
       <div class="row wrap">
@@ -407,6 +463,7 @@ function renderShipCores() {
           <div class="row wrap">
             <input data-action="limit-name" data-c="${coreIndex}" data-l="${limitIndex}" class="small" placeholder="Limit Name" value="${escapeXml(limit.name)}" />
             <label class="inline">MaxCount <input data-action="limit-max" data-c="${coreIndex}" data-l="${limitIndex}" class="small" type="number" step="0.1" value="${limit.maxCount}" /></label>
+            <button data-action="duplicate-limit" data-c="${coreIndex}" data-l="${limitIndex}">Duplicate Limit</button>
             <button data-action="remove-limit" data-c="${coreIndex}" data-l="${limitIndex}">Delete Limit</button>
           </div>
           <div class="row wrap">
@@ -889,14 +946,48 @@ document.addEventListener("click", (event) => {
     if (state.selectedGroupIndex >= state.blockGroups.length) state.selectedGroupIndex = state.blockGroups.length - 1;
     didMutate = true;
   }
+  if (action === "duplicate-group") {
+    const sourceGroup = state.blockGroups[groupIndex];
+    if (sourceGroup) {
+      const duplicateName = createIncrementedDuplicateName(
+        sourceGroup.name,
+        state.blockGroups.map((group) => group.name),
+        "BlockGroup"
+      );
+      const duplicatedGroup = {
+        name: duplicateName,
+        blockTypes: (sourceGroup.blockTypes || []).map((blockType) => cloneBlockType(blockType))
+      };
+
+      state.blockGroups.splice(groupIndex + 1, 0, duplicatedGroup);
+      state.selectedGroupIndex = groupIndex + 1;
+      didMutate = true;
+    }
+  }
   if (action === "remove-core") {
     state.shipCores.splice(coreIndex, 1);
     if (state.selectedCoreIndex >= state.shipCores.length) state.selectedCoreIndex = state.shipCores.length - 1;
     didMutate = true;
   }
+  if (action === "duplicate-core") {
+    const sourceCore = state.shipCores[coreIndex];
+    if (sourceCore) {
+      const duplicatedCore = cloneShipCore(sourceCore);
+      state.shipCores.splice(coreIndex + 1, 0, duplicatedCore);
+      state.selectedCoreIndex = coreIndex + 1;
+      didMutate = true;
+    }
+  }
   if (action === "add-limit") {
     state.shipCores[coreIndex].blockLimits.push(createDefaultLimit());
     didMutate = true;
+  }
+  if (action === "duplicate-limit") {
+    const sourceLimit = state.shipCores[coreIndex]?.blockLimits?.[limitIndex];
+    if (sourceLimit) {
+      state.shipCores[coreIndex].blockLimits.splice(limitIndex + 1, 0, cloneLimit(sourceLimit));
+      didMutate = true;
+    }
   }
   if (action === "remove-limit") {
     state.shipCores[coreIndex].blockLimits.splice(limitIndex, 1);
