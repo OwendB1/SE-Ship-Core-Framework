@@ -23,7 +23,7 @@ namespace ShipCoreFramework
         [XmlIgnore] public List<string> IgnoredFactionTags = new List<string>();
         [XmlIgnore] public ShipCore SelectedNoCore;
         [XmlIgnore] public bool IgnoreAiFactions;
-        
+
         [XmlElement("DebugMode")] public bool DebugMode;
         [XmlElement("CombatLogging")] public bool CombatLogging = true;
         [XmlElement("LOG_LEVEL")]public int LogLevel = 2; //messages with logPriority >= this will get logged, less than will be ignored
@@ -32,7 +32,7 @@ namespace ShipCoreFramework
         [XmlElement("MaxPossibleSpeedMetersPerSecond")] public float MaxPossibleSpeedMetersPerSecond = 300;
         [XmlElement("FrictionSpeedValueMode")] public FrictionSpeedValueMode FrictionSpeedValueMode = FrictionSpeedValueMode.Modifier;
         [XmlElement("NoFlyZones")] public List<Zones> NoFlyZones = new List<Zones>();
-        
+
         public ShipCore GetShipCoreByTypeId(string coreTypeId)
         {
             if (coreTypeId == string.Empty) return SelectedNoCore;
@@ -47,6 +47,8 @@ namespace ShipCoreFramework
 
         public void SaveConfig(bool showInChat = false)
         {
+            if (!Session.IsServer) return;
+
             try
             {
                 var globalConfigWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig));
@@ -59,6 +61,8 @@ namespace ShipCoreFramework
                 Utils.Log($"Stored Data In World Config: : Saved {IgnoredFactionsKey}", showInChat ? 3 : 0);
                 Utils.SaveToSandbox(SelectedNoCoreKey, SelectedNoCore);
                 Utils.Log($"Stored Data In World Config: : Saved {SelectedNoCoreKey}", showInChat ? 3 : 0);
+
+                if (Session.MpActive) Session.BroadcastConfigToClients();
             }
             catch (Exception e)
             {
@@ -69,38 +73,26 @@ namespace ShipCoreFramework
                 globalConfigWriter.Close();
             }
         }
-        
+
         public void LoadConfig()
         {
+            LoadConfig(Session.IsServer);
+        }
+
+        public void LoadConfig(bool allowWorldStorageReadWrite)
+        {
             //Get World Settings
-            if (MyAPIGateway.Utilities.FileExistsInWorldStorage(GlobalConfigFileName, typeof(ModConfig)))
+            if (allowWorldStorageReadWrite && MyAPIGateway.Utilities.FileExistsInWorldStorage(GlobalConfigFileName, typeof(ModConfig)))
             {
                 using (var reader = MyAPIGateway.Utilities.ReadFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig)))
                 {
                     var text = reader.ReadToEnd();
                     var import = MyAPIGateway.Utilities.SerializeFromXML<ModConfig>(text);
                     if (import == null) throw new Exception("Failed to load world config.");
-
-                    DebugMode = !Session.IsClient && import.DebugMode;
-                    CombatLogging = import.CombatLogging;
-                    LogLevel = import.LogLevel;
-                    ClientOutputLogLevel = import.ClientOutputLogLevel;
-
-                    if (import.MaxPossibleSpeedMetersPerSecond <= 0 || import.MaxPossibleSpeedMetersPerSecond > 10000)
-                    {
-                        Utils.Log("MaxPossibleSpeedMetersPerSecond validation failed - using default 300", 0, "Config Validation");
-                        MaxPossibleSpeedMetersPerSecond = 300;
-                    }
-                    else
-                    {
-                        MaxPossibleSpeedMetersPerSecond = import.MaxPossibleSpeedMetersPerSecond;
-                    }
-
-                    FrictionSpeedValueMode = import.FrictionSpeedValueMode;
-                    NoFlyZones = import.NoFlyZones;
+                    ApplyWorldSettingsFrom(import);
                 }
             }
-            else
+            else if (allowWorldStorageReadWrite)
             {
                 //Write Global Settings using predefined values
                 var globalConfigWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig));
@@ -111,7 +103,7 @@ namespace ShipCoreFramework
             IgnoreAiFactions = Utils.LoadFromSandbox<bool>(IgnoreAiKey);
             IgnoredFactionTags = Utils.LoadFromSandbox<List<string>>(IgnoredFactionsKey) ?? new List<string>{"SPRT","ADMIN","FMCA", "BORG", "TERA"};
             SelectedNoCore = Utils.LoadFromSandbox<ShipCore>(SelectedNoCoreKey);
-            
+
             //Run Though Mods
             foreach (var mod in MyAPIGateway.Session.Mods)
             {
@@ -124,25 +116,26 @@ namespace ShipCoreFramework
 
                         if (newBlockGroups == null)
                             throw new Exception($"Failed to load block groups from Mod: {mod.FriendlyName}");
+                        NormalizeBlockGroups(newBlockGroups, mod.FriendlyName);
                         BlockGroups.AddRange(newBlockGroups);
                         Utils.Log($"Loaded Groups From: {mod.FriendlyName}", 1, "Ship Core Config");
                     }
 
-                //Add default Core to list
-                if (MyAPIGateway.Utilities.FileExistsInModLocation(DefaultNoCoreFileName, mod))
-                    using (var reader = MyAPIGateway.Utilities.ReadFileInModLocation(DefaultNoCoreFileName, mod))
-                    {
-                        var text = reader.ReadToEnd();
-                        var newNoCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(text);
+                    //Add default Core to list
+                    if (MyAPIGateway.Utilities.FileExistsInModLocation(DefaultNoCoreFileName, mod))
+                        using (var reader = MyAPIGateway.Utilities.ReadFileInModLocation(DefaultNoCoreFileName, mod))
+                        {
+                            var text = reader.ReadToEnd();
+                            var newNoCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(text);
 
-                        if (newNoCore == null)
-                            throw new Exception($"Failed to load no-core from Mod: {mod.FriendlyName}");
-                        NoCoreConfigs.Add(newNoCore);
-                        Utils.Log($"Loaded No-Core Config From: {mod.FriendlyName}", 1, "Ship Core Config");
-                    }
+                            if (newNoCore == null)
+                                throw new Exception($"Failed to load no-core from Mod: {mod.FriendlyName}");
+                            NoCoreConfigs.Add(newNoCore);
+                            Utils.Log($"Loaded No-Core Config From: {mod.FriendlyName}", 1, "Ship Core Config");
+                        }
 
-                if (!MyAPIGateway.Utilities.FileExistsInModLocation(CoreManifestFileName, mod)) continue;
-                Utils.Log($"Found Manifest in: {mod.FriendlyName}", 1, "Ship Core Config");
+                        if (!MyAPIGateway.Utilities.FileExistsInModLocation(CoreManifestFileName, mod)) continue;
+                        Utils.Log($"Found Manifest in: {mod.FriendlyName}", 1, "Ship Core Config");
                 //Check the Core Manifest to get all cores in the mod
                 using (var reader = MyAPIGateway.Utilities.ReadFileInModLocation(CoreManifestFileName, mod))
                 {
@@ -159,6 +152,7 @@ namespace ShipCoreFramework
                             var newShipCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(modText);
 
                             if (newShipCore == null){throw new Exception($"Failed to load ship core from file {shipCoreFilename} in Mod: {mod.FriendlyName}");}
+                            NormalizeShipCoreBlockLimits(newShipCore, mod.FriendlyName, shipCoreFilename);
                             ShipCores.Add(newShipCore);
                             Utils.Log($"Loaded Core {newShipCore.UniqueName} From: {mod.FriendlyName}", 1, "Ship Core Config");
                         }
@@ -167,12 +161,19 @@ namespace ShipCoreFramework
 
             ThrowErrorIfDuplicates(NoCoreConfigs, core => core.UniqueName);
             ThrowErrorIfDuplicates(ShipCores, core => core.UniqueName);
+            NormalizeBlockGroups(BlockGroups, "All Loaded Mods");
             ThrowErrorIfDuplicates(BlockGroups, groups => groups.Name);
             Utils.Log($"NoCoreConfigs.Count = {NoCoreConfigs.Count}", 1, "Ship Core Config");
             Utils.Log($"BlockGroups.Count = {BlockGroups.Count}", 1, "Ship Core Config");
 
             foreach (var limit in ShipCores.SelectMany(core => core.BlockLimits))
             {
+                if (limit == null) continue;
+                if (limit.BlockGroupsShortHand == null)
+                {
+                    limit.BlockGroupsShortHand = Array.Empty<string>();
+                    Utils.Log("Config warning: A <BlockLimit> had null <BlockGroups>; treating as empty.", 2, "Config Validation");
+                }
                 foreach(var shorthand in limit.BlockGroupsShortHand)
                 {
                     foreach (var group in BlockGroups.Where(group => group.Name == shorthand))
@@ -184,8 +185,15 @@ namespace ShipCoreFramework
             }
             //Select the default config instead of returning
             if (SelectedNoCore == null) SelectedNoCore=DefaultNoCoreConfig.ShipCore;
+            NormalizeShipCoreBlockLimits(SelectedNoCore, "WorldStorage", SelectedNoCoreKey);
             foreach(var limit in SelectedNoCore.BlockLimits)
             {
+                if (limit == null) continue;
+                if (limit.BlockGroupsShortHand == null)
+                {
+                    limit.BlockGroupsShortHand = Array.Empty<string>();
+                    Utils.Log("Config warning: Selected no-core <BlockLimit> had null <BlockGroups>; treating as empty.", 2, "Config Validation");
+                }
                 foreach(var shorthand in limit.BlockGroupsShortHand)
                 {
                     foreach (var group in BlockGroups.Where(group => group.Name == shorthand))
@@ -197,24 +205,100 @@ namespace ShipCoreFramework
             }
         }
 
+        internal void ApplyWorldSettingsFrom(ModConfig import)
+        {
+            DebugMode = !Session.IsClient && import.DebugMode;
+            CombatLogging = import.CombatLogging;
+            LogLevel = import.LogLevel;
+            ClientOutputLogLevel = import.ClientOutputLogLevel;
+
+            if (import.MaxPossibleSpeedMetersPerSecond <= 0 || import.MaxPossibleSpeedMetersPerSecond > 10000)
+            {
+                Utils.Log("MaxPossibleSpeedMetersPerSecond validation failed - using default 300", 0, "Config Validation");
+                MaxPossibleSpeedMetersPerSecond = 300;
+            }
+            else
+            {
+                MaxPossibleSpeedMetersPerSecond = import.MaxPossibleSpeedMetersPerSecond;
+            }
+
+            FrictionSpeedValueMode = import.FrictionSpeedValueMode;
+            NoFlyZones = import.NoFlyZones;
+        }
+
         private static void ThrowErrorIfDuplicates<T, TKey>(List<T> list, Func<T, TKey> selector)
         {
             var dupeList = list.GroupBy(selector)
-                .Where(g => g.Count() > 1)
-                .Select(g => g.Key)
-                .ToList();
-            
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+
             if (dupeList.Any())
             {
                 throw new Exception($"Found duplicates f0r {selector.Method.Name}: {string.Join("\n- ", dupeList)}");
             }
         }
+
+        private static void NormalizeShipCoreBlockLimits(ShipCore core, string source, string coreFileOrKey)
+        {
+            if (core == null) return;
+
+            if (core.BlockLimits == null)
+            {
+                core.BlockLimits = Array.Empty<BlockLimit>();
+                Utils.Log($"Config warning: ShipCore '{core.UniqueName}' from {source} ({coreFileOrKey}) had no <BlockLimits>; treating as none.", 2, "Config Validation");
+                return;
+            }
+
+            foreach (var limit in core.BlockLimits)
+            {
+                if (limit == null) continue;
+
+                if (limit.BlockGroupsShortHand == null)
+                {
+                    limit.BlockGroupsShortHand = Array.Empty<string>();
+                    Utils.Log($"Config warning: ShipCore '{core.UniqueName}' from {source} ({coreFileOrKey}) has a <BlockLimit> with null <BlockGroups>; treating as empty.", 2, "Config Validation");
+                }
+
+                // XmlIgnore, but keep this resilient against hand-constructed objects.
+                if (limit.BlockGroups == null) limit.BlockGroups = new List<BlockGroup>();
+            }
+        }
+
+        private static void NormalizeBlockGroups(List<BlockGroup> groups, string source)
+        {
+            if (groups == null) return;
+
+            // Remove null entries and normalize fields so later LINQ doesn't NRE.
+            for (var i = groups.Count - 1; i >= 0; i--)
+            {
+                var group = groups[i];
+                if (group == null)
+                {
+                    groups.RemoveAt(i);
+                    Utils.Log($"Config warning: Null <BlockGroup> entry found in {source}; ignoring.", 2, "Config Validation");
+                    continue;
+                }
+
+                if (group.Name == null) group.Name = string.Empty;
+
+                if (group.BlockTypes == null)
+                {
+                    group.BlockTypes = new List<BlockType>();
+                    Utils.Log($"Config warning: BlockGroup '{group.Name}' from {source} had no <BlockTypes>; treating as empty.", 2, "Config Validation");
+                }
+                else
+                {
+                    group.BlockTypes.RemoveAll(t => t == null);
+                }
+            }
+        }
     }
-    
+
     [XmlRoot("Zones")]
-	public class Zones {
+    public class Zones {
         [XmlElement("ID")]
-		public int Id;
+        public int Id;
         [XmlElement("Position")]
         public Vector3D Position;
         [XmlElement("Radius")]
@@ -224,13 +308,13 @@ namespace ShipCoreFramework
         [XmlElement("OverideBlockLimitsForceShutOff")]
         public bool ForceOff;
     }
-    
+
     [XmlRoot("CoreManifest")]
     public class CoreManifest
     {
         [XmlElement("ShipCoreFilenames")] public List<string> ShipCoreFilenames;
     }
-    
+
     [XmlRoot("ShipCore")]
     public class ShipCore
     {
@@ -275,7 +359,7 @@ namespace ShipCoreFramework
         [XmlElement("BlockLimits")]
         public BlockLimit[] BlockLimits = Array.Empty<BlockLimit>();
     }
-    
+
     [XmlRoot("SpeedModifiers")]
     public class SpeedModifiers
     {
@@ -284,9 +368,9 @@ namespace ShipCoreFramework
         [XmlElement("MaxBoost")]
         public float MaxBoost = 0.5f;
         [XmlElement("BoostDuration")]
-        public float BoostDuration = 10f; 
+        public float BoostDuration = 10f;
         [XmlElement("BoostCoolDown")]
-        public float BoostCoolDown = 60f;      
+        public float BoostCoolDown = 60f;
         [XmlElement("MinimumFrictionSpeedAbsolute")]
         public float MinimumFrictionSpeedAbsolute = 100f;
         [XmlElement("MaximumFrictionSpeedAbsolute")]
@@ -296,9 +380,9 @@ namespace ShipCoreFramework
         [XmlElement("MaximumFrictionSpeedModifier")]
         public float MaximumFrictionSpeedModifier = 0.8f;
         [XmlElement("MaximumFrictionDeceleration")]
-        public float MaximumFrictionDeceleration= 1f;  
+        public float MaximumFrictionDeceleration= 1f;
     }
-    
+
     [XmlRoot("GridModifiers")]
     public class GridModifiers
     {
@@ -320,19 +404,19 @@ namespace ShipCoreFramework
         public float ThrusterEfficiency = 1;
         [XmlElement("ThrusterForce")]
         public float ThrusterForce = 1;
-        
+
         public override string ToString()
         {
             return
-                $"<GridModifiers ThrusterForce={ThrusterForce} " +
-                $"ThrusterEfficiency={ThrusterEfficiency} " +
-                $"GyroForce={GyroForce} " +
-                $"GyroEfficiency={GyroEfficiency} " +
-                $"RefineEfficiency={RefineEfficiency} " +
-                $"RefineSpeed={RefineSpeed} " +
-                $"AssemblerSpeed={AssemblerSpeed} " +
-                $"PowerProducersOutput={PowerProducersOutput} " +
-                $"DrillHarvestMultiplier={DrillHarvestMultiplier} />";
+            $"<GridModifiers ThrusterForce={ThrusterForce} " +
+            $"ThrusterEfficiency={ThrusterEfficiency} " +
+            $"GyroForce={GyroForce} " +
+            $"GyroEfficiency={GyroEfficiency} " +
+            $"RefineEfficiency={RefineEfficiency} " +
+            $"RefineSpeed={RefineSpeed} " +
+            $"AssemblerSpeed={AssemblerSpeed} " +
+            $"PowerProducersOutput={PowerProducersOutput} " +
+            $"DrillHarvestMultiplier={DrillHarvestMultiplier} />";
         }
 
         public List<ModifierNameValue> GetModifierValues()
@@ -375,6 +459,12 @@ namespace ShipCoreFramework
         public List<BlockGroup> BlockGroups = new List<BlockGroup>();
         [XmlElement("MaxCount")]
         public float MaxCount;
+        /// <summary>
+        /// If true, blocks on a connected "NoCore" mechanical group (via ship connectors) will be counted
+        /// against this limit on the owning group while the connector remains attached.
+        /// </summary>
+        [XmlElement("CrossConnectorPunishment")]
+        public bool CrossConnectorPunishment;
         [XmlElement("PunishByNoFlyZone")]
         public bool PunishByNoFlyZone;
         [XmlElement("PunishmentType")]
@@ -408,22 +498,22 @@ namespace ShipCoreFramework
     [XmlRoot("BlockGroup")]
     public class BlockGroup
     {
-        [XmlElement("Name")] 
+        [XmlElement("Name")]
         public string Name = string.Empty;
-        [XmlElement("BlockTypes")] 
+        [XmlElement("BlockTypes")]
         public List<BlockType> BlockTypes = new List<BlockType>();
     }
 
     [XmlRoot("BlockType")]
     public class BlockType
     {
-        [XmlElement("TypeId")] 
+        [XmlElement("TypeId")]
         public string TypeId;
-        [XmlElement("SubtypeId")] 
+        [XmlElement("SubtypeId")]
         public string SubtypeId;
-        [XmlElement("CountWeight")] 
+        [XmlElement("CountWeight")]
         public float CountWeight;
-        
+
         public BlockType()
         {
             TypeId = string.Empty;
@@ -442,38 +532,38 @@ namespace ShipCoreFramework
     [XmlRoot("GridDefenseModifiers")]
     public class GridDefenseModifiers
     {
-        [XmlElement("Bullet")] 
+        [XmlElement("Bullet")]
         public float Bullet = 1f;
-        [XmlElement("PostShield")] 
+        [XmlElement("PostShield")]
         public float PostShield = 1f;
-        [XmlElement("Duration")] 
+        [XmlElement("Duration")]
         public float Duration;
-        [XmlElement("Cooldown")] 
+        [XmlElement("Cooldown")]
         public float Cooldown;
-        [XmlElement("Rocket")] 
+        [XmlElement("Rocket")]
         public float Rocket = 1f;
-        [XmlElement("Explosion")] 
+        [XmlElement("Explosion")]
         public float Explosion = 1f;
-        [XmlElement("Environment")] 
+        [XmlElement("Environment")]
         public float Environment = 1f;
-        [XmlElement("Energy")] 
+        [XmlElement("Energy")]
         public float Energy = 1f;
-        [XmlElement("Kinetic")] 
+        [XmlElement("Kinetic")]
         public float Kinetic = 1f;
     }
-    
+
     [XmlRoot("MobilityType")]
     public enum MobilityType
     {
-        Static = 0, 
-        Mobile = 1, 
+        Static = 0,
+        Mobile = 1,
         Both = 2
     }
-    
+
     [XmlRoot("SpeedLimitType")]
     public enum SpeedLimitType
     {
-        Normal = 0, 
+        Normal = 0,
         Friction = 1
     }
 
