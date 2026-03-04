@@ -4,7 +4,8 @@ const state = {
   shipCores: [],
   selectedGroupIndex: 0,
   selectedCoreIndex: 0,
-  noCoreCore: null
+  noCoreCore: null,
+  expandedLimitPanelsByCore: {}
 };
 
 const DEFAULT_GRID_MODIFIERS = {
@@ -108,6 +109,40 @@ function parseModifierNode(node, defaults) {
   });
 
   return parsed;
+}
+
+
+
+function normalizeExpandedLimitPanelsForCore(coreIndex) {
+  const core = state.shipCores[coreIndex];
+  if (!core) {
+    delete state.expandedLimitPanelsByCore[coreIndex];
+    return [];
+  }
+
+  const maxLimitIndex = core.blockLimits.length - 1;
+  const expanded = Array.isArray(state.expandedLimitPanelsByCore[coreIndex])
+    ? state.expandedLimitPanelsByCore[coreIndex]
+    : [];
+
+  const normalized = expanded
+    .filter((index) => Number.isInteger(index) && index >= 0 && index <= maxLimitIndex)
+    .filter((index, position, arr) => arr.indexOf(index) === position)
+    .slice(-2);
+
+  state.expandedLimitPanelsByCore[coreIndex] = normalized;
+  return normalized;
+}
+
+
+function shiftExpandedLimitPanelsAfterCoreRemoval(removedCoreIndex) {
+  const shifted = {};
+  Object.entries(state.expandedLimitPanelsByCore).forEach(([key, value]) => {
+    const index = Number(key);
+    if (!Number.isInteger(index) || index === removedCoreIndex) return;
+    shifted[index > removedCoreIndex ? index - 1 : index] = value;
+  });
+  state.expandedLimitPanelsByCore = shifted;
 }
 
 function createDefaultCore() {
@@ -251,6 +286,7 @@ function resetEditor(seed = true) {
   state.selectedGroupIndex = 0;
   state.selectedCoreIndex = 0;
   state.noCoreCore = null;
+  state.expandedLimitPanelsByCore = {};
 
   if (seed) {
     addBlockGroup({ name: "Weaponry", blockTypes: [{ typeId: "SmallGatlingGun", subtypeId: "", countWeight: 1 }] });
@@ -338,10 +374,13 @@ function blockGroupCheckboxes(coreIndex, limitIndex, selected = [], searchText =
   return state.blockGroups
     .filter((group) => group.name.trim())
     .filter((group) => !normalizedSearch || group.name.toLowerCase().includes(normalizedSearch))
-    .map((group) => `<label class="group-checklist-item">
-      <input data-action="limit-group-toggle" data-c="${coreIndex}" data-l="${limitIndex}" data-group-name="${escapeXml(group.name)}" type="checkbox" ${selected.includes(group.name) ? "checked" : ""} />
+    .map((group) => {
+      const isSelected = selected.includes(group.name);
+      return `<label class="group-checklist-item ${isSelected ? "selected" : ""}">
+      <input data-action="limit-group-toggle" data-c="${coreIndex}" data-l="${limitIndex}" data-group-name="${escapeXml(group.name)}" type="checkbox" ${isSelected ? "checked" : ""} />
       <span>${escapeXml(group.name)}</span>
-    </label>`)
+    </label>`;
+    })
     .join("");
 }
 
@@ -394,6 +433,7 @@ function renderShipCores() {
 
   const coreIndex = state.selectedCoreIndex;
   const core = state.shipCores[coreIndex];
+  const expandedLimitPanels = normalizeExpandedLimitPanelsForCore(coreIndex);
 
   ids("shipCores").innerHTML = `
     <div class="card">
@@ -460,7 +500,9 @@ function renderShipCores() {
       </div>
 
       ${core.blockLimits.map((limit, limitIndex) => `
-        <div class="card">
+        <details class="card block-limit-panel" data-action="limit-toggle" data-c="${coreIndex}" data-l="${limitIndex}" ${expandedLimitPanels.includes(limitIndex) ? "open" : ""}>
+          <summary class="block-limit-summary">${escapeXml(limit.name?.trim() || `Block Limit ${limitIndex + 1}`)}</summary>
+          <div class="block-limit-content">
           <div class="row wrap">
             <input data-action="limit-name" data-c="${coreIndex}" data-l="${limitIndex}" class="small" placeholder="Limit Name" value="${escapeXml(limit.name)}" />
             <label class="inline">MaxCount <input data-action="limit-max" data-c="${coreIndex}" data-l="${limitIndex}" class="small" type="number" step="0.1" value="${limit.maxCount}" /></label>
@@ -489,7 +531,8 @@ function renderShipCores() {
               ${blockGroupCheckboxes(coreIndex, limitIndex, limit.blockGroups, limit.groupSearch || "")}
             </div>
           </div>
-        </div>
+          </div>
+        </details>
       `).join("")}
     </div>
   `;
@@ -970,6 +1013,7 @@ document.addEventListener("click", (event) => {
   }
   if (action === "remove-core") {
     state.shipCores.splice(coreIndex, 1);
+    shiftExpandedLimitPanelsAfterCoreRemoval(coreIndex);
     if (state.selectedCoreIndex >= state.shipCores.length) state.selectedCoreIndex = state.shipCores.length - 1;
     didMutate = true;
   }
@@ -978,23 +1022,36 @@ document.addEventListener("click", (event) => {
     if (sourceCore) {
       const duplicatedCore = cloneShipCore(sourceCore);
       state.shipCores.splice(coreIndex + 1, 0, duplicatedCore);
+
+      const shifted = {};
+      Object.entries(state.expandedLimitPanelsByCore).forEach(([key, value]) => {
+        const index = Number(key);
+        if (!Number.isInteger(index)) return;
+        shifted[index > coreIndex ? index + 1 : index] = value;
+      });
+      state.expandedLimitPanelsByCore = shifted;
+      state.expandedLimitPanelsByCore[coreIndex + 1] = [];
+
       state.selectedCoreIndex = coreIndex + 1;
       didMutate = true;
     }
   }
   if (action === "add-limit") {
     state.shipCores[coreIndex].blockLimits.push(createDefaultLimit());
+    normalizeExpandedLimitPanelsForCore(coreIndex);
     didMutate = true;
   }
   if (action === "duplicate-limit") {
     const sourceLimit = state.shipCores[coreIndex]?.blockLimits?.[limitIndex];
     if (sourceLimit) {
       state.shipCores[coreIndex].blockLimits.splice(limitIndex + 1, 0, cloneLimit(sourceLimit));
+      normalizeExpandedLimitPanelsForCore(coreIndex);
       didMutate = true;
     }
   }
   if (action === "remove-limit") {
     state.shipCores[coreIndex].blockLimits.splice(limitIndex, 1);
+    normalizeExpandedLimitPanelsForCore(coreIndex);
     didMutate = true;
   }
 
@@ -1145,6 +1202,30 @@ document.addEventListener("change", (event) => {
   generateXml();
 });
 
+document.addEventListener("toggle", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLDetailsElement)) return;
+  if (target.dataset.action !== "limit-toggle") return;
+
+  const coreIndex = Number(target.dataset.c);
+  const limitIndex = Number(target.dataset.l);
+  if (!Number.isInteger(coreIndex) || !Number.isInteger(limitIndex)) return;
+
+  const expanded = normalizeExpandedLimitPanelsForCore(coreIndex);
+  if (target.open) {
+    const nextExpanded = [...expanded.filter((index) => index !== limitIndex), limitIndex];
+    while (nextExpanded.length > 2) {
+      const removedLimitIndex = nextExpanded.shift();
+      const detailsToClose = document.querySelector(`details[data-action="limit-toggle"][data-c="${coreIndex}"][data-l="${removedLimitIndex}"]`);
+      if (detailsToClose instanceof HTMLDetailsElement) detailsToClose.open = false;
+    }
+    state.expandedLimitPanelsByCore[coreIndex] = nextExpanded;
+    return;
+  }
+
+  state.expandedLimitPanelsByCore[coreIndex] = expanded.filter((index) => index !== limitIndex);
+}, true);
+
 ids("selectedGroup").addEventListener("change", (event) => {
   state.selectedGroupIndex = Number(event.target.value);
   renderBlockGroups();
@@ -1193,6 +1274,7 @@ ids("loadLegacyModConfig").addEventListener("click", async () => {
   state.blockGroups = migrated.blockGroups;
   state.selectedGroupIndex = 0;
   state.selectedCoreIndex = 0;
+  state.expandedLimitPanelsByCore = {};
 
   renderBlockGroups();
   renderShipCores();
@@ -1237,6 +1319,7 @@ ids("loadUploadedXml").addEventListener("click", async () => {
   }
 
   state.selectedCoreIndex = 0;
+  state.expandedLimitPanelsByCore = {};
 
   if (state.noCoreCore) status.push(`Loaded no-core from ${state.noCoreCore.originalFileName || "legacy import"}.`);
   if (state.blockGroups.length === 0) status.push("No block groups loaded (you can still create them manually).");
