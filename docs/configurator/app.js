@@ -46,6 +46,7 @@ const DEFAULT_DEFENSE_MODIFIERS = {
 
 
 const VALID_DIRECTIONS = ["Forward", "Backward", "Up", "Down", "Left", "Right"];
+const DRAFT_STORAGE_KEY = "ship-core-configurator-draft-v1";
 
 const ids = (id) => document.getElementById(id);
 
@@ -60,6 +61,64 @@ function escapeXml(value) {
 
 function parseXml(text) {
   return new DOMParser().parseFromString(text, "application/xml");
+}
+
+function cloneBlockGroup(group = { name: "", blockTypes: [] }) {
+  return {
+    name: String(group.name ?? ""),
+    blockTypes: Array.isArray(group.blockTypes) ? group.blockTypes.map((blockType) => cloneBlockType(blockType)) : []
+  };
+}
+
+function persistDraftToStorage() {
+  try {
+    const payload = {
+      blockGroups: state.blockGroups.map((group) => cloneBlockGroup(group)),
+      shipCores: state.shipCores.map((core) => cloneShipCore(core)),
+      noCoreCore: state.noCoreCore ? cloneShipCore(state.noCoreCore) : null,
+      selectedGroupIndex: state.selectedGroupIndex,
+      selectedCoreIndex: state.selectedCoreIndex,
+      expandedLimitPanelsByCore: state.expandedLimitPanelsByCore
+    };
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
+  } catch (error) {
+    console.warn("Failed to persist configurator draft to local storage.", error);
+  }
+}
+
+function clearDraftFromStorage() {
+  try {
+    localStorage.removeItem(DRAFT_STORAGE_KEY);
+  } catch (error) {
+    console.warn("Failed to clear configurator draft from local storage.", error);
+  }
+}
+
+function restoreDraftFromStorage() {
+  try {
+    const rawDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!rawDraft) return false;
+
+    const parsedDraft = JSON.parse(rawDraft);
+    state.blockGroups = Array.isArray(parsedDraft.blockGroups)
+      ? parsedDraft.blockGroups.map((group) => cloneBlockGroup(group))
+      : [];
+    state.shipCores = Array.isArray(parsedDraft.shipCores)
+      ? parsedDraft.shipCores.map((core) => cloneShipCore(core))
+      : [];
+    state.noCoreCore = parsedDraft.noCoreCore ? cloneShipCore(parsedDraft.noCoreCore) : null;
+    state.selectedGroupIndex = Number.isInteger(parsedDraft.selectedGroupIndex) ? parsedDraft.selectedGroupIndex : 0;
+    state.selectedCoreIndex = Number.isInteger(parsedDraft.selectedCoreIndex) ? parsedDraft.selectedCoreIndex : 0;
+    state.expandedLimitPanelsByCore = parsedDraft.expandedLimitPanelsByCore && typeof parsedDraft.expandedLimitPanelsByCore === "object"
+      ? parsedDraft.expandedLimitPanelsByCore
+      : {};
+
+    ensureValidSelectedIndexes();
+    return true;
+  } catch (error) {
+    console.warn("Failed to restore configurator draft from local storage.", error);
+    return false;
+  }
 }
 
 function textOf(parent, tag) {
@@ -501,7 +560,7 @@ function renderShipCores() {
 
       ${core.blockLimits.map((limit, limitIndex) => `
         <details class="card block-limit-panel" data-action="limit-toggle" data-c="${coreIndex}" data-l="${limitIndex}" ${expandedLimitPanels.includes(limitIndex) ? "open" : ""}>
-          <summary class="block-limit-summary">${escapeXml(limit.name?.trim() || `Block Limit ${limitIndex + 1}`)}</summary>
+          <summary class="block-limit-summary ${Array.isArray(limit.blockGroups) && limit.blockGroups.length === 0 ? "block-limit-summary--missing-groups" : ""}">${escapeXml(limit.name?.trim() || `Block Limit ${limitIndex + 1}`)}</summary>
           <div class="block-limit-content">
           <div class="row wrap">
             <input data-action="limit-name" data-c="${coreIndex}" data-l="${limitIndex}" class="small" placeholder="Limit Name" value="${escapeXml(limit.name)}" />
@@ -932,7 +991,8 @@ function download(filename, content) {
   downloadBlob(filename, new Blob([content], { type: "application/xml" }));
 }
 
-function generateXml() {
+function generateXml(options = {}) {
+  const { persistDraft = true } = options;
   const header = '<?xml version="1.0" encoding="UTF-8"?>';
 
   const noCore = state.noCoreCore
@@ -963,6 +1023,7 @@ function generateXml() {
   ids("groupsXml").textContent = groups;
   ids("manifestXml").textContent = manifest;
   ids("coresXml").textContent = cores.map((core) => `===== ${core.file} =====\n${core.body}`).join("\n\n");
+  if (persistDraft) persistDraftToStorage();
   return { noCore, groups, manifest, cores };
 }
 
@@ -1246,13 +1307,31 @@ ids("resetEditor").addEventListener("click", () => {
   setImportStatus(["Editor reset to starter seed data."]);
 });
 
-ids("downloadNoCore").addEventListener("click", () => download("ShipCoreConfig_No_Core.xml", generateXml().noCore));
-ids("downloadGroups").addEventListener("click", () => download("ShipCoreConfig_Groups.xml", generateXml().groups));
-ids("downloadManifest").addEventListener("click", () => download("ShipCoreConfig_Manifest.xml", generateXml().manifest));
+ids("resetDraftStorage").addEventListener("click", () => {
+  clearDraftFromStorage();
+  setImportStatus(["Cleared autosaved draft from browser storage."]);
+});
+
+ids("downloadNoCore").addEventListener("click", () => {
+  const xml = generateXml({ persistDraft: false });
+  download("ShipCoreConfig_No_Core.xml", xml.noCore);
+  clearDraftFromStorage();
+});
+ids("downloadGroups").addEventListener("click", () => {
+  const xml = generateXml({ persistDraft: false });
+  download("ShipCoreConfig_Groups.xml", xml.groups);
+  clearDraftFromStorage();
+});
+ids("downloadManifest").addEventListener("click", () => {
+  const xml = generateXml({ persistDraft: false });
+  download("ShipCoreConfig_Manifest.xml", xml.manifest);
+  clearDraftFromStorage();
+});
 ids("downloadCores").addEventListener("click", () => {
-  const xml = generateXml();
+  const xml = generateXml({ persistDraft: false });
   const zip = createZip(xml.cores.map((core) => ({ name: core.file, content: core.body })));
   downloadBlob("ShipCore_XMLs.zip", zip);
+  clearDraftFromStorage();
 });
 
 ids("loadLegacyModConfig").addEventListener("click", async () => {
@@ -1337,6 +1416,14 @@ ids("loadUploadedXml").addEventListener("click", async () => {
   state.schema = parseModConfigCs(text);
   ids("schemaPreview").textContent = JSON.stringify(state.schema, null, 2);
   ids("parserStatus").textContent = `Loaded bundled ModConfig.cs and parsed ${Object.keys(state.schema).length} XML classes.`;
+
+  if (restoreDraftFromStorage()) {
+    renderBlockGroups();
+    renderShipCores();
+    generateXml();
+    setImportStatus(["Restored autosaved draft from your browser storage."]);
+    return;
+  }
 
   resetEditor(true);
   setImportStatus(["Tip: Upload existing XML files to renovate and continue editing."]);
