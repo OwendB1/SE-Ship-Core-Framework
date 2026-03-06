@@ -4,7 +4,7 @@ const state = {
   shipCores: [],
   selectedGroupIndex: 0,
   selectedCoreIndex: 0,
-  noCoreCore: createDefaultNoCore(),
+  noCoreCore: null,
   expandedLimitPanelsByCore: {}
 };
 
@@ -106,7 +106,7 @@ function restoreDraftFromStorage() {
     state.shipCores = Array.isArray(parsedDraft.shipCores)
       ? parsedDraft.shipCores.map((core) => cloneShipCore(core))
       : [];
-    state.noCoreCore = parsedDraft.noCoreCore ? cloneShipCore(parsedDraft.noCoreCore) : createDefaultNoCore();
+    state.noCoreCore = parsedDraft.noCoreCore ? cloneShipCore(parsedDraft.noCoreCore) : null;
     state.selectedGroupIndex = Number.isInteger(parsedDraft.selectedGroupIndex) ? parsedDraft.selectedGroupIndex : 0;
     state.selectedCoreIndex = Number.isInteger(parsedDraft.selectedCoreIndex) ? parsedDraft.selectedCoreIndex : 0;
     state.expandedLimitPanelsByCore = parsedDraft.expandedLimitPanelsByCore && typeof parsedDraft.expandedLimitPanelsByCore === "object"
@@ -231,8 +231,6 @@ function createDefaultCore() {
 }
 
 function ensureValidSelectedIndexes() {
-  if (!state.noCoreCore) state.noCoreCore = createDefaultNoCore();
-
   state.selectedGroupIndex = state.blockGroups.length
     ? Math.min(Math.max(state.selectedGroupIndex, 0), state.blockGroups.length - 1)
     : -1;
@@ -507,14 +505,14 @@ function renderShipCores() {
   renderCoreSelector();
 
   if (state.selectedCoreIndex < 0) {
-    ids("shipCores").innerHTML = `<p class="muted">No core configuration is selected.</p>`;
+    ids("shipCores").innerHTML = `<p class="muted">No ship cores yet. Click <strong>Add Ship Core</strong>.</p>`;
     return;
   }
 
   const coreIndex = state.selectedCoreIndex;
   const core = getEditorCoreByIndex(coreIndex);
   if (!core) {
-    ids("shipCores").innerHTML = `<p class="muted">No core configuration is selected.</p>`;
+    ids("shipCores").innerHTML = `<p class="muted">No ship cores yet. Click <strong>Add Ship Core</strong>.</p>`;
     return;
   }
   const isNoCore = coreIndex === 0;
