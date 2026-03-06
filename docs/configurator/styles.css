@@ -64,6 +64,13 @@ button {
   cursor: pointer;
 }
 button:hover { background: #0d9488; }
+
+.button-green {
+  background: #15803d;
+}
+.button-green:hover {
+  background: #16a34a;
+}
 .code-block {
   background: #0b1220;
   border: 1px solid #374151;

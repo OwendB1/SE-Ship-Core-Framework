@@ -1403,6 +1403,17 @@ ids("downloadManifest").addEventListener("click", () => {
   download("ShipCoreConfig_Manifest.xml", xml.manifest);
   clearDraftFromStorage();
 });
+ids("downloadAllFiles").addEventListener("click", () => {
+  const xml = generateXml({ persistDraft: false });
+  const zip = createZip([
+    { name: "ShipCoreConfig_No_Core.xml", content: xml.noCore },
+    { name: "ShipCoreConfig_Groups.xml", content: xml.groups },
+    { name: "ShipCoreConfig_Manifest.xml", content: xml.manifest },
+    ...xml.cores.map((core) => ({ name: `Cores/${core.file}`, content: core.body }))
+  ]);
+  downloadBlob("ShipCore_All_Files.zip", zip);
+  clearDraftFromStorage();
+});
 ids("downloadCores").addEventListener("click", () => {
   const xml = generateXml({ persistDraft: false });
   const zip = createZip(xml.cores.map((core) => ({ name: `Cores/${core.file}`, content: core.body })));
