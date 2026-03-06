@@ -694,6 +694,22 @@ function writeModifierXml(tag, values, defaults, indent = "  ") {
     .join("\n")}\n${indent}</${tag}>`;
 }
 
+function writeBlockLimitXml(limit, indent = "  ") {
+  const lines = [
+    `${indent}<BlockLimits>`,
+    `${indent}  <Name>${escapeXml(limit.name)}</Name>`,
+    ...(limit.blockGroups || []).map((groupName) => `${indent}  <BlockGroups>${escapeXml(groupName)}</BlockGroups>`),
+    `${indent}  <MaxCount>${limit.maxCount}</MaxCount>`,
+    `${indent}  <CrossConnectorPunishment>${limit.crossConnectorPunishment}</CrossConnectorPunishment>`,
+    `${indent}  <PunishByNoFlyZone>${limit.punishByNoFlyZone}</PunishByNoFlyZone>`,
+    `${indent}  <PunishmentType>${escapeXml(limit.punishmentType)}</PunishmentType>`,
+    ...(limit.allowedDirections || []).filter(Boolean).map((direction) => `${indent}  <AllowedDirections>${escapeXml(direction)}</AllowedDirections>`),
+    `${indent}</BlockLimits>`
+  ];
+
+  return lines.join("\n");
+}
+
 function sanitizeFilenamePart(value) {
   return String(value ?? "")
     .trim()
@@ -1024,7 +1040,7 @@ function generateXml(options = {}) {
 
   const noCore = state.noCoreCore
     ? `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(state.noCoreCore.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(state.noCoreCore.uniqueName)}</UniqueName>\n  <ForceBroadCast>${state.noCoreCore.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${state.noCoreCore.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(state.noCoreCore.mobilityType)}</MobilityType>\n  <MaxBlocks>${state.noCoreCore.maxBlocks}</MaxBlocks>\n  <MaxMass>${state.noCoreCore.maxMass}</MaxMass>\n  <MaxPCU>${state.noCoreCore.maxPcu}</MaxPCU>\n  <MaxBackupCores>${state.noCoreCore.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${state.noCoreCore.maxPerPlayer}</MaxPerPlayer>\n  <MinPlayers>${state.noCoreCore.minPerFaction}</MinPlayers>\n  <MaxPerFaction>${state.noCoreCore.maxPerFaction}</MaxPerFaction>\n  <SpeedBoostEnabled>${state.noCoreCore.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(state.noCoreCore.speedLimitType)}</SpeedLimitType>\n  <EnableActiveDefenseModifiers>${state.noCoreCore.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeModifierXml("Modifiers", state.noCoreCore.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeModifierXml("SpeedModifiers", state.noCoreCore.speedModifiers, DEFAULT_SPEED_MODIFIERS)}\n${writeModifierXml("PassiveDefenseModifiers", state.noCoreCore.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", state.noCoreCore.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${state.noCoreCore.blockLimits
-      .map((limit) => `  <BlockLimits>\n    <Name>${escapeXml(limit.name)}</Name>\n${limit.blockGroups.map((g) => `    <BlockGroups>${escapeXml(g)}</BlockGroups>`).join("\n")}\n    <MaxCount>${limit.maxCount}</MaxCount>\n    <CrossConnectorPunishment>${limit.crossConnectorPunishment}</CrossConnectorPunishment>\n    <PunishByNoFlyZone>${limit.punishByNoFlyZone}</PunishByNoFlyZone>\n    <PunishmentType>${escapeXml(limit.punishmentType)}</PunishmentType>\n${(limit.allowedDirections || []).filter(Boolean).map((d) => `    <AllowedDirections>${escapeXml(d)}</AllowedDirections>`).join("\n")}\n  </BlockLimits>`)
+      .map((limit) => writeBlockLimitXml(limit))
       .join("\n")}\n</ShipCore>`
     : `${header}\n<ShipCore />`;
 
@@ -1042,7 +1058,7 @@ function generateXml(options = {}) {
   const cores = state.shipCores.map((core) => ({
     file: deriveCoreFilename(core),
     body: `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(core.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(core.uniqueName)}</UniqueName>\n  <ForceBroadCast>${core.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${core.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(core.mobilityType)}</MobilityType>\n  <MaxBlocks>${core.maxBlocks}</MaxBlocks>\n  <MaxMass>${core.maxMass}</MaxMass>\n  <MaxPCU>${core.maxPcu}</MaxPCU>\n  <MaxBackupCores>${core.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${core.maxPerPlayer}</MaxPerPlayer>\n  <MinPlayers>${core.minPerFaction}</MinPlayers>\n  <MaxPerFaction>${core.maxPerFaction}</MaxPerFaction>\n  <SpeedBoostEnabled>${core.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(core.speedLimitType)}</SpeedLimitType>\n  <EnableActiveDefenseModifiers>${core.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeModifierXml("Modifiers", core.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeModifierXml("SpeedModifiers", core.speedModifiers, DEFAULT_SPEED_MODIFIERS)}\n${writeModifierXml("PassiveDefenseModifiers", core.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", core.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${core.blockLimits
-      .map((limit) => `  <BlockLimits>\n    <Name>${escapeXml(limit.name)}</Name>\n${limit.blockGroups.map((g) => `    <BlockGroups>${escapeXml(g)}</BlockGroups>`).join("\n")}\n    <MaxCount>${limit.maxCount}</MaxCount>\n    <CrossConnectorPunishment>${limit.crossConnectorPunishment}</CrossConnectorPunishment>\n    <PunishByNoFlyZone>${limit.punishByNoFlyZone}</PunishByNoFlyZone>\n    <PunishmentType>${escapeXml(limit.punishmentType)}</PunishmentType>\n${(limit.allowedDirections || []).filter(Boolean).map((d) => `    <AllowedDirections>${escapeXml(d)}</AllowedDirections>`).join("\n")}\n  </BlockLimits>`)
+      .map((limit) => writeBlockLimitXml(limit))
       .join("\n")}\n</ShipCore>`
   }));
 
@@ -1265,6 +1281,7 @@ document.addEventListener("change", (event) => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
   const action = target.dataset.action;
+  if (!action) return;
   const coreIndex = Number(target.dataset.c);
   const limitIndex = Number(target.dataset.l);
   const selectedCore = getCoreBySelectorIndex(coreIndex);
