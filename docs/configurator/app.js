@@ -1405,7 +1405,7 @@ ids("downloadManifest").addEventListener("click", () => {
 });
 ids("downloadCores").addEventListener("click", () => {
   const xml = generateXml({ persistDraft: false });
-  const zip = createZip(xml.cores.map((core) => ({ name: core.file, content: core.body })));
+  const zip = createZip(xml.cores.map((core) => ({ name: `Cores/${core.file}`, content: core.body })));
   downloadBlob("ShipCore_XMLs.zip", zip);
   clearDraftFromStorage();
 });
