@@ -1270,6 +1270,16 @@ function commitDeferredTextInput(target) {
   }
 }
 
+function flushActiveDeferredInput() {
+  const activeElement = document.activeElement;
+  if (!(activeElement instanceof HTMLInputElement)) return;
+
+  const action = activeElement.dataset.action;
+  if (action !== "group-name" && action !== "core-subtype") return;
+
+  commitDeferredTextInput(activeElement);
+}
+
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Enter") return;
 
@@ -1381,7 +1391,10 @@ ids("selectedCore").addEventListener("change", (event) => {
 
 ids("addGroup").addEventListener("click", () => addBlockGroup({ name: "", blockTypes: [] }));
 ids("addCore").addEventListener("click", () => addShipCore());
-ids("generateXml").addEventListener("click", () => generateXml());
+ids("generateXml").addEventListener("click", () => {
+  flushActiveDeferredInput();
+  generateXml();
+});
 ids("resetEditor").addEventListener("click", () => {
   resetEditor(true);
   setImportStatus(["Editor reset to starter seed data."]);
@@ -1393,21 +1406,25 @@ ids("resetDraftStorage").addEventListener("click", () => {
 });
 
 ids("downloadNoCore").addEventListener("click", () => {
+  flushActiveDeferredInput();
   const xml = generateXml({ persistDraft: false });
   download("ShipCoreConfig_No_Core.xml", xml.noCore);
   clearDraftFromStorage();
 });
 ids("downloadGroups").addEventListener("click", () => {
+  flushActiveDeferredInput();
   const xml = generateXml({ persistDraft: false });
   download("ShipCoreConfig_Groups.xml", xml.groups);
   clearDraftFromStorage();
 });
 ids("downloadManifest").addEventListener("click", () => {
+  flushActiveDeferredInput();
   const xml = generateXml({ persistDraft: false });
   download("ShipCoreConfig_Manifest.xml", xml.manifest);
   clearDraftFromStorage();
 });
 ids("downloadCores").addEventListener("click", () => {
+  flushActiveDeferredInput();
   const xml = generateXml({ persistDraft: false });
   const zip = createZip(xml.cores.map((core) => ({ name: core.file, content: core.body })));
   downloadBlob("ShipCore_XMLs.zip", zip);
