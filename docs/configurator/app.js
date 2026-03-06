@@ -193,6 +193,12 @@ function getCoreBySelectorIndex(selectorIndex) {
 }
 
 
+function clearGeneratedFilenameForRenamedCore(coreIndex, core) {
+  if (!core || coreIndex === 0) return;
+  core.originalFileName = "";
+}
+
+
 
 function normalizeExpandedLimitPanelsForCore(coreIndex) {
   const core = getCoreBySelectorIndex(coreIndex);
@@ -916,6 +922,27 @@ function deriveCoreFilename(core) {
   return `${withoutSuffix || "unnamed"}_core.xml`;
 }
 
+function getUniqueCoreFilenames(cores) {
+  const usedNames = new Set();
+
+  return cores.map((core) => {
+    const rawName = deriveCoreFilename(core) || "unnamed_core.xml";
+    const extensionMatch = rawName.match(/(\.[^.]*)$/);
+    const extension = extensionMatch ? extensionMatch[1] : "";
+    const baseName = extension ? rawName.slice(0, -extension.length) : rawName;
+
+    let candidate = rawName;
+    let suffix = 1;
+    while (usedNames.has(candidate.toLowerCase())) {
+      candidate = `${baseName}-${suffix}${extension}`;
+      suffix += 1;
+    }
+
+    usedNames.add(candidate.toLowerCase());
+    return candidate;
+  });
+}
+
 function createCrc32Table() {
   const table = new Uint32Array(256);
   for (let i = 0; i < 256; i += 1) {
@@ -1050,13 +1077,15 @@ function generateXml(options = {}) {
       .join("\n")}\n  </BlockGroup>`)
     .join("\n")}\n</ArrayOfBlockGroup>`;
 
+  const coreFilenames = getUniqueCoreFilenames(state.shipCores);
+
   const manifest = `${header}\n<CoreManifest>\n${state.shipCores
     .filter((core) => core.subtypeId.trim())
-    .map((core) => `  <ShipCoreFilenames>Data/Cores/${escapeXml(deriveCoreFilename(core))}</ShipCoreFilenames>`)
+    .map((core, coreIndex) => `  <ShipCoreFilenames>Data/Cores/${escapeXml(coreFilenames[coreIndex])}</ShipCoreFilenames>`)
     .join("\n")}\n</CoreManifest>`;
 
-  const cores = state.shipCores.map((core) => ({
-    file: deriveCoreFilename(core),
+  const cores = state.shipCores.map((core, coreIndex) => ({
+    file: coreFilenames[coreIndex],
     body: `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(core.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(core.uniqueName)}</UniqueName>\n  <ForceBroadCast>${core.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${core.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(core.mobilityType)}</MobilityType>\n  <MaxBlocks>${core.maxBlocks}</MaxBlocks>\n  <MaxMass>${core.maxMass}</MaxMass>\n  <MaxPCU>${core.maxPcu}</MaxPCU>\n  <MaxBackupCores>${core.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${core.maxPerPlayer}</MaxPerPlayer>\n  <MinPlayers>${core.minPerFaction}</MinPlayers>\n  <MaxPerFaction>${core.maxPerFaction}</MaxPerFaction>\n  <SpeedBoostEnabled>${core.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(core.speedLimitType)}</SpeedLimitType>\n  <EnableActiveDefenseModifiers>${core.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeModifierXml("Modifiers", core.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeModifierXml("SpeedModifiers", core.speedModifiers, DEFAULT_SPEED_MODIFIERS)}\n${writeModifierXml("PassiveDefenseModifiers", core.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", core.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${core.blockLimits
       .map((limit) => writeBlockLimitXml(limit))
       .join("\n")}\n</ShipCore>`
@@ -1148,6 +1177,7 @@ document.addEventListener("click", (event) => {
       state.expandedLimitPanelsByCore[1] = [];
       didMutate = true;
     } else {
+      duplicatedCore.originalFileName = "";
       state.shipCores.splice(shipCoreIndex + 1, 0, duplicatedCore);
 
       const shifted = {};
@@ -1208,7 +1238,10 @@ document.addEventListener("input", (event) => {
 
   if (!selectedCore && (action.startsWith("core-") || action.startsWith("limit-"))) return;
 
-  if (action === "core-unique") selectedCore.uniqueName = target.value;
+  if (action === "core-unique") {
+    selectedCore.uniqueName = target.value;
+    clearGeneratedFilenameForRenamedCore(coreIndex, selectedCore);
+  }
   if (action === "core-maxblocks") selectedCore.maxBlocks = Number(target.value || -1);
   if (action === "core-maxmass") selectedCore.maxMass = Number(target.value || -1);
   if (action === "core-maxpcu") selectedCore.maxPcu = Number(target.value || -1);
@@ -1260,6 +1293,7 @@ function commitDeferredTextInput(target) {
     if (previousSubtype === nextSubtype) return;
 
     selectedCore.subtypeId = nextSubtype;
+    clearGeneratedFilenameForRenamedCore(coreIndex, selectedCore);
     renderShipCores();
     generateXml();
   }
