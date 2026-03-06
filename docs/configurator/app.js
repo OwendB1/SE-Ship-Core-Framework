@@ -248,10 +248,6 @@ function getEditorCoreByIndex(editorCoreIndex) {
   return state.shipCores[editorCoreIndex - 1] ?? null;
 }
 
-function isNoCoreEditorIndex(editorCoreIndex) {
-  return editorCoreIndex === 0;
-}
-
 function addBlockGroup(group = { name: "", blockTypes: [] }) {
   state.blockGroups.push(group);
   state.selectedGroupIndex = state.blockGroups.length - 1;
@@ -521,7 +517,7 @@ function renderShipCores() {
     ids("shipCores").innerHTML = `<p class="muted">No core configuration is selected.</p>`;
     return;
   }
-  const isNoCore = isNoCoreEditorIndex(coreIndex);
+  const isNoCore = coreIndex === 0;
   const expandedLimitPanels = normalizeExpandedLimitPanelsForCore(coreIndex);
 
   ids("shipCores").innerHTML = `
@@ -534,8 +530,8 @@ function renderShipCores() {
             ${["Static", "Mobile", "Both"].map((value) => `<option ${core.mobilityType === value ? "selected" : ""}>${value}</option>`).join("")}
           </select>
         </label>
-        ${isNoCore ? "" : `<button data-action="duplicate-core" data-c="${coreIndex}">Duplicate Core</button>`}
-        ${isNoCore ? "" : `<button data-action="remove-core" data-c="${coreIndex}">Delete Core</button>`}
+        <button data-action="duplicate-core" data-c="${coreIndex}">Duplicate Core</button>
+        <button data-action="remove-core" data-c="${coreIndex}" ${isNoCore ? "disabled" : ""}>Delete Core</button>
       </div>
       <div class="row wrap">
         <label class="inline">MaxBlocks <input data-action="core-maxblocks" data-c="${coreIndex}" class="small" type="number" value="${core.maxBlocks}" /></label>
@@ -1137,13 +1133,12 @@ document.addEventListener("click", (event) => {
     }
   }
   if (action === "remove-core") {
-    if (!isNoCoreEditorIndex(coreIndex)) {
-      const shipCoreIndex = coreIndex - 1;
-      state.shipCores.splice(shipCoreIndex, 1);
-      shiftExpandedLimitPanelsAfterCoreRemoval(coreIndex);
-      const maxEditorIndex = state.shipCores.length + (state.noCoreCore ? 1 : 0) - 1;
-      if (state.selectedCoreIndex > maxEditorIndex) state.selectedCoreIndex = maxEditorIndex;
-    }
+    if (coreIndex === 0) return;
+
+    state.shipCores.splice(coreIndex - 1, 1);
+    shiftExpandedLimitPanelsAfterCoreRemoval(coreIndex);
+    const maxEditorIndex = state.shipCores.length + (state.noCoreCore ? 1 : 0) - 1;
+    if (state.selectedCoreIndex > maxEditorIndex) state.selectedCoreIndex = maxEditorIndex;
     didMutate = true;
   }
   if (action === "duplicate-core") {
