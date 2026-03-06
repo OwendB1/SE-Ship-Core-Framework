@@ -170,10 +170,32 @@ function parseModifierNode(node, defaults) {
   return parsed;
 }
 
+function createDefaultNoCore() {
+  return {
+    ...createDefaultCore(),
+    subtypeId: "NO_CORE_DEFAULT",
+    uniqueName: "No Core",
+    originalFileName: "ShipCoreConfig_No_Core.xml"
+  };
+}
+
+function totalCoreOptions() {
+  return 1 + state.shipCores.length;
+}
+
+function getCoreBySelectorIndex(selectorIndex) {
+  if (selectorIndex === 0) {
+    if (!state.noCoreCore) state.noCoreCore = createDefaultNoCore();
+    return state.noCoreCore;
+  }
+
+  return state.shipCores[selectorIndex - 1] || null;
+}
+
 
 
 function normalizeExpandedLimitPanelsForCore(coreIndex) {
-  const core = state.shipCores[coreIndex];
+  const core = getCoreBySelectorIndex(coreIndex);
   if (!core) {
     delete state.expandedLimitPanelsByCore[coreIndex];
     return [];
@@ -234,9 +256,13 @@ function ensureValidSelectedIndexes() {
   state.selectedGroupIndex = state.blockGroups.length
     ? Math.min(Math.max(state.selectedGroupIndex, 0), state.blockGroups.length - 1)
     : -1;
-  state.selectedCoreIndex = state.shipCores.length
-    ? Math.min(Math.max(state.selectedCoreIndex, 0), state.shipCores.length - 1)
-    : -1;
+
+  if (!state.noCoreCore) state.noCoreCore = createDefaultNoCore();
+
+  state.selectedCoreIndex = Math.min(
+    Math.max(state.selectedCoreIndex, 0),
+    Math.max(totalCoreOptions() - 1, 0)
+  );
 }
 
 function addBlockGroup(group = { name: "", blockTypes: [] }) {
@@ -310,7 +336,7 @@ function removeBlockGroupReferences(groupNameToRemove) {
 
 function addShipCore(core = createDefaultCore()) {
   state.shipCores.push({ ...createDefaultCore(), ...core });
-  state.selectedCoreIndex = state.shipCores.length - 1;
+  state.selectedCoreIndex = state.shipCores.length;
   renderShipCores();
 }
 
@@ -344,7 +370,7 @@ function resetEditor(seed = true) {
   state.shipCores = [];
   state.selectedGroupIndex = 0;
   state.selectedCoreIndex = 0;
-  state.noCoreCore = null;
+  state.noCoreCore = createDefaultNoCore();
   state.expandedLimitPanelsByCore = {};
 
   if (seed) {
@@ -472,26 +498,25 @@ function mapModifierFields(values, defaults) {
 function renderCoreSelector() {
   ensureValidSelectedIndexes();
   const selector = ids("selectedCore");
-  selector.innerHTML = state.shipCores
+  const options = [state.noCoreCore, ...state.shipCores];
+  selector.innerHTML = options
     .map((core, idx) => {
-      const label = core.subtypeId?.trim() || "Unnamed Core";
-      return `<option value="${idx}" ${idx === state.selectedCoreIndex ? "selected" : ""}>${escapeXml(`${idx + 1}. ${label}`)}</option>`;
+      const defaultLabel = idx === 0 ? "No Core" : "Unnamed Core";
+      const label = core?.subtypeId?.trim() || defaultLabel;
+      return `<option value="${idx}" ${idx === state.selectedCoreIndex ? "selected" : ""}>${escapeXml(`${idx}. ${label}`)}</option>`;
     })
     .join("");
-  selector.disabled = state.shipCores.length === 0;
+  selector.disabled = false;
 }
 
 function renderShipCores() {
   ensureValidSelectedIndexes();
   renderCoreSelector();
 
-  if (state.selectedCoreIndex < 0) {
-    ids("shipCores").innerHTML = `<p class="muted">No ship cores yet. Click <strong>Add Ship Core</strong>.</p>`;
-    return;
-  }
-
   const coreIndex = state.selectedCoreIndex;
-  const core = state.shipCores[coreIndex];
+  const core = getCoreBySelectorIndex(coreIndex);
+  if (!core) return;
+  const isNoCore = coreIndex === 0;
   const expandedLimitPanels = normalizeExpandedLimitPanelsForCore(coreIndex);
 
   ids("shipCores").innerHTML = `
@@ -505,7 +530,9 @@ function renderShipCores() {
           </select>
         </label>
         <button data-action="duplicate-core" data-c="${coreIndex}">Duplicate Core</button>
-        <button data-action="remove-core" data-c="${coreIndex}">Delete Core</button>
+        ${isNoCore
+    ? `<button data-action="reset-no-core" data-c="${coreIndex}">Reset No Core</button>`
+    : `<button data-action="remove-core" data-c="${coreIndex}">Delete Core</button>`}
       </div>
       <div class="row wrap">
         <label class="inline">MaxBlocks <input data-action="core-maxblocks" data-c="${coreIndex}" class="small" type="number" value="${core.maxBlocks}" /></label>
@@ -598,7 +625,7 @@ function renderShipCores() {
 }
 
 function renderLimitGroupChecklist(coreIndex, limitIndex) {
-  const limit = state.shipCores[coreIndex]?.blockLimits?.[limitIndex];
+  const limit = getCoreBySelectorIndex(coreIndex)?.blockLimits?.[limitIndex];
   if (!limit) return;
 
   const listElement = document.querySelector(`[data-limit-group-list][data-c="${coreIndex}"][data-l="${limitIndex}"]`);
@@ -1036,7 +1063,9 @@ document.addEventListener("click", (event) => {
   const groupIndex = Number(target.dataset.g);
   const blockTypeIndex = Number(target.dataset.i);
   const coreIndex = Number(target.dataset.c);
+  const shipCoreIndex = coreIndex - 1;
   const limitIndex = Number(target.dataset.l);
+  const selectedCore = getCoreBySelectorIndex(coreIndex);
   let didMutate = false;
 
   if (action === "add-bt") {
@@ -1072,17 +1101,38 @@ document.addEventListener("click", (event) => {
       didMutate = true;
     }
   }
+  if (action === "reset-no-core") {
+    state.noCoreCore = createDefaultNoCore();
+    state.selectedCoreIndex = 0;
+    didMutate = true;
+  }
   if (action === "remove-core") {
-    state.shipCores.splice(coreIndex, 1);
+    if (shipCoreIndex < 0) return;
+    state.shipCores.splice(shipCoreIndex, 1);
     shiftExpandedLimitPanelsAfterCoreRemoval(coreIndex);
-    if (state.selectedCoreIndex >= state.shipCores.length) state.selectedCoreIndex = state.shipCores.length - 1;
+    if (state.selectedCoreIndex >= totalCoreOptions()) state.selectedCoreIndex = totalCoreOptions() - 1;
     didMutate = true;
   }
   if (action === "duplicate-core") {
-    const sourceCore = state.shipCores[coreIndex];
-    if (sourceCore) {
-      const duplicatedCore = cloneShipCore(sourceCore);
-      state.shipCores.splice(coreIndex + 1, 0, duplicatedCore);
+    if (!selectedCore) return;
+
+    const duplicatedCore = cloneShipCore(selectedCore);
+    if (coreIndex === 0) {
+      duplicatedCore.originalFileName = "";
+      state.shipCores.unshift(duplicatedCore);
+      state.selectedCoreIndex = 1;
+
+      const shifted = {};
+      Object.entries(state.expandedLimitPanelsByCore).forEach(([key, value]) => {
+        const index = Number(key);
+        if (!Number.isInteger(index)) return;
+        shifted[index > 0 ? index + 1 : index] = value;
+      });
+      state.expandedLimitPanelsByCore = shifted;
+      state.expandedLimitPanelsByCore[1] = [];
+      didMutate = true;
+    } else {
+      state.shipCores.splice(shipCoreIndex + 1, 0, duplicatedCore);
 
       const shifted = {};
       Object.entries(state.expandedLimitPanelsByCore).forEach(([key, value]) => {
@@ -1098,20 +1148,20 @@ document.addEventListener("click", (event) => {
     }
   }
   if (action === "add-limit") {
-    state.shipCores[coreIndex].blockLimits.push(createDefaultLimit());
+    selectedCore?.blockLimits.push(createDefaultLimit());
     normalizeExpandedLimitPanelsForCore(coreIndex);
     didMutate = true;
   }
   if (action === "duplicate-limit") {
-    const sourceLimit = state.shipCores[coreIndex]?.blockLimits?.[limitIndex];
+    const sourceLimit = selectedCore?.blockLimits?.[limitIndex];
     if (sourceLimit) {
-      state.shipCores[coreIndex].blockLimits.splice(limitIndex + 1, 0, cloneLimit(sourceLimit));
+      selectedCore.blockLimits.splice(limitIndex + 1, 0, cloneLimit(sourceLimit));
       normalizeExpandedLimitPanelsForCore(coreIndex);
       didMutate = true;
     }
   }
   if (action === "remove-limit") {
-    state.shipCores[coreIndex].blockLimits.splice(limitIndex, 1);
+    selectedCore?.blockLimits.splice(limitIndex, 1);
     normalizeExpandedLimitPanelsForCore(coreIndex);
     didMutate = true;
   }
@@ -1123,6 +1173,7 @@ document.addEventListener("click", (event) => {
   generateXml();
 });
 
+
 document.addEventListener("input", (event) => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
@@ -1133,30 +1184,33 @@ document.addEventListener("input", (event) => {
   const blockTypeIndex = Number(target.dataset.i);
   const coreIndex = Number(target.dataset.c);
   const limitIndex = Number(target.dataset.l);
+  const selectedCore = getCoreBySelectorIndex(coreIndex);
 
   if (action === "bt-type") state.blockGroups[groupIndex].blockTypes[blockTypeIndex].typeId = target.value;
   if (action === "bt-subtype") state.blockGroups[groupIndex].blockTypes[blockTypeIndex].subtypeId = target.value;
   if (action === "bt-weight") state.blockGroups[groupIndex].blockTypes[blockTypeIndex].countWeight = Number(target.value || 0);
 
-  if (action === "core-unique") state.shipCores[coreIndex].uniqueName = target.value;
-  if (action === "core-maxblocks") state.shipCores[coreIndex].maxBlocks = Number(target.value || -1);
-  if (action === "core-maxmass") state.shipCores[coreIndex].maxMass = Number(target.value || -1);
-  if (action === "core-maxpcu") state.shipCores[coreIndex].maxPcu = Number(target.value || -1);
-  if (action === "core-maxbackupcores") state.shipCores[coreIndex].maxBackupCores = Number(target.value || -1);
-  if (action === "core-maxpf") state.shipCores[coreIndex].maxPerFaction = Number(target.value || -1);
-  if (action === "core-minpf") state.shipCores[coreIndex].minPerFaction = Number(target.value || -1);
-  if (action === "core-maxpp") state.shipCores[coreIndex].maxPerPlayer = Number(target.value || -1);
-  if (action === "core-fbr") state.shipCores[coreIndex].forceBroadcastRange = Number(target.value || 0);
+  if (!selectedCore && (action.startsWith("core-") || action.startsWith("limit-"))) return;
 
-  if (action === "core-modifier-grid") state.shipCores[coreIndex].modifiers[target.dataset.m] = Number(target.value || 0);
-  if (action === "core-modifier-speed") state.shipCores[coreIndex].speedModifiers[target.dataset.m] = Number(target.value || 0);
-  if (action === "core-modifier-passive-defense") state.shipCores[coreIndex].passiveDefenseModifiers[target.dataset.m] = Number(target.value || 0);
-  if (action === "core-modifier-active-defense") state.shipCores[coreIndex].activeDefenseModifiers[target.dataset.m] = Number(target.value || 0);
+  if (action === "core-unique") selectedCore.uniqueName = target.value;
+  if (action === "core-maxblocks") selectedCore.maxBlocks = Number(target.value || -1);
+  if (action === "core-maxmass") selectedCore.maxMass = Number(target.value || -1);
+  if (action === "core-maxpcu") selectedCore.maxPcu = Number(target.value || -1);
+  if (action === "core-maxbackupcores") selectedCore.maxBackupCores = Number(target.value || -1);
+  if (action === "core-maxpf") selectedCore.maxPerFaction = Number(target.value || -1);
+  if (action === "core-minpf") selectedCore.minPerFaction = Number(target.value || -1);
+  if (action === "core-maxpp") selectedCore.maxPerPlayer = Number(target.value || -1);
+  if (action === "core-fbr") selectedCore.forceBroadcastRange = Number(target.value || 0);
 
-  if (action === "limit-name") state.shipCores[coreIndex].blockLimits[limitIndex].name = target.value;
-  if (action === "limit-max") state.shipCores[coreIndex].blockLimits[limitIndex].maxCount = Number(target.value || 0);
+  if (action === "core-modifier-grid") selectedCore.modifiers[target.dataset.m] = Number(target.value || 0);
+  if (action === "core-modifier-speed") selectedCore.speedModifiers[target.dataset.m] = Number(target.value || 0);
+  if (action === "core-modifier-passive-defense") selectedCore.passiveDefenseModifiers[target.dataset.m] = Number(target.value || 0);
+  if (action === "core-modifier-active-defense") selectedCore.activeDefenseModifiers[target.dataset.m] = Number(target.value || 0);
+
+  if (action === "limit-name") selectedCore.blockLimits[limitIndex].name = target.value;
+  if (action === "limit-max") selectedCore.blockLimits[limitIndex].maxCount = Number(target.value || 0);
   if (action === "limit-group-search") {
-    state.shipCores[coreIndex].blockLimits[limitIndex].groupSearch = target.value;
+    selectedCore.blockLimits[limitIndex].groupSearch = target.value;
     renderLimitGroupChecklist(coreIndex, limitIndex);
   }
 
@@ -1169,6 +1223,7 @@ function commitDeferredTextInput(target) {
   const action = target.dataset.action;
   const groupIndex = Number(target.dataset.g);
   const coreIndex = Number(target.dataset.c);
+  const selectedCore = getCoreBySelectorIndex(coreIndex);
 
   if (action === "group-name") {
     const previousName = state.blockGroups[groupIndex].name;
@@ -1183,11 +1238,12 @@ function commitDeferredTextInput(target) {
   }
 
   if (action === "core-subtype") {
-    const previousSubtype = state.shipCores[coreIndex].subtypeId;
+    if (!selectedCore) return;
+    const previousSubtype = selectedCore.subtypeId;
     const nextSubtype = target.value;
     if (previousSubtype === nextSubtype) return;
 
-    state.shipCores[coreIndex].subtypeId = nextSubtype;
+    selectedCore.subtypeId = nextSubtype;
     renderShipCores();
     generateXml();
   }
@@ -1211,6 +1267,7 @@ document.addEventListener("change", (event) => {
   const action = target.dataset.action;
   const coreIndex = Number(target.dataset.c);
   const limitIndex = Number(target.dataset.l);
+  const selectedCore = getCoreBySelectorIndex(coreIndex);
 
   const inputElement = target instanceof HTMLInputElement ? target : null;
   const selectElement = target instanceof HTMLSelectElement ? target : null;
@@ -1220,25 +1277,27 @@ document.addEventListener("change", (event) => {
     return;
   }
 
-  if (action === "core-fb" && inputElement) state.shipCores[coreIndex].forceBroadcast = inputElement.checked;
-  if (action === "core-mobility" && selectElement) state.shipCores[coreIndex].mobilityType = selectElement.value;
-  if (action === "core-speedboost" && inputElement) state.shipCores[coreIndex].speedBoostEnabled = inputElement.checked;
-  if (action === "core-enable-active-defense" && inputElement) state.shipCores[coreIndex].enableActiveDefenseModifiers = inputElement.checked;
-  if (action === "core-speed-limit-type" && selectElement) state.shipCores[coreIndex].speedLimitType = selectElement.value;
+  if (!selectedCore && (action.startsWith("core-") || action.startsWith("limit-"))) return;
+
+  if (action === "core-fb" && inputElement) selectedCore.forceBroadcast = inputElement.checked;
+  if (action === "core-mobility" && selectElement) selectedCore.mobilityType = selectElement.value;
+  if (action === "core-speedboost" && inputElement) selectedCore.speedBoostEnabled = inputElement.checked;
+  if (action === "core-enable-active-defense" && inputElement) selectedCore.enableActiveDefenseModifiers = inputElement.checked;
+  if (action === "core-speed-limit-type" && selectElement) selectedCore.speedLimitType = selectElement.value;
   if (action === "limit-punish" && inputElement) {
-    state.shipCores[coreIndex].blockLimits[limitIndex].punishByNoFlyZone = inputElement.checked;
+    selectedCore.blockLimits[limitIndex].punishByNoFlyZone = inputElement.checked;
     renderShipCores();
   }
   if (action === "limit-cross-connector" && inputElement) {
-    state.shipCores[coreIndex].blockLimits[limitIndex].crossConnectorPunishment = inputElement.checked;
+    selectedCore.blockLimits[limitIndex].crossConnectorPunishment = inputElement.checked;
     renderShipCores();
   }
   if (action === "limit-type" && selectElement) {
-    state.shipCores[coreIndex].blockLimits[limitIndex].punishmentType = selectElement.value;
+    selectedCore.blockLimits[limitIndex].punishmentType = selectElement.value;
     renderShipCores();
   }
   if (action === "limit-direction-toggle" && inputElement) {
-    const limit = state.shipCores[coreIndex].blockLimits[limitIndex];
+    const limit = selectedCore.blockLimits[limitIndex];
     const direction = inputElement.dataset.direction || "";
     if (!direction) return;
 
@@ -1249,7 +1308,7 @@ document.addEventListener("change", (event) => {
     renderShipCores();
   }
   if (action === "limit-group-toggle" && inputElement) {
-    const limit = state.shipCores[coreIndex].blockLimits[limitIndex];
+    const limit = selectedCore.blockLimits[limitIndex];
     const groupName = inputElement.dataset.groupName || "";
     if (!groupName) return;
 
@@ -1393,6 +1452,15 @@ ids("loadUploadedXml").addEventListener("click", async () => {
       status.push(`Skipped ${file.name}: no <ShipCore> root found.`);
       continue;
     }
+
+    const isNoCoreFile = file.name.trim().toLowerCase() === "shipcoreconfig_no_core.xml";
+    if (isNoCoreFile) {
+      parsed.originalFileName = "ShipCoreConfig_No_Core.xml";
+      state.noCoreCore = parsed;
+      status.push(`Loaded no-core '${parsed.subtypeId || file.name}'.`);
+      continue;
+    }
+
     state.shipCores.push(parsed);
     status.push(`Loaded core '${parsed.subtypeId || file.name}'.`);
   }
