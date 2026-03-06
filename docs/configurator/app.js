@@ -798,39 +798,6 @@ function parseLegacyGridClass(gridClassNode, fallbackSubtype) {
   return mapped;
 }
 
-function findLegacyDefaultGridClassNode(root) {
-  const selectors = [
-    ":scope > DefaultGridClass",
-    ":scope > GridClasses > DefaultGridClass",
-    ":scope > ShipClasses > DefaultGridClass",
-    ":scope > ShipClasses > ShipClass > DefaultGridClass"
-  ];
-
-  for (const selector of selectors) {
-    const found = root.querySelector(selector);
-    if (found) return found;
-  }
-
-  return null;
-}
-
-function findLegacyShipGridClassNodes(root) {
-  const selectors = [
-    ":scope > GridClasses > GridClass",
-    ":scope > ShipClasses > GridClass",
-    ":scope > ShipClasses > ShipClass > GridClass"
-  ];
-
-  const nodes = [];
-  selectors.forEach((selector) => {
-    root.querySelectorAll(selector).forEach((node) => {
-      if (!nodes.includes(node)) nodes.push(node);
-    });
-  });
-
-  return nodes;
-}
-
 function applyLegacyGroupDedup(noCoreCore, shipCores, mergeMode = "strict") {
   const allCores = [noCoreCore, ...shipCores].filter(Boolean);
   const signatureToGroupName = new Map();
@@ -897,8 +864,8 @@ function migrateLegacyModConfig(text, sourceName = "uploaded xml", mergeMode = "
   const root = doc.querySelector("ModConfig");
   if (!root) return { error: `No <ModConfig> root found in ${sourceName}.` };
 
-  const defaultGridClassNode = findLegacyDefaultGridClassNode(root);
-  const gridClassNodes = findLegacyShipGridClassNodes(root);
+  const defaultGridClassNode = root.querySelector(":scope > DefaultGridClass");
+  const gridClassNodes = Array.from(root.querySelectorAll(":scope > GridClasses > GridClass"));
 
   if (!defaultGridClassNode && gridClassNodes.length === 0) {
     return { error: `No <DefaultGridClass> or <GridClass> entries found in ${sourceName}.` };
@@ -911,14 +878,13 @@ function migrateLegacyModConfig(text, sourceName = "uploaded xml", mergeMode = "
     noCoreCore.originalFileName = "ShipCoreConfig_No_Core.xml";
   }
 
-  const shipGridClassNodes = gridClassNodes.filter((node) => node !== defaultGridClassNode);
-  const shipCores = shipGridClassNodes.map((node, index) => parseLegacyGridClass(node, `GridClass_${index + 1}`));
+  const shipCores = gridClassNodes.map((node, index) => parseLegacyGridClass(node, `GridClass_${index + 1}`));
   const blockGroups = applyLegacyGroupDedup(noCoreCore, shipCores, mergeMode);
 
   const status = [
     `Migrated legacy file ${sourceName}.`,
     noCoreCore ? "Mapped DefaultGridClass into ShipCoreConfig_No_Core.xml." : "No DefaultGridClass found.",
-    `Mapped ${shipCores.length} GridClass entries to ShipCore cores (excluding the default no-core class).`,
+    `Mapped ${shipCores.length} GridClass entries to ShipCore cores.`,
     `Generated ${blockGroups.length} reusable block groups via cross-core limit dedupe (${mergeMode}).`
   ];
 
