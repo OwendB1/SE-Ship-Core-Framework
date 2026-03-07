@@ -61,15 +61,15 @@ namespace ShipCoreFramework
             coreBlock.AddUpgradeValue("DamageCooldown", 1f);
         }
         
-        internal static GridModifiers GetActiveModifiers(GroupComponent gridGroupComponentLogic)
+        internal static GridModifiers GetActiveModifiers(GroupComponent groupComponent)
         {
-            if (gridGroupComponentLogic.PunishModifiers) return Session.Config.SelectedNoCore.Modifiers;
-            var shipCore = gridGroupComponentLogic.ShipCore;
+            if (groupComponent.PunishModifiers) return Session.Config.SelectedNoCore.Modifiers;
+            var shipCore = groupComponent.ShipCore;
             
             if (shipCore.SubtypeId == Session.Config.SelectedNoCore.SubtypeId) return shipCore.Modifiers;
             var enhancedModifiers = new GridModifiers();
             
-            var myBlock = gridGroupComponentLogic.MainCoreComponent;
+            var myBlock = groupComponent.MainCoreComponent;
             if (myBlock == null)
             {
                 return shipCore.Modifiers;
@@ -88,15 +88,15 @@ namespace ShipCoreFramework
             return enhancedModifiers;
         }
         
-        internal static SpeedModifiers GetActiveSpeedModifiers(GroupComponent gridGroupComponentLogic)
+        internal static SpeedModifiers GetActiveSpeedModifiers(GroupComponent groupComponent)
         {
-            if (gridGroupComponentLogic.PunishModifiers) return Session.Config.SelectedNoCore.SpeedModifiers;
-            var shipCore = gridGroupComponentLogic.ShipCore;
+            if (groupComponent.PunishModifiers) return Session.Config.SelectedNoCore.SpeedModifiers;
+            var shipCore = groupComponent.ShipCore;
             
             if (shipCore.SubtypeId == Session.Config.SelectedNoCore.SubtypeId) return shipCore.SpeedModifiers;
             var enhancedModifiers = new SpeedModifiers();
             
-            var myBlock = gridGroupComponentLogic.MainCoreComponent;
+            var myBlock = groupComponent.MainCoreComponent;
             if (myBlock == null)
             {
                 return shipCore.SpeedModifiers;

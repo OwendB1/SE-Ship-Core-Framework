@@ -243,8 +243,9 @@ namespace ShipCoreFramework
             CoreComponent value = null;
             if (beacon != null && CoreDictionary.TryGetValue(beacon, out value))
             {
-                value.CoreDestroyed();
+                // Needs to be in this order otherwise reset breaks
                 CoreDictionary.Remove(beacon);
+                value.CoreDestroyed();
             }
             else
             {
