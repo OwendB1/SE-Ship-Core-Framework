@@ -12,6 +12,7 @@ namespace ShipCoreFramework
             MobilityType = MobilityType.Both,
             MaxBlocks = 30000,
             Modifiers = new GridModifiers(), // Use default modifiers
+            SpeedModifiers = new SpeedModifiers(),
             PassiveDefenseModifiers = new GridDefenseModifiers(),
             ActiveDefenseModifiers = new GridDefenseModifiers(),
             BlockLimits = new []
