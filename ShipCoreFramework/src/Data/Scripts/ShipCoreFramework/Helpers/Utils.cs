@@ -130,9 +130,10 @@ namespace ShipCoreFramework
             var ownersPerGrid = new Dictionary<long, int>();
             foreach (var grid in groupComponent.GridDictionary.Select(kvp => kvp.Key).Where(grid => grid.BigOwners != null && grid.BigOwners.Count > 0))
             {
-                foreach (var player in grid.BigOwners.Where(player => ownersPerGrid.ContainsKey(player)))
+                foreach (var player in grid.BigOwners)
                 {
-                    ownersPerGrid[player]++;
+                    if(ownersPerGrid.ContainsKey(player)) ownersPerGrid[player]++;
+                    else ownersPerGrid.Add(player, 1);
                 }
             }
             return ownersPerGrid.Count == 0 ? 0 : ownersPerGrid.MaxBy(kvp => kvp.Value).Key;

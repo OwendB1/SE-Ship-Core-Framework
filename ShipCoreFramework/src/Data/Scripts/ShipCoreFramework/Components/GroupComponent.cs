@@ -259,13 +259,13 @@ namespace ShipCoreFramework
                     MainCoreComponent.CoreBlock.SlimBlock.RemoveAndRefund();
                     ResetCore();
                     return;
-	                }
+                }
 
-	                RebuildConnectorPunishmentLinks();
-	                RecalculateAllLimits();
-	                ModAPI.BroadcastGridAddedToGroup(grid.EntityId);
-	            });
-	        }
+	            RebuildConnectorPunishmentLinks();
+	            RecalculateAllLimits();
+	            ModAPI.BroadcastGridAddedToGroup(grid.EntityId);
+	        });
+	    }
 
         internal void OnGridRemoved(IMyGridGroupData removedFrom, IMyCubeGrid grid, IMyGridGroupData addedTo)
         {
@@ -859,6 +859,7 @@ namespace ShipCoreFramework
                 MyAPIGateway.Session.IsUserIgnorePCULimit(player.SteamUserId)) return true;
 
             var faction = OwningFaction;
+            if(OwningFaction.IsEveryoneNpc()) return true;
             return Session.Config.IgnoredFactionTags != null &&
                    Session.Config.IgnoredFactionTags.Contains(faction?.Tag);
         }

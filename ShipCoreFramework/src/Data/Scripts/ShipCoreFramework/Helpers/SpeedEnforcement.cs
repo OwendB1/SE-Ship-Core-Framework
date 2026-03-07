@@ -1,9 +1,8 @@
-﻿﻿using System;
+﻿using System;
 using System.Linq;
-using System.Collections.Generic;
 using Sandbox.ModAPI;
-using VRage.Game.ModAPI;
 using VRage.Game.Components;
+using VRage.Game.ModAPI;
 using VRageMath;
 
 namespace ShipCoreFramework
@@ -15,11 +14,12 @@ namespace ShipCoreFramework
             if (groupComponent.IsIgnoredGroup()) return;
             if (groupComponent.GridDictionary.Count == 0) return;
 
-            var physicalGroup = groupComponent.GridDictionary.Keys.First().GetGridGroup(GridLinkTypeEnum.Physical);
-            if (physicalGroup == null) return;
+            var activeCore = groupComponent.ShipCore;
+            var speedModifiers = CubeGridModifiers.GetActiveSpeedModifiers(groupComponent);
+            if (speedModifiers == null) return;
 
-            var attachedGrids = new List<IMyCubeGrid>();
-            physicalGroup.GetGrids(attachedGrids);
+            var attachedGrids = groupComponent.GridDictionary.Keys.Cast<IMyCubeGrid>().ToList();
+            if (attachedGrids.Count == 0) return;
 
 	            foreach (var grid in attachedGrids)
 	            {
@@ -30,7 +30,6 @@ namespace ShipCoreFramework
 	                var speedSq = velocity.LengthSquared();
 	                if (speedSq < 0.0001f) continue;
 
-	                var speedModifiers = CubeGridModifiers.GetActiveSpeedModifiers(groupComponent);
 	                var baseMaxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * speedModifiers.MaxSpeed;
 	                var boostMaxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * speedModifiers.MaxBoost;
 	                var boostActive = groupComponent.BoostEnabled;
@@ -42,8 +41,7 @@ namespace ShipCoreFramework
 	                }
 
 	                // If the core uses normal speed limiting, and a boost just ended, ramp the effective cap down smoothly.
-	                if (groupComponent.ShipCore != null
-	                    && groupComponent.ShipCore.SpeedLimitType == SpeedLimitType.Normal
+	                if (activeCore.SpeedLimitType == SpeedLimitType.Normal
 	                    && groupComponent.PostBoostRampActive)
 	                {
 	                    // Persist the cap across calls; start from boost max on first tick after boost ends.
@@ -72,8 +70,7 @@ namespace ShipCoreFramework
                 var direction = velocity / speed;
 
                 // Friction-based speed limiting (soft cap)
-                if (groupComponent.ShipCore != null
-                    && groupComponent.ShipCore.SpeedLimitType == SpeedLimitType.Friction
+                if (activeCore.SpeedLimitType == SpeedLimitType.Friction
                     && groupComponent.FrictionEnforcementEnabled)
                 {
                     float minFrictionSpeed;
