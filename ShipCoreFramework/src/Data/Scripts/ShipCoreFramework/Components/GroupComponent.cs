@@ -859,9 +859,10 @@ namespace ShipCoreFramework
                 MyAPIGateway.Session.IsUserIgnorePCULimit(player.SteamUserId)) return true;
 
             var faction = OwningFaction;
-            if(OwningFaction.IsEveryoneNpc()) return true;
+            if (faction == null) return false;
+            if(faction.IsEveryoneNpc()) return true;
             return Session.Config.IgnoredFactionTags != null &&
-                   Session.Config.IgnoredFactionTags.Contains(faction?.Tag);
+                   Session.Config.IgnoredFactionTags.Contains(faction.Tag);
         }
 
         internal void Clean()
