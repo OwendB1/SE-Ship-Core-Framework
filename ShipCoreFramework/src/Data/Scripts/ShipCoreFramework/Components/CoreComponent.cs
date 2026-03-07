@@ -98,7 +98,7 @@ namespace ShipCoreFramework
             {
                 Utils.Log($"Other Core Exist: {CoreBlock.CubeGrid.CustomName}", 3);
                 CoreBlock.SlimBlock.RemoveAndRefund();
-                Utils.ShowNotification("Other Core Type Exist On Grid");
+                Utils.ShowNotification("Other Core Type Exist On Grid", builder);
                 return false;
             }
 
@@ -106,7 +106,7 @@ namespace ShipCoreFramework
             {
                 Utils.Log($"Exceeds max number of backup cores: {CoreBlock.CubeGrid.CustomName}", 2);
                 CoreBlock.SlimBlock.RemoveAndRefund();
-                Utils.ShowNotification("This core exceeds max backup cores");
+                Utils.ShowNotification("This core exceeds max backup cores", builder);
                 return false;
             }
             
@@ -116,11 +116,11 @@ namespace ShipCoreFramework
                 var builderSteamId = MyAPIGateway.Players.TryGetSteamId(builder);
                 if (MyAPIGateway.Session.IsUserAdmin(builderSteamId) && MyAPIGateway.Session.IsUserIgnorePCULimit(builderSteamId))
                 {
-                    Utils.ShowNotification("WARNING CORE IS PLACED BY ADMIN NOT OWNED!");
+                    Utils.ShowNotification("WARNING CORE IS PLACED BY ADMIN NOT OWNED!", builder);
                 }
                 else
                 {
-                    Utils.ShowNotification("Cores can only be built by friendlies!", 10000, builder, true);
+                    Utils.ShowNotification("Cores can only be built by friendlies!", builder);
                     CoreBlock.SlimBlock.RemoveAndRefund();
                     return false;
                 }
@@ -209,7 +209,7 @@ namespace ShipCoreFramework
                 IsMainCore
                     ? $"Main core of grid {grid.CustomName} was destroyed!"
                     : $"A backup core of grid {grid.CustomName} was destroyed!",
-                10000, grid.BigOwners.FirstOrDefault(), true);
+                0, 5000, true);
 
             CoreBlock.OnUpgradeValuesChanged -= OnUpgradeValuesChanged;
             CoreBlock.AppendingCustomInfo -= AppendingCustomInfo;

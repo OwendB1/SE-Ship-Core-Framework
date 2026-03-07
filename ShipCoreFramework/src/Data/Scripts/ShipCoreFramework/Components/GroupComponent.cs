@@ -528,10 +528,8 @@ namespace ShipCoreFramework
                 DirectionType.Down;
 
             var isValid = allowedDirections.Contains(xyDirection);
-            if (!isValid)
-                Utils.ShowNotification(
-                    Utils.GetBlockSubtypeId(block) + ": the direction " + xyDirection + " is invalid",
-                    10000, myCore.CubeGrid.BigOwners.FirstOrDefault(), true);
+            if (!isValid) Utils.ShowNotification(
+                Utils.GetBlockSubtypeId(block) + ": the direction " + xyDirection + " is invalid", myCore.SlimBlock.BuiltBy);
 
             return isValid;
         }

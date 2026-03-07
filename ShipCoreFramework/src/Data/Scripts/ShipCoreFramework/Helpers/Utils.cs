@@ -52,7 +52,7 @@ namespace ShipCoreFramework
                 .FirstOrDefault();
         }
 
-        internal static void ShowNotification(string msg, int disappearTime = 10000, long playerEntityId = 0, bool isCombatLog = false, string font = MyFontEnum.Red)
+        internal static void ShowNotification(string msg, long playerEntityId = 0, int disappearTime = 5000, bool isCombatLog = false, string font = MyFontEnum.Red)
         {
             if (isCombatLog)
             {
@@ -66,8 +66,8 @@ namespace ShipCoreFramework
             }
             else
             {
-                if (playerEntityId == 0) playerEntityId = MyAPIGateway.Session.LocalHumanPlayer?.IdentityId ?? 0;
-                if (playerEntityId != 0 && MyAPIGateway.Session.LocalHumanPlayer?.IdentityId != playerEntityId) return;
+                if(!Session.MpActive) playerEntityId = MyAPIGateway.Session.LocalHumanPlayer?.IdentityId ?? 0;
+                if (playerEntityId == 0) return;
                 var steamUserId = MyAPIGateway.Players.TryGetSteamId(playerEntityId);
                 Session.Networking.SendToPlayer(new PacketNotify(msg, disappearTime, font), steamUserId);
             }

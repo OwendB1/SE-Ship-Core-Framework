@@ -144,7 +144,7 @@ namespace ShipCoreFramework
         {
             if (Config.SelectedNoCore == null)
             {
-                Utils.ShowNotification("There is no No Core currently selected. Make sure to select one and reload the world!!");
+                Utils.ShowNotification("There is no No Core currently selected. Make sure to select one and reload the world!!", 0, 20000, true);
                 return;
             }
             if(!HasStarted) HasStarted = true;

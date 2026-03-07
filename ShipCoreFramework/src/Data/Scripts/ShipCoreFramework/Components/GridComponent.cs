@@ -120,27 +120,21 @@ namespace ShipCoreFramework
 
                     if (groupComponent.GroupBlocksCount > maxBlocks && maxBlocks > 0)
                     {
-                        Utils.ShowNotification(
-                            Utils.GetBlockSubtypeId(block) + " violates MaxBlocks: " +
-                            (groupComponent.GroupBlocksCount > maxBlocks), 10000, firstBigOwner);
+                        Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxBlocks!", firstBigOwner);
                         block.RemoveAndRefund();
                         return;
                     }
 
                     if (groupComponent.GroupPCU > maxPCU && maxPCU > 0)
                     {
-                        Utils.ShowNotification(
-                            Utils.GetBlockSubtypeId(block) + " violates MaxPCU: " + (groupComponent.GroupPCU > maxPCU),
-                            10000, firstBigOwner);
+                        Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxPCU!", firstBigOwner);
                         block.RemoveAndRefund();
                         return;
                     }
 
                     if (groupComponent.GroupMass > maxMass && maxMass > 0f)
                     {
-                        Utils.ShowNotification(
-                            Utils.GetBlockSubtypeId(block) + " violates MaxMass: " +
-                            (groupComponent.GroupMass > maxMass), 10000, firstBigOwner);
+                        Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violates MaxMass!", firstBigOwner);
                         block.RemoveAndRefund();
                         return;
                     }
@@ -208,7 +202,7 @@ namespace ShipCoreFramework
                 {
                     var message = Utils.GetBlockSubtypeId(block) + " violates Block limit " + limit.Name + ": " +
                                   (cur + w) + "/" + limit.MaxCount;
-                    if (firstOwner != 0) Utils.ShowNotification(message, 10000, firstOwner);
+                    if (firstOwner != 0) Utils.ShowNotification(message, firstOwner);
                     else Utils.ShowNotification(message);
                     var punishmentType = limitBasedPunish ? limit.PunishmentType : PunishmentType.Delete;
                     block.WhackABlock(punishmentType);
