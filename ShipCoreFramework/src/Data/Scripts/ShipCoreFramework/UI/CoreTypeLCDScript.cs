@@ -170,6 +170,18 @@ namespace ShipCoreFramework
                 punishSpeed ? new Cell("X", failColor) : new Cell()
             });
             
+            var speed = Session.Config.MaxPossibleSpeedMetersPerSecond * (GroupComponent.BoostEnabled
+                ? GroupComponent.SpeedModifiers.MaxBoost
+                : GroupComponent.SpeedModifiers.MaxSpeed);
+            _gridResultsTable.Rows.Add(new Row
+            {
+                new Cell("Max Speed: "),
+                new Cell(""),
+                new Cell(""),
+                new Cell($"{speed} m/s"),
+                new Cell("")
+            });
+            
             if (ShipCore.MaxBackupCores > 0 )
             {
                 var passed = GroupComponent.CoreDictionary.Count - 1 <= ShipCore.MaxBackupCores;
