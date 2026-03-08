@@ -51,9 +51,7 @@ namespace ShipCoreFramework
             if (!foundComputerComps)
             {
                 var subType = Utils.GetBlockSubtypeId(CoreBlock.SlimBlock);
-                Utils.ShowChatMessage($"Core {subType} does not have any computer components for its build thus it will never have ownership, removing from world!");
-                CoreBlock.SlimBlock.RemoveAndRefund();
-                return false;
+                Utils.Log($"Core {subType} does not have any computer components by the looks of it, double check this is correct?", 2);
             }
             
             var shipCoreType = Session.Config.GetShipCoreByTypeId(CoreBlock.BlockDefinition.SubtypeId);

@@ -137,7 +137,7 @@ namespace ShipCoreFramework
             {
                 if (MainCoreComponent?.CoreBlock != null)
                     return ShipCore.ActiveDefenseModifiers.Duration *
-                        MainCoreComponent?.CoreBlock.UpgradeValues["DurationDuration"] ?? 1f;
+                        MainCoreComponent.CoreBlock.UpgradeValues["DurationDuration"];
                 return ShipCore.ActiveDefenseModifiers.Duration;
             }
         }
@@ -148,7 +148,7 @@ namespace ShipCoreFramework
             {
                 if (MainCoreComponent?.CoreBlock != null)
                     return ShipCore.ActiveDefenseModifiers.Cooldown *
-                        MainCoreComponent?.CoreBlock.UpgradeValues["DamageCooldown"] ?? 1f;
+                        MainCoreComponent.CoreBlock.UpgradeValues["DamageCooldown"];
                 return ShipCore.ActiveDefenseModifiers.Cooldown;
             }
         }
@@ -212,6 +212,8 @@ namespace ShipCoreFramework
         internal void ResetCore()
         {
             var old = MainCoreComponent;
+            if (old == null) return;
+
             var type = ShipCore.SubtypeId;
             var grid = old.CoreBlock.CubeGrid;
             Utils.Log($"Reset: Resetting logic for {grid.CustomName}!", 2);
@@ -222,17 +224,12 @@ namespace ShipCoreFramework
             ModAPI.BroadcastCoreDeactivated(GetRepresentativeGridId(), type, old.CoreBlock.CustomName);
 
             MainCoreComponent = null;
-
-            if (!Session.HasStarted || Session.IsShuttingDown) return;
-            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
-            {
-                if (_closing) return;
-                RebuildConnectorPunishmentLinks();
-                RecalculateAllLimits();
-                ApplyModifiers(Modifiers);
-                EnforceGroupPunishment();
-                EnforceOverCapacity();
-            });
+            
+            if (_closing || !Session.HasStarted || Session.IsShuttingDown) return;
+            RebuildConnectorPunishmentLinks();
+            RecalculateAllLimits();
+            ApplyModifiers(Modifiers);
+            EnforceGroupPunishment();
         }
 
         internal void OnGridAdded(IMyGridGroupData addedTo, IMyCubeGrid grid, IMyGridGroupData removedFrom)
@@ -279,35 +276,47 @@ namespace ShipCoreFramework
             {
                 if (MainCoreComponent?.GridComponent.Grid.EntityId == g.EntityId)
                 {
-                    MainCoreComponent.CoreBlock.SlimBlock.RemoveAndRefund();
-                    ResetCore();
+                    var removedMain = MainCoreComponent;
+                    removedMain.CoreBlock.SlimBlock.RemoveAndRefund();
+
+                    // Removing the core block usually raises BlockRemoved -> CoreDestroyed -> CoreRemoved -> ResetCore.
+                    // Only fall back to a direct reset if that callback chain did not replace or clear the main core.
+                    if (ReferenceEquals(MainCoreComponent, removedMain))
+                        ResetCore();
                 }
 
-	                comp.Clean();
-	                GridDictionary.Remove(g);
-	            }
+                Utils.Log("7", 3);
+	            comp.Clean();
+	            GridDictionary.Remove(g); 
+            }
+
+            if (GridDictionary.Count == 0)
+            {
+                _closing = true;
+                return;
+            }
 	            
-	            RebuildConnectorPunishmentLinks();
-	            RecalculateAllLimits();
-	            ModAPI.BroadcastGridRemovedFromGroup(grid.EntityId, GetRepresentativeGridId());
-	        }
+	        RebuildConnectorPunishmentLinks();
+	        RecalculateAllLimits();
+	        ModAPI.BroadcastGridRemovedFromGroup(grid.EntityId, GetRepresentativeGridId());
+	    }
 
-	        internal void OnConnectorConnectionChanged(IMyShipConnector connector)
-	        {
-	            if (_closing) return;
-	            if (connector == null) return;
-	            OnConnectorsChanged();
-	        }
+	    internal void OnConnectorConnectionChanged(IMyShipConnector connector)
+	    {
+	        if (_closing) return;
+	        if (connector == null) return;
+	        OnConnectorsChanged();
+	    }
 
-	        internal void OnConnectorsChanged()
-	        {
-	            if (_closing) return;
-	            if (!HasCrossConnectorPunishmentLimits()) return;
+	    internal void OnConnectorsChanged()
+	    {
+	        if (_closing) return;
+	        if (!HasCrossConnectorPunishmentLimits()) return;
 
-	            RebuildConnectorPunishmentLinks();
-	            RecalculateAllLimits();
-	            EnforceGroupPunishment();
-	        }
+	        RebuildConnectorPunishmentLinks();
+	        RecalculateAllLimits();
+	        EnforceGroupPunishment();
+	    }
 
         private bool HasCrossConnectorPunishmentLimits()
         {
@@ -393,7 +402,7 @@ namespace ShipCoreFramework
                     if (blk == null || blk.IsMovedBySplit || blk.CubeGrid == null) continue;
 
                     if (limit.AllowedDirections != null && MainCoreComponent?.CoreBlock != null)
-                        if (!IsValidDirection(MainCoreComponent.CoreBlock, blk, limit.AllowedDirections))
+                        if (!IsValidDirection(MainCoreComponent?.CoreBlock, blk, limit.AllowedDirections))
                         {
                             blk.WhackABlock(limit.PunishmentType);
                             totalBlocksPunished++;
@@ -451,10 +460,9 @@ namespace ShipCoreFramework
                 var mainCoreBlock = MainCoreComponent?.CoreBlock;
                 if (mainCoreBlock != null)
                 {
-                    if (!mainCoreBlock.IsWorking)
+                    if (!mainCoreBlock.IsWorking && CoreDictionary.Any())
                     {
-                        var newMain =
-                            CoreDictionary.Values.FirstOrDefault(core => !core.IsMainCore && core.CoreBlock.IsWorking);
+                        var newMain = CoreDictionary.Values.FirstOrDefault(core => !core.IsMainCore && core.CoreBlock.IsWorking);
                         if (newMain != null)
                         {
                             Utils.ShowNotification(
