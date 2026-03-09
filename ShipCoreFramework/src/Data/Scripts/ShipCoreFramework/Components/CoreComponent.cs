@@ -62,6 +62,7 @@ namespace ShipCoreFramework
                     if (!CoreBlock.CubeGrid.IsStatic)
                     {
                         CoreBlock.SlimBlock.RemoveAndRefund();
+                        Utils.ShowNotification("This core is only meant for static grids!", builder);
                         return false;
                     }
                     break;
@@ -69,6 +70,7 @@ namespace ShipCoreFramework
                     if (CoreBlock.CubeGrid.IsStatic)
                     {
                         CoreBlock.SlimBlock.RemoveAndRefund();
+                        Utils.ShowNotification("This core is only meant for mobile grids!", builder);
                         return false;
                     }
                     break;
