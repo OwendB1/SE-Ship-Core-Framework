@@ -13,9 +13,11 @@ namespace ShipCoreFramework
         
         public static void RegisterOnce()
         {
+            if (Session.LocalPlayer == null) return;
             if(_done)
                 return;
             _done = true;
+            
             
             CreateControls();
             CreateActions();
@@ -23,8 +25,6 @@ namespace ShipCoreFramework
 
         private static void CreateControls()
         {
-            if (Session.LocalPlayer == null) return;
-
             var checkbox = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyTerminalBlock>(IdPrefix + "IsMainCoreCheckbox");
             checkbox.Title = MyStringId.GetOrCompute("Main Core");
             checkbox.Tooltip = MyStringId.GetOrCompute("Mark this core as the main core for the grid.");

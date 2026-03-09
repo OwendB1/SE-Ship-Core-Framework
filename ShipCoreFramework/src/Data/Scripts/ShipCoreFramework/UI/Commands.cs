@@ -84,6 +84,10 @@ namespace ShipCoreFramework
                     if(!CheckIfAdmin(playerId)) return;
                     modMessage+=CombatLog(args);
                     break;
+                case "loglevel":
+                    if(!CheckIfAdmin(playerId)) return;
+                    modMessage+=LogLevel(args);
+                    break;
                 case "select":
                     if(!CheckIfAdmin(playerId))return;
                     modMessage+=Select(args);
@@ -383,6 +387,45 @@ namespace ShipCoreFramework
             var clVal = args[1].ToLower();
             Session.Config.CombatLogging = (clVal == "on");
             return $"Combat logging set to {(Session.Config.CombatLogging ? "ON" : "OFF")}";
+        }
+
+        private static string LogLevel(string[] args)
+        {
+            if (args.Length < 2)
+            {
+                return $"Server log level: {Session.Config.LogLevel}, client log level: {Session.Config.ClientOutputLogLevel}";
+            }
+
+            var target = args[1].ToLowerInvariant();
+            if (target != "server" && target != "client")
+            {
+                return "Usage: /core loglevel <server|client> [0-3]";
+            }
+
+            if (args.Length < 3)
+            {
+                return target == "server"
+                    ? $"Server log level is {Session.Config.LogLevel}"
+                    : $"Client log level is {Session.Config.ClientOutputLogLevel}";
+            }
+
+            int newLevel;
+            if (!int.TryParse(args[2], out newLevel) || newLevel < 0 || newLevel > 3)
+            {
+                return "Log level must be a number from 0 to 3.";
+            }
+
+            if (target == "server")
+            {
+                Session.Config.LogLevel = newLevel;
+            }
+            else
+            {
+                Session.Config.ClientOutputLogLevel = newLevel;
+            }
+
+            Session.Config.SaveConfig(true);
+            return $"{(target == "server" ? "Server" : "Client")} log level set to {newLevel}.";
         }
 
         private static string Select(string[] args)
@@ -838,6 +881,15 @@ Toggles debug mode (Local Client)
 
 /core combatlog on|off
 Toggles combat logging (Admin Required)
+
+/core loglevel
+Shows the current server and client log levels. (Admin Required)
+
+/core loglevel <server|client>
+Shows the current log level for the selected target. (Admin Required)
+
+/core loglevel <server|client> <0-3>
+Sets the selected log level. (Admin Required)
 
 /core setworldspeed <m/s>
 Sets the session max possible speed in m/s. (Admin Required)

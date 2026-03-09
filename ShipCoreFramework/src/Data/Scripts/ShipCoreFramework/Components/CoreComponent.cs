@@ -2,6 +2,7 @@ using System.Linq;
 using System.Text;
 using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI;
+using Sandbox.ModAPI.Interfaces;
 using VRage.Game;
 using VRage.Game.ModAPI;
 
@@ -148,6 +149,7 @@ namespace ShipCoreFramework
             CoreBlock.IsWorkingChanged += OnIsWorkingChanged;
             CoreBlock.PropertiesChanged += CoreBlockOnPropertiesChanged;
 
+            CoreBlockOnPropertiesChanged(CoreBlock);
             _groupComponent.DefenseValuesChanged();
             return true;
         }
@@ -167,8 +169,8 @@ namespace ShipCoreFramework
             var core = _groupComponent.ShipCore;
             if (core == null) return;
             if (!core.ForceBroadCast || !IsMainCore) return;
-            
-            CoreBlock.Radius = core.ForceBroadCastRange;
+
+            CoreBlock.SetValue("Radius", core.ForceBroadCastRange);
             if(!CoreBlock.HudText.Contains(core.UniqueName)) CoreBlock.HudText = $"{CoreBlock.CubeGrid.DisplayName} : {core.UniqueName}";
         }
         

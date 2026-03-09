@@ -281,11 +281,9 @@ namespace ShipCoreFramework
 
                     // Removing the core block usually raises BlockRemoved -> CoreDestroyed -> CoreRemoved -> ResetCore.
                     // Only fall back to a direct reset if that callback chain did not replace or clear the main core.
-                    if (ReferenceEquals(MainCoreComponent, removedMain))
-                        ResetCore();
+                    if (ReferenceEquals(MainCoreComponent, removedMain)) ResetCore();
                 }
-
-                Utils.Log("7", 3);
+                
 	            comp.Clean();
 	            GridDictionary.Remove(g); 
             }
