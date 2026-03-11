@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<UpgradeModule xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <SubtypeId>GridCore_Module_Handling</SubtypeId>
+  <UniqueName>Handling Upgrade Module</UniqueName>
+  <Modifiers>
+    <Stat>ThrusterForce</Stat>
+    <Value>1.2</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>GyroForce</Stat>
+    <Value>1.2</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+</UpgradeModule>

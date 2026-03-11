@@ -20,6 +20,9 @@ namespace ShipCoreFramework
         private readonly Dictionary<IMyCubeBlock, BeaconComponent> _beaconDictionary =
             new Dictionary<IMyCubeBlock, BeaconComponent>();
 
+        private readonly Dictionary<IMyCubeBlock, UpgradeModuleComponent> _upgradeModuleDictionary =
+            new Dictionary<IMyCubeBlock, UpgradeModuleComponent>();
+
         private readonly HashSet<long> _trackedConnectorIds = new HashSet<long>();
 
         private GroupComponent GroupComponent
@@ -64,6 +67,11 @@ namespace ShipCoreFramework
             foreach (var otherBlock in otherBlocks) BlockAddedInternal(otherBlock);
         }
 
+        internal List<UpgradeModuleComponent> GetUpgradeModuleComponentsCopy()
+        {
+            return new List<UpgradeModuleComponent>(_upgradeModuleDictionary.Values);
+        }
+
         private void BlockAddedEvent(IMySlimBlock block)
         {
             BlockAddedInternal(block, false);
@@ -96,6 +104,7 @@ namespace ShipCoreFramework
                       Utils.GetBlockSubtypeId(block));
 
             var functionalBlock = block.FatBlock as IMyFunctionalBlock;
+            var isTrackedUpgradeModule = Utils.IsTrackedUpgradeModuleBlock(functionalBlock);
             if (Utils.IsCoreBlock(functionalBlock))
             {
                 var newCore = new CoreComponent();
@@ -114,6 +123,7 @@ namespace ShipCoreFramework
             else
             {
                 if(functionalBlock is IMyBeacon) TrackBeacon(functionalBlock, groupComponent);
+                if (isTrackedUpgradeModule) TrackUpgradeModule(functionalBlock, groupComponent);
                 if (!limitBasedPunish)
                 {
                     var firstBigOwner = Grid.BigOwners.FirstOrDefault();
@@ -156,7 +166,10 @@ namespace ShipCoreFramework
                 if (connector != null) TrackConnector(connector);
             }
 
-            groupComponent.ApplyModifiers(groupComponent.Modifiers);
+            if (Utils.IsCoreBlock(functionalBlock) || isTrackedUpgradeModule)
+                groupComponent.OnUpgradeModulesChanged();
+            else
+                groupComponent.ApplyModifiers(groupComponent.Modifiers);
         }
 
         private bool TryApplyLimitsOnAdd(IMySlimBlock block, bool limitBasedPunish)
@@ -200,10 +213,11 @@ namespace ShipCoreFramework
                     cur = groupBucket.TotalWeight;
                 }
 
-                if (cur + w > limit.MaxCount)
+                var effectiveMaxCount = GroupComponent.GetEffectiveMaxCount(limit);
+                if (cur + w > effectiveMaxCount)
                 {
                     var message = Utils.GetBlockSubtypeId(block) + " violates Block limit " + limit.Name + ": " +
-                                  (cur + w) + "/" + limit.MaxCount;
+                                  (cur + w) + "/" + effectiveMaxCount;
                     if (firstOwner != 0) Utils.ShowNotification(message, firstOwner);
                     else Utils.ShowNotification(message);
                     var punishmentType = limitBasedPunish ? limit.PunishmentType : PunishmentType.Delete;
@@ -243,6 +257,7 @@ namespace ShipCoreFramework
 
             var functionalBlock = block.FatBlock as IMyFunctionalBlock;
             CoreComponent value = null;
+            var removedUpgradeModule = false;
             if (functionalBlock != null && CoreDictionary.TryGetValue(functionalBlock, out value))
             {
                 // Needs to be in this order otherwise reset breaks
@@ -252,6 +267,8 @@ namespace ShipCoreFramework
             else
             {
                 if(functionalBlock is IMyBeacon) UntrackBeacon(functionalBlock);
+                if (Utils.IsTrackedUpgradeModuleBlock(functionalBlock))
+                    removedUpgradeModule = UntrackUpgradeModule(functionalBlock);
                 var limits = groupComponent.Limits;
                 if (limits != null)
                 {
@@ -300,7 +317,10 @@ namespace ShipCoreFramework
 
             var connector = block.FatBlock as IMyShipConnector;
             if (connector != null) UntrackConnector(connector);
-            groupComponent.ApplyModifiers(groupComponent.Modifiers);
+            if (value != null || removedUpgradeModule)
+                groupComponent.OnUpgradeModulesChanged();
+            else
+                groupComponent.ApplyModifiers(groupComponent.Modifiers);
         }
 
         private void TrackBeacon(IMyFunctionalBlock coreBlock, GroupComponent groupComponent)
@@ -324,6 +344,30 @@ namespace ShipCoreFramework
 
             _beaconDictionary.Remove(beaconBlock);
             beaconComponent.Clean();
+        }
+
+        private void TrackUpgradeModule(IMyFunctionalBlock block, GroupComponent groupComponent)
+        {
+            var moduleBlock = block as IMyUpgradeModule;
+            if (moduleBlock == null) return;
+            if (_upgradeModuleDictionary.ContainsKey(moduleBlock)) return;
+
+            var upgradeModuleComponent = new UpgradeModuleComponent(groupComponent);
+            if (!upgradeModuleComponent.Init(moduleBlock)) return;
+            _upgradeModuleDictionary.Add(moduleBlock, upgradeModuleComponent);
+        }
+
+        private bool UntrackUpgradeModule(IMyFunctionalBlock block)
+        {
+            var moduleBlock = block as IMyUpgradeModule;
+            if (moduleBlock == null) return false;
+
+            UpgradeModuleComponent moduleComponent;
+            if (!_upgradeModuleDictionary.TryGetValue(moduleBlock, out moduleComponent)) return false;
+
+            _upgradeModuleDictionary.Remove(moduleBlock);
+            moduleComponent.Clean();
+            return true;
         }
 
         internal void SyncBeaconComponents()
@@ -388,9 +432,10 @@ namespace ShipCoreFramework
                     total = groupBucket.TotalWeight;
                 }
 
-                if (total <= limit.MaxCount) continue;
+                var effectiveMaxCount = GroupComponent.GetEffectiveMaxCount(limit);
+                if (total <= effectiveMaxCount) continue;
 
-                var over = total - limit.MaxCount;
+                var over = total - effectiveMaxCount;
 
                 if (over <= 0d) break;
                 obj.SlimBlock.WhackABlock(PunishmentType.ShutOff);
@@ -464,6 +509,8 @@ namespace ShipCoreFramework
             Limits.Clear();
             foreach (var beaconComponent in _beaconDictionary.Values) beaconComponent.Clean();
             _beaconDictionary.Clear();
+            foreach (var moduleComponent in _upgradeModuleDictionary.Values) moduleComponent.Clean();
+            _upgradeModuleDictionary.Clear();
             CoreDictionary.Clear();
         }
     }

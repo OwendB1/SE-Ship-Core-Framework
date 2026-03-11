@@ -84,8 +84,8 @@ namespace ShipCoreFramework
         internal int GroupPCU => GridDictionary.Sum(g => g.Key.BlocksPCU);
         internal float GroupMass => GridDictionary.Sum(g => g.Key.Mass);
 
-        private float BoostDuration => ShipCore.SpeedModifiers.BoostDuration;
-        private float BoostCoolDown => ShipCore.SpeedModifiers.BoostCoolDown;
+        private float BoostDuration => SpeedModifiers.BoostDuration;
+        private float BoostCoolDown => SpeedModifiers.BoostCoolDown;
 
         internal IMyGridGroupData MyGroup;
         internal CoreComponent MainCoreComponent;
@@ -130,27 +130,16 @@ namespace ShipCoreFramework
         private float _activeDefenseDurationTimer;
 
         private bool _closing;
+        private bool _refreshingUpgradeModules;
 
         internal float ActiveDefenseDuration
         {
-            get
-            {
-                if (MainCoreComponent?.CoreBlock != null)
-                    return ShipCore.ActiveDefenseModifiers.Duration *
-                        MainCoreComponent.CoreBlock.UpgradeValues["DurationDuration"];
-                return ShipCore.ActiveDefenseModifiers.Duration;
-            }
+            get { return GetActiveDefenseModifiers().Duration; }
         }
 
         internal float ActiveDefenseCoolDown
         {
-            get
-            {
-                if (MainCoreComponent?.CoreBlock != null)
-                    return ShipCore.ActiveDefenseModifiers.Cooldown *
-                        MainCoreComponent.CoreBlock.UpgradeValues["DamageCooldown"];
-                return ShipCore.ActiveDefenseModifiers.Cooldown;
-            }
+            get { return GetActiveDefenseModifiers().Cooldown; }
         }
 
         internal void InitGrids()
@@ -172,10 +161,7 @@ namespace ShipCoreFramework
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
                 if (_closing) return;
-                RebuildConnectorPunishmentLinks();
-                RecalculateAllLimits();
-                EnforceGroupPunishment();
-                EnforceOverCapacity();
+                OnUpgradeModulesChanged();
             });
         }
 
@@ -200,11 +186,7 @@ namespace ShipCoreFramework
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
                 if (_closing) return;
-                RebuildConnectorPunishmentLinks();
-                RecalculateAllLimits();
-                ApplyModifiers(Modifiers);
-                EnforceGroupPunishment();
-                EnforceOverCapacity();
+                OnUpgradeModulesChanged();
 
                 ModAPI.BroadcastCoreActivated(GetRepresentativeGridId(), ShipCore.SubtypeId, ShipCore.UniqueName);
             });
@@ -228,10 +210,7 @@ namespace ShipCoreFramework
             SyncBeaconComponents();
             
             if (_closing || !Session.HasStarted || Session.IsShuttingDown) return;
-            RebuildConnectorPunishmentLinks();
-            RecalculateAllLimits();
-            ApplyModifiers(Modifiers);
-            EnforceGroupPunishment();
+            OnUpgradeModulesChanged();
         }
 
         internal void OnGridAdded(IMyGridGroupData addedTo, IMyCubeGrid grid, IMyGridGroupData removedFrom)
@@ -314,8 +293,7 @@ namespace ShipCoreFramework
 	        if (!HasCrossConnectorPunishmentLimits()) return;
 
 	        RebuildConnectorPunishmentLinks();
-	        RecalculateAllLimits();
-	        EnforceGroupPunishment();
+	        OnUpgradeModulesChanged();
 	    }
 
         private bool HasCrossConnectorPunishmentLimits()
@@ -392,9 +370,10 @@ namespace ShipCoreFramework
                     membersCopy = new List<IMySlimBlock>(bucket.Members);
                 }
 
-                if (total <= limit.MaxCount) continue;
+                var effectiveMaxCount = GetEffectiveMaxCount(limit);
+                if (total <= effectiveMaxCount) continue;
 
-                var over = total - limit.MaxCount;
+                var over = total - effectiveMaxCount;
                 var candidates = new List<KeyValuePair<IMySlimBlock, double>>(membersCopy.Count);
 
                 foreach (var blk in membersCopy)
@@ -692,86 +671,20 @@ namespace ShipCoreFramework
 
         internal GridDefenseModifiers GetActiveDefenseModifiers()
         {
-            if (MainCoreComponent?.CoreBlock == null) return ShipCore.ActiveDefenseModifiers;
+            var modifiers = CubeGridModifiers.GetEffectiveDefenseModifiers(ShipCore.ActiveDefenseModifiers,
+                GetMainCoreUpgradeModules(true).Select(module => module.GetConfig()),
+                DefenseModifierTarget.Active);
 
-            if (PunishModifiers)
-                return new GridDefenseModifiers
-                {
-                    Bullet = ShipCore.ActiveDefenseModifiers.Bullet *
-                             MainCoreComponent.CoreBlock.UpgradeValues["ActiveBulletDamage"] * 2,
-                    Rocket = ShipCore.ActiveDefenseModifiers.Rocket *
-                             MainCoreComponent.CoreBlock.UpgradeValues["ActiveRocketDamage"] * 2,
-                    Explosion = ShipCore.ActiveDefenseModifiers.Explosion *
-                                MainCoreComponent.CoreBlock.UpgradeValues["ActiveExplosionDamage"] * 2,
-                    Environment = ShipCore.ActiveDefenseModifiers.Environment *
-                                  MainCoreComponent.CoreBlock.UpgradeValues["ActiveEnvironmentDamage"] * 2,
-                    PostShield = ShipCore.ActiveDefenseModifiers.PostShield *
-                                 MainCoreComponent.CoreBlock.UpgradeValues["ActivePostShieldDamage"] * 2,
-                    Kinetic = ShipCore.ActiveDefenseModifiers.Kinetic *
-                              MainCoreComponent.CoreBlock.UpgradeValues["ActiveKineticDamage"] * 2,
-                    Energy = ShipCore.ActiveDefenseModifiers.Energy *
-                             MainCoreComponent.CoreBlock.UpgradeValues["ActiveEnergyDamage"] * 2
-                };
-
-            return new GridDefenseModifiers
-            {
-                Bullet = ShipCore.ActiveDefenseModifiers.Bullet *
-                         MainCoreComponent.CoreBlock.UpgradeValues["ActiveBulletDamage"],
-                Rocket = ShipCore.ActiveDefenseModifiers.Rocket *
-                         MainCoreComponent.CoreBlock.UpgradeValues["ActiveRocketDamage"],
-                Explosion = ShipCore.ActiveDefenseModifiers.Explosion *
-                            MainCoreComponent.CoreBlock.UpgradeValues["ActiveExplosionDamage"],
-                Environment = ShipCore.ActiveDefenseModifiers.Environment *
-                              MainCoreComponent.CoreBlock.UpgradeValues["ActiveEnvironmentDamage"],
-                PostShield = ShipCore.ActiveDefenseModifiers.PostShield *
-                             MainCoreComponent.CoreBlock.UpgradeValues["ActivePostShieldDamage"],
-                Kinetic = ShipCore.ActiveDefenseModifiers.Kinetic *
-                          MainCoreComponent.CoreBlock.UpgradeValues["ActiveKineticDamage"],
-                Energy = ShipCore.ActiveDefenseModifiers.Energy *
-                         MainCoreComponent.CoreBlock.UpgradeValues["ActiveEnergyDamage"]
-            };
+            return PunishModifiers ? CubeGridModifiers.ScaleDefenseModifiers(modifiers, 2f) : modifiers;
         }
 
         internal GridDefenseModifiers GetPassiveDefenseModifiers()
         {
-            if (MainCoreComponent?.CoreBlock == null) return ShipCore.PassiveDefenseModifiers;
+            var modifiers = CubeGridModifiers.GetEffectiveDefenseModifiers(ShipCore.PassiveDefenseModifiers,
+                GetMainCoreUpgradeModules(true).Select(module => module.GetConfig()),
+                DefenseModifierTarget.Passive);
 
-            if (PunishModifiers)
-                return new GridDefenseModifiers
-                {
-                    Bullet = ShipCore.PassiveDefenseModifiers.Bullet *
-                             MainCoreComponent.CoreBlock.UpgradeValues["PassiveBulletDamage"] * 2,
-                    Rocket = ShipCore.PassiveDefenseModifiers.Rocket *
-                             MainCoreComponent.CoreBlock.UpgradeValues["PassiveRocketDamage"] * 2,
-                    Explosion = ShipCore.PassiveDefenseModifiers.Explosion *
-                                MainCoreComponent.CoreBlock.UpgradeValues["PassiveExplosionDamage"] * 2,
-                    Environment = ShipCore.PassiveDefenseModifiers.Environment *
-                                  MainCoreComponent.CoreBlock.UpgradeValues["PassiveEnvironmentDamage"] * 2,
-                    PostShield = ShipCore.PassiveDefenseModifiers.PostShield *
-                                 MainCoreComponent.CoreBlock.UpgradeValues["PassivePostShieldDamage"] * 2,
-                    Kinetic = ShipCore.PassiveDefenseModifiers.Kinetic *
-                              MainCoreComponent.CoreBlock.UpgradeValues["PassiveKineticDamage"] * 2,
-                    Energy = ShipCore.PassiveDefenseModifiers.Energy *
-                             MainCoreComponent.CoreBlock.UpgradeValues["PassiveEnergyDamage"] * 2
-                };
-
-            return new GridDefenseModifiers
-            {
-                Bullet = ShipCore.PassiveDefenseModifiers.Bullet *
-                         MainCoreComponent.CoreBlock.UpgradeValues["PassiveBulletDamage"],
-                Rocket = ShipCore.PassiveDefenseModifiers.Rocket *
-                         MainCoreComponent.CoreBlock.UpgradeValues["PassiveRocketDamage"],
-                Explosion = ShipCore.PassiveDefenseModifiers.Explosion *
-                            MainCoreComponent.CoreBlock.UpgradeValues["PassiveExplosionDamage"],
-                Environment = ShipCore.PassiveDefenseModifiers.Environment *
-                              MainCoreComponent.CoreBlock.UpgradeValues["PassiveEnvironmentDamage"],
-                PostShield = ShipCore.PassiveDefenseModifiers.PostShield *
-                             MainCoreComponent.CoreBlock.UpgradeValues["PassivePostShieldDamage"],
-                Kinetic = ShipCore.PassiveDefenseModifiers.Kinetic *
-                          MainCoreComponent.CoreBlock.UpgradeValues["PassiveKineticDamage"],
-                Energy = ShipCore.PassiveDefenseModifiers.Energy *
-                         MainCoreComponent.CoreBlock.UpgradeValues["PassiveEnergyDamage"]
-            };
+            return PunishModifiers ? CubeGridModifiers.ScaleDefenseModifiers(modifiers, 2f) : modifiers;
         }
 
         internal void CoreRemoved(CoreComponent lost)
@@ -789,13 +702,109 @@ namespace ShipCoreFramework
                 SyncBeaconComponents();
             }
 
-            EnforceOverCapacity();
+            OnUpgradeModulesChanged();
         }
 
         internal void SyncBeaconComponents()
         {
             foreach (var gridComponent in GridDictionary.Values)
                 gridComponent.SyncBeaconComponents();
+        }
+
+        internal IEnumerable<UpgradeModuleComponent> GetUpgradeModules()
+        {
+            return GridDictionary.Values.SelectMany(gridComponent => gridComponent.GetUpgradeModuleComponentsCopy());
+        }
+
+        internal IEnumerable<UpgradeModuleComponent> GetMainCoreUpgradeModules(bool requireFunctionalForEffects)
+        {
+            var mainCore = MainCoreComponent;
+            if (mainCore == null) yield break;
+
+            foreach (var module in GetUpgradeModules()
+                         .Where(module => module != null && ReferenceEquals(module.ParentCoreComponent, mainCore)))
+            {
+                if (requireFunctionalForEffects && !module.IsFunctionalForEffects()) continue;
+                yield return module;
+            }
+        }
+
+        internal void OnUpgradeModulesChanged()
+        {
+            if (_closing || _refreshingUpgradeModules) return;
+
+            _refreshingUpgradeModules = true;
+            try
+            {
+                RefreshUpgradeModules();
+                RebuildConnectorPunishmentLinks();
+                RecalculateAllLimits();
+                ApplyModifiers(Modifiers);
+                DefenseValuesChanged();
+                EnforceGroupPunishment();
+                EnforceOverCapacity();
+            }
+            finally
+            {
+                _refreshingUpgradeModules = false;
+            }
+        }
+
+        internal float GetEffectiveMaxCount(BlockLimit limit)
+        {
+            if (limit == null) return 0f;
+
+            var maxCount = limit.MaxCount;
+            foreach (var module in GetMainCoreUpgradeModules(true))
+            {
+                var config = module.GetConfig();
+                if (config?.BlockLimitModifiers == null) continue;
+
+                foreach (var limitModifier in config.BlockLimitModifiers.Where(limitModifier =>
+                             limitModifier != null &&
+                             limitModifier.BlockLimitName.Equals(limit.Name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    maxCount = CubeGridModifiers.ApplyUpgradeModifier(maxCount, limitModifier.Value,
+                        limitModifier.ModifierType);
+                }
+            }
+
+            return maxCount;
+        }
+
+        private void RefreshUpgradeModules()
+        {
+            var modules = GetUpgradeModules().OrderBy(module => module.ModuleBlock.EntityId).ToList();
+            foreach (var module in modules) module.RefreshParentCore();
+
+            var invalidModules = new List<UpgradeModuleComponent>();
+
+            foreach (var perCoreModules in modules
+                         .Where(module => module.ParentCoreComponent != null)
+                         .GroupBy(module => module.ParentCoreComponent))
+            {
+                var core = perCoreModules.Key;
+                var shipCore = Session.Config.GetShipCoreByTypeId(core.SubtypeId);
+                foreach (var subtypeGroup in perCoreModules.GroupBy(module => module.SubtypeId, StringComparer.OrdinalIgnoreCase))
+                {
+                    int maxAllowed;
+                    if (!shipCore.TryGetAllowedUpgradeModuleCount(subtypeGroup.Key, out maxAllowed) || maxAllowed <= 0)
+                    {
+                        invalidModules.AddRange(subtypeGroup);
+                        continue;
+                    }
+
+                    var overflow = subtypeGroup
+                        .OrderBy(module => module.ModuleBlock.EntityId)
+                        .Skip(maxAllowed);
+                    invalidModules.AddRange(overflow);
+                }
+            }
+
+            foreach (var invalidModule in invalidModules.Distinct())
+            {
+                invalidModule.RemoveInvalidModule("This upgrade module exceeds the allowed amount for this core.");
+            }
         }
 
         private void RecalculateAllLimits()

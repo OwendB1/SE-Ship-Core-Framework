@@ -126,6 +126,18 @@ namespace ShipCoreFramework
         {
             return IsCoreBlock(block?.FatBlock as IMyFunctionalBlock);
         }
+
+        internal static bool IsTrackedUpgradeModuleBlock(IMyFunctionalBlock block)
+        {
+            return block is IMyUpgradeModule
+                   && Session.Config != null
+                   && Session.Config.IsTrackedUpgradeModuleType(block.BlockDefinition.SubtypeId);
+        }
+
+        internal static bool IsTrackedUpgradeModuleBlock(IMySlimBlock block)
+        {
+            return IsTrackedUpgradeModuleBlock(block?.FatBlock as IMyFunctionalBlock);
+        }
         
         internal static string GetBlockTypeId(IMySlimBlock block)
         {

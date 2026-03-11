@@ -795,11 +795,11 @@ namespace ShipCoreFramework
                 if (!Session.GroupDict.TryGetValue(groupData, out groupComponent))
                     return 100f;
 
-                var core = groupComponent.ShipCore;
-                if (core?.SpeedModifiers == null)
+                var speedModifiers = groupComponent.SpeedModifiers;
+                if (speedModifiers == null)
                     return 100f;
 
-                return core.SpeedModifiers.MaxSpeed * Session.Config.MaxPossibleSpeedMetersPerSecond;
+                return speedModifiers.MaxSpeed * Session.Config.MaxPossibleSpeedMetersPerSecond;
             }
             catch (Exception ex)
             {
@@ -1171,12 +1171,12 @@ namespace ShipCoreFramework
                 if (!Session.GroupDict.TryGetValue(groupData, out groupComponent))
                     return 100f;
                 
-                var core = groupComponent.ShipCore;
-                if (core?.SpeedModifiers == null) return 100f;
+                var speedModifiers = groupComponent.SpeedModifiers;
+                if (speedModifiers == null) return 100f;
 
-                var baseSpeed = core.SpeedModifiers.MaxSpeed * Session.Config.MaxPossibleSpeedMetersPerSecond;
+                var baseSpeed = speedModifiers.MaxSpeed * Session.Config.MaxPossibleSpeedMetersPerSecond;
 
-                if (groupComponent.BoostEnabled) return baseSpeed * core.SpeedModifiers.MaxBoost;
+                if (groupComponent.BoostEnabled) return baseSpeed * speedModifiers.MaxBoost;
                 return baseSpeed;
             }
             catch (Exception ex)

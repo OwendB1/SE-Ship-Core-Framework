@@ -313,6 +313,7 @@ namespace ShipCoreFramework
     public class CoreManifest
     {
         [XmlElement("ShipCoreFilenames")] public List<string> ShipCoreFilenames;
+        [XmlElement("UpgradeModuleFilenames")] public List<string> UpgradeModuleFilenames = new List<string>();
     }
 
     [XmlRoot("ShipCore")]
@@ -342,6 +343,11 @@ namespace ShipCoreFramework
         public int MaxPerPlayer = -1;
         [XmlElement("MinPlayers")]
         public int MinPlayers = -1;
+        [XmlElement("AllowedUpgradeModules")]
+        public UpgradeModuleAllowance[] AllowedUpgradeModules = Array.Empty<UpgradeModuleAllowance>();
+        [XmlIgnore]
+        public readonly Dictionary<string, int> AllowedUpgradeModuleCounts =
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         [XmlElement("Modifiers")]
         public GridModifiers Modifiers = new GridModifiers();
         [XmlElement("PassiveDefenseModifiers")]
@@ -358,6 +364,90 @@ namespace ShipCoreFramework
         public GridDefenseModifiers ActiveDefenseModifiers = new GridDefenseModifiers();
         [XmlElement("BlockLimits")]
         public BlockLimit[] BlockLimits = Array.Empty<BlockLimit>();
+
+        public bool IsUpgradeModuleAllowed(string moduleSubtypeId)
+        {
+            if (string.IsNullOrWhiteSpace(moduleSubtypeId)) return false;
+            return AllowedUpgradeModuleCounts.ContainsKey(moduleSubtypeId);
+        }
+
+        public bool TryGetAllowedUpgradeModuleCount(string moduleSubtypeId, out int maxCount)
+        {
+            if (string.IsNullOrWhiteSpace(moduleSubtypeId))
+            {
+                maxCount = 0;
+                return false;
+            }
+
+            return AllowedUpgradeModuleCounts.TryGetValue(moduleSubtypeId, out maxCount);
+        }
+
+        internal void NormalizeAllowedUpgradeModules()
+        {
+            AllowedUpgradeModuleCounts.Clear();
+            if (AllowedUpgradeModules == null)
+            {
+                AllowedUpgradeModules = Array.Empty<UpgradeModuleAllowance>();
+                return;
+            }
+
+            foreach (var allowance in AllowedUpgradeModules)
+            {
+                if (allowance == null || string.IsNullOrWhiteSpace(allowance.SubtypeId)) continue;
+                AllowedUpgradeModuleCounts[allowance.SubtypeId] = allowance.MaxCount;
+            }
+        }
+    }
+
+    [XmlRoot("AllowedUpgradeModules")]
+    public class UpgradeModuleAllowance
+    {
+        [XmlElement("SubtypeId")]
+        public string SubtypeId = string.Empty;
+        [XmlElement("MaxCount")]
+        public int MaxCount;
+    }
+
+    [XmlRoot("UpgradeModule")]
+    public class UpgradeModuleConfig
+    {
+        [XmlElement("SubtypeId")]
+        public string SubtypeId = string.Empty;
+        [XmlElement("UniqueName")]
+        public string UniqueName = string.Empty;
+        [XmlElement("Modifiers")]
+        public UpgradeStatModifier[] Modifiers = Array.Empty<UpgradeStatModifier>();
+        [XmlElement("BlockLimitModifiers")]
+        public BlockLimitModifier[] BlockLimitModifiers = Array.Empty<BlockLimitModifier>();
+    }
+
+    [XmlRoot("Modifiers")]
+    public class UpgradeStatModifier
+    {
+        [XmlElement("Stat")]
+        public string Stat = string.Empty;
+        [XmlElement("Value")]
+        public float Value;
+        [XmlElement("ModifierType")]
+        public UpgradeModifierOperation ModifierType = UpgradeModifierOperation.Multiplicative;
+    }
+
+    [XmlRoot("BlockLimitModifiers")]
+    public class BlockLimitModifier
+    {
+        [XmlElement("BlockLimitName")]
+        public string BlockLimitName = string.Empty;
+        [XmlElement("Value")]
+        public float Value;
+        [XmlElement("ModifierType")]
+        public UpgradeModifierOperation ModifierType = UpgradeModifierOperation.Additive;
+    }
+
+    [XmlRoot("UpgradeModifierOperation")]
+    public enum UpgradeModifierOperation
+    {
+        Additive = 0,
+        Multiplicative = 1
     }
 
     [XmlRoot("SpeedModifiers")]

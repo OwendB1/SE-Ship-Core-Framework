@@ -17,23 +17,19 @@
 			<Components>
 				<Component Subtype="SteelPlate" Count="10"/>
 			</Components>
-			<Upgrades>
-                <MyUpgradeModuleInfo>
-                    <UpgradeType>ThrusterForce</UpgradeType>
-                    <Modifier>1.2</Modifier>
-					<ModifierType>Multiplicative</ModifierType>
-                </MyUpgradeModuleInfo>
-                <MyUpgradeModuleInfo>
-                    <UpgradeType>GyroForce</UpgradeType>
-                    <Modifier>1.2</Modifier>
-					<ModifierType>Multiplicative</ModifierType>
-                </MyUpgradeModuleInfo>
-            </Upgrades>
 			<CriticalComponent Subtype="SteelPlate" Index="0"/>
 			<BuildProgressModels>
 				<Model BuildPercentUpperBound="0.50" File="Models\SG_GridCore_Upgrade_BS1.mwm"/>
 				<Model BuildPercentUpperBound="1.00" File="Models\SG_GridCore_Upgrade_BS2.mwm"/>
 			</BuildProgressModels>
+			<!-- Required dummy vanilla upgrade channel so MyUpgradeModule can resolve connections without crashing. Actual gameplay modifiers live in the upgrade module XML config. -->
+			<Upgrades>
+				<Upgrade>
+					<UpgradeType>ShipCoreLink</UpgradeType>
+					<Modifier>1</Modifier>
+					<ModifierType>Additive</ModifierType>
+				</Upgrade>
+			</Upgrades>
 			<ScreenAreas>
 				<ScreenArea Name="CockpitScreen_01" DisplayName="Screen" TextureResolution="512" ScreenWidth="5" ScreenHeight="3" Script="CoreTypeLCDScript"/>
 				<ScreenArea Name="CockpitScreen_02" DisplayName="Keyboard" TextureResolution="512" ScreenWidth="5" ScreenHeight="3" />

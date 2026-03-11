@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<UpgradeModule xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <SubtypeId>SG_GridCore_Module_OverDrive</SubtypeId>
+  <UniqueName>Small Grid Overdrive Upgrade Module</UniqueName>
+  <Modifiers>
+    <Stat>ThrusterForce</Stat>
+    <Value>1.2</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>ThrusterEfficiency</Stat>
+    <Value>0.8</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>MaxSpeed</Stat>
+    <Value>0.05</Value>
+    <ModifierType>Additive</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>MaxBoost</Stat>
+    <Value>0.05</Value>
+    <ModifierType>Additive</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>BoostDuration</Stat>
+    <Value>1.2</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>BoostCoolDown</Stat>
+    <Value>1.2</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+</UpgradeModule>

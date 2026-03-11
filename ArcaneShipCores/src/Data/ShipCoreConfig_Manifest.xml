@@ -20,6 +20,16 @@
   <ShipCoreFilenames>Data\Cores\Utility Ships\Utility_Core.xml</ShipCoreFilenames>
 
   <ShipCoreFilenames>Data\Cores\Test_Core.xml</ShipCoreFilenames>
-  
+
+  <UpgradeModuleFilenames>Data\UpgradeModules\GridCore_Module_Combat.xml</UpgradeModuleFilenames>
+  <UpgradeModuleFilenames>Data\UpgradeModules\GridCore_Module_Economy.xml</UpgradeModuleFilenames>
+  <UpgradeModuleFilenames>Data\UpgradeModules\GridCore_Module_Handling.xml</UpgradeModuleFilenames>
+  <UpgradeModuleFilenames>Data\UpgradeModules\GridCore_Module_Harvester.xml</UpgradeModuleFilenames>
+  <UpgradeModuleFilenames>Data\UpgradeModules\GridCore_Module_OverDrive.xml</UpgradeModuleFilenames>
+  <UpgradeModuleFilenames>Data\UpgradeModules\SG_GridCore_Module_Combat.xml</UpgradeModuleFilenames>
+  <UpgradeModuleFilenames>Data\UpgradeModules\SG_GridCore_Module_Economy.xml</UpgradeModuleFilenames>
+  <UpgradeModuleFilenames>Data\UpgradeModules\SG_GridCore_Module_Handling.xml</UpgradeModuleFilenames>
+  <UpgradeModuleFilenames>Data\UpgradeModules\SG_GridCore_Module_Harvester.xml</UpgradeModuleFilenames>
+  <UpgradeModuleFilenames>Data\UpgradeModules\SG_GridCore_Module_OverDrive.xml</UpgradeModuleFilenames>
 
 </CoreManifest>

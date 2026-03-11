@@ -53,8 +53,13 @@
                 <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GridCore_Module_Combat" />
                 <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GridCore_Module_Economy" />
                 <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GridCore_Module_Handling" />
-                <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GridCore_Module_Harvester" /> 
-                <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GridCore_Module_Overdrive" />              
+                <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GridCore_Module_Harvester" />
+                <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GridCore_Module_OverDrive" />
+                <Block Type="MyObjectBuilder_UpgradeModule" Subtype="SG_GridCore_Module_Combat" />
+                <Block Type="MyObjectBuilder_UpgradeModule" Subtype="SG_GridCore_Module_Economy" />
+                <Block Type="MyObjectBuilder_UpgradeModule" Subtype="SG_GridCore_Module_Handling" />
+                <Block Type="MyObjectBuilder_UpgradeModule" Subtype="SG_GridCore_Module_Harvester" />
+                <Block Type="MyObjectBuilder_UpgradeModule" Subtype="SG_GridCore_Module_OverDrive" />
             </Blocks>
         </BlockVariantGroup>
     </BlockVariantGroups>

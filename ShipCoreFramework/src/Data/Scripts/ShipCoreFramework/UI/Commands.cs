@@ -772,13 +772,14 @@ namespace ShipCoreFramework
                     if (groupKvp.Value.Limits.TryGetValue(blockLimit, out bucket))
                         totalWeight = bucket.TotalWeight;
 
-                    var percentage = blockLimit.MaxCount > 0
-                        ? (totalWeight / blockLimit.MaxCount) * 100d
+                    var effectiveMaxCount = groupKvp.Value.GetEffectiveMaxCount(blockLimit);
+                    var percentage = effectiveMaxCount > 0
+                        ? (totalWeight / effectiveMaxCount) * 100d
                         : 0d;
 
                     body += "\n" + blockLimit.Name + ":\n";
                     body += "  Used: " + totalWeight.ToString("F1", CultureInfo.InvariantCulture)
-                         + " / " + blockLimit.MaxCount.ToString(CultureInfo.InvariantCulture)
+                         + " / " + effectiveMaxCount.ToString(CultureInfo.InvariantCulture)
                          + " (" + percentage.ToString("F1", CultureInfo.InvariantCulture) + "%)\n";
                     body += "  Punishment: " + blockLimit.PunishmentType + "\n";
 

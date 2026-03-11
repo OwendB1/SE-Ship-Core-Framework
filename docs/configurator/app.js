@@ -250,6 +250,7 @@ function createDefaultCore() {
     speedBoostEnabled: false,
     speedLimitType: "Normal",
     enableActiveDefenseModifiers: false,
+    allowedUpgradeModules: [],
     modifiers: { ...DEFAULT_GRID_MODIFIERS },
     speedModifiers: { ...DEFAULT_SPEED_MODIFIERS },
     passiveDefenseModifiers: { ...DEFAULT_DEFENSE_MODIFIERS },
@@ -350,6 +351,12 @@ function cloneShipCore(core = createDefaultCore()) {
   return {
     ...createDefaultCore(),
     ...core,
+    allowedUpgradeModules: Array.isArray(core.allowedUpgradeModules)
+      ? core.allowedUpgradeModules.map((entry) => ({
+          subtypeId: String(entry.subtypeId ?? ""),
+          maxCount: Number(entry.maxCount ?? 0)
+        }))
+      : [],
     modifiers: { ...DEFAULT_GRID_MODIFIERS, ...(core.modifiers || {}) },
     speedModifiers: { ...DEFAULT_SPEED_MODIFIERS, ...(core.speedModifiers || {}) },
     passiveDefenseModifiers: { ...DEFAULT_DEFENSE_MODIFIERS, ...(core.passiveDefenseModifiers || {}) },
@@ -677,6 +684,10 @@ function parseCoreXml(text, originalFileName = "") {
     speedBoostEnabled: boolOf(coreNode, "SpeedBoostEnabled", false),
     speedLimitType: textOf(coreNode, "SpeedLimitType") || "Normal",
     enableActiveDefenseModifiers: boolOf(coreNode, "EnableActiveDefenseModifiers", false),
+    allowedUpgradeModules: Array.from(coreNode.querySelectorAll(":scope > AllowedUpgradeModules")).map((entryNode) => ({
+      subtypeId: textOf(entryNode, "SubtypeId"),
+      maxCount: numberOf(entryNode, "MaxCount", 0)
+    })).filter((entry) => entry.subtypeId),
     modifiers: parseModifierNode(coreNode.querySelector(":scope > Modifiers"), DEFAULT_GRID_MODIFIERS),
     speedModifiers: parseModifierNode(coreNode.querySelector(":scope > SpeedModifiers"), DEFAULT_SPEED_MODIFIERS),
     passiveDefenseModifiers: parseModifierNode(coreNode.querySelector(":scope > PassiveDefenseModifiers"), DEFAULT_DEFENSE_MODIFIERS),
@@ -698,6 +709,16 @@ function writeModifierXml(tag, values, defaults, indent = "  ") {
   return `${indent}<${tag}>\n${Object.keys(defaults)
     .map((name) => `${indent}  <${name}>${Number(values?.[name] ?? defaults[name])}</${name}>`)
     .join("\n")}\n${indent}</${tag}>`;
+}
+
+function writeAllowedUpgradeModulesXml(entries = [], indent = "  ") {
+  return entries
+    .filter((entry) => String(entry?.subtypeId ?? "").trim())
+    .map(
+      (entry) =>
+        `${indent}<AllowedUpgradeModules>\n${indent}  <SubtypeId>${escapeXml(entry.subtypeId)}</SubtypeId>\n${indent}  <MaxCount>${Number(entry.maxCount ?? 0)}</MaxCount>\n${indent}</AllowedUpgradeModules>`
+    )
+    .join("\n");
 }
 
 function writeBlockLimitXml(limit, indent = "  ") {
@@ -1066,7 +1087,7 @@ function generateXml(options = {}) {
   const header = '<?xml version="1.0" encoding="UTF-8"?>';
 
   const noCore = state.noCoreCore
-    ? `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(state.noCoreCore.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(state.noCoreCore.uniqueName)}</UniqueName>\n  <ForceBroadCast>${state.noCoreCore.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${state.noCoreCore.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(state.noCoreCore.mobilityType)}</MobilityType>\n  <MaxBlocks>${state.noCoreCore.maxBlocks}</MaxBlocks>\n  <MaxMass>${state.noCoreCore.maxMass}</MaxMass>\n  <MaxPCU>${state.noCoreCore.maxPcu}</MaxPCU>\n  <MaxBackupCores>${state.noCoreCore.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${state.noCoreCore.maxPerPlayer}</MaxPerPlayer>\n  <MinPlayers>${state.noCoreCore.minPerFaction}</MinPlayers>\n  <MaxPerFaction>${state.noCoreCore.maxPerFaction}</MaxPerFaction>\n  <SpeedBoostEnabled>${state.noCoreCore.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(state.noCoreCore.speedLimitType)}</SpeedLimitType>\n  <EnableActiveDefenseModifiers>${state.noCoreCore.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeModifierXml("Modifiers", state.noCoreCore.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeModifierXml("SpeedModifiers", state.noCoreCore.speedModifiers, DEFAULT_SPEED_MODIFIERS)}\n${writeModifierXml("PassiveDefenseModifiers", state.noCoreCore.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", state.noCoreCore.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${state.noCoreCore.blockLimits
+    ? `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(state.noCoreCore.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(state.noCoreCore.uniqueName)}</UniqueName>\n  <ForceBroadCast>${state.noCoreCore.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${state.noCoreCore.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(state.noCoreCore.mobilityType)}</MobilityType>\n  <MaxBlocks>${state.noCoreCore.maxBlocks}</MaxBlocks>\n  <MaxMass>${state.noCoreCore.maxMass}</MaxMass>\n  <MaxPCU>${state.noCoreCore.maxPcu}</MaxPCU>\n  <MaxBackupCores>${state.noCoreCore.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${state.noCoreCore.maxPerPlayer}</MaxPerPlayer>\n  <MinPlayers>${state.noCoreCore.minPerFaction}</MinPlayers>\n  <MaxPerFaction>${state.noCoreCore.maxPerFaction}</MaxPerFaction>\n  <SpeedBoostEnabled>${state.noCoreCore.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(state.noCoreCore.speedLimitType)}</SpeedLimitType>\n  <EnableActiveDefenseModifiers>${state.noCoreCore.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeAllowedUpgradeModulesXml(state.noCoreCore.allowedUpgradeModules)}${state.noCoreCore.allowedUpgradeModules?.length ? "\n" : ""}${writeModifierXml("Modifiers", state.noCoreCore.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeModifierXml("SpeedModifiers", state.noCoreCore.speedModifiers, DEFAULT_SPEED_MODIFIERS)}\n${writeModifierXml("PassiveDefenseModifiers", state.noCoreCore.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", state.noCoreCore.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${state.noCoreCore.blockLimits
       .map((limit) => writeBlockLimitXml(limit))
       .join("\n")}\n</ShipCore>`
     : `${header}\n<ShipCore />`;
@@ -1086,7 +1107,7 @@ function generateXml(options = {}) {
 
   const cores = state.shipCores.map((core, coreIndex) => ({
     file: coreFilenames[coreIndex],
-    body: `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(core.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(core.uniqueName)}</UniqueName>\n  <ForceBroadCast>${core.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${core.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(core.mobilityType)}</MobilityType>\n  <MaxBlocks>${core.maxBlocks}</MaxBlocks>\n  <MaxMass>${core.maxMass}</MaxMass>\n  <MaxPCU>${core.maxPcu}</MaxPCU>\n  <MaxBackupCores>${core.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${core.maxPerPlayer}</MaxPerPlayer>\n  <MinPlayers>${core.minPerFaction}</MinPlayers>\n  <MaxPerFaction>${core.maxPerFaction}</MaxPerFaction>\n  <SpeedBoostEnabled>${core.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(core.speedLimitType)}</SpeedLimitType>\n  <EnableActiveDefenseModifiers>${core.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeModifierXml("Modifiers", core.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeModifierXml("SpeedModifiers", core.speedModifiers, DEFAULT_SPEED_MODIFIERS)}\n${writeModifierXml("PassiveDefenseModifiers", core.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", core.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${core.blockLimits
+    body: `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(core.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(core.uniqueName)}</UniqueName>\n  <ForceBroadCast>${core.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${core.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(core.mobilityType)}</MobilityType>\n  <MaxBlocks>${core.maxBlocks}</MaxBlocks>\n  <MaxMass>${core.maxMass}</MaxMass>\n  <MaxPCU>${core.maxPcu}</MaxPCU>\n  <MaxBackupCores>${core.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${core.maxPerPlayer}</MaxPerPlayer>\n  <MinPlayers>${core.minPerFaction}</MinPlayers>\n  <MaxPerFaction>${core.maxPerFaction}</MaxPerFaction>\n  <SpeedBoostEnabled>${core.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(core.speedLimitType)}</SpeedLimitType>\n  <EnableActiveDefenseModifiers>${core.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeAllowedUpgradeModulesXml(core.allowedUpgradeModules)}${core.allowedUpgradeModules?.length ? "\n" : ""}${writeModifierXml("Modifiers", core.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeModifierXml("SpeedModifiers", core.speedModifiers, DEFAULT_SPEED_MODIFIERS)}\n${writeModifierXml("PassiveDefenseModifiers", core.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", core.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${core.blockLimits
       .map((limit) => writeBlockLimitXml(limit))
       .join("\n")}\n</ShipCore>`
   }));

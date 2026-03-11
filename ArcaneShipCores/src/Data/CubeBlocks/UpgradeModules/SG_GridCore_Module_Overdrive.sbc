@@ -22,10 +22,19 @@
 				<Model BuildPercentUpperBound="0.50" File="Models\SG_GridCore_Upgrade_BS1.mwm"/>
 				<Model BuildPercentUpperBound="1.00" File="Models\SG_GridCore_Upgrade_BS2.mwm"/>
 			</BuildProgressModels>
+			<!-- Required dummy vanilla upgrade channel so MyUpgradeModule can resolve connections without crashing. Actual gameplay modifiers live in the upgrade module XML config. -->
+			<Upgrades>
+				<Upgrade>
+					<UpgradeType>ShipCoreLink</UpgradeType>
+					<Modifier>1</Modifier>
+					<ModifierType>Additive</ModifierType>
+				</Upgrade>
+			</Upgrades>
 			<ScreenAreas>
 				<ScreenArea Name="CockpitScreen_01" DisplayName="Screen" TextureResolution="512" ScreenWidth="5" ScreenHeight="3" Script="CoreTypeLCDScript"/>
 				<ScreenArea Name="CockpitScreen_02" DisplayName="Keyboard" TextureResolution="512" ScreenWidth="5" ScreenHeight="3" />
 			</ScreenAreas>
+			<BlockPairName>GridCore_Module_OverDrive</BlockPairName>
 			<MirroringX>Z</MirroringX>
 			<MirroringZ>X</MirroringZ>
 			<MountPoints>
@@ -39,42 +48,7 @@
 				<MountPoint Side="Top" StartX="0.00" StartY="0.00" EndX="1.00" EndY="1.00"/>
 				<MountPoint Side="Bottom" StartX="0.00" StartY="0.00" EndX="1.00" EndY="1.00"/>
 			</MountPoints>
-			<BlockPairName>GridCore_Module_OverDrive</BlockPairName>
-			<MirroringY>Z</MirroringY>
-			<MirroringZ>Y</MirroringZ>
             <EdgeType>Light</EdgeType>
-            <Upgrades>
-                <MyUpgradeModuleInfo>
-                    <UpgradeType>ThrusterForce</UpgradeType>
-                    <Modifier>1.2</Modifier>
-					<ModifierType>Multiplicative</ModifierType>
-                </MyUpgradeModuleInfo>
-                <MyUpgradeModuleInfo>
-                    <UpgradeType>ThrusterEfficiency</UpgradeType>
-                    <Modifier>0.8</Modifier>
-					<ModifierType>Multiplicative</ModifierType>
-                </MyUpgradeModuleInfo>
-                <MyUpgradeModuleInfo>
-                    <UpgradeType>MaxSpeed</UpgradeType>
-                    <Modifier>0.05</Modifier>
-					<ModifierType>Additive</ModifierType>
-                </MyUpgradeModuleInfo>
-                <MyUpgradeModuleInfo>
-                    <UpgradeType>MaxBoost</UpgradeType>
-                    <Modifier>0.05</Modifier>
-					<ModifierType>Additive</ModifierType>
-                </MyUpgradeModuleInfo>
-                <MyUpgradeModuleInfo>
-                    <UpgradeType>BoostDuration</UpgradeType>
-                    <Modifier>1.2</Modifier>
-					<ModifierType>Multiplicative</ModifierType>
-                </MyUpgradeModuleInfo>
-                <MyUpgradeModuleInfo>
-                    <UpgradeType>BoostDuration</UpgradeType>
-                    <Modifier>1.2</Modifier>
-					<ModifierType>Multiplicative</ModifierType>
-                </MyUpgradeModuleInfo>
-            </Upgrades>
             <PrimarySound>BlockModuleProductivity</PrimarySound>
             <DamageEffectName>Damage_Electrical_Damaged</DamageEffectName>
             <DamagedSound>ParticleElectrical</DamagedSound>

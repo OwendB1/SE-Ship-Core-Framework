@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<UpgradeModule xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <SubtypeId>GridCore_Module_Economy</SubtypeId>
+  <UniqueName>Economy Upgrade Module</UniqueName>
+  <Modifiers>
+    <Stat>ThrusterForce</Stat>
+    <Value>0.9</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>ThrusterEfficiency</Stat>
+    <Value>1.5</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>MaxSpeed</Stat>
+    <Value>-0.05</Value>
+    <ModifierType>Additive</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>GyroForce</Stat>
+    <Value>0.9</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>GyroEfficiency</Stat>
+    <Value>1.5</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>RefineEfficiency</Stat>
+    <Value>1.5</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+</UpgradeModule>

@@ -1,32 +1,26 @@
 <?xml version="1.0" ?>
 <Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
 	<CubeBlocks>
-        <Definition xsi:type="MyObjectBuilder_UpgradeModuleDefinition">
+		<Definition xsi:type="MyObjectBuilder_UpgradeModuleDefinition">
 			<Id>
 				<TypeId>UpgradeModule</TypeId>
-				<SubtypeId>GridCore_Module_Harvester</SubtypeId>
+				<SubtypeId>SG_GridCore_Module_Harvester</SubtypeId>
 			</Id>
 			<DisplayName>GridCore UpgradeModule: Harvester</DisplayName>
 			<Description>This Module Is Designed To Help Harvest As Many Resouces As Possible.</Description>
-			<Icon>Textures\LargeGridUpgrade.png</Icon>
-			<CubeSize>Large</CubeSize>
+			<Icon>Textures\SmallGridUpgrade.png</Icon>
+			<CubeSize>Small</CubeSize>
 			<BlockTopology>TriangleMesh</BlockTopology>
 			<Size x="1" y="1" z="1"/>
 			<ModelOffset x="0" y="0" z="0"/>
-			<Model>Models\GridCore_UpgradeModule.mwm</Model>
+			<Model>Models\SG_GridCore_Upgrade.mwm</Model>
 			<Components>
 				<Component Subtype="SteelPlate" Count="10"/>
 			</Components>
 			<CriticalComponent Subtype="SteelPlate" Index="0"/>
-			<MountPoints>
-				<MountPoint Side="Back" StartX="0.20" StartY="0.00" EndX="0.80" EndY="1.00"/>
-				<MountPoint Side="Top" StartX="0.20" StartY="0.00" EndX="0.80" EndY="0.53"/>
-				<MountPoint Side="Bottom" StartX="0.20" StartY="0.47" EndX="0.80" EndY="1.00" Default="true"/>
-			</MountPoints>
 			<BuildProgressModels>
-				<Model BuildPercentUpperBound="0.33" File="Models\GridCore_UpgradeModule_BS1.mwm"/>
-				<Model BuildPercentUpperBound="0.67" File="Models\GridCore_UpgradeModule_BS2.mwm"/>
-				<Model BuildPercentUpperBound="1.00" File="Models\GridCore_UpgradeModule_BS3.mwm"/>
+				<Model BuildPercentUpperBound="0.50" File="Models\SG_GridCore_Upgrade_BS1.mwm"/>
+				<Model BuildPercentUpperBound="1.00" File="Models\SG_GridCore_Upgrade_BS2.mwm"/>
 			</BuildProgressModels>
 			<!-- Required dummy vanilla upgrade channel so MyUpgradeModule can resolve connections without crashing. Actual gameplay modifiers live in the upgrade module XML config. -->
 			<Upgrades>
@@ -36,15 +30,24 @@
 					<ModifierType>Additive</ModifierType>
 				</Upgrade>
 			</Upgrades>
-            <ScreenAreas>
-                <ScreenArea Name="CockpitScreen_01" DisplayName="Screen 1" TextureResolution="512" ScreenWidth="5" ScreenHeight="3" Script="CoreTypeLCDScript"/>
-                <ScreenArea Name="CockpitScreen_02" DisplayName="Screen 2" TextureResolution="512" ScreenWidth="5" ScreenHeight="3" Script="CoreTypeLCDScript"/>
-                <ScreenArea Name="CockpitScreen_03" DisplayName="Keyboard 1" TextureResolution="512" ScreenWidth="5" ScreenHeight="3"/>
-                <ScreenArea Name="CockpitScreen_04" DisplayName="keyboard 2" TextureResolution="512" ScreenWidth="5" ScreenHeight="3"/>
-            </ScreenAreas>
+			<ScreenAreas>
+				<ScreenArea Name="CockpitScreen_01" DisplayName="Screen" TextureResolution="512" ScreenWidth="5" ScreenHeight="3" Script="CoreTypeLCDScript"/>
+				<ScreenArea Name="CockpitScreen_02" DisplayName="Keyboard" TextureResolution="512" ScreenWidth="5" ScreenHeight="3" />
+			</ScreenAreas>
 			<BlockPairName>GridCore_Module_Harvester</BlockPairName>
-			<MirroringY>Z</MirroringY>
-			<MirroringZ>Y</MirroringZ>
+			<MirroringX>Z</MirroringX>
+			<MirroringZ>X</MirroringZ>
+			<MountPoints>
+				<MountPoint Side="Front" StartX="0.00" StartY="0.00" EndX="0.09" EndY="1.00"/>
+				<MountPoint Side="Front" StartX="0.83" StartY="0.00" EndX="1.00" EndY="1.00"/>
+				<MountPoint Side="Back" StartX="0.00" StartY="0.80" EndX="1.00" EndY="1.00"/>
+				<MountPoint Side="Back" StartX="0.00" StartY="0.00" EndX="1.00" EndY="0.20"/>
+				<MountPoint Side="Back" StartX="0.00" StartY="0.00" EndX="0.09" EndY="1.00"/>
+				<MountPoint Side="Left" StartX="0.00" StartY="0.00" EndX="1.00" EndY="1.00"/>
+				<MountPoint Side="Right" StartX="0.00" StartY="0.00" EndX="1.00" EndY="1.00"/>
+				<MountPoint Side="Top" StartX="0.00" StartY="0.00" EndX="1.00" EndY="1.00"/>
+				<MountPoint Side="Bottom" StartX="0.00" StartY="0.00" EndX="1.00" EndY="1.00"/>
+			</MountPoints>
             <EdgeType>Light</EdgeType>
             <PrimarySound>BlockModuleProductivity</PrimarySound>
             <DamageEffectName>Damage_Electrical_Damaged</DamageEffectName>

@@ -83,11 +83,11 @@ namespace ShipCoreFramework
                 return false;
             }
             
-            CubeGridModifiers.AddModifiers(CoreBlock);
             IsMainCore = false;
             GridComponent = gridComponent;
             _groupComponent = groupComponent;
             SubtypeId = CoreBlock.BlockDefinition.SubtypeId;
+            CubeGridModifiers.RegisterUpgradeModuleLink(CoreBlock);
             
             var persistedMain = CoreBlock.Storage != null
                                 && CoreBlock.Storage.ContainsKey(Session.CoreStateStorageGUID)
@@ -159,7 +159,7 @@ namespace ShipCoreFramework
 
         private void OnUpgradeValuesChanged()
         {
-            _groupComponent.DefenseValuesChanged();
+            _groupComponent.OnUpgradeModulesChanged();
         }
         
         private static void AppendingCustomInfo(IMyTerminalBlock block, StringBuilder myText)

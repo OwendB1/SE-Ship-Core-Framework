@@ -251,14 +251,15 @@ namespace ShipCoreFramework
                     LimitBucket bucket;
                     if (GroupComponent.Limits.TryGetValue(blockLimit, out bucket))
                         totalWeight = bucket.TotalWeight;
-                    var isOk = totalWeight <= blockLimit.MaxCount;
+                    var effectiveMaxCount = GroupComponent.GetEffectiveMaxCount(blockLimit);
+                    var isOk = totalWeight <= effectiveMaxCount;
 
                     _gridLimitsTable.Rows.Add(new Row
                     {
                         new Cell(blockLimit.Name + ":"),
                         new Cell(totalWeight.ToString(CultureInfo.InvariantCulture)),
                         new Cell("/"),
-                        new Cell(blockLimit.MaxCount.ToString(CultureInfo.InvariantCulture), isOk ? successColor : failColor),
+                        new Cell(effectiveMaxCount.ToString(CultureInfo.InvariantCulture), isOk ? successColor : failColor),
                         new Cell("Type: " + blockLimit.PunishmentType)
                     });
                 }
