@@ -17,6 +17,9 @@ namespace ShipCoreFramework
         internal readonly Dictionary<IMyCubeBlock, CoreComponent> CoreDictionary =
             new Dictionary<IMyCubeBlock, CoreComponent>();
 
+        private readonly Dictionary<IMyCubeBlock, BeaconComponent> _beaconDictionary =
+            new Dictionary<IMyCubeBlock, BeaconComponent>();
+
         private readonly HashSet<long> _trackedConnectorIds = new HashSet<long>();
 
         private GroupComponent GroupComponent
@@ -53,12 +56,12 @@ namespace ShipCoreFramework
             var blocks = new List<IMySlimBlock>();
             grid.GetBlocks(blocks);
 
-            //MUST get beacons before blocks or blocks will be added based on default class
-            var beaconBlocks = blocks.Where(b => b.FatBlock is IMyBeacon).ToList();
-            foreach (var beacon in beaconBlocks) BlockAddedInternal(beacon);
+            // Core blocks must be initialized before the rest of the group uses the default no-core limits.
+            var coreBlocks = blocks.Where(Utils.IsCoreBlock).ToList();
+            foreach (var coreBlock in coreBlocks) BlockAddedInternal(coreBlock);
 
-            var otherBlocks = blocks.Where(b => !(b.FatBlock is IMyBeacon)).ToList();
-            foreach (var beacon in otherBlocks) BlockAddedInternal(beacon);
+            var otherBlocks = blocks.Where(b => !Utils.IsCoreBlock(b)).ToList();
+            foreach (var otherBlock in otherBlocks) BlockAddedInternal(otherBlock);
         }
 
         private void BlockAddedEvent(IMySlimBlock block)
@@ -92,12 +95,11 @@ namespace ShipCoreFramework
             Utils.Log(((IMyCubeGrid)Grid).CustomName + ": Block Added: " + Utils.GetBlockTypeId(block) + " | " +
                       Utils.GetBlockSubtypeId(block));
 
-            var beacon = block.FatBlock as IMyBeacon;
-            if (beacon != null &&
-                Session.Config.ShipCores.Any(core => core.SubtypeId == block.FatBlock.BlockDefinition.SubtypeId))
+            var functionalBlock = block.FatBlock as IMyFunctionalBlock;
+            if (Utils.IsCoreBlock(functionalBlock))
             {
                 var newCore = new CoreComponent();
-                var success = newCore.Init(beacon, this, groupComponent);
+                var success = newCore.Init(functionalBlock, this, groupComponent);
                 if (!success) return;
 
                 CoreDictionary.Add(block.FatBlock, newCore);
@@ -111,6 +113,7 @@ namespace ShipCoreFramework
             }
             else
             {
+                if(functionalBlock is IMyBeacon) TrackBeacon(functionalBlock, groupComponent);
                 if (!limitBasedPunish)
                 {
                     var firstBigOwner = Grid.BigOwners.FirstOrDefault();
@@ -147,8 +150,7 @@ namespace ShipCoreFramework
                     _blocks.Add(block);
                 }
 
-                var funcBlock = block.FatBlock as IMyFunctionalBlock;
-                if (funcBlock != null) funcBlock.EnabledChanged += FuncBlockOnEnabledChanged;
+                if (functionalBlock != null) functionalBlock.EnabledChanged += FuncBlockOnEnabledChanged;
 
                 var connector = block.FatBlock as IMyShipConnector;
                 if (connector != null) TrackConnector(connector);
@@ -239,16 +241,17 @@ namespace ShipCoreFramework
             var groupComponent = GroupComponent;
             if (groupComponent == null) return;
 
-            var beacon = block.FatBlock as IMyBeacon;
+            var functionalBlock = block.FatBlock as IMyFunctionalBlock;
             CoreComponent value = null;
-            if (beacon != null && CoreDictionary.TryGetValue(beacon, out value))
+            if (functionalBlock != null && CoreDictionary.TryGetValue(functionalBlock, out value))
             {
                 // Needs to be in this order otherwise reset breaks
-                CoreDictionary.Remove(beacon);
+                CoreDictionary.Remove(functionalBlock);
                 value.CoreDestroyed();
             }
             else
             {
+                if(functionalBlock is IMyBeacon) UntrackBeacon(functionalBlock);
                 var limits = groupComponent.Limits;
                 if (limits != null)
                 {
@@ -298,6 +301,35 @@ namespace ShipCoreFramework
             var connector = block.FatBlock as IMyShipConnector;
             if (connector != null) UntrackConnector(connector);
             groupComponent.ApplyModifiers(groupComponent.Modifiers);
+        }
+
+        private void TrackBeacon(IMyFunctionalBlock coreBlock, GroupComponent groupComponent)
+        {
+            var beaconBlock = coreBlock as IMyBeacon;
+            if (beaconBlock == null) return;
+            if (_beaconDictionary.ContainsKey(beaconBlock)) return;
+
+            var beaconComponent = new BeaconComponent(groupComponent);
+            if (!beaconComponent.Init(beaconBlock)) return;
+            _beaconDictionary.Add(beaconBlock, beaconComponent);
+        }
+
+        private void UntrackBeacon(IMyFunctionalBlock coreBlock)
+        {
+            var beaconBlock = coreBlock as IMyBeacon;
+            if (beaconBlock == null) return;
+
+            BeaconComponent beaconComponent;
+            if (!_beaconDictionary.TryGetValue(beaconBlock, out beaconComponent)) return;
+
+            _beaconDictionary.Remove(beaconBlock);
+            beaconComponent.Clean();
+        }
+
+        internal void SyncBeaconComponents()
+        {
+            foreach (var beaconComponent in _beaconDictionary.Values)
+                beaconComponent.SyncForceBroadcast();
         }
 
         private void TrackConnector(IMyShipConnector connector)
@@ -430,6 +462,8 @@ namespace ShipCoreFramework
             _trackedConnectorIds.Clear();
 
             Limits.Clear();
+            foreach (var beaconComponent in _beaconDictionary.Values) beaconComponent.Clean();
+            _beaconDictionary.Clear();
             CoreDictionary.Clear();
         }
     }

@@ -1,9 +1,9 @@
 <?xml version="1.0" ?>
 <Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
 	<CubeBlocks>
-        <Definition xsi:type="MyObjectBuilder_BeaconDefinition">
+        <Definition xsi:type="MyObjectBuilder_FunctionalBlockDefinition">
             <Id>
-                <TypeId>Beacon</TypeId>
+                <TypeId>FunctionalBlock</TypeId>
                 <SubtypeId>Extractor_Core</SubtypeId>
             </Id>
             <DisplayName>Extractor Core</DisplayName>
@@ -45,13 +45,7 @@
             <BuildTimeSeconds>15</BuildTimeSeconds>
             <DamageEffectName>Damage_Electrical_Damaged</DamageEffectName>
             <DamagedSound>ParticleElectrical</DamagedSound>
-
-            <!-- Beacon properties -->
             <ResourceSinkGroup>Utility</ResourceSinkGroup>
-            <MaxBroadcastRadius>200000</MaxBroadcastRadius>
-            <Flare></Flare>
-            <MaxBroadcastPowerDrainkW>20</MaxBroadcastPowerDrainkW>
-            <!-- End Beacon Props-->
             <ScreenAreas>
                 <ScreenArea Name="CockpitScreen_01" DisplayName="Screen" TextureResolution="512" ScreenWidth="5" ScreenHeight="3" Script="CoreTypeLCDScript"/>
                 <ScreenArea Name="CockpitScreen_02" DisplayName="Keyboard" TextureResolution="512" ScreenWidth="5" ScreenHeight="3" />

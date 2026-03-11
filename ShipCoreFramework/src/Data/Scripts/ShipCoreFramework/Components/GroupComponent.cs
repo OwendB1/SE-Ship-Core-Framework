@@ -189,6 +189,7 @@ namespace ShipCoreFramework
             }
 
             MainCoreComponent = coreComponent;
+            SyncBeaconComponents();
 
             var grid = MainCoreComponent.GridComponent.Grid;
             Utils.Log($"Activate: Activating logic for {((IMyCubeGrid)grid).CustomName}!", 1);
@@ -224,6 +225,7 @@ namespace ShipCoreFramework
             ModAPI.BroadcastCoreDeactivated(GetRepresentativeGridId(), type, old.CoreBlock.CustomName);
 
             MainCoreComponent = null;
+            SyncBeaconComponents();
             
             if (_closing || !Session.HasStarted || Session.IsShuttingDown) return;
             RebuildConnectorPunishmentLinks();
@@ -469,6 +471,7 @@ namespace ShipCoreFramework
 
                             MainCoreComponent = newMain;
                             MainCoreComponent.IsMainCore = true;
+                            SyncBeaconComponents();
                         }
                         else
                         {
@@ -485,9 +488,34 @@ namespace ShipCoreFramework
                     }
                 }
 
+                if (!HasFunctionalBeacon())
+                {
+                    PunishModifiers = true;
+                    PunishSpeed = true;
+                    ApplyModifiers(Modifiers);
+                }
+
                 var modifiers = _activeDefenseEnabled ? GetActiveDefenseModifiers() : GetPassiveDefenseModifiers();
                 foreach (var kvp in GridDictionary) CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
             }
+        }
+
+        private bool HasFunctionalBeacon()
+        {
+            foreach (var grid in GridDictionary.Keys)
+            {
+                if (grid == null || grid.MarkedForClose || grid.Closed) continue;
+
+                var beacons = ((IMyCubeGrid)grid).GetFatBlocks<IMyBeacon>();
+                if (beacons == null) continue;
+
+                foreach (var beacon in beacons)
+                {
+                    if (beacon.IsFunctional) return true;
+                }
+            }
+
+            return false;
         }
 
         internal void ApplyModifiers(GridModifiers modifiers)
@@ -758,9 +786,16 @@ namespace ShipCoreFramework
             {
                 MainCoreComponent = newMain;
                 MainCoreComponent.IsMainCore = true;
+                SyncBeaconComponents();
             }
 
             EnforceOverCapacity();
+        }
+
+        internal void SyncBeaconComponents()
+        {
+            foreach (var gridComponent in GridDictionary.Values)
+                gridComponent.SyncBeaconComponents();
         }
 
         private void RecalculateAllLimits()
@@ -798,9 +833,9 @@ namespace ShipCoreFramework
             if (MyGroup != null) ModAPI.BroadcastLimitsRecalculated(GetRepresentativeGridId());
         }
 
-	        private void ApplyCrossConnectorPunishment()
-	        {
-	            if (_connectedNoCoreGroups.Count == 0) return;
+	    private void ApplyCrossConnectorPunishment()
+	    {
+	        if (_connectedNoCoreGroups.Count == 0) return;
 
             var bl = ShipCore?.BlockLimits;
             if (bl == null || bl.Length == 0) return;
@@ -808,11 +843,9 @@ namespace ShipCoreFramework
             var punishedLimits = bl.Where(l => l != null && l.CrossConnectorPunishment).ToArray();
             if (punishedLimits.Length == 0) return;
 
-	            var connected = _connectedNoCoreGroups.ToList();
-	            foreach (var otherGroupData in connected)
-	            {
-                if (otherGroupData == null) continue;
-
+	        var connected = _connectedNoCoreGroups.ToList();
+	        foreach (var otherGroupData in connected.Where(otherGroupData => otherGroupData != null))
+            {
                 GroupComponent otherComp;
                 if (!Session.GroupDict.TryGetValue(otherGroupData, out otherComp) || otherComp == null) continue;
 

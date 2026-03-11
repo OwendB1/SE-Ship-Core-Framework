@@ -2,7 +2,6 @@ using System.Linq;
 using System.Text;
 using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI;
-using Sandbox.ModAPI.Interfaces;
 using VRage.Game;
 using VRage.Game.ModAPI;
 
@@ -14,7 +13,7 @@ namespace ShipCoreFramework
         private bool _isMainCore;
         
         internal string SubtypeId;
-        internal IMyBeacon CoreBlock;
+        internal IMyFunctionalBlock CoreBlock;
         internal GridComponent GridComponent;
         internal bool IsMainCore
         {
@@ -29,9 +28,9 @@ namespace ShipCoreFramework
             }
         }
         
-        public bool Init(IMyBeacon beacon, GridComponent gridComponent, GroupComponent groupComponent)
+        public bool Init(IMyFunctionalBlock coreBlock, GridComponent gridComponent, GroupComponent groupComponent)
         {   
-            CoreBlock = beacon;
+            CoreBlock = coreBlock;
             var builder = CoreBlock.SlimBlock.BuiltBy;
             if (builder == 0)
             {
@@ -149,9 +148,6 @@ namespace ShipCoreFramework
             CoreBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged;
             CoreBlock.AppendingCustomInfo += AppendingCustomInfo;
             CoreBlock.IsWorkingChanged += OnIsWorkingChanged;
-            CoreBlock.PropertiesChanged += CoreBlockOnPropertiesChanged;
-
-            CoreBlockOnPropertiesChanged(CoreBlock);
             _groupComponent.DefenseValuesChanged();
             return true;
         }
@@ -166,16 +162,6 @@ namespace ShipCoreFramework
             _groupComponent.DefenseValuesChanged();
         }
         
-        private void CoreBlockOnPropertiesChanged(IMyTerminalBlock obj)
-        {
-            var core = _groupComponent.ShipCore;
-            if (core == null) return;
-            if (!core.ForceBroadCast || !IsMainCore) return;
-
-            CoreBlock.SetValue("Radius", core.ForceBroadCastRange);
-            if(!CoreBlock.HudText.Contains(core.UniqueName)) CoreBlock.HudText = $"{CoreBlock.CubeGrid.DisplayName} : {core.UniqueName}";
-        }
-        
         private static void AppendingCustomInfo(IMyTerminalBlock block, StringBuilder myText)
         {
             var targetGrid=block.CubeGrid;
@@ -188,12 +174,13 @@ namespace ShipCoreFramework
         
         private bool CheckIfCoreOfOtherTypeExists()
         {
-            var fatTerminals = CoreBlock.CubeGrid.GetFatBlocks<IMyTerminalBlock>();
+            var fatTerminals = CoreBlock.CubeGrid.GetFatBlocks<IMyFunctionalBlock>();
             var coreSubtypeId = Session.Config.ShipCores.Select(core => core.SubtypeId).ToList();
             coreSubtypeId.Remove(SubtypeId);
             return fatTerminals.Any(terminal =>
             {
-                var subtype = Utils.GetBlockSubtypeId(terminal.SlimBlock);
+                if (!Utils.IsCoreBlock(terminal)) return false;
+                var subtype = terminal.BlockDefinition.SubtypeId;
                 return coreSubtypeId.Any(sub => sub == subtype);
             });
         }
@@ -216,7 +203,6 @@ namespace ShipCoreFramework
             CoreBlock.OnUpgradeValuesChanged -= OnUpgradeValuesChanged;
             CoreBlock.AppendingCustomInfo -= AppendingCustomInfo;
             CoreBlock.IsWorkingChanged -= OnIsWorkingChanged;
-            CoreBlock.PropertiesChanged -= CoreBlockOnPropertiesChanged;
 
             // Delegate to a group to handle removal and failover deterministically
             _groupComponent.CoreRemoved(this);

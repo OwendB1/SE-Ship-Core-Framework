@@ -92,6 +92,7 @@ namespace ShipCoreFramework
                 
                 group.MainCoreComponent = newMain;
                 group.MainCoreComponent.IsMainCore = true;
+                group.SyncBeaconComponents();
             }
             
             var players = new List<IMyPlayer>();
@@ -133,7 +134,10 @@ namespace ShipCoreFramework
             {
                 var isMain = kv.Key == block;
                 kv.Value.IsMainCore = isMain;
+                if (isMain) group.MainCoreComponent = kv.Value;
             }
+
+            group.SyncBeaconComponents();
         }
     }
     

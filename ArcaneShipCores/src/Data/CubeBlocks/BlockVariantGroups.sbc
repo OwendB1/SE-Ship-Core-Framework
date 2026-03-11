@@ -8,9 +8,9 @@
             <DisplayName>Station Cores</DisplayName>
             <Description>Station Cores, the heart of you bases.</Description>
             <Blocks>
-                <Block Type="MyObjectBuilder_Beacon" Subtype="Outpost_Core" />
-                <Block Type="MyObjectBuilder_Beacon" Subtype="Stronghold_Core" />
-                <Block Type="MyObjectBuilder_Beacon" Subtype="Citadel_Core" />
+                <Block Type="MyObjectBuilder_FunctionalBlock" Subtype="Outpost_Core" />
+                <Block Type="MyObjectBuilder_FunctionalBlock" Subtype="Stronghold_Core" />
+                <Block Type="MyObjectBuilder_FunctionalBlock" Subtype="Citadel_Core" />
             </Blocks>
         </BlockVariantGroup>
         <BlockVariantGroup>
@@ -20,14 +20,14 @@
             <DisplayName>Warship Cores</DisplayName>
             <Description>Warship Cores, the necessary componets for the ultimate fleet.</Description>
             <Blocks>
-                <Block Type="MyObjectBuilder_Beacon" Subtype="Frigate_Core" />
-                <Block Type="MyObjectBuilder_Beacon" Subtype="Cruiser_Core" />
-                <Block Type="MyObjectBuilder_Beacon" Subtype="Destroyer_Core" />
-                <Block Type="MyObjectBuilder_Beacon" Subtype="Battleship_Core" />
+                <Block Type="MyObjectBuilder_FunctionalBlock" Subtype="Frigate_Core" />
+                <Block Type="MyObjectBuilder_FunctionalBlock" Subtype="Cruiser_Core" />
+                <Block Type="MyObjectBuilder_FunctionalBlock" Subtype="Destroyer_Core" />
+                <Block Type="MyObjectBuilder_FunctionalBlock" Subtype="Battleship_Core" />
                 
-                <Block Type="MyObjectBuilder_Beacon" Subtype="Interceptor_Core" />
-                <Block Type="MyObjectBuilder_Beacon" Subtype="Fighter_Core" />
-                <Block Type="MyObjectBuilder_Beacon" Subtype="Gunship_Core" />                       
+                <Block Type="MyObjectBuilder_FunctionalBlock" Subtype="Interceptor_Core" />
+                <Block Type="MyObjectBuilder_FunctionalBlock" Subtype="Fighter_Core" />
+                <Block Type="MyObjectBuilder_FunctionalBlock" Subtype="Gunship_Core" />                       
             </Blocks>
         </BlockVariantGroup>
 
@@ -37,10 +37,10 @@
             <DisplayName>Warship Cores</DisplayName>
             <Description>Warship Cores, the necessary componets for the ultimate fleet.</Description>
             <Blocks>
-                <Block Type="MyObjectBuilder_Beacon" Subtype="Utility_Core" />
-                <Block Type="MyObjectBuilder_Beacon" Subtype="Extractor_Core" />
-                <Block Type="MyObjectBuilder_Beacon" Subtype="Courier_Core" />
-                <Block Type="MyObjectBuilder_Beacon" Subtype="Harvester_Core" />               
+                <Block Type="MyObjectBuilder_FunctionalBlock" Subtype="Utility_Core" />
+                <Block Type="MyObjectBuilder_FunctionalBlock" Subtype="Extractor_Core" />
+                <Block Type="MyObjectBuilder_FunctionalBlock" Subtype="Courier_Core" />
+                <Block Type="MyObjectBuilder_FunctionalBlock" Subtype="Harvester_Core" />               
             </Blocks>
         </BlockVariantGroup>
         
@@ -50,11 +50,11 @@
             <DisplayName>Core Upgrades</DisplayName>
             <Description>Core Upgrades, customize your grids to gain an edge.</Description>
             <Blocks>
-                <Block Type="MyObjectBuilder_Beacon" Subtype="GridCore_Module_Combat" />
-                <Block Type="MyObjectBuilder_Beacon" Subtype="GridCore_Module_Economy" />
-                <Block Type="MyObjectBuilder_Beacon" Subtype="GridCore_Module_Handling" />
-                <Block Type="MyObjectBuilder_Beacon" Subtype="GridCore_Module_Harvester" /> 
-                <Block Type="MyObjectBuilder_Beacon" Subtype="GridCore_Module_Overdrive" />              
+                <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GridCore_Module_Combat" />
+                <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GridCore_Module_Economy" />
+                <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GridCore_Module_Handling" />
+                <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GridCore_Module_Harvester" /> 
+                <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GridCore_Module_Overdrive" />              
             </Blocks>
         </BlockVariantGroup>
     </BlockVariantGroups>

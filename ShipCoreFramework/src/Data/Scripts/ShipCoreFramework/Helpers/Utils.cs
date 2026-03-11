@@ -114,6 +114,18 @@ namespace ShipCoreFramework
             var success = Session.GroupDict.TryGetValue(groupData, out groupComponent);
             return success ? groupComponent : null;
         }
+
+        internal static bool IsCoreBlock(IMyFunctionalBlock block)
+        {
+            return block != null
+                   && Session.Config != null
+                   && Session.Config.IsValidCoreType(block.BlockDefinition.SubtypeId);
+        }
+
+        internal static bool IsCoreBlock(IMySlimBlock block)
+        {
+            return IsCoreBlock(block?.FatBlock as IMyFunctionalBlock);
+        }
         
         internal static string GetBlockTypeId(IMySlimBlock block)
         {

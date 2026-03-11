@@ -1,9 +1,9 @@
 <?xml version="1.0" ?>
 <Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
 	<CubeBlocks>
-        <Definition xsi:type="MyObjectBuilder_BeaconDefinition">
+        <Definition xsi:type="MyObjectBuilder_FunctionalBlockDefinition">
             <Id>
-                <TypeId>Beacon</TypeId>
+                <TypeId>FunctionalBlock</TypeId>
                 <SubtypeId>Stronghold_Core</SubtypeId>
             </Id>
             <DisplayName>Stronghold Core</DisplayName>
@@ -48,19 +48,13 @@
             <BuildTimeSeconds>40</BuildTimeSeconds>
             <DamageEffectName>Damage_Electrical_Damaged</DamageEffectName>
             <DamagedSound>ParticleElectrical</DamagedSound>
-
-            <!-- Beacon properties -->
             <ScreenAreas>
                 <ScreenArea Name="CockpitScreen_01" DisplayName="Left Screen" TextureResolution="512" ScreenWidth="5" ScreenHeight="3" Script="CoreTypeLCDScript"/>
                 <ScreenArea Name="CockpitScreen_02" DisplayName="Right Screen" TextureResolution="512" ScreenWidth="5" ScreenHeight="3" Script="CoreTypeLCDScript"/>
                 <ScreenArea Name="CockpitScreen_03" DisplayName="Left Keyboard" TextureResolution="512" ScreenWidth="5" ScreenHeight="3"/>
                 <ScreenArea Name="CockpitScreen_04" DisplayName="Right keyboard" TextureResolution="512" ScreenWidth="5" ScreenHeight="3"/>
             </ScreenAreas>
-            <!-- Antenna info-->
             <ResourceSinkGroup>Utility</ResourceSinkGroup>
-            <MaxBroadcastRadius>200000</MaxBroadcastRadius>
-            <Flare></Flare>
-            <MaxBroadcastPowerDrainkW>20</MaxBroadcastPowerDrainkW>
 
             <EmissiveColorPreset>Beacon</EmissiveColorPreset>
             <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>

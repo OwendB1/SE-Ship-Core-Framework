@@ -2,8 +2,8 @@
 <ShipCore xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <SubtypeId>Cruiser_Core</SubtypeId>
   <UniqueName>Cruiser Grid Class</UniqueName>
-  <ForceBroadCast>true</ForceBroadCast>
-  <ForceBroadCastRange>3000</ForceBroadCastRange>
+  <ForceBroadCast>false</ForceBroadCast>
+  <ForceBroadCastRange>50</ForceBroadCastRange>
   <MobilityType>Mobile</MobilityType>
   <MaxBlocks>10000</MaxBlocks>
   <MaxMass>-1</MaxMass>

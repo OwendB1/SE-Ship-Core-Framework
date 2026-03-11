@@ -2,6 +2,7 @@ using System.Text;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces.Terminal;
+using VRage.Game.ModAPI;
 using VRage.Utils;
 
 namespace ShipCoreFramework
@@ -18,7 +19,6 @@ namespace ShipCoreFramework
                 return;
             _done = true;
             
-            
             CreateControls();
             CreateActions();
         }
@@ -29,20 +29,26 @@ namespace ShipCoreFramework
             checkbox.Title = MyStringId.GetOrCompute("Main Core");
             checkbox.Tooltip = MyStringId.GetOrCompute("Mark this core as the main core for the grid.");
             checkbox.SupportsMultipleBlocks = false;
+            checkbox.Visible = TerminalChainedDelegate.Create(checkbox.Visible, 
+                b => Utils.IsCoreBlock(b as IMyFunctionalBlock));
 
             checkbox.Getter = b => {
                 var group = b.GetGroupComponent();
                 CoreComponent cc;
+                var cubeBlock = b as MyCubeBlock;
                 return group != null
-                       && group.CoreDictionary.TryGetValue((MyCubeBlock)b, out cc)
+                       && cubeBlock != null
+                       && group.CoreDictionary.TryGetValue(cubeBlock, out cc)
                        && cc.IsMainCore;
             };
 
             checkbox.Enabled = TerminalChainedDelegate.Create(checkbox.Enabled, b => {
+                if (!Utils.IsCoreBlock(b as IMyFunctionalBlock)) return false;
                 var group = b.GetGroupComponent();
                 if (group == null) return false;
                 CoreComponent cc;
-                return group.CoreDictionary.TryGetValue((MyCubeBlock)b, out cc) && !cc.IsMainCore;
+                var cubeBlock = b as MyCubeBlock;
+                return cubeBlock != null && group.CoreDictionary.TryGetValue(cubeBlock, out cc) && !cc.IsMainCore;
             });
 
             checkbox.Setter = (b, val) =>
@@ -79,18 +85,19 @@ namespace ShipCoreFramework
                 });
             };
 
-            MyAPIGateway.TerminalControls.AddControl<IMyBeacon>(checkbox);
+            MyAPIGateway.TerminalControls.AddControl<IMyFunctionalBlock>(checkbox);
         }
         
         private static void CreateActions()
         {
-            var boost = MyAPIGateway.TerminalControls.CreateAction<IMyBeacon>("ShipCore_ActivateBoost");
+            var boost = MyAPIGateway.TerminalControls.CreateAction<IMyFunctionalBlock>("ShipCore_ActivateBoost");
             boost.Name = new StringBuilder("Activate Boost");
             boost.Icon = @"Textures\BoostButton_Sad_Static.png";
             boost.ValidForGroups = false;
             
             boost.Enabled = delegate(IMyTerminalBlock b)
             {
+                if (!Utils.IsCoreBlock(b as IMyFunctionalBlock)) return false;
                 var groupComp = b.GetGroupComponent();
                 if (groupComp != null) return groupComp.MainCoreComponent?.IsMainCore ?? false;
                 Utils.ShowChatMessage("Could not sync box, main grid group match was not found??");
@@ -107,15 +114,16 @@ namespace ShipCoreFramework
                 }
                 Session.Networking.SendToServer(new PacketAction{ActionData = new ButtonAction {CubegridEntityId = b.CubeGrid.EntityId, IsBoost = true }});
             };
-            MyAPIGateway.TerminalControls.AddAction<IMyBeacon>(boost);
+            MyAPIGateway.TerminalControls.AddAction<IMyFunctionalBlock>(boost);
 
-            var defense = MyAPIGateway.TerminalControls.CreateAction<IMyBeacon>("ShipCore_ActivateDefense");
+            var defense = MyAPIGateway.TerminalControls.CreateAction<IMyFunctionalBlock>("ShipCore_ActivateDefense");
             defense.Name = new StringBuilder("Activate Defense");
             defense.Icon = @"Textures\BoostButton_Sad_Static.png";
             defense.ValidForGroups = false;
             
             defense.Enabled = delegate(IMyTerminalBlock b)
             {
+                if (!Utils.IsCoreBlock(b as IMyFunctionalBlock)) return false;
                 var groupComp = b.GetGroupComponent();
                 if (groupComp != null) return groupComp.MainCoreComponent?.IsMainCore ?? false;
                 Utils.ShowChatMessage("Could not sync box, main grid group match was not found??");
@@ -132,7 +140,7 @@ namespace ShipCoreFramework
                 }
                 Session.Networking.SendToServer(new PacketAction{ActionData = new ButtonAction {CubegridEntityId = b.CubeGrid.EntityId, IsBoost = false }});
             };
-            MyAPIGateway.TerminalControls.AddAction<IMyBeacon>(defense);
+            MyAPIGateway.TerminalControls.AddAction<IMyFunctionalBlock>(defense);
         }
     }
 }

@@ -3,7 +3,7 @@
     <EntityContainers>
         <Container>
             <Id>
-                <TypeId>Beacon</TypeId>
+                <TypeId>FunctionalBlock</TypeId>
                 <SubtypeId>Battleship_Core</SubtypeId>
             </Id>
             <DefaultComponents>
@@ -12,7 +12,7 @@
         </Container>
         <Container>
             <Id>
-                <TypeId>Beacon</TypeId>
+                <TypeId>FunctionalBlock</TypeId>
                 <SubtypeId>Cruiser_Core</SubtypeId>
             </Id>
             <DefaultComponents>
@@ -21,7 +21,7 @@
         </Container>
         <Container>
             <Id>
-                <TypeId>Beacon</TypeId>
+                <TypeId>FunctionalBlock</TypeId>
                 <SubtypeId>Destroyer_Core</SubtypeId>
             </Id>
             <DefaultComponents>
@@ -30,7 +30,7 @@
         </Container>
         <Container>
             <Id>
-                <TypeId>Beacon</TypeId>
+                <TypeId>FunctionalBlock</TypeId>
                 <SubtypeId>Fighter_Core</SubtypeId>
             </Id>
             <DefaultComponents>
@@ -39,7 +39,7 @@
         </Container>
         <Container>
             <Id>
-                <TypeId>Beacon</TypeId>
+                <TypeId>FunctionalBlock</TypeId>
                 <SubtypeId>Frigate_Core</SubtypeId>
             </Id>
             <DefaultComponents>
@@ -48,7 +48,7 @@
         </Container>
         <Container>
             <Id>
-                <TypeId>Beacon</TypeId>
+                <TypeId>FunctionalBlock</TypeId>
                 <SubtypeId>Gunship_Core</SubtypeId>
             </Id>
             <DefaultComponents>
@@ -57,7 +57,7 @@
         </Container>
         <Container>
             <Id>
-                <TypeId>Beacon</TypeId>
+                <TypeId>FunctionalBlock</TypeId>
                 <SubtypeId>Interceptor_Core</SubtypeId>
             </Id>
             <DefaultComponents>
@@ -66,7 +66,7 @@
         </Container>
         <Container>
             <Id>
-                <TypeId>Beacon</TypeId>
+                <TypeId>FunctionalBlock</TypeId>
                 <SubtypeId>Citadel_Core</SubtypeId>
             </Id>
             <DefaultComponents>
@@ -75,7 +75,7 @@
         </Container>
         <Container>
             <Id>
-                <TypeId>Beacon</TypeId>
+                <TypeId>FunctionalBlock</TypeId>
                 <SubtypeId>Outpost_Core</SubtypeId>
             </Id>
             <DefaultComponents>
@@ -84,7 +84,7 @@
         </Container>
         <Container>
             <Id>
-                <TypeId>Beacon</TypeId>
+                <TypeId>FunctionalBlock</TypeId>
                 <SubtypeId>Stronghold_Core</SubtypeId>
             </Id>
             <DefaultComponents>
@@ -93,7 +93,7 @@
         </Container>
         <Container>
             <Id>
-                <TypeId>Beacon</TypeId>
+                <TypeId>FunctionalBlock</TypeId>
                 <SubtypeId>Test_Core</SubtypeId>
             </Id>
             <DefaultComponents>
@@ -102,7 +102,7 @@
         </Container>
         <Container>
             <Id>
-                <TypeId>Beacon</TypeId>
+                <TypeId>FunctionalBlock</TypeId>
                 <SubtypeId>Courier_Core</SubtypeId>
             </Id>
             <DefaultComponents>
@@ -111,7 +111,7 @@
         </Container>
         <Container>
             <Id>
-                <TypeId>Beacon</TypeId>
+                <TypeId>FunctionalBlock</TypeId>
                 <SubtypeId>Extractor_Core</SubtypeId>
             </Id>
             <DefaultComponents>
@@ -120,7 +120,7 @@
         </Container>
         <Container>
             <Id>
-                <TypeId>Beacon</TypeId>
+                <TypeId>FunctionalBlock</TypeId>
                 <SubtypeId>Harvester_Core</SubtypeId>
             </Id>
             <DefaultComponents>
@@ -129,7 +129,7 @@
         </Container>
         <Container>
             <Id>
-                <TypeId>Beacon</TypeId>
+                <TypeId>FunctionalBlock</TypeId>
                 <SubtypeId>Utility_Core</SubtypeId>
             </Id>
             <DefaultComponents>
