@@ -2,8 +2,10 @@ const state = {
   schema: {},
   blockGroups: [],
   shipCores: [],
+  upgradeModules: [],
   selectedGroupIndex: 0,
   selectedCoreIndex: 0,
+  selectedUpgradeModuleIndex: 0,
   noCoreCore: null,
   expandedLimitPanelsByCore: {}
 };
@@ -45,6 +47,25 @@ const DEFAULT_DEFENSE_MODIFIERS = {
 };
 
 
+const DEFAULT_UPGRADE_MODULE = {
+  subtypeId: "",
+  uniqueName: "",
+  modifiers: [],
+  blockLimitModifiers: []
+};
+
+const DEFAULT_UPGRADE_STAT_MODIFIER = {
+  stat: "",
+  value: 0,
+  modifierType: "Multiplicative"
+};
+
+const DEFAULT_BLOCK_LIMIT_MODIFIER = {
+  blockLimitName: "",
+  value: 0,
+  modifierType: "Additive"
+};
+
 const VALID_DIRECTIONS = ["Forward", "Backward", "Up", "Down", "Left", "Right"];
 const DRAFT_STORAGE_KEY = "ship-core-configurator-draft-v1";
 
@@ -75,9 +96,11 @@ function persistDraftToStorage() {
     const payload = {
       blockGroups: state.blockGroups.map((group) => cloneBlockGroup(group)),
       shipCores: state.shipCores.map((core) => cloneShipCore(core)),
+      upgradeModules: state.upgradeModules.map((module) => cloneUpgradeModule(module)),
       noCoreCore: state.noCoreCore ? cloneShipCore(state.noCoreCore) : null,
       selectedGroupIndex: state.selectedGroupIndex,
       selectedCoreIndex: state.selectedCoreIndex,
+      selectedUpgradeModuleIndex: state.selectedUpgradeModuleIndex,
       expandedLimitPanelsByCore: state.expandedLimitPanelsByCore
     };
     localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
@@ -106,9 +129,13 @@ function restoreDraftFromStorage() {
     state.shipCores = Array.isArray(parsedDraft.shipCores)
       ? parsedDraft.shipCores.map((core) => cloneShipCore(core))
       : [];
+    state.upgradeModules = Array.isArray(parsedDraft.upgradeModules)
+      ? parsedDraft.upgradeModules.map((module) => cloneUpgradeModule(module))
+      : [];
     state.noCoreCore = parsedDraft.noCoreCore ? cloneShipCore(parsedDraft.noCoreCore) : null;
     state.selectedGroupIndex = Number.isInteger(parsedDraft.selectedGroupIndex) ? parsedDraft.selectedGroupIndex : 0;
     state.selectedCoreIndex = Number.isInteger(parsedDraft.selectedCoreIndex) ? parsedDraft.selectedCoreIndex : 0;
+    state.selectedUpgradeModuleIndex = Number.isInteger(parsedDraft.selectedUpgradeModuleIndex) ? parsedDraft.selectedUpgradeModuleIndex : 0;
     state.expandedLimitPanelsByCore = parsedDraft.expandedLimitPanelsByCore && typeof parsedDraft.expandedLimitPanelsByCore === "object"
       ? parsedDraft.expandedLimitPanelsByCore
       : {};
@@ -347,6 +374,47 @@ function addShipCore(core = createDefaultCore()) {
   renderShipCores();
 }
 
+function cloneUpgradeModule(module = DEFAULT_UPGRADE_MODULE) {
+  return {
+    ...DEFAULT_UPGRADE_MODULE,
+    ...module,
+    subtypeId: String(module?.subtypeId ?? ""),
+    uniqueName: String(module?.uniqueName ?? ""),
+    modifiers: Array.isArray(module?.modifiers)
+      ? module.modifiers.map((modifier) => ({
+          ...DEFAULT_UPGRADE_STAT_MODIFIER,
+          ...modifier,
+          stat: String(modifier?.stat ?? ""),
+          value: Number(modifier?.value ?? 0),
+          modifierType: modifier?.modifierType === "Additive" ? "Additive" : "Multiplicative"
+        }))
+      : [],
+    blockLimitModifiers: Array.isArray(module?.blockLimitModifiers)
+      ? module.blockLimitModifiers.map((modifier) => ({
+          ...DEFAULT_BLOCK_LIMIT_MODIFIER,
+          ...modifier,
+          blockLimitName: String(modifier?.blockLimitName ?? ""),
+          value: Number(modifier?.value ?? 0),
+          modifierType: modifier?.modifierType === "Multiplicative" ? "Multiplicative" : "Additive"
+        }))
+      : []
+  };
+}
+
+function createDefaultUpgradeModule() {
+  return cloneUpgradeModule(DEFAULT_UPGRADE_MODULE);
+}
+
+function addUpgradeModule(module = createDefaultUpgradeModule()) {
+  state.upgradeModules.push(cloneUpgradeModule(module));
+  state.selectedUpgradeModuleIndex = Math.max(0, state.upgradeModules.length - 1);
+  renderUpgradeModules();
+}
+
+function getSelectedUpgradeModule() {
+  return state.upgradeModules[state.selectedUpgradeModuleIndex] || null;
+}
+
 function cloneShipCore(core = createDefaultCore()) {
   return {
     ...createDefaultCore(),
@@ -381,8 +449,10 @@ function createDefaultLimit() {
 function resetEditor(seed = true) {
   state.blockGroups = [];
   state.shipCores = [];
+  state.upgradeModules = [];
   state.selectedGroupIndex = 0;
   state.selectedCoreIndex = 0;
+  state.selectedUpgradeModuleIndex = 0;
   state.noCoreCore = createDefaultNoCore();
   state.expandedLimitPanelsByCore = {};
 
@@ -418,6 +488,7 @@ function resetEditor(seed = true) {
     renderShipCores();
   }
 
+  renderUpgradeModules();
   generateXml();
 }
 
@@ -569,7 +640,17 @@ function renderShipCores() {
           </select>
         </label>
         <button data-action="add-limit" data-c="${coreIndex}">Add Block Limit</button>
+        <button data-action="add-core-upgrade-allowance" data-c="${coreIndex}">Add Allowed Upgrade Module</button>
       </div>
+
+      <h4>Allowed Upgrade Modules</h4>
+      ${(core.allowedUpgradeModules || []).map((entry, allowanceIndex) => `
+        <div class="row wrap">
+          <label class="inline">SubtypeId <input data-action="core-upgrade-subtype" data-c="${coreIndex}" data-au="${allowanceIndex}" class="small" value="${escapeXml(entry.subtypeId)}" /></label>
+          <label class="inline">MaxCount <input data-action="core-upgrade-max" data-c="${coreIndex}" data-au="${allowanceIndex}" class="small" type="number" value="${Number(entry.maxCount)}" /></label>
+          <button data-action="remove-core-upgrade-allowance" data-c="${coreIndex}" data-au="${allowanceIndex}">Remove</button>
+        </div>
+      `).join("")}
 
       <div class="modifier-row four-columns">
         ${modifierFieldColumn({
@@ -645,6 +726,77 @@ function renderLimitGroupChecklist(coreIndex, limitIndex) {
   if (!listElement) return;
 
   listElement.innerHTML = blockGroupCheckboxes(coreIndex, limitIndex, limit.blockGroups, limit.groupSearch || "");
+}
+
+function renderUpgradeSelector() {
+  const selector = ids("selectedUpgradeModule");
+  if (!selector) return;
+
+  if (state.selectedUpgradeModuleIndex >= state.upgradeModules.length) {
+    state.selectedUpgradeModuleIndex = Math.max(0, state.upgradeModules.length - 1);
+  }
+
+  selector.innerHTML = state.upgradeModules
+    .map((module, idx) => {
+      const labelBase = module.uniqueName?.trim() || module.subtypeId?.trim() || "Unnamed Upgrade Module";
+      return `<option value="${idx}" ${idx === state.selectedUpgradeModuleIndex ? "selected" : ""}>${escapeXml(`${idx + 1}. ${labelBase}`)}</option>`;
+    })
+    .join("");
+  selector.disabled = state.upgradeModules.length === 0;
+}
+
+function renderUpgradeModules() {
+  const host = ids("upgradeModules");
+  if (!host) return;
+
+  renderUpgradeSelector();
+  const module = getSelectedUpgradeModule();
+  if (!module) {
+    host.innerHTML = `<p class="muted">No upgrade modules yet. Click <strong>Add Upgrade Module</strong>.</p>`;
+    return;
+  }
+
+  const moduleIndex = state.selectedUpgradeModuleIndex;
+
+  host.innerHTML = `
+    <div class="card">
+      <div class="row wrap">
+        <label class="inline">Module Subtype <input data-action="upgrade-subtype" data-u="${moduleIndex}" class="small" placeholder="SubtypeId" value="${escapeXml(module.subtypeId)}" /></label>
+        <label class="inline">Module Name <input data-action="upgrade-unique" data-u="${moduleIndex}" class="small" placeholder="UniqueName" value="${escapeXml(module.uniqueName)}" /></label>
+        <button data-action="add-upgrade-modifier" data-u="${moduleIndex}">Add Modifier</button>
+        <button data-action="add-upgrade-limit-modifier" data-u="${moduleIndex}">Add Block Limit Modifier</button>
+        <button data-action="remove-upgrade-module" data-u="${moduleIndex}">Delete Upgrade Module</button>
+      </div>
+
+      <h4>Stat Modifiers</h4>
+      ${(module.modifiers || []).map((modifier, modifierIndex) => `
+        <div class="row wrap">
+          <label class="inline">Stat <input data-action="upgrade-mod-stat" data-u="${moduleIndex}" data-m="${modifierIndex}" class="small" value="${escapeXml(modifier.stat)}" /></label>
+          <label class="inline">Value <input data-action="upgrade-mod-value" data-u="${moduleIndex}" data-m="${modifierIndex}" class="small" type="number" step="0.01" value="${Number(modifier.value)}" /></label>
+          <label class="inline">Type
+            <select data-action="upgrade-mod-type" data-u="${moduleIndex}" data-m="${modifierIndex}" class="small">
+              ${["Additive", "Multiplicative"].map((value) => `<option ${modifier.modifierType === value ? "selected" : ""}>${value}</option>`).join("")}
+            </select>
+          </label>
+          <button data-action="remove-upgrade-modifier" data-u="${moduleIndex}" data-m="${modifierIndex}">Remove</button>
+        </div>
+      `).join("")}
+
+      <h4>Block Limit Modifiers</h4>
+      ${(module.blockLimitModifiers || []).map((modifier, modifierIndex) => `
+        <div class="row wrap">
+          <label class="inline">BlockLimitName <input data-action="upgrade-limit-name" data-u="${moduleIndex}" data-bm="${modifierIndex}" class="small" value="${escapeXml(modifier.blockLimitName)}" /></label>
+          <label class="inline">Value <input data-action="upgrade-limit-value" data-u="${moduleIndex}" data-bm="${modifierIndex}" class="small" type="number" step="0.01" value="${Number(modifier.value)}" /></label>
+          <label class="inline">Type
+            <select data-action="upgrade-limit-type" data-u="${moduleIndex}" data-bm="${modifierIndex}" class="small">
+              ${["Additive", "Multiplicative"].map((value) => `<option ${modifier.modifierType === value ? "selected" : ""}>${value}</option>`).join("")}
+            </select>
+          </label>
+          <button data-action="remove-upgrade-limit-modifier" data-u="${moduleIndex}" data-bm="${modifierIndex}">Remove</button>
+        </div>
+      `).join("")}
+    </div>
+  `;
 }
 
 function parseGroupsXml(text) {
@@ -732,6 +884,54 @@ function writeBlockLimitXml(limit, indent = "  ") {
     `${indent}  <PunishmentType>${escapeXml(limit.punishmentType)}</PunishmentType>`,
     ...(limit.allowedDirections || []).filter(Boolean).map((direction) => `${indent}  <AllowedDirections>${escapeXml(direction)}</AllowedDirections>`),
     `${indent}</BlockLimits>`
+  ];
+
+  return lines.join("\n");
+}
+
+function parseUpgradeModuleXml(text) {
+  const doc = parseXml(text);
+  const moduleNode = doc.querySelector("UpgradeModule");
+  if (!moduleNode) return null;
+
+  return cloneUpgradeModule({
+    subtypeId: textOf(moduleNode, "SubtypeId"),
+    uniqueName: textOf(moduleNode, "UniqueName"),
+    modifiers: Array.from(moduleNode.querySelectorAll(":scope > Modifiers")).map((modifierNode) => ({
+      stat: textOf(modifierNode, "Stat"),
+      value: numberOf(modifierNode, "Value", 0),
+      modifierType: textOf(modifierNode, "ModifierType") || "Multiplicative"
+    })).filter((modifier) => modifier.stat),
+    blockLimitModifiers: Array.from(moduleNode.querySelectorAll(":scope > BlockLimitModifiers")).map((modifierNode) => ({
+      blockLimitName: textOf(modifierNode, "BlockLimitName"),
+      value: numberOf(modifierNode, "Value", 0),
+      modifierType: textOf(modifierNode, "ModifierType") || "Additive"
+    })).filter((modifier) => modifier.blockLimitName)
+  });
+}
+
+function writeUpgradeModuleXml(module, indent = "  ") {
+  const header = '<?xml version="1.0" encoding="UTF-8"?>';
+  const lines = [
+    header,
+    `<UpgradeModule>`,
+    `${indent}<SubtypeId>${escapeXml(module.subtypeId)}</SubtypeId>`,
+    `${indent}<UniqueName>${escapeXml(module.uniqueName)}</UniqueName>`,
+    ...(module.modifiers || []).filter((modifier) => String(modifier.stat || "").trim()).flatMap((modifier) => [
+      `${indent}<Modifiers>`,
+      `${indent}  <Stat>${escapeXml(modifier.stat)}</Stat>`,
+      `${indent}  <Value>${Number(modifier.value ?? 0)}</Value>`,
+      `${indent}  <ModifierType>${escapeXml(modifier.modifierType || "Multiplicative")}</ModifierType>`,
+      `${indent}</Modifiers>`
+    ]),
+    ...(module.blockLimitModifiers || []).filter((modifier) => String(modifier.blockLimitName || "").trim()).flatMap((modifier) => [
+      `${indent}<BlockLimitModifiers>`,
+      `${indent}  <BlockLimitName>${escapeXml(modifier.blockLimitName)}</BlockLimitName>`,
+      `${indent}  <Value>${Number(modifier.value ?? 0)}</Value>`,
+      `${indent}  <ModifierType>${escapeXml(modifier.modifierType || "Additive")}</ModifierType>`,
+      `${indent}</BlockLimitModifiers>`
+    ]),
+    `</UpgradeModule>`
   ];
 
   return lines.join("\n");
@@ -1099,11 +1299,22 @@ function generateXml(options = {}) {
     .join("\n")}\n</ArrayOfBlockGroup>`;
 
   const coreFilenames = getUniqueCoreFilenames(state.shipCores);
+  const upgradeModuleFilenames = state.upgradeModules.map((module, moduleIndex) => {
+    const rawName = sanitizeFilenamePart(module.subtypeId) || sanitizeFilenamePart(module.uniqueName) || `Upgrade_Module_${moduleIndex + 1}`;
+    return `${rawName}.xml`;
+  });
 
-  const manifest = `${header}\n<CoreManifest>\n${state.shipCores
+  const manifest = `${header}
+<CoreManifest>
+${state.shipCores
     .filter((core) => core.subtypeId.trim())
     .map((core, coreIndex) => `  <ShipCoreFilenames>Data/Cores/${escapeXml(coreFilenames[coreIndex])}</ShipCoreFilenames>`)
-    .join("\n")}\n</CoreManifest>`;
+    .join("\n")}
+${state.upgradeModules
+    .filter((module) => module.subtypeId.trim())
+    .map((module, moduleIndex) => `  <UpgradeModuleFilenames>Data/UpgradeModules/${escapeXml(upgradeModuleFilenames[moduleIndex])}</UpgradeModuleFilenames>`)
+    .join("\n")}
+</CoreManifest>`;
 
   const cores = state.shipCores.map((core, coreIndex) => ({
     file: coreFilenames[coreIndex],
@@ -1112,12 +1323,22 @@ function generateXml(options = {}) {
       .join("\n")}\n</ShipCore>`
   }));
 
+  const upgradeModules = state.upgradeModules.map((module, moduleIndex) => ({
+    file: upgradeModuleFilenames[moduleIndex],
+    body: writeUpgradeModuleXml(module)
+  }));
+
   ids("noCoreXml").textContent = noCore;
   ids("groupsXml").textContent = groups;
   ids("manifestXml").textContent = manifest;
-  ids("coresXml").textContent = cores.map((core) => `===== ${core.file} =====\n${core.body}`).join("\n\n");
+  ids("coresXml").textContent = [
+    ...cores.map((core) => `===== Cores/${core.file} =====
+${core.body}`),
+    ...upgradeModules.map((module) => `===== UpgradeModules/${module.file} =====
+${module.body}`)
+  ].join("\n\n");
   if (persistDraft) persistDraftToStorage();
-  return { noCore, groups, manifest, cores };
+  return { noCore, groups, manifest, cores, upgradeModules };
 }
 
 document.addEventListener("click", (event) => {
@@ -1131,7 +1352,12 @@ document.addEventListener("click", (event) => {
   const coreIndex = Number(target.dataset.c);
   const shipCoreIndex = coreIndex - 1;
   const limitIndex = Number(target.dataset.l);
+  const upgradeIndex = Number(target.dataset.u);
+  const allowanceIndex = Number(target.dataset.au);
+  const upgradeModifierIndex = Number(target.dataset.m);
+  const blockLimitModifierIndex = Number(target.dataset.bm);
   const selectedCore = getCoreBySelectorIndex(coreIndex);
+  const selectedUpgrade = state.upgradeModules[upgradeIndex] || null;
   let didMutate = false;
 
   if (action === "add-bt") {
@@ -1233,10 +1459,45 @@ document.addEventListener("click", (event) => {
     didMutate = true;
   }
 
+  if (action === "add-core-upgrade-allowance" && selectedCore) {
+    selectedCore.allowedUpgradeModules.push({ subtypeId: "", maxCount: 0 });
+    didMutate = true;
+  }
+  if (action === "remove-core-upgrade-allowance" && selectedCore) {
+    const allowanceIndex = Number(target.dataset.au);
+    selectedCore.allowedUpgradeModules.splice(allowanceIndex, 1);
+    didMutate = true;
+  }
+  if (action === "add-upgrade-modifier" && selectedUpgrade) {
+    selectedUpgrade.modifiers.push({ ...DEFAULT_UPGRADE_STAT_MODIFIER });
+    didMutate = true;
+  }
+  if (action === "add-upgrade-limit-modifier" && selectedUpgrade) {
+    selectedUpgrade.blockLimitModifiers.push({ ...DEFAULT_BLOCK_LIMIT_MODIFIER });
+    didMutate = true;
+  }
+  if (action === "remove-upgrade-module") {
+    if (upgradeIndex < 0) return;
+    state.upgradeModules.splice(upgradeIndex, 1);
+    if (state.selectedUpgradeModuleIndex >= state.upgradeModules.length) {
+      state.selectedUpgradeModuleIndex = Math.max(0, state.upgradeModules.length - 1);
+    }
+    didMutate = true;
+  }
+  if (action === "remove-upgrade-modifier" && selectedUpgrade) {
+    selectedUpgrade.modifiers.splice(upgradeModifierIndex, 1);
+    didMutate = true;
+  }
+  if (action === "remove-upgrade-limit-modifier" && selectedUpgrade) {
+    selectedUpgrade.blockLimitModifiers.splice(blockLimitModifierIndex, 1);
+    didMutate = true;
+  }
+
   if (!didMutate) return;
 
   renderBlockGroups();
   renderShipCores();
+  renderUpgradeModules();
   generateXml();
 });
 
@@ -1251,13 +1512,18 @@ document.addEventListener("input", (event) => {
   const blockTypeIndex = Number(target.dataset.i);
   const coreIndex = Number(target.dataset.c);
   const limitIndex = Number(target.dataset.l);
+  const upgradeIndex = Number(target.dataset.u);
+  const upgradeModifierIndex = Number(target.dataset.m);
+  const blockLimitModifierIndex = Number(target.dataset.bm);
   const selectedCore = getCoreBySelectorIndex(coreIndex);
+  const selectedUpgrade = state.upgradeModules[upgradeIndex] || null;
 
   if (action === "bt-type") state.blockGroups[groupIndex].blockTypes[blockTypeIndex].typeId = target.value;
   if (action === "bt-subtype") state.blockGroups[groupIndex].blockTypes[blockTypeIndex].subtypeId = target.value;
   if (action === "bt-weight") state.blockGroups[groupIndex].blockTypes[blockTypeIndex].countWeight = Number(target.value || 0);
 
   if (!selectedCore && (action.startsWith("core-") || action.startsWith("limit-"))) return;
+  if (!selectedUpgrade && action.startsWith("upgrade-")) return;
 
   if (action === "core-unique") {
     selectedCore.uniqueName = target.value;
@@ -1271,6 +1537,8 @@ document.addEventListener("input", (event) => {
   if (action === "core-minpf") selectedCore.minPerFaction = Number(target.value || -1);
   if (action === "core-maxpp") selectedCore.maxPerPlayer = Number(target.value || -1);
   if (action === "core-fbr") selectedCore.forceBroadcastRange = Number(target.value || 0);
+  if (action === "core-upgrade-subtype") selectedCore.allowedUpgradeModules[allowanceIndex].subtypeId = target.value;
+  if (action === "core-upgrade-max") selectedCore.allowedUpgradeModules[allowanceIndex].maxCount = Number(target.value || 0);
 
   if (action === "core-modifier-grid") selectedCore.modifiers[target.dataset.m] = Number(target.value || 0);
   if (action === "core-modifier-speed") selectedCore.speedModifiers[target.dataset.m] = Number(target.value || 0);
@@ -1283,6 +1551,13 @@ document.addEventListener("input", (event) => {
     selectedCore.blockLimits[limitIndex].groupSearch = target.value;
     renderLimitGroupChecklist(coreIndex, limitIndex);
   }
+
+  if (action === "upgrade-subtype") selectedUpgrade.subtypeId = target.value;
+  if (action === "upgrade-unique") selectedUpgrade.uniqueName = target.value;
+  if (action === "upgrade-mod-stat") selectedUpgrade.modifiers[upgradeModifierIndex].stat = target.value;
+  if (action === "upgrade-mod-value") selectedUpgrade.modifiers[upgradeModifierIndex].value = Number(target.value || 0);
+  if (action === "upgrade-limit-name") selectedUpgrade.blockLimitModifiers[blockLimitModifierIndex].blockLimitName = target.value;
+  if (action === "upgrade-limit-value") selectedUpgrade.blockLimitModifiers[blockLimitModifierIndex].value = Number(target.value || 0);
 
   generateXml();
 });
@@ -1304,6 +1579,7 @@ function commitDeferredTextInput(target) {
     renameBlockGroupReferences(previousName, nextName);
     renderGroupSelector();
     renderShipCores();
+    renderUpgradeModules();
     generateXml();
   }
 
@@ -1316,6 +1592,7 @@ function commitDeferredTextInput(target) {
     selectedCore.subtypeId = nextSubtype;
     clearGeneratedFilenameForRenamedCore(coreIndex, selectedCore);
     renderShipCores();
+    renderUpgradeModules();
     generateXml();
   }
 }
@@ -1339,7 +1616,11 @@ document.addEventListener("change", (event) => {
   if (!action) return;
   const coreIndex = Number(target.dataset.c);
   const limitIndex = Number(target.dataset.l);
+  const upgradeIndex = Number(target.dataset.u);
+  const upgradeModifierIndex = Number(target.dataset.m);
+  const blockLimitModifierIndex = Number(target.dataset.bm);
   const selectedCore = getCoreBySelectorIndex(coreIndex);
+  const selectedUpgrade = state.upgradeModules[upgradeIndex] || null;
 
   const inputElement = target instanceof HTMLInputElement ? target : null;
   const selectElement = target instanceof HTMLSelectElement ? target : null;
@@ -1350,6 +1631,7 @@ document.addEventListener("change", (event) => {
   }
 
   if (!selectedCore && (action.startsWith("core-") || action.startsWith("limit-"))) return;
+  if (!selectedUpgrade && action.startsWith("upgrade-")) return;
 
   if (action === "core-fb" && inputElement) selectedCore.forceBroadcast = inputElement.checked;
   if (action === "core-mobility" && selectElement) selectedCore.mobilityType = selectElement.value;
@@ -1390,6 +1672,9 @@ document.addEventListener("change", (event) => {
     limit.blockGroups = Array.from(selectedSet);
     renderShipCores();
   }
+
+  if (action === "upgrade-mod-type" && selectElement) selectedUpgrade.modifiers[upgradeModifierIndex].modifierType = selectElement.value;
+  if (action === "upgrade-limit-type" && selectElement) selectedUpgrade.blockLimitModifiers[blockLimitModifierIndex].modifierType = selectElement.value;
 
   generateXml();
 });
@@ -1432,6 +1717,12 @@ ids("selectedCore").addEventListener("change", (event) => {
 
 ids("addGroup").addEventListener("click", () => addBlockGroup({ name: "", blockTypes: [] }));
 ids("addCore").addEventListener("click", () => addShipCore());
+ids("addUpgradeModule").addEventListener("click", () => addUpgradeModule());
+ids("selectedUpgradeModule").addEventListener("change", (event) => {
+  state.selectedUpgradeModuleIndex = Number(event.target.value);
+  renderUpgradeModules();
+  generateXml();
+});
 ids("generateXml").addEventListener("click", () => generateXml());
 ids("resetEditor").addEventListener("click", () => {
   resetEditor(true);
@@ -1464,14 +1755,18 @@ ids("downloadAllFiles").addEventListener("click", () => {
     { name: "ShipCoreConfig_No_Core.xml", content: xml.noCore },
     { name: "ShipCoreConfig_Groups.xml", content: xml.groups },
     { name: "ShipCoreConfig_Manifest.xml", content: xml.manifest },
-    ...xml.cores.map((core) => ({ name: `Cores/${core.file}`, content: core.body }))
+    ...xml.cores.map((core) => ({ name: `Cores/${core.file}`, content: core.body })),
+    ...xml.upgradeModules.map((module) => ({ name: `UpgradeModules/${module.file}`, content: module.body }))
   ]);
   downloadBlob("ShipCore_All_Files.zip", zip);
   clearDraftFromStorage();
 });
 ids("downloadCores").addEventListener("click", () => {
   const xml = generateXml({ persistDraft: false });
-  const zip = createZip(xml.cores.map((core) => ({ name: `Cores/${core.file}`, content: core.body })));
+  const zip = createZip([
+    ...xml.cores.map((core) => ({ name: `Cores/${core.file}`, content: core.body })),
+    ...xml.upgradeModules.map((module) => ({ name: `UpgradeModules/${module.file}`, content: module.body }))
+  ]);
   downloadBlob("ShipCore_XMLs.zip", zip);
   clearDraftFromStorage();
 });
@@ -1495,10 +1790,13 @@ ids("loadLegacyModConfig").addEventListener("click", async () => {
   state.blockGroups = migrated.blockGroups;
   state.selectedGroupIndex = 0;
   state.selectedCoreIndex = 0;
+  state.upgradeModules = [];
+  state.selectedUpgradeModuleIndex = 0;
   state.expandedLimitPanelsByCore = {};
 
   renderBlockGroups();
   renderShipCores();
+  renderUpgradeModules();
   generateXml();
   setImportStatus(migrated.status);
 });
@@ -1526,37 +1824,48 @@ ids("loadUploadedXml").addEventListener("click", async () => {
   if (manifestFile) {
     const manifestDoc = parseXml(await manifestFile.text());
     const listed = Array.from(manifestDoc.querySelectorAll("ShipCoreFilenames")).map((n) => n.textContent.trim()).filter(Boolean);
-    status.push(`Read manifest ${manifestFile.name} with ${listed.length} listed core files.`);
+    const listedModules = Array.from(manifestDoc.querySelectorAll("UpgradeModuleFilenames")).map((n) => n.textContent.trim()).filter(Boolean);
+    status.push(`Read manifest ${manifestFile.name} with ${listed.length} listed core files and ${listedModules.length} listed upgrade modules.`);
   }
 
   for (const file of coreFiles) {
-    const parsed = parseCoreXml(await file.text(), file.name);
-    if (!parsed) {
-      status.push(`Skipped ${file.name}: no <ShipCore> root found.`);
+    const fileText = await file.text();
+    const parsed = parseCoreXml(fileText, file.name);
+    if (parsed) {
+      const isNoCoreFile = file.name.trim().toLowerCase() === "shipcoreconfig_no_core.xml";
+      if (isNoCoreFile) {
+        parsed.originalFileName = "ShipCoreConfig_No_Core.xml";
+        state.noCoreCore = parsed;
+        status.push(`Loaded no-core '${parsed.subtypeId || file.name}'.`);
+      } else {
+        state.shipCores.push(parsed);
+        status.push(`Loaded core '${parsed.subtypeId || file.name}'.`);
+      }
       continue;
     }
 
-    const isNoCoreFile = file.name.trim().toLowerCase() === "shipcoreconfig_no_core.xml";
-    if (isNoCoreFile) {
-      parsed.originalFileName = "ShipCoreConfig_No_Core.xml";
-      state.noCoreCore = parsed;
-      status.push(`Loaded no-core '${parsed.subtypeId || file.name}'.`);
+    const parsedUpgrade = parseUpgradeModuleXml(fileText);
+    if (parsedUpgrade) {
+      state.upgradeModules.push(parsedUpgrade);
+      status.push(`Loaded upgrade module '${parsedUpgrade.subtypeId || file.name}'.`);
       continue;
     }
 
-    state.shipCores.push(parsed);
-    status.push(`Loaded core '${parsed.subtypeId || file.name}'.`);
+    status.push(`Skipped ${file.name}: no <ShipCore> or <UpgradeModule> root found.`);
   }
 
   state.selectedCoreIndex = 0;
+  state.selectedUpgradeModuleIndex = 0;
   state.expandedLimitPanelsByCore = {};
 
   if (state.noCoreCore) status.push(`Loaded no-core from ${state.noCoreCore.originalFileName || "legacy import"}.`);
   if (state.blockGroups.length === 0) status.push("No block groups loaded (you can still create them manually).");
   if (state.shipCores.length === 0) status.push("No cores loaded (you can still add cores manually).");
+  if (state.upgradeModules.length === 0) status.push("No upgrade modules loaded (you can still add upgrade modules manually).");
 
   renderBlockGroups();
   renderShipCores();
+  renderUpgradeModules();
   generateXml();
   setImportStatus(status);
 });
@@ -1571,11 +1880,13 @@ ids("loadUploadedXml").addEventListener("click", async () => {
   if (restoreDraftFromStorage()) {
     renderBlockGroups();
     renderShipCores();
+    renderUpgradeModules();
     generateXml();
     setImportStatus(["Restored autosaved draft from your browser storage."]);
     return;
   }
 
   resetEditor(true);
+  renderUpgradeModules();
   setImportStatus(["Tip: Upload existing XML files to renovate and continue editing."]);
 })();
