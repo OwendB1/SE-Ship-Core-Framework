@@ -30,7 +30,7 @@
         <label class="file-label">Manifest XML
           <input id="manifestXmlFile" type="file" accept=".xml" />
         </label>
-        <label class="file-label">ShipCore XML files
+        <label class="file-label">ShipCore / UpgradeModule XML files
           <input id="coreXmlFiles" type="file" accept=".xml" multiple />
         </label>
       </div>
@@ -79,8 +79,18 @@
       <div id="shipCores"></div>
     </section>
 
+
     <section class="panel">
-      <h2>6) Generated XML</h2>
+      <h2>6) Upgrade Modules</h2>
+      <div class="menu-controls">
+        <button id="addUpgradeModule">Add Upgrade Module</button>
+        <select id="selectedUpgradeModule" aria-label="Selected Upgrade Module"></select>
+      </div>
+      <div id="upgradeModules"></div>
+    </section>
+
+    <section class="panel">
+      <h2>7) Generated XML</h2>
       <p class="muted">Generated XML previews update automatically as you edit.</p>
       <div class="row wrap">
         <button hidden="hidden" id="generateXml">Generate</button>
