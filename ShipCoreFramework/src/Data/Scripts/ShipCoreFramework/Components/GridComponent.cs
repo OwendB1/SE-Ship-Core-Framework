@@ -17,7 +17,7 @@ namespace ShipCoreFramework
         internal readonly Dictionary<IMyCubeBlock, CoreComponent> CoreDictionary =
             new Dictionary<IMyCubeBlock, CoreComponent>();
 
-        private readonly Dictionary<IMyCubeBlock, BeaconComponent> _beaconDictionary =
+        internal readonly Dictionary<IMyCubeBlock, BeaconComponent> BeaconDictionary =
             new Dictionary<IMyCubeBlock, BeaconComponent>();
 
         private readonly Dictionary<IMyCubeBlock, UpgradeModuleComponent> _upgradeModuleDictionary =
@@ -119,6 +119,8 @@ namespace ShipCoreFramework
                 {
                     _blocks.Add(block);
                 }
+
+                groupComponent.OnBlockAddedToGroup();
             }
             else
             {
@@ -160,6 +162,8 @@ namespace ShipCoreFramework
                     _blocks.Add(block);
                 }
 
+                groupComponent.OnBlockAddedToGroup();
+
                 if (functionalBlock != null) functionalBlock.EnabledChanged += FuncBlockOnEnabledChanged;
 
                 var connector = block.FatBlock as IMyShipConnector;
@@ -180,6 +184,7 @@ namespace ShipCoreFramework
             if (limits == null || limits.Length == 0) return true;
 
             var blockKey = KeyOf(block);
+            var forceShutOff = GroupComponent.ShouldForceLimitedBlocksOff();
 
             foreach (var limit in limits)
             {
@@ -191,13 +196,16 @@ namespace ShipCoreFramework
                 var w = limit.GetWeight(blockKey);
                 if (w <= 0d) continue;
 
+                if (forceShutOff)
+                    block.WhackABlock(PunishmentType.ShutOff);
+
                 if (GroupComponent.MainCoreComponent?.CoreBlock != null)
                     if (!GroupComponent.IsValidDirection(GroupComponent.MainCoreComponent.CoreBlock, block,
                             limit.AllowedDirections))
                     {
                         Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violated directional locking!");
-                        block.WhackABlock(limitBasedPunish ? limit.PunishmentType : PunishmentType.Delete);
-                        return false; // Don't add punished blocks to the limit buckets
+                        block.WhackABlock(forceShutOff ? PunishmentType.ShutOff : limitBasedPunish ? limit.PunishmentType : PunishmentType.Delete);
+                        if (!forceShutOff) return false; // Don't add punished blocks to the limit buckets
                     }
 
                 LimitBucket groupBucket;
@@ -220,7 +228,7 @@ namespace ShipCoreFramework
                                   (cur + w) + "/" + effectiveMaxCount;
                     if (firstOwner != 0) Utils.ShowNotification(message, firstOwner);
                     else Utils.ShowNotification(message);
-                    var punishmentType = limitBasedPunish ? limit.PunishmentType : PunishmentType.Delete;
+                    var punishmentType = forceShutOff ? PunishmentType.ShutOff : limitBasedPunish ? limit.PunishmentType : PunishmentType.Delete;
                     block.WhackABlock(punishmentType);
 
                     if (punishmentType == PunishmentType.Delete || punishmentType == PunishmentType.Explode)
@@ -327,11 +335,11 @@ namespace ShipCoreFramework
         {
             var beaconBlock = coreBlock as IMyBeacon;
             if (beaconBlock == null) return;
-            if (_beaconDictionary.ContainsKey(beaconBlock)) return;
+            if (BeaconDictionary.ContainsKey(beaconBlock)) return;
 
             var beaconComponent = new BeaconComponent(groupComponent);
             if (!beaconComponent.Init(beaconBlock)) return;
-            _beaconDictionary.Add(beaconBlock, beaconComponent);
+            BeaconDictionary.Add(beaconBlock, beaconComponent);
         }
 
         private void UntrackBeacon(IMyFunctionalBlock coreBlock)
@@ -340,9 +348,9 @@ namespace ShipCoreFramework
             if (beaconBlock == null) return;
 
             BeaconComponent beaconComponent;
-            if (!_beaconDictionary.TryGetValue(beaconBlock, out beaconComponent)) return;
+            if (!BeaconDictionary.TryGetValue(beaconBlock, out beaconComponent)) return;
 
-            _beaconDictionary.Remove(beaconBlock);
+            BeaconDictionary.Remove(beaconBlock);
             beaconComponent.Clean();
         }
 
@@ -372,7 +380,7 @@ namespace ShipCoreFramework
 
         internal void SyncBeaconComponents()
         {
-            foreach (var beaconComponent in _beaconDictionary.Values)
+            foreach (var beaconComponent in BeaconDictionary.Values)
                 beaconComponent.SyncForceBroadcast();
         }
 
@@ -415,6 +423,19 @@ namespace ShipCoreFramework
         {
             var func = obj as IMyFunctionalBlock;
             if (func == null || !func.Enabled) return;
+
+            if (GroupComponent.ShouldForceLimitedBlocksOff())
+            {
+                foreach (var kv in Limits)
+                {
+                    var limit = kv.Key;
+                    if (limit == null) continue;
+                    if (!kv.Value.Members.Contains(obj.SlimBlock)) continue;
+
+                    obj.SlimBlock.WhackABlock(PunishmentType.ShutOff);
+                    return;
+                }
+            }
 
             foreach (var kv in Limits)
             {
@@ -507,8 +528,8 @@ namespace ShipCoreFramework
             _trackedConnectorIds.Clear();
 
             Limits.Clear();
-            foreach (var beaconComponent in _beaconDictionary.Values) beaconComponent.Clean();
-            _beaconDictionary.Clear();
+            foreach (var beaconComponent in BeaconDictionary.Values) beaconComponent.Clean();
+            BeaconDictionary.Clear();
             foreach (var moduleComponent in _upgradeModuleDictionary.Values) moduleComponent.Clean();
             _upgradeModuleDictionary.Clear();
             CoreDictionary.Clear();

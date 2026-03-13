@@ -886,6 +886,7 @@ namespace ShipCoreFramework
                 MaxPerFaction = core.MaxPerFaction,
                 MaxPerPlayer = core.MaxPerPlayer,
                 MinPlayers = core.MinPlayers,
+                MinBlocks = core.MinBlocks,
                 Modifiers = ConvertToGridModifiersData(core.Modifiers),
                 PassiveDefenseModifiers = ConvertToDefenseModifiersData(core.PassiveDefenseModifiers),
                 SpeedBoostEnabled = core.SpeedBoostEnabled,

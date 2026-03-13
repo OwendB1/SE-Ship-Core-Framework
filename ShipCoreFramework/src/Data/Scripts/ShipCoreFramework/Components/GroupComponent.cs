@@ -14,6 +14,8 @@ namespace ShipCoreFramework
 {
     public class GroupComponent
     {
+        private const int MinimumBlocksRecheckIntervalTicks = 10 * 60 * 60;
+
         internal ShipCore ShipCore => Session.Config.GetShipCoreByTypeId(MainCoreComponent?.SubtypeId ?? string.Empty);
         internal GridModifiers Modifiers => CubeGridModifiers.GetActiveModifiers(this);
         internal SpeedModifiers SpeedModifiers => CubeGridModifiers.GetActiveSpeedModifiers(this);
@@ -128,6 +130,8 @@ namespace ShipCoreFramework
         private bool _activeDefenseEnabled;
         private float _activeDefenseCooldownTimer;
         private float _activeDefenseDurationTimer;
+        private bool _minimumBlocksPunishmentActive;
+        private int _nextMinimumBlocksCheckTick;
 
         private bool _closing;
         private bool _refreshingUpgradeModules;
@@ -347,7 +351,70 @@ namespace ShipCoreFramework
 	        }
 	    }
 
-        private void EnforceGroupPunishment()
+        private bool IsBelowMinimumBlocksRequirement()
+        {
+            var minBlocks = ShipCore?.MinBlocks ?? -1;
+            return minBlocks > 0 && GroupBlocksCount < minBlocks;
+        }
+
+        private void ScheduleMinimumBlocksRecheck()
+        {
+            _nextMinimumBlocksCheckTick = Session.CurrentTick + MinimumBlocksRecheckIntervalTicks;
+        }
+
+        private void RefreshMinimumBlocksPunishmentState()
+        {
+            var minBlocks = ShipCore?.MinBlocks ?? -1;
+            if (minBlocks <= 0)
+            {
+                _minimumBlocksPunishmentActive = false;
+                _nextMinimumBlocksCheckTick = 0;
+                return;
+            }
+
+            _minimumBlocksPunishmentActive = GroupBlocksCount < minBlocks;
+            if (!_minimumBlocksPunishmentActive) ScheduleMinimumBlocksRecheck();
+        }
+
+        internal bool ShouldForceLimitedBlocksOff()
+        {
+            return _minimumBlocksPunishmentActive && IsBelowMinimumBlocksRequirement();
+        }
+
+        internal void OnBlockAddedToGroup()
+        {
+            if (!_minimumBlocksPunishmentActive) return;
+            if (IsBelowMinimumBlocksRequirement()) return;
+
+            _minimumBlocksPunishmentActive = false;
+            ScheduleMinimumBlocksRecheck();
+        }
+
+        internal void RunMinimumBlocksTimerTick()
+        {
+            if (_closing) return;
+            if (_minimumBlocksPunishmentActive) return;
+
+            var minBlocks = ShipCore?.MinBlocks ?? -1;
+            if (minBlocks <= 0)
+            {
+                _nextMinimumBlocksCheckTick = 0;
+                return;
+            }
+
+            if (Session.CurrentTick < _nextMinimumBlocksCheckTick) return;
+
+            if (!IsBelowMinimumBlocksRequirement())
+            {
+                ScheduleMinimumBlocksRecheck();
+                return;
+            }
+
+            _minimumBlocksPunishmentActive = true;
+            EnforceGroupPunishment(true);
+        }
+
+        private void EnforceGroupPunishment(bool forceShutOffPunishment = false)
         {
             // Skip block limit enforcement for ignored factions/AI
             if (IsIgnoredGroup()) return;
@@ -368,6 +435,20 @@ namespace ShipCoreFramework
                 {
                     total = bucket.TotalWeight;
                     membersCopy = new List<IMySlimBlock>(bucket.Members);
+                }
+
+                if (forceShutOffPunishment)
+                {
+                    foreach (var blk in membersCopy)
+                    {
+                        if (blk == null || blk.IsMovedBySplit || blk.CubeGrid == null) continue;
+                        if (limit.GetWeight(GridComponent.KeyOf(blk)) <= 0d) continue;
+
+                        blk.WhackABlock(PunishmentType.ShutOff);
+                        totalBlocksPunished++;
+                    }
+
+                    continue;
                 }
 
                 var effectiveMaxCount = GetEffectiveMaxCount(limit);
@@ -467,7 +548,7 @@ namespace ShipCoreFramework
                     }
                 }
 
-                if (!HasFunctionalBeacon())
+                if (!HasWorkingBeacon())
                 {
                     PunishModifiers = true;
                     PunishSpeed = true;
@@ -479,7 +560,7 @@ namespace ShipCoreFramework
             }
         }
 
-        private bool HasFunctionalBeacon()
+        private bool HasWorkingBeacon()
         {
             foreach (var grid in GridDictionary.Keys)
             {
@@ -488,9 +569,9 @@ namespace ShipCoreFramework
                 var beacons = ((IMyCubeGrid)grid).GetFatBlocks<IMyBeacon>();
                 if (beacons == null) continue;
 
-                foreach (var beacon in beacons)
+                if (beacons.Any(beacon => beacon.IsWorking))
                 {
-                    if (beacon.IsFunctional) return true;
+                    return true;
                 }
             }
 
@@ -739,9 +820,10 @@ namespace ShipCoreFramework
                 RefreshUpgradeModules();
                 RebuildConnectorPunishmentLinks();
                 RecalculateAllLimits();
+                RefreshMinimumBlocksPunishmentState();
                 ApplyModifiers(Modifiers);
                 DefenseValuesChanged();
-                EnforceGroupPunishment();
+                EnforceGroupPunishment(_minimumBlocksPunishmentActive);
                 EnforceOverCapacity();
             }
             finally

@@ -1,5 +1,7 @@
+using System.Linq;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
+using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
 {
@@ -24,7 +26,7 @@ namespace ShipCoreFramework
             if (BeaconBlock == null) return false;
 
             CaptureDefaults();
-            BeaconBlock.EnabledChanged += OnEnabledChanged;
+            BeaconBlock.IsWorkingChanged += OnModuleWorkingChanged;
             BeaconBlock.PropertiesChanged += OnPropertiesChanged;
             SyncForceBroadcast();
             _groupComponent.EnforceOverCapacity();
@@ -35,15 +37,16 @@ namespace ShipCoreFramework
         {
             if (BeaconBlock == null) return;
 
-            BeaconBlock.EnabledChanged -= OnEnabledChanged;
+            BeaconBlock.IsWorkingChanged -= OnModuleWorkingChanged;
             BeaconBlock.PropertiesChanged -= OnPropertiesChanged;
             RestoreDefaults();
             _groupComponent.EnforceOverCapacity();
         }
-        private void OnEnabledChanged(IMyTerminalBlock obj)
+        private void OnModuleWorkingChanged(IMyCubeBlock obj)
         {
             if (!ShouldForceBroadcast()) return;
             BeaconBlock.Enabled = true;
+            _groupComponent.EnforceOverCapacity();
         }
 
         private void OnPropertiesChanged(IMyTerminalBlock obj)
@@ -61,6 +64,7 @@ namespace ShipCoreFramework
 
         private bool ShouldForceBroadcast()
         {
+            if(_groupComponent.GridDictionary.Values.Any(gc => gc.BeaconDictionary.Any(bc => bc.Key.IsWorking))) return false;
             var shipCore = _groupComponent?.ShipCore;
             return shipCore != null && shipCore.ForceBroadCast;
         }

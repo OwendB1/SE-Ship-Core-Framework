@@ -294,6 +294,7 @@ namespace ShipCoreFramework
         [ProtoMember(16)] public GridDefenseModifiersData ActiveDefenseModifiers;
         [ProtoMember(17)] public bool DynamicBoostEnabled;
         [ProtoMember(18)] public SpeedModifiersData SpeedModifiers;
+        [ProtoMember(19)] public int MinBlocks;
     }
 
     /// <summary>

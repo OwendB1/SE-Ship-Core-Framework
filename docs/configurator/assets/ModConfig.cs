@@ -333,6 +333,8 @@ namespace ShipCoreFramework
         public MobilityType MobilityType = MobilityType.Both;
         [XmlElement("MaxBlocks")]
         public int MaxBlocks = -1;
+        [XmlElement("MinBlocks")]
+        public int MinBlocks = -1;
         [XmlElement("MaxMass")]
         public float MaxMass = -1;
         [XmlElement("MaxPCU")]
