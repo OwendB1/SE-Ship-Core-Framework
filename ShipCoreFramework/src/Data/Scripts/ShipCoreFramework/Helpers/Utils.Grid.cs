@@ -1,0 +1,107 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
+
+namespace ShipCoreFramework
+{
+    internal static partial class Utils
+    {
+        internal static GroupComponent GetGroupComponent(this IMyTerminalBlock block)
+        {
+            var groupData = block?.CubeGrid.GetGridGroup(GridLinkTypeEnum.Mechanical);
+            if (groupData == null) return null;
+            GroupComponent groupComponent;
+            var success = Session.GroupDict.TryGetValue(groupData, out groupComponent);
+            return success ? groupComponent : null;
+        }
+
+        internal static GroupComponent GetGroupComponent(this IMyCubeGrid grid)
+        {
+            var groupData = grid.GetGridGroup(GridLinkTypeEnum.Mechanical);
+            if (groupData == null) return null;
+            GroupComponent groupComponent;
+            var success = Session.GroupDict.TryGetValue(groupData, out groupComponent);
+            return success ? groupComponent : null;
+        }
+
+        internal static bool IsCoreBlock(IMyFunctionalBlock block)
+        {
+            return block != null
+                   && Session.Config != null
+                   && Session.Config.IsValidCoreType(block.BlockDefinition.SubtypeId);
+        }
+
+        internal static bool IsCoreBlock(IMySlimBlock block)
+        {
+            return IsCoreBlock(block?.FatBlock as IMyFunctionalBlock);
+        }
+
+        internal static bool IsTrackedUpgradeModuleBlock(IMyFunctionalBlock block)
+        {
+            return block is IMyUpgradeModule
+                   && Session.Config != null
+                   && Session.Config.IsTrackedUpgradeModuleType(block.BlockDefinition.SubtypeId);
+        }
+
+        internal static bool IsTrackedUpgradeModuleBlock(IMySlimBlock block)
+        {
+            return IsTrackedUpgradeModuleBlock(block?.FatBlock as IMyFunctionalBlock);
+        }
+
+        internal static string GetBlockTypeId(IMySlimBlock block)
+        {
+            return Convert.ToString(block.BlockDefinition.Id.TypeId).Replace("MyObjectBuilder_", "");
+        }
+
+        internal static string GetBlockSubtypeId(IMySlimBlock block)
+        {
+            return Convert.ToString(block.BlockDefinition.Id.SubtypeId);
+        }
+
+        internal static long GetMajorityOwnerId(this GroupComponent groupComponent)
+        {
+            var ownersPerGrid = new Dictionary<long, int>();
+            foreach (var grid in groupComponent.GridDictionary.Select(kvp => kvp.Key)
+                         .Where(grid => grid.BigOwners != null && grid.BigOwners.Count > 0))
+            {
+                foreach (var player in grid.BigOwners)
+                {
+                    if (ownersPerGrid.ContainsKey(player)) ownersPerGrid[player]++;
+                    else ownersPerGrid.Add(player, 1);
+                }
+            }
+
+            return ownersPerGrid.Count == 0 ? 0 : ownersPerGrid.MaxBy(kvp => kvp.Value).Key;
+        }
+
+        internal static IMyCubeGrid RaycastForGrid(double maxDistance = 50.0)
+        {
+            var player = MyAPIGateway.Session?.Player;
+            if (player?.Character == null) return null;
+
+            var worldMatrix = player.Character.WorldMatrix;
+            var startPos = worldMatrix.Translation + worldMatrix.Forward * 1.5;
+            var endPos = startPos + worldMatrix.Forward * maxDistance;
+
+            var hits = new List<IHitInfo>();
+            MyAPIGateway.Physics.CastRay(startPos, endPos, hits);
+
+            return hits.Select(hit => hit.HitEntity).OfType<IMyCubeGrid>().FirstOrDefault();
+        }
+
+        internal static bool TryFindByGridId(long gridEntityId, out GroupComponent group)
+        {
+            foreach (var gc in Session.GroupDict.Select(kv => kv.Value)
+                         .Where(gc => gc.GridDictionary.Keys.Any(g => g != null && g.EntityId == gridEntityId)))
+            {
+                group = gc;
+                return true;
+            }
+
+            group = null;
+            return false;
+        }
+    }
+}

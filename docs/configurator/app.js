@@ -166,7 +166,7 @@ function boolOf(parent, tag, fallback = false) {
 
 function parseModConfigCs(source) {
   const classes = {};
-  const classRegex = /public\s+class\s+(\w+)\s*\{([\s\S]*?)\n\s*\}/g;
+  const classRegex = /public\s+(?:partial\s+)?class\s+(\w+)\s*\{([\s\S]*?)\n\s*\}/g;
   let classMatch;
   while ((classMatch = classRegex.exec(source)) !== null) {
     const className = classMatch[1];

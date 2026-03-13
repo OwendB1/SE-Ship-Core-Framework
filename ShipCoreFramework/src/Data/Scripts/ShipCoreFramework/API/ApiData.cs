@@ -1,6 +1,5 @@
 using System;
 using ProtoBuf;
-using Sandbox.Game.Entities;
 
 // ReSharper disable InconsistentNaming
 // ReSharper disable MemberCanBePrivate.Global
