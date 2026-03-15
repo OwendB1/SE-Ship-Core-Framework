@@ -44,8 +44,10 @@ namespace ShipCoreFramework
         }
         private void OnModuleWorkingChanged(IMyCubeBlock obj)
         {
-            if (!ShouldForceBroadcast()) return;
-            BeaconBlock.Enabled = true;
+            if (BeaconBlock == null) return;
+
+            SyncForceBroadcast();
+            if (ShouldForceBroadcast()) BeaconBlock.Enabled = true;
             _groupComponent.EnforceOverCapacity();
         }
 
