@@ -10,7 +10,6 @@ namespace ShipCoreFramework
     internal static class SpeedEnforcement
     {
         private const float HardCapToleranceMetersPerSecond = 0.5f;
-        private const float HardCapCorrectionTicks = 6f;
 
         internal static void EnforceSpeedLimit(GroupComponent groupComponent)
         {
@@ -152,35 +151,22 @@ namespace ShipCoreFramework
 
                 if (speed <= maxSpeed + HardCapToleranceMetersPerSecond) continue;
 
-                ApplyHardCapBrakingImpulse(grid, direction, speed, maxSpeed);
+                var clampedVelocity = direction * maxSpeed;
+                MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+                {
+                    try
+                    {
+                        var physics = grid.Physics;
+                        if (physics == null) return;
+
+                        physics.SetSpeeds(clampedVelocity, physics.AngularVelocity);
+                    }
+                    catch
+                    {
+                        // ignore
+                    }
+                });
             }
-        }
-
-        private static void ApplyHardCapBrakingImpulse(IMyCubeGrid grid, Vector3 direction, float speed, float maxSpeed)
-        {
-            var excessSpeed = speed - maxSpeed;
-            if (excessSpeed <= HardCapToleranceMetersPerSecond) return;
-
-            // Bleed off only the speed above the cap over a few ticks so lift/buoyancy mods
-            // keep seeing a physically consistent velocity instead of an abrupt SetSpeeds clamp.
-            var deltaV = (excessSpeed - HardCapToleranceMetersPerSecond) / HardCapCorrectionTicks;
-            if (deltaV <= 0.0001f) return;
-
-            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
-            {
-                try
-                {
-                    var physics = grid.Physics;
-                    if (physics == null) return;
-
-                    var impulse = -direction * (physics.Mass * deltaV);
-                    physics.AddForce(MyPhysicsForceType.APPLY_WORLD_IMPULSE_AND_WORLD_ANGULAR_IMPULSE, impulse, null, null);
-                }
-                catch
-                {
-                    // ignore
-                }
-            });
         }
     }
 }
