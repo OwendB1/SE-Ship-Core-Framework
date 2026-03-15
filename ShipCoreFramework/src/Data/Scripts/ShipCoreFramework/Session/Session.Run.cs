@@ -235,7 +235,8 @@ namespace ShipCoreFramework
                 MyAPIGateway.Utilities.SerializeToXML(Config),
                 Config.IgnoreAiFactions,
                 Config.IgnoredFactionTags,
-                Config.SelectedNoCore?.SubtypeId);
+                Config.SelectedNoCore?.SubtypeId,
+                Config.MassTypeMode);
 
             foreach (var p in players)
                 Networking.SendToPlayer(packet, p.SteamUserId);

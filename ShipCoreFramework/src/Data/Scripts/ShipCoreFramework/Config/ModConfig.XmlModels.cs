@@ -28,6 +28,7 @@ namespace ShipCoreFramework
         [XmlElement("LOG_LEVEL")] public int LogLevel = 2;
         [XmlElement("CLIENT_OUTPUT_LOG_LEVEL")] public int ClientOutputLogLevel = 2;
         [XmlElement("MaxPossibleSpeedMetersPerSecond")] public float MaxPossibleSpeedMetersPerSecond = 300;
+        [XmlElement("MassTypeMode")] public MassTypeMode MassTypeMode = MassTypeMode.Dry;
         [XmlElement("FrictionSpeedValueMode")] public FrictionSpeedValueMode FrictionSpeedValueMode = FrictionSpeedValueMode.Modifier;
         [XmlElement("NoFlyZones")] public List<Zones> NoFlyZones = new List<Zones>();
     }
@@ -464,6 +465,13 @@ namespace ShipCoreFramework
         Friction = 1
     }
 
+    [XmlRoot("MassTypeMode")]
+    public enum MassTypeMode
+    {
+        Dry = 0,
+        Wet = 1
+    }
+    
     [XmlRoot("FrictionSpeedValueMode")]
     public enum FrictionSpeedValueMode
     {

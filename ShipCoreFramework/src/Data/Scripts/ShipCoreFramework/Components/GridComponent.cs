@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Sandbox.Game.Entities;
 using VRage.Game.ModAPI;
 
@@ -31,6 +32,24 @@ namespace ShipCoreFramework
                 GroupComponent groupComponent;
                 return Session.GroupDict.TryGetValue(_groupData, out groupComponent) ? groupComponent : null;
             }
+        }
+        
+        internal void Init(IMyCubeGrid grid, IMyGridGroupData groupData)
+        {
+            Grid = (MyCubeGrid)grid;
+            _groupData = groupData;
+
+            Grid.OnBlockAdded += BlockAddedEvent;
+            Grid.OnBlockRemoved += BlockRemoved;
+
+            var blocks = new List<IMySlimBlock>();
+            grid.GetBlocks(blocks);
+
+            var coreBlocks = blocks.Where(Utils.IsCoreBlock).ToList();
+            foreach (var coreBlock in coreBlocks) BlockAddedInternal(coreBlock);
+
+            var otherBlocks = blocks.Where(block => !Utils.IsCoreBlock(block)).ToList();
+            foreach (var otherBlock in otherBlocks) BlockAddedInternal(otherBlock);
         }
     }
 }

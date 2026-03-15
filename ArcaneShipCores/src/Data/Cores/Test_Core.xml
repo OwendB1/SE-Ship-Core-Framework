@@ -7,8 +7,8 @@
   <MobilityType>Both</MobilityType>
   <MaxBackupCores>5</MaxBackupCores>
   <MaxBlocks>5000</MaxBlocks>
-  <MaxMass>-1</MaxMass>
-  <MaxPCU>10000</MaxPCU>
+  <MaxMass>100000</MaxMass>
+  <MaxPCU>50000</MaxPCU>
   <MaxPerFaction>3</MaxPerFaction>
   <MaxPerPlayer>3</MaxPerPlayer>
   <MinPlayers>3</MinPlayers>

@@ -17,8 +17,15 @@ namespace ShipCoreFramework
         internal IMyFaction OwningFaction => MyAPIGateway.Session.Factions.TryGetPlayerFaction(OwnerId);
         internal int GroupBlocksCount => GridDictionary.Sum(g => g.Key.BlocksCount);
         internal int GroupPCU => GridDictionary.Sum(g => g.Key.BlocksPCU);
-        internal float GroupMass => GridDictionary.Sum(g => g.Key.Mass);
-
+        internal float GroupMass {
+            get
+            {
+                float dryMass = 0;
+                float wetMass = 0;
+                GridDictionary.Keys.FirstOrDefault()?.GetCurrentMass(out dryMass, out wetMass, GridLinkTypeEnum.Mechanical);
+                return Session.Config.MassTypeMode == MassTypeMode.Dry ? dryMass : wetMass;
+            }
+        }
         private float BoostDuration => SpeedModifiers.BoostDuration;
         private float BoostCoolDown => SpeedModifiers.BoostCoolDown;
 

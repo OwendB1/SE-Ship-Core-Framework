@@ -50,6 +50,7 @@ namespace ShipCoreFramework
                 MaxPossibleSpeedMetersPerSecond = import.MaxPossibleSpeedMetersPerSecond;
             }
 
+            MassTypeMode = import.MassTypeMode;
             FrictionSpeedValueMode = import.FrictionSpeedValueMode;
             NoFlyZones = import.NoFlyZones;
         }

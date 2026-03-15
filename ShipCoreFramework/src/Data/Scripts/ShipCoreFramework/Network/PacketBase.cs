@@ -173,7 +173,8 @@ namespace ShipCoreFramework
                 MyAPIGateway.Utilities.SerializeToXML(Session.Config),
                 Session.Config.IgnoreAiFactions,
                 Session.Config.IgnoredFactionTags,
-                Session.Config.SelectedNoCore?.SubtypeId);
+                Session.Config.SelectedNoCore?.SubtypeId,
+                Session.Config.MassTypeMode);
 
             Session.Networking.SendToPlayer(response, SenderSteamId);
         }
@@ -194,14 +195,18 @@ namespace ShipCoreFramework
         [ProtoMember(4)]
         internal string SelectedNoCoreSubtypeId;
 
+        [ProtoMember(5)]
+        internal MassTypeMode MassTypeMode;
+
         internal PacketSendConfig() { } // for deserialization
 
-        internal PacketSendConfig(string configXml, bool ignoreAiFactions, List<string> ignoredFactionTags, string selectedNoCoreSubtypeId)
+        internal PacketSendConfig(string configXml, bool ignoreAiFactions, List<string> ignoredFactionTags, string selectedNoCoreSubtypeId, MassTypeMode massTypeMode)
         {
             ConfigXml = configXml;
             IgnoreAiFactions = ignoreAiFactions;
             IgnoredFactionTags = ignoredFactionTags;
             SelectedNoCoreSubtypeId = selectedNoCoreSubtypeId;
+            MassTypeMode = massTypeMode;
         }
 
         internal override void Received()
@@ -220,6 +225,7 @@ namespace ShipCoreFramework
 
                     Session.Config.IgnoreAiFactions = IgnoreAiFactions;
                     Session.Config.IgnoredFactionTags = IgnoredFactionTags ?? new List<string>();
+                    Session.Config.MassTypeMode = MassTypeMode;
 
                     if (!string.IsNullOrWhiteSpace(SelectedNoCoreSubtypeId))
                     {

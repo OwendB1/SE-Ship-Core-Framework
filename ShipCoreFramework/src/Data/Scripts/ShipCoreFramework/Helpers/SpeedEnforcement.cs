@@ -9,6 +9,9 @@ namespace ShipCoreFramework
 {
     internal static class SpeedEnforcement
     {
+        private const float HardCapToleranceMetersPerSecond = 0.5f;
+        private const float HardCapCorrectionTicks = 6f;
+
         internal static void EnforceSpeedLimit(GroupComponent groupComponent)
         {
             if (groupComponent.IsIgnoredGroup()) return;
@@ -21,50 +24,50 @@ namespace ShipCoreFramework
             var attachedGrids = groupComponent.GridDictionary.Keys.Cast<IMyCubeGrid>().ToList();
             if (attachedGrids.Count == 0) return;
 
-	            foreach (var grid in attachedGrids)
-	            {
-	                if (grid?.Physics == null) continue;
-	                if (grid.IsStatic) continue;
+            foreach (var grid in attachedGrids)
+            {
+                if (grid?.Physics == null) continue;
+                if (grid.IsStatic) continue;
 
-	                var velocity = grid.Physics.LinearVelocity;
-	                var speedSq = velocity.LengthSquared();
-	                if (speedSq < 0.0001f) continue;
+                var velocity = grid.Physics.LinearVelocity;
+                var speedSq = velocity.LengthSquared();
+                if (speedSq < 0.0001f) continue;
 
-	                var baseMaxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * speedModifiers.MaxSpeed;
-	                var boostMaxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * speedModifiers.MaxBoost;
-	                var boostActive = groupComponent.BoostEnabled;
-	                var maxSpeed = boostActive ? boostMaxSpeed : baseMaxSpeed;
-	                
-	                if (groupComponent.PunishSpeed)
-	                {
-	                    maxSpeed = baseMaxSpeed / 4;
-	                }
+                var baseMaxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * speedModifiers.MaxSpeed;
+                var boostMaxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * speedModifiers.MaxBoost;
+                var boostActive = groupComponent.BoostEnabled;
+                var maxSpeed = boostActive ? boostMaxSpeed : baseMaxSpeed;
 
-	                // If the core uses normal speed limiting, and a boost just ended, ramp the effective cap down smoothly.
-	                if (activeCore.SpeedLimitType == SpeedLimitType.Normal
-	                    && groupComponent.PostBoostRampActive)
-	                {
-	                    // Persist the cap across calls; start from boost max on first tick after boost ends.
-	                    var cap = groupComponent.PostBoostRampCap;
-	                    if (cap < 0f) cap = boostMaxSpeed;
+                if (groupComponent.PunishSpeed)
+                {
+                    maxSpeed = baseMaxSpeed / 4;
+                }
 
-	                    // Ramp time is based on BoostDuration, clamped to avoid being too slow/fast.
-	                    var rampSeconds = MathHelper.Clamp(speedModifiers.BoostDuration, 0.5f, 10f);
-	                    var stepPerTick = (boostMaxSpeed - baseMaxSpeed) / (rampSeconds * 60f);
-	                    if (stepPerTick < 0f) stepPerTick = 0f;
+                // If the core uses normal speed limiting, and a boost just ended, ramp the effective cap down smoothly.
+                if (activeCore.SpeedLimitType == SpeedLimitType.Normal
+                    && groupComponent.PostBoostRampActive)
+                {
+                    // Persist the cap across calls; start from boost max on first tick after boost ends.
+                    var cap = groupComponent.PostBoostRampCap;
+                    if (cap < 0f) cap = boostMaxSpeed;
 
-	                    Utils.ShowNotification($"Boost ramp: {rampSeconds:0.0}s, {stepPerTick:0.000}m/s", 1000);
-	                    cap -= stepPerTick;
+                    // Ramp time is based on BoostDuration, clamped to avoid being too slow/fast.
+                    var rampSeconds = MathHelper.Clamp(speedModifiers.BoostDuration, 0.5f, 10f);
+                    var stepPerTick = (boostMaxSpeed - baseMaxSpeed) / (rampSeconds * 60f);
+                    if (stepPerTick < 0f) stepPerTick = 0f;
 
-	                    if (cap <= baseMaxSpeed)
-	                    {
-	                        cap = baseMaxSpeed;
-	                        groupComponent.PostBoostRampActive = false;
-	                    }
+                    Utils.ShowNotification($"Boost ramp: {rampSeconds:0.0}s, {stepPerTick:0.000}m/s", 1000);
+                    cap -= stepPerTick;
 
-	                    groupComponent.PostBoostRampCap = cap;
-	                    maxSpeed = cap;
-	                }
+                    if (cap <= baseMaxSpeed)
+                    {
+                        cap = baseMaxSpeed;
+                        groupComponent.PostBoostRampActive = false;
+                    }
+
+                    groupComponent.PostBoostRampCap = cap;
+                    maxSpeed = cap;
+                }
 
                 var speed = Convert.ToSingle(Math.Sqrt(speedSq));
                 var direction = velocity / speed;
@@ -147,22 +150,37 @@ namespace ShipCoreFramework
                     }
                 }
 
-                // Normal hard clamp
-                if (speedSq <= maxSpeed * maxSpeed) continue;
+                if (speed <= maxSpeed + HardCapToleranceMetersPerSecond) continue;
 
-                var clampedVelocity = direction * maxSpeed;
-                MyAPIGateway.Utilities.InvokeOnGameThread(() =>
-                {
-                    try
-                    {
-                        grid.Physics?.SetSpeeds(clampedVelocity, grid.Physics.AngularVelocity);
-                    }
-                    catch
-                    {
-                        // ignore
-                    }
-                });
+                ApplyHardCapBrakingImpulse(grid, direction, speed, maxSpeed);
             }
+        }
+
+        private static void ApplyHardCapBrakingImpulse(IMyCubeGrid grid, Vector3 direction, float speed, float maxSpeed)
+        {
+            var excessSpeed = speed - maxSpeed;
+            if (excessSpeed <= HardCapToleranceMetersPerSecond) return;
+
+            // Bleed off only the speed above the cap over a few ticks so lift/buoyancy mods
+            // keep seeing a physically consistent velocity instead of an abrupt SetSpeeds clamp.
+            var deltaV = (excessSpeed - HardCapToleranceMetersPerSecond) / HardCapCorrectionTicks;
+            if (deltaV <= 0.0001f) return;
+
+            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+            {
+                try
+                {
+                    var physics = grid.Physics;
+                    if (physics == null) return;
+
+                    var impulse = -direction * (physics.Mass * deltaV);
+                    physics.AddForce(MyPhysicsForceType.APPLY_WORLD_IMPULSE_AND_WORLD_ANGULAR_IMPULSE, impulse, null, null);
+                }
+                catch
+                {
+                    // ignore
+                }
+            });
         }
     }
 }

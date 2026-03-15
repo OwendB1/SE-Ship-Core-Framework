@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using IMyTerminalBlock = Sandbox.ModAPI.IMyTerminalBlock;
@@ -20,24 +19,6 @@ namespace ShipCoreFramework
             {
                 return new List<IMySlimBlock>(_blocks);
             }
-        }
-
-        internal void Init(IMyCubeGrid grid, IMyGridGroupData groupData)
-        {
-            Grid = (MyCubeGrid)grid;
-            _groupData = groupData;
-
-            Grid.OnBlockAdded += BlockAddedEvent;
-            Grid.OnBlockRemoved += BlockRemoved;
-
-            var blocks = new List<IMySlimBlock>();
-            grid.GetBlocks(blocks);
-
-            var coreBlocks = blocks.Where(Utils.IsCoreBlock).ToList();
-            foreach (var coreBlock in coreBlocks) BlockAddedInternal(coreBlock);
-
-            var otherBlocks = blocks.Where(block => !Utils.IsCoreBlock(block)).ToList();
-            foreach (var otherBlock in otherBlocks) BlockAddedInternal(otherBlock);
         }
 
         private void BlockAddedEvent(IMySlimBlock block)

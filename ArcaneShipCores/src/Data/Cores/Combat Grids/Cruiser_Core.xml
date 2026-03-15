@@ -6,8 +6,8 @@
   <ForceBroadCastRange>50</ForceBroadCastRange>
   <MobilityType>Mobile</MobilityType>
   <MaxBlocks>10000</MaxBlocks>
-  <MaxMass>-1</MaxMass>
-  <MaxPCU>60000</MaxPCU>
+  <MaxMass>8000000</MaxMass>
+  <MaxPCU>80000</MaxPCU>
   <MaxPerFaction>-1</MaxPerFaction>
   <MaxPerPlayer>3</MaxPerPlayer>
   <MinPlayers>2</MinPlayers>
