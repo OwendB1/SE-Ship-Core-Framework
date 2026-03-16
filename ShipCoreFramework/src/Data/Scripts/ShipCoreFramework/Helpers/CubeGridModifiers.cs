@@ -105,9 +105,7 @@ namespace ShipCoreFramework
         
         internal static SpeedModifiers GetActiveSpeedModifiers(GroupComponent groupComponent)
         {
-            if (groupComponent.PunishModifiers) return Session.Config.SelectedNoCore.SpeedModifiers;
             var shipCore = groupComponent.ShipCore;
-
             var modifiers = Clone(shipCore.SpeedModifiers);
             foreach (var module in groupComponent.GetMainCoreUpgradeModules(true))
             {

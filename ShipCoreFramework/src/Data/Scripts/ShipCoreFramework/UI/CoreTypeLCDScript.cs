@@ -65,11 +65,11 @@ namespace ShipCoreFramework
 
         public CoreTypeLCDScript(IMyTextSurface surface, IngameCubeBlock block, Vector2 size) : base(surface, block, size)
         {
-            _terminalBlock = (IMyTerminalBlock)block; // internal stored m_block is the ingame interface which has no events, so can't unhook later on, therefore this field is required.
-            _terminalBlock.OnMarkForClose += BlockMarkedForClose; // required if you're going to make use of Dispose() as it won't get called when block is removed or grid is cut/unloaded.
+            _terminalBlock = (IMyTerminalBlock)block; // internal stored m_block is the in-game interface that has no events, so can't unhook later on therefore, this field is required.
+            _terminalBlock.OnMarkForClose += BlockMarkedForClose; // required if you're going to make use of Dispose() as it won't get called when the block is removed or grid is cut/unloaded.
 
-            // Called when script is created.
-            // This class is instanced per LCD that uses it, which means the same block can have multiple instances of this script aswell (e.g. a cockpit with all its screens set to use this script).
+            // Called when the script is created.
+            // This class is instanced per LCD that uses it, which means the same block can have multiple instances of this script as well (e.g., a cockpit with all its screens set to use this script).
         }
 
         public override ScriptUpdate NeedsUpdate => ScriptUpdate.Update10; // frequency that Run() is called.
@@ -172,6 +172,7 @@ namespace ShipCoreFramework
             var speed = Session.Config.MaxPossibleSpeedMetersPerSecond * (GroupComponent.BoostEnabled
                 ? GroupComponent.SpeedModifiers.MaxBoost
                 : GroupComponent.SpeedModifiers.MaxSpeed);
+            if (GroupComponent.PunishSpeed) speed /= 4;
             _gridResultsTable.Rows.Add(new Row
             {
                 new Cell("Max Speed: "),
@@ -331,7 +332,7 @@ namespace ShipCoreFramework
         {
             var sprite = MySprite.CreateText(text, "Monospace", Color.White, scale, TextAlignment.LEFT);
             sprite.Position =
-                position; // screenCorner + padding + new Vector2(0, y); // 16px from top left corner of the visible surface
+                position; // screenCorner + padding + new Vector2(0, y); // 16px from the top left corner of the visible surface
 
             positionAfter = position + new Vector2(0, TextUtils.GetTextHeight(text, scale));
 
