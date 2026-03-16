@@ -41,8 +41,7 @@ namespace ShipCoreFramework
                         var newMain = CoreDictionary.Values.FirstOrDefault(core => !core.IsMainCore && core.CoreBlock.IsWorking);
                         if (newMain != null)
                         {
-                            Utils.ShowNotification(
-                                $"Switching to new main core: {newMain.CoreBlock.CustomName}, old one was no longer functional!");
+                            Utils.ShowNotification($"Switching to new main core: {newMain.CoreBlock.CustomName}, old one was no longer functional!");
                             MainCoreComponent.IsMainCore = false;
 
                             MainCoreComponent = newMain;
@@ -64,7 +63,7 @@ namespace ShipCoreFramework
                     }
                 }
 
-                if (!HasWorkingBeacon())
+                if (ShipCore.ForceBroadCast && !HasWorkingBeacon())
                 {
                     PunishModifiers = true;
                     PunishSpeed = true;
