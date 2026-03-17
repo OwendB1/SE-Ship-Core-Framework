@@ -111,20 +111,10 @@ jobs:
           set -euo pipefail
           echo "::add-mask::$STEAM_CONFIG_VDF"
 
-          STEAMCMD_BIN="$(command -v steamcmd.sh || command -v steamcmd)"
-          STEAMCMD_DIR="$(dirname "$STEAMCMD_BIN")"
-
-          CONFIG_VDF_PATHS=(
-            "$STEAMCMD_DIR/config/config.vdf"
-            "$HOME/.steam/steamcmd/config/config.vdf"
-          )
-
-          for config_vdf in "${CONFIG_VDF_PATHS[@]}"; do
-            mkdir -p "$(dirname "$config_vdf")"
-            printf '%s' "$STEAM_CONFIG_VDF" > "$config_vdf"
-            chmod 600 "$config_vdf"
-            echo "Wrote Steam cached credentials config to: $config_vdf"
-          done
+          mkdir -p "$HOME/Steam/config"
+          printf '%s' "$STEAM_CONFIG_VDF" > "$HOME/Steam/config/config.vdf"
+          chmod 600 "$HOME/Steam/config/config.vdf"
+          echo "Wrote Steam cached credentials config to: $HOME/Steam/config/config.vdf"
 
       - name: Upload to Steam Workshop item
         if: ${{ github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
