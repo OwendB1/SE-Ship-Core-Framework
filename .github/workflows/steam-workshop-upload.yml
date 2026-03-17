@@ -4,6 +4,10 @@ permissions:
   contents: read
 
 on:
+  push:
+    paths:
+      - ArcaneShipCores/src/**
+      - ShipCoreFramework/src/**
   workflow_dispatch:
     inputs:
       target:
