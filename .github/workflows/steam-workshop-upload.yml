@@ -49,11 +49,11 @@ jobs:
       - name: Validate required secrets
         if: ${{ github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
         env:
-          STEAM_UPDATE_HOSTS_CACHED_VDF: ${{ secrets.STEAM_UPDATE_HOSTS_CACHED_VDF }}
+          STEAM_CONFIG_VDF: ${{ secrets.STEAM_CONFIG_VDF }}
         run: |
           [ -n "${{ secrets.STEAM_USERNAME }}" ] || { echo "Missing secret: STEAM_USERNAME"; exit 1; }
-          [ -n "${STEAM_UPDATE_HOSTS_CACHED_VDF:-}" ] || { echo "Missing secret: STEAM_UPDATE_HOSTS_CACHED_VDF"; exit 1; }
-          echo "::add-mask::$STEAM_UPDATE_HOSTS_CACHED_VDF"
+          [ -n "${STEAM_CONFIG_VDF:-}" ] || { echo "Missing secret: STEAM_CONFIG_VDF"; exit 1; }
+          echo "::add-mask::$STEAM_CONFIG_VDF"
           echo "Using cached SteamCMD host config authentication for workshop upload."
 
       - name: Build upload content from src only
@@ -103,28 +103,27 @@ jobs:
           }
           EOF
 
-      - name: Install SteamCMD cached host config
+      - name: Install SteamCMD cached credentials config
         if: ${{ github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
         env:
-          STEAM_UPDATE_HOSTS_CACHED_VDF: ${{ secrets.STEAM_UPDATE_HOSTS_CACHED_VDF }}
+          STEAM_CONFIG_VDF: ${{ secrets.STEAM_CONFIG_VDF }}
         run: |
           set -euo pipefail
-          echo "::add-mask::$STEAM_UPDATE_HOSTS_CACHED_VDF"
+          echo "::add-mask::$STEAM_CONFIG_VDF"
 
           STEAMCMD_BIN="$(command -v steamcmd.sh || command -v steamcmd)"
           STEAMCMD_DIR="$(dirname "$STEAMCMD_BIN")"
 
-          CACHED_VDF_PATHS=(
-            "$STEAMCMD_DIR/update_hosts_cached.vdf"
-            "$STEAMCMD_DIR/config/update_hosts_cached.vdf"
-            "$HOME/.steam/steamcmd/config/update_hosts_cached.vdf"
+          CONFIG_VDF_PATHS=(
+            "$STEAMCMD_DIR/config/config.vdf"
+            "$HOME/.steam/steamcmd/config/config.vdf"
           )
 
-          for cached_vdf in "${CACHED_VDF_PATHS[@]}"; do
-            mkdir -p "$(dirname "$cached_vdf")"
-            printf '%s' "$STEAM_UPDATE_HOSTS_CACHED_VDF" > "$cached_vdf"
-            chmod 600 "$cached_vdf"
-            echo "Wrote cached host config to: $cached_vdf"
+          for config_vdf in "${CONFIG_VDF_PATHS[@]}"; do
+            mkdir -p "$(dirname "$config_vdf")"
+            printf '%s' "$STEAM_CONFIG_VDF" > "$config_vdf"
+            chmod 600 "$config_vdf"
+            echo "Wrote Steam cached credentials config to: $config_vdf"
           done
 
       - name: Upload to Steam Workshop item
