@@ -13,8 +13,8 @@ on:
         type: choice
         options:
           - both
-          - arcane-cores-beta
-          - shipcore-framework-beta
+          - arcane-cores
+          - shipcore-framework
       sbmi_profile:
         description: "Metadata profile file to use"
         required: true
@@ -31,10 +31,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - key: arcane-cores-beta
+          - key: arcane-cores
             mod_dir: ArcaneShipCores
             src_dir: ArcaneShipCores/src
-          - key: shipcore-framework-beta
+          - key: shipcore-framework
             mod_dir: ShipCoreFramework
             src_dir: ShipCoreFramework/src
 
