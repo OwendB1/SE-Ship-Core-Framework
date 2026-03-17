@@ -114,8 +114,18 @@ jobs:
           STEAMCMD_BIN="$(command -v steamcmd.sh || command -v steamcmd)"
           STEAMCMD_DIR="$(dirname "$STEAMCMD_BIN")"
 
-          printf '%s' "$STEAM_UPDATE_HOSTS_CACHED_VDF" > "$STEAMCMD_DIR/update_hosts_cached.vdf"
-          chmod 600 "$STEAMCMD_DIR/update_hosts_cached.vdf"
+          CACHED_VDF_PATHS=(
+            "$STEAMCMD_DIR/update_hosts_cached.vdf"
+            "$STEAMCMD_DIR/config/update_hosts_cached.vdf"
+            "$HOME/.steam/steamcmd/config/update_hosts_cached.vdf"
+          )
+
+          for cached_vdf in "${CACHED_VDF_PATHS[@]}"; do
+            mkdir -p "$(dirname "$cached_vdf")"
+            printf '%s' "$STEAM_UPDATE_HOSTS_CACHED_VDF" > "$cached_vdf"
+            chmod 600 "$cached_vdf"
+            echo "Wrote cached host config to: $cached_vdf"
+          done
 
       - name: Upload to Steam Workshop item
         if: ${{ github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
