@@ -90,6 +90,12 @@ jobs:
         if: ${{ github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
         uses: andriivitiv/setup-steamcmd@v1.2.0
 
+      - name: Prune SBMI profile files from upload staging
+        if: ${{ github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
+        run: |
+          set -euo pipefail
+          rm -f "$STAGING_DIR/modinfo.sbmi.beta" "$STAGING_DIR/modinfo.sbmi.main"
+
       - name: Create SteamCMD upload script
         if: ${{ github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
         run: |
