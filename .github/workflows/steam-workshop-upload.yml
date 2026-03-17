@@ -1,0 +1,105 @@
+name: Upload Steam Workshop
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Which workshop item to upload"
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - arcane-cores-beta
+          - shipcore-framework-beta
+      sbmi_profile:
+        description: "Metadata profile file to use"
+        required: true
+        default: beta
+        type: choice
+        options:
+          - beta
+          - main
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - key: arcane-cores-beta
+            mod_dir: ArcaneShipCores
+            src_dir: ArcaneShipCores/src
+          - key: shipcore-framework-beta
+            mod_dir: ShipCoreFramework
+            src_dir: ShipCoreFramework/src
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        if: ${{ github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
+        env:
+          STEAM_LOGIN_TOKEN: ${{ secrets.STEAM_LOGIN_TOKEN }}
+        run: |
+          [ -n "${{ secrets.STEAM_USERNAME }}" ] || { echo "Missing secret: STEAM_USERNAME"; exit 1; }
+          [ -n "${STEAM_LOGIN_TOKEN:-}" ] || { echo "Missing secret: STEAM_LOGIN_TOKEN"; exit 1; }
+          echo "Using STEAM_LOGIN_TOKEN authentication for SteamCMD workshop upload."
+
+      - name: Build upload content from src only
+        if: ${{ github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
+        env:
+          SBMI_PROFILE: ${{ github.event.inputs.sbmi_profile }}
+        run: |
+          set -euo pipefail
+          STAGING="${RUNNER_TEMP}/${{ matrix.mod_dir }}-upload"
+          rm -rf "$STAGING"
+          mkdir -p "$STAGING"
+
+          rsync -a --delete "${{ matrix.src_dir }}/" "$STAGING/"
+
+          PROFILE_FILE="${{ matrix.src_dir }}/modinfo.sbmi.${SBMI_PROFILE}"
+          if [ ! -f "$PROFILE_FILE" ]; then
+            echo "Expected metadata profile not found: $PROFILE_FILE"
+            exit 1
+          fi
+
+          cp "$PROFILE_FILE" "$STAGING/modinfo.sbmi"
+
+          WORKSHOP_ID="$(PROFILE_FILE="$PROFILE_FILE" python3 -c 'import xml.etree.ElementTree as ET, os; root = ET.parse(os.environ["PROFILE_FILE"]).getroot(); ids = root.findall(".//WorkshopIds/WorkshopId/Id"); print(((ids[0].text or "").strip()) if ids else "")')"
+
+          if [ -z "$WORKSHOP_ID" ] || [ "$WORKSHOP_ID" = "0" ]; then
+            echo "Unable to resolve a valid Workshop ID from $PROFILE_FILE"
+            exit 1
+          fi
+
+          echo "WORKSHOP_ID=$WORKSHOP_ID" >> "$GITHUB_ENV"
+          echo "STAGING_DIR=$STAGING" >> "$GITHUB_ENV"
+
+      - name: Setup SteamCMD
+        if: ${{ github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
+        uses: andriivitiv/setup-steamcmd@v1.2.0
+
+      - name: Create SteamCMD upload script
+        if: ${{ github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
+        run: |
+          cat > "$RUNNER_TEMP/workshop_item.vdf" <<EOF
+          "workshopitem"
+          {
+            "appid" "244850"
+            "publishedfileid" "${WORKSHOP_ID}"
+            "contentfolder" "${STAGING_DIR}"
+            "changenote" "GitHub Actions build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA})"
+          }
+          EOF
+
+      - name: Upload to Steam Workshop item
+        if: ${{ github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
+        env:
+          STEAM_USERNAME: ${{ secrets.STEAM_USERNAME }}
+          STEAM_LOGIN_TOKEN: ${{ secrets.STEAM_LOGIN_TOKEN }}
+        run: |
+          set -euo pipefail
+          steamcmd +login "$STEAM_USERNAME" "$STEAM_LOGIN_TOKEN" +workshop_build_item "$RUNNER_TEMP/workshop_item.vdf" +quit
