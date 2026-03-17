@@ -1,5 +1,8 @@
 name: Upload Steam Workshop
 
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
     inputs:
