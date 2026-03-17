@@ -6,7 +6,7 @@
   <ForceBroadCastRange>1900</ForceBroadCastRange>
   <MobilityType>Mobile</MobilityType>
   <MaxBlocks>5000</MaxBlocks>
-  <MaxMass>-1</MaxMass>
+  <MaxMass>12000000</MaxMass>
   <MaxPCU>60000</MaxPCU>
   <MaxPerFaction>6</MaxPerFaction>
   <MaxPerPlayer>-1</MaxPerPlayer>
@@ -62,20 +62,18 @@
     <Explosion>1</Explosion>
     <Environment>1</Environment>
   </ActiveDefenseModifiers>
-  <EnableReloadModifier>false</EnableReloadModifier>
-  <ReloadModifier>1</ReloadModifier>
   <BlockLimits>
     <Name>Weapons</Name>
     <BlockGroups>Weaponry</BlockGroups>
     <MaxCount>20</MaxCount>
-    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>Delete</PunishmentType>
   </BlockLimits>
   <BlockLimits>
     <Name>Turrets</Name>
     <BlockGroups>Turrets</BlockGroups>
     <MaxCount>5</MaxCount>
-    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>Delete</PunishmentType>
   </BlockLimits>
   <BlockLimits>
@@ -84,14 +82,14 @@
     <BlockGroups>VanillaSmallGridTurretWeapons</BlockGroups>
     <BlockGroups>VanillaBrawl</BlockGroups>
     <MaxCount>0</MaxCount>
-    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>Delete</PunishmentType>
   </BlockLimits>
   <BlockLimits>
     <Name>PDC</Name>
     <BlockGroups>VanillaPDC</BlockGroups>
     <MaxCount>15</MaxCount>
-    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>Delete</PunishmentType>
   </BlockLimits>
   <BlockLimits>
@@ -99,7 +97,7 @@
     <BlockGroups>VanillaArtillery</BlockGroups>
     <BlockGroups>VanillaRailguns</BlockGroups>
     <MaxCount>15</MaxCount>
-    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>Delete</PunishmentType>
   </BlockLimits>
 </ShipCore>

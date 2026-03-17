@@ -5,9 +5,8 @@
   <ForceBroadCast>false</ForceBroadCast>
   <ForceBroadCastRange>0</ForceBroadCastRange>
   <MobilityType>Both</MobilityType>
-  <SmallGrid>true</SmallGrid>
   <MaxBlocks>5000</MaxBlocks>
-  <MaxMass>-1</MaxMass>
+  <MaxMass>3500000</MaxMass>
   <MaxPCU>30000</MaxPCU>
   <MaxPerFaction>-1</MaxPerFaction>
   <MaxPerPlayer>3</MaxPerPlayer>
@@ -65,29 +64,53 @@
     <Explosion>0.9</Explosion>
     <Environment>0</Environment>
   </ActiveDefenseModifiers>
-  <EnableReloadModifier>false</EnableReloadModifier>
-  <ReloadModifier>1</ReloadModifier>
   <BlockLimits>
-    <Name>Tools</Name>
-    <BlockGroups>Tools</BlockGroups>
+    <Name>Drills</Name>
+    <BlockGroups>Drills</BlockGroups>
+    <MaxCount>4</MaxCount>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
+    <PunishmentType>Delete</PunishmentType>
+    <AllowedDirections>Forward</AllowedDirections>
+    <AllowedDirections>Down</AllowedDirections>
+  </BlockLimits>
+  <BlockLimits>
+    <Name>Grinders</Name>
+    <BlockGroups>Grinders</BlockGroups>
+    <MaxCount>4</MaxCount>
+    <CrossConnectorPunishment>true</CrossConnectorPunishment>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
+    <PunishmentType>ShutOff</PunishmentType>
+  </BlockLimits>
+  <BlockLimits>
+    <Name>Welders</Name>
+    <BlockGroups>Welders</BlockGroups>
+    <MaxCount>4</MaxCount>
+    <CrossConnectorPunishment>true</CrossConnectorPunishment>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
+    <PunishmentType>ShutOff</PunishmentType>
+  </BlockLimits>
+  <BlockLimits>
+    <Name>Collectors</Name>
+    <BlockGroups>Collectors</BlockGroups>
+    <MaxCount>4</MaxCount>
+    <CrossConnectorPunishment>true</CrossConnectorPunishment>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
+    <PunishmentType>ShutOff</PunishmentType>
+  </BlockLimits>
+  <BlockLimits>
+    <Name>PDC</Name>
+    <BlockGroups>VanillaPDC</BlockGroups>
     <MaxCount>10</MaxCount>
-    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>Delete</PunishmentType>
   </BlockLimits>
   <BlockLimits>
-    <Name>Weaponry PDC Only</Name>
-    <BlockGroups>Weaponry</BlockGroups>
-    <MaxCount>10</MaxCount>
-    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
-    <PunishmentType>Delete</PunishmentType>
-  </BlockLimits>
-    <BlockLimits>
     <Name>Non-PDC Weapons</Name>
     <BlockGroups>Turrets</BlockGroups>
     <BlockGroups>VanillaSmallGridFixedWeapons</BlockGroups>
     <BlockGroups>VanillaLargeGridFixedWeapons</BlockGroups>
     <MaxCount>0</MaxCount>
-    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>Delete</PunishmentType>
   </BlockLimits>
 </ShipCore>

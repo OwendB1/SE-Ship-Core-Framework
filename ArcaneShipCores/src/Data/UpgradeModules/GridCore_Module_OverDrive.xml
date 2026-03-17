@@ -4,32 +4,57 @@
   <UniqueName>Overdrive Upgrade Module</UniqueName>
   <Modifiers>
     <Stat>ThrusterForce</Stat>
-    <Value>1.2</Value>
+    <Value>1.3</Value>
     <ModifierType>Multiplicative</ModifierType>
   </Modifiers>
   <Modifiers>
     <Stat>ThrusterEfficiency</Stat>
-    <Value>0.8</Value>
+    <Value>0.75</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>GyroForce</Stat>
+    <Value>1.1</Value>
     <ModifierType>Multiplicative</ModifierType>
   </Modifiers>
   <Modifiers>
     <Stat>MaxSpeed</Stat>
-    <Value>0.05</Value>
+    <Value>0.08</Value>
     <ModifierType>Additive</ModifierType>
   </Modifiers>
   <Modifiers>
     <Stat>MaxBoost</Stat>
-    <Value>0.05</Value>
+    <Value>0.12</Value>
     <ModifierType>Additive</ModifierType>
   </Modifiers>
   <Modifiers>
     <Stat>BoostDuration</Stat>
-    <Value>1.2</Value>
+    <Value>1.25</Value>
     <ModifierType>Multiplicative</ModifierType>
   </Modifiers>
   <Modifiers>
     <Stat>BoostCoolDown</Stat>
-    <Value>1.2</Value>
+    <Value>0.8</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>PowerProducersOutput</Stat>
+    <Value>1.1</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>PassiveBulletDamage</Stat>
+    <Value>1.05</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>PassiveRocketDamage</Stat>
+    <Value>1.1</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>PassiveExplosionDamage</Stat>
+    <Value>1.1</Value>
     <ModifierType>Multiplicative</ModifierType>
   </Modifiers>
 </UpgradeModule>

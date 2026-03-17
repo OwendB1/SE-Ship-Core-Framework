@@ -6,7 +6,7 @@
   <ForceBroadCastRange>2000</ForceBroadCastRange>
   <MobilityType>Mobile</MobilityType>
   <MaxBlocks>1000</MaxBlocks>
-  <MaxMass>-1</MaxMass>
+  <MaxMass>450000</MaxMass>
   <MaxPCU>6000</MaxPCU>
   <MaxPerPlayer>10</MaxPerPlayer>
   <MinPlayers>-1</MinPlayers>
@@ -36,7 +36,6 @@
   <SpeedModifiers>
     <MaxSpeed>0.85</MaxSpeed>
     <MaxBoost>0.95</MaxBoost>
-    <BoostResistance>10</BoostResistance>
     <BoostDuration>5</BoostDuration>
     <BoostCoolDown>10</BoostCoolDown>
     <MinimumFrictionSpeedModifier>0.6</MinimumFrictionSpeedModifier>
@@ -62,13 +61,11 @@
     <Explosion>0.1</Explosion>
     <Environment>1</Environment>
   </ActiveDefenseModifiers>
-  <EnableReloadModifier>false</EnableReloadModifier>
-  <ReloadModifier>1</ReloadModifier>
   <BlockLimits>
     <Name>Weapons</Name>
     <BlockGroups>Weaponry</BlockGroups>
     <MaxCount>8</MaxCount>
-    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>Delete</PunishmentType>
     <AllowedDirections>Forward</AllowedDirections>
   </BlockLimits>
@@ -76,14 +73,14 @@
     <Name>No Turrets</Name>
     <BlockGroups>Turrets</BlockGroups>
     <MaxCount>0</MaxCount>
-    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>Delete</PunishmentType>
   </BlockLimits>
   <BlockLimits>
     <Name>Artillery</Name>
     <BlockGroups>VanillaArtillery</BlockGroups>
     <MaxCount>2</MaxCount>
-    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>Delete</PunishmentType>
     <AllowedDirections>Forward</AllowedDirections>
   </BlockLimits>
@@ -91,7 +88,7 @@
     <Name>LargeRailgun</Name>
     <BlockGroups>VanillaRailguns</BlockGroups>
     <MaxCount>1</MaxCount>
-    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>Delete</PunishmentType>
     <AllowedDirections>Forward</AllowedDirections>
   </BlockLimits>

@@ -63,13 +63,11 @@
     <Explosion>0.5</Explosion>
     <Environment>0.5</Environment>
   </ActiveDefenseModifiers>
-  <EnableReloadModifier>false</EnableReloadModifier>
-  <ReloadModifier>1</ReloadModifier>
   <BlockLimits>
     <Name>Drills</Name>
     <BlockGroups>Drills</BlockGroups>
     <MaxCount>3</MaxCount>
-    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>Delete</PunishmentType>
     <AllowedDirections>Forward</AllowedDirections>
   </BlockLimits>
@@ -78,7 +76,7 @@
     <BlockGroups>Grinders</BlockGroups>
     <MaxCount>3</MaxCount>
     <CrossConnectorPunishment>true</CrossConnectorPunishment>
-    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>ShutOff</PunishmentType>
   </BlockLimits>
   <BlockLimits>
@@ -86,7 +84,7 @@
     <BlockGroups>Welders</BlockGroups>
     <MaxCount>3</MaxCount>
     <CrossConnectorPunishment>true</CrossConnectorPunishment>
-    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>Damage</PunishmentType>
   </BlockLimits>
   <BlockLimits>
@@ -94,7 +92,7 @@
     <BlockGroups>Collectors</BlockGroups>
     <MaxCount>3</MaxCount>
     <CrossConnectorPunishment>true</CrossConnectorPunishment>
-    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>Damage</PunishmentType>
   </BlockLimits>
 </ShipCore>

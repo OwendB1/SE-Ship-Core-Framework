@@ -6,7 +6,7 @@
   <ForceBroadCastRange>1000</ForceBroadCastRange>
   <MobilityType>Mobile</MobilityType>
   <MaxBlocks>1000</MaxBlocks>
-  <MaxMass>-1</MaxMass>
+  <MaxMass>300000</MaxMass>
   <MaxPCU>5000</MaxPCU>
   <MaxPerPlayer>10</MaxPerPlayer>
   <MinPlayers>-1</MinPlayers>
@@ -61,13 +61,11 @@
     <Explosion>0.1</Explosion>
     <Environment>1</Environment>
   </ActiveDefenseModifiers>
-  <EnableReloadModifier>false</EnableReloadModifier>
-  <ReloadModifier>1</ReloadModifier>
   <BlockLimits>
     <Name>Weapons</Name>
     <BlockGroups>Weaponry</BlockGroups>
     <MaxCount>6</MaxCount>
-    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>Delete</PunishmentType>
     <AllowedDirections>Forward</AllowedDirections>
   </BlockLimits>
@@ -75,7 +73,7 @@
     <Name>No Turrets</Name>
     <BlockGroups>Turrets</BlockGroups>
     <MaxCount>0</MaxCount>
-    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>Delete</PunishmentType>
   </BlockLimits>
   <BlockLimits>
@@ -83,7 +81,7 @@
     <BlockGroups>VanillaArtillery</BlockGroups>
     <BlockGroups>VanillaRailguns</BlockGroups>
     <MaxCount>0</MaxCount>
-    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>Delete</PunishmentType>
   </BlockLimits>
 </ShipCore>

@@ -4,67 +4,92 @@
   <UniqueName>Combat Upgrade Module</UniqueName>
   <Modifiers>
     <Stat>ThrusterEfficiency</Stat>
-    <Value>0.8</Value>
+    <Value>0.85</Value>
     <ModifierType>Multiplicative</ModifierType>
   </Modifiers>
   <Modifiers>
     <Stat>MaxSpeed</Stat>
-    <Value>-0.1</Value>
+    <Value>-0.05</Value>
     <ModifierType>Additive</ModifierType>
   </Modifiers>
   <Modifiers>
     <Stat>PassiveExplosionDamage</Stat>
-    <Value>0.95</Value>
+    <Value>0.92</Value>
     <ModifierType>Multiplicative</ModifierType>
   </Modifiers>
   <Modifiers>
     <Stat>PassiveRocketDamage</Stat>
-    <Value>0.95</Value>
+    <Value>0.92</Value>
     <ModifierType>Multiplicative</ModifierType>
   </Modifiers>
   <Modifiers>
     <Stat>PassiveBulletDamage</Stat>
-    <Value>0.95</Value>
+    <Value>0.92</Value>
     <ModifierType>Multiplicative</ModifierType>
   </Modifiers>
   <Modifiers>
     <Stat>PassiveEnergyDamage</Stat>
-    <Value>0.95</Value>
+    <Value>0.92</Value>
     <ModifierType>Multiplicative</ModifierType>
   </Modifiers>
   <Modifiers>
     <Stat>PassiveKineticDamage</Stat>
-    <Value>0.95</Value>
+    <Value>0.92</Value>
     <ModifierType>Multiplicative</ModifierType>
   </Modifiers>
   <Modifiers>
     <Stat>ActiveBulletDamage</Stat>
-    <Value>0.95</Value>
+    <Value>0.92</Value>
     <ModifierType>Multiplicative</ModifierType>
   </Modifiers>
   <Modifiers>
     <Stat>ActiveRocketDamage</Stat>
-    <Value>0.95</Value>
+    <Value>0.92</Value>
     <ModifierType>Multiplicative</ModifierType>
   </Modifiers>
   <Modifiers>
     <Stat>ActiveExplosionDamage</Stat>
-    <Value>0.95</Value>
-    <ModifierType>Multiplicative</ModifierType>
-  </Modifiers>
-  <Modifiers>
-    <Stat>ActiveEnvironmentDamage</Stat>
-    <Value>0.5</Value>
+    <Value>0.92</Value>
     <ModifierType>Multiplicative</ModifierType>
   </Modifiers>
   <Modifiers>
     <Stat>ActiveEnergyDamage</Stat>
-    <Value>0.95</Value>
+    <Value>0.92</Value>
     <ModifierType>Multiplicative</ModifierType>
   </Modifiers>
   <Modifiers>
     <Stat>ActiveKineticDamage</Stat>
-    <Value>0.95</Value>
+    <Value>0.92</Value>
     <ModifierType>Multiplicative</ModifierType>
   </Modifiers>
+  <Modifiers>
+    <Stat>ActiveDefenseDuration</Stat>
+    <Value>1.15</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>ActiveDefenseCooldown</Stat>
+    <Value>0.9</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <BlockLimitModifiers>
+    <BlockLimitName>Weapons</BlockLimitName>
+    <Value>4</Value>
+    <ModifierType>Additive</ModifierType>
+  </BlockLimitModifiers>
+  <BlockLimitModifiers>
+    <BlockLimitName>Turrets</BlockLimitName>
+    <Value>2</Value>
+    <ModifierType>Additive</ModifierType>
+  </BlockLimitModifiers>
+  <BlockLimitModifiers>
+    <BlockLimitName>PDC</BlockLimitName>
+    <Value>4</Value>
+    <ModifierType>Additive</ModifierType>
+  </BlockLimitModifiers>
+  <BlockLimitModifiers>
+    <BlockLimitName>Heavy Weaponry</BlockLimitName>
+    <Value>1</Value>
+    <ModifierType>Additive</ModifierType>
+  </BlockLimitModifiers>
 </UpgradeModule>

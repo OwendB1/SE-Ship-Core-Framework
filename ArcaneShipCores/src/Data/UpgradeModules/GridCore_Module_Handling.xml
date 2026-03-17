@@ -4,12 +4,52 @@
   <UniqueName>Handling Upgrade Module</UniqueName>
   <Modifiers>
     <Stat>ThrusterForce</Stat>
-    <Value>1.2</Value>
+    <Value>1.25</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>ThrusterEfficiency</Stat>
+    <Value>1.15</Value>
     <ModifierType>Multiplicative</ModifierType>
   </Modifiers>
   <Modifiers>
     <Stat>GyroForce</Stat>
-    <Value>1.2</Value>
+    <Value>1.35</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>GyroEfficiency</Stat>
+    <Value>1.25</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>MaxSpeed</Stat>
+    <Value>0.04</Value>
+    <ModifierType>Additive</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>MaxBoost</Stat>
+    <Value>0.03</Value>
+    <ModifierType>Additive</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>BoostDuration</Stat>
+    <Value>1.1</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>BoostCoolDown</Stat>
+    <Value>0.9</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>PowerProducersOutput</Stat>
+    <Value>0.9</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>PassiveExplosionDamage</Stat>
+    <Value>1.05</Value>
     <ModifierType>Multiplicative</ModifierType>
   </Modifiers>
 </UpgradeModule>

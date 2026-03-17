@@ -9,7 +9,7 @@
   </Modifiers>
   <Modifiers>
     <Stat>ThrusterEfficiency</Stat>
-    <Value>1.5</Value>
+    <Value>1.25</Value>
     <ModifierType>Multiplicative</ModifierType>
   </Modifiers>
   <Modifiers>
@@ -24,12 +24,37 @@
   </Modifiers>
   <Modifiers>
     <Stat>GyroEfficiency</Stat>
-    <Value>1.5</Value>
+    <Value>1.25</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>AssemblerSpeed</Stat>
+    <Value>1.35</Value>
     <ModifierType>Multiplicative</ModifierType>
   </Modifiers>
   <Modifiers>
     <Stat>RefineEfficiency</Stat>
     <Value>1.5</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>RefineSpeed</Stat>
+    <Value>1.35</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>PowerProducersOutput</Stat>
+    <Value>1.15</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>PassiveBulletDamage</Stat>
+    <Value>1.05</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
+    <Stat>PassiveEnergyDamage</Stat>
+    <Value>1.05</Value>
     <ModifierType>Multiplicative</ModifierType>
   </Modifiers>
 </UpgradeModule>
