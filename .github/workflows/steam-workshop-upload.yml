@@ -47,7 +47,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate required secrets
-        if: ${{ github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
+        if: ${{ github.event_name == 'push' || github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
         env:
           STEAM_CONFIG_VDF: ${{ secrets.STEAM_CONFIG_VDF }}
         run: |
@@ -57,9 +57,9 @@ jobs:
           echo "Using cached SteamCMD host config authentication for workshop upload."
 
       - name: Build upload content from src only
-        if: ${{ github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
+        if: ${{ github.event_name == 'push' || github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
         env:
-          SBMI_PROFILE: ${{ github.event.inputs.sbmi_profile }}
+          SBMI_PROFILE: ${{ github.event.inputs.sbmi_profile || 'beta' }}
         run: |
           set -euo pipefail
           STAGING="${RUNNER_TEMP}/${{ matrix.mod_dir }}-upload"
@@ -87,17 +87,17 @@ jobs:
           echo "STAGING_DIR=$STAGING" >> "$GITHUB_ENV"
 
       - name: Setup SteamCMD
-        if: ${{ github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
+        if: ${{ github.event_name == 'push' || github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
         uses: andriivitiv/setup-steamcmd@v1.2.0
 
       - name: Prune SBMI profile files from upload staging
-        if: ${{ github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
+        if: ${{ github.event_name == 'push' || github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
         run: |
           set -euo pipefail
           rm -f "$STAGING_DIR/modinfo.sbmi.beta" "$STAGING_DIR/modinfo.sbmi.main"
 
       - name: Create SteamCMD upload script
-        if: ${{ github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
+        if: ${{ github.event_name == 'push' || github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
         run: |
           cat > "$RUNNER_TEMP/workshop_item.vdf" <<EOF
           "workshopitem"
@@ -110,7 +110,7 @@ jobs:
           EOF
 
       - name: Install SteamCMD cached credentials config
-        if: ${{ github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
+        if: ${{ github.event_name == 'push' || github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
         env:
           STEAM_CONFIG_VDF: ${{ secrets.STEAM_CONFIG_VDF }}
         run: |
@@ -123,7 +123,7 @@ jobs:
           echo "Wrote Steam cached credentials config to: $HOME/Steam/config/config.vdf"
 
       - name: Upload to Steam Workshop item
-        if: ${{ github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
+        if: ${{ github.event_name == 'push' || github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
         env:
           STEAM_USERNAME: ${{ secrets.STEAM_USERNAME }}
         run: |
