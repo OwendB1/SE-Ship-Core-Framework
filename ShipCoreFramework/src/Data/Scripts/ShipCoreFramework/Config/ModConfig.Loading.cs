@@ -155,7 +155,7 @@ namespace ShipCoreFramework
                 if (limit == null) continue;
                 if (limit.BlockGroupsShortHand == null)
                 {
-                    limit.BlockGroupsShortHand = new string[0];
+                    limit.BlockGroupsShortHand = Array.Empty<string>();
                     Utils.Log("Config warning: A <BlockLimit> had null <BlockGroups>; treating as empty.", 2, "Config Validation");
                 }
 

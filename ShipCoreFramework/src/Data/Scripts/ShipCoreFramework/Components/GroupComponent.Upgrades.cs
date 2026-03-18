@@ -6,7 +6,7 @@ namespace ShipCoreFramework
 {
     public partial class GroupComponent
     {
-        internal IEnumerable<UpgradeModuleComponent> GetUpgradeModules()
+        private IEnumerable<UpgradeModuleComponent> GetUpgradeModules()
         {
             return GridDictionary.Values.SelectMany(gridComponent => gridComponent.GetUpgradeModuleComponentsCopy());
         }

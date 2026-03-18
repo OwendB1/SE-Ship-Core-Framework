@@ -25,7 +25,7 @@ namespace ShipCoreFramework
 
             if (core.BlockLimits == null)
             {
-                core.BlockLimits = new BlockLimit[0];
+                core.BlockLimits = Array.Empty<BlockLimit>();
                 Utils.Log($"Config warning: ShipCore '{core.UniqueName}' from {source} ({coreFileOrKey}) had no <BlockLimits>; treating as none.", 2, "Config Validation");
                 return;
             }
@@ -36,7 +36,7 @@ namespace ShipCoreFramework
 
                 if (limit.BlockGroupsShortHand == null)
                 {
-                    limit.BlockGroupsShortHand = new string[0];
+                    limit.BlockGroupsShortHand = Array.Empty<string>();
                     Utils.Log($"Config warning: ShipCore '{core.UniqueName}' from {source} ({coreFileOrKey}) has a <BlockLimit> with null <BlockGroups>; treating as empty.", 2, "Config Validation");
                 }
 
@@ -83,10 +83,10 @@ namespace ShipCoreFramework
                 module.UniqueName = module.SubtypeId;
 
             if (module.Modifiers == null)
-                module.Modifiers = new UpgradeStatModifier[0];
+                module.Modifiers = Array.Empty<UpgradeStatModifier>();
 
             if (module.BlockLimitModifiers == null)
-                module.BlockLimitModifiers = new BlockLimitModifier[0];
+                module.BlockLimitModifiers = Array.Empty<BlockLimitModifier>();
 
             if (module.Modifiers.Any(modifier => modifier != null && string.IsNullOrWhiteSpace(modifier.Stat)))
                 throw new Exception($"UpgradeModuleConfig '{module.SubtypeId}' from {source} ({moduleFile}) has a modifier with no <Stat>.");

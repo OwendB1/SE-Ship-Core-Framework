@@ -102,7 +102,7 @@ namespace ShipCoreFramework
         public int MinPlayers = -1;
 
         [XmlElement("AllowedUpgradeModules")]
-        public UpgradeModuleAllowance[] AllowedUpgradeModules = new UpgradeModuleAllowance[0];
+        public UpgradeModuleAllowance[] AllowedUpgradeModules = Array.Empty<UpgradeModuleAllowance>();
 
         [XmlIgnore]
         public readonly Dictionary<string, int> AllowedUpgradeModuleCounts =
@@ -130,12 +130,12 @@ namespace ShipCoreFramework
         public GridDefenseModifiers ActiveDefenseModifiers = new GridDefenseModifiers();
 
         [XmlElement("BlockLimits")]
-        public BlockLimit[] BlockLimits = new BlockLimit[0];
+        public BlockLimit[] BlockLimits = Array.Empty<BlockLimit>();
 
         public bool IsUpgradeModuleAllowed(string moduleSubtypeId)
         {
-            if (string.IsNullOrWhiteSpace(moduleSubtypeId)) return false;
-            return AllowedUpgradeModuleCounts.ContainsKey(moduleSubtypeId);
+            return !string.IsNullOrWhiteSpace(moduleSubtypeId) && 
+                   AllowedUpgradeModuleCounts.ContainsKey(moduleSubtypeId);
         }
 
         public bool TryGetAllowedUpgradeModuleCount(string moduleSubtypeId, out int maxCount)
@@ -154,7 +154,7 @@ namespace ShipCoreFramework
             AllowedUpgradeModuleCounts.Clear();
             if (AllowedUpgradeModules == null)
             {
-                AllowedUpgradeModules = new UpgradeModuleAllowance[0];
+                AllowedUpgradeModules = Array.Empty<UpgradeModuleAllowance>();
                 return;
             }
 
@@ -191,10 +191,10 @@ namespace ShipCoreFramework
         public string UniqueName = string.Empty;
 
         [XmlElement("Modifiers")]
-        public UpgradeStatModifier[] Modifiers = new UpgradeStatModifier[0];
+        public UpgradeStatModifier[] Modifiers = Array.Empty<UpgradeStatModifier>();
 
         [XmlElement("BlockLimitModifiers")]
-        public BlockLimitModifier[] BlockLimitModifiers = new BlockLimitModifier[0];
+        public BlockLimitModifier[] BlockLimitModifiers = Array.Empty<BlockLimitModifier>();
     }
 
     [XmlRoot("Modifiers")]
@@ -341,7 +341,7 @@ namespace ShipCoreFramework
         public string Name = string.Empty;
 
         [XmlElement("BlockGroups")]
-        public string[] BlockGroupsShortHand = new string[0];
+        public string[] BlockGroupsShortHand = Array.Empty<string>();
 
         [XmlIgnore]
         public List<BlockGroup> BlockGroups = new List<BlockGroup>();
