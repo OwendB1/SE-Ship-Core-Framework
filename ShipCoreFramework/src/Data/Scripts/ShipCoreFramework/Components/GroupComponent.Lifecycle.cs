@@ -23,12 +23,6 @@ namespace ShipCoreFramework
                 GridDictionary.Add(startGrid, gridComp);
                 gridComp.Init(startGrid, MyGroup);
             }
-
-            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
-            {
-                if (_closing) return;
-                OnUpgradeModulesChanged();
-            });
         }
 
         internal void Activate(CoreComponent coreComponent)
