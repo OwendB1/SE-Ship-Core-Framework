@@ -236,6 +236,7 @@ function createDefaultNoCore() {
     ...createDefaultCore(),
     subtypeId: "NO_CORE_DEFAULT",
     uniqueName: "No Core",
+    outputDirectory: "",
     originalFileName: "ShipCoreConfig_No_Core.xml"
   };
 }
@@ -647,7 +648,7 @@ function renderShipCores() {
       <div class="row wrap">
         <label class="inline">Core Subtype <input data-action="core-subtype" data-c="${coreIndex}" class="small" placeholder="SubtypeId" value="${escapeXml(core.subtypeId)}" /></label>
         <label class="inline">Core Name <input data-action="core-unique" data-c="${coreIndex}" class="small" placeholder="UniqueName" value="${escapeXml(core.uniqueName)}" /></label>
-        <label class="inline">Output Folder <input data-action="core-output-directory" data-c="${coreIndex}" class="small" placeholder="Data/Cores/" value="${escapeXml(core.outputDirectory)}" /></label>
+        <label class="inline">Output Folder <input data-action="core-output-directory" data-c="${coreIndex}" class="small" placeholder="Data/Cores/" value="${escapeXml(core.outputDirectory)}" ${isNoCore ? "disabled title=\"No Core output always stays in the root folder.\"" : ""} /></label>
         <label class="inline">Mobility
           <select data-action="core-mobility" data-c="${coreIndex}" class="small">
             ${["Static", "Mobile", "Both"].map((value) => `<option ${core.mobilityType === value ? "selected" : ""}>${value}</option>`).join("")}
@@ -1161,6 +1162,7 @@ function migrateLegacyModConfig(text, sourceName = "uploaded xml", mergeMode = "
   if (noCoreCore) {
     noCoreCore.subtypeId = "NO_CORE_DEFAULT";
     noCoreCore.uniqueName = noCoreCore.uniqueName || "No Core";
+    noCoreCore.outputDirectory = "";
     noCoreCore.originalFileName = "ShipCoreConfig_No_Core.xml";
   }
 
@@ -1855,11 +1857,12 @@ ids("loadLegacyModConfig").addEventListener("click", async () => {
 ids("loadUploadedXml").addEventListener("click", async () => {
   const groupsFile = ids("groupsXmlFile").files?.[0];
   const manifestFile = ids("manifestXmlFile").files?.[0];
+  const noCoreFile = ids("noCoreXmlFile").files?.[0];
   const coreFiles = Array.from(ids("coreXmlFiles").files || []);
   const status = [];
   const manifestCoreDirectoriesByFilename = new Map();
 
-  if (!groupsFile && !manifestFile && coreFiles.length === 0) {
+  if (!groupsFile && !manifestFile && !noCoreFile && coreFiles.length === 0) {
     setImportStatus(["No XML files selected."]);
     return;
   }
@@ -1894,13 +1897,30 @@ ids("loadUploadedXml").addEventListener("click", async () => {
     status.push(`Using '${state.outputCoreDirectory}' for generated core files and '${state.outputUpgradeModuleDirectory}' for generated upgrade module files.`);
   }
 
+  if (noCoreFile) {
+    const parsedNoCore = parseCoreXml(await noCoreFile.text(), noCoreFile.name);
+    if (parsedNoCore) {
+      parsedNoCore.originalFileName = "ShipCoreConfig_No_Core.xml";
+      parsedNoCore.outputDirectory = "";
+      state.noCoreCore = parsedNoCore;
+      status.push(`Loaded no-core '${parsedNoCore.subtypeId || noCoreFile.name}'.`);
+    } else {
+      status.push(`Skipped ${noCoreFile.name}: no <ShipCore> root found.`);
+    }
+  }
+
   for (const file of coreFiles) {
     const fileText = await file.text();
     const parsed = parseCoreXml(fileText, file.name);
     if (parsed) {
       const isNoCoreFile = file.name.trim().toLowerCase() === "shipcoreconfig_no_core.xml";
       if (isNoCoreFile) {
+        if (noCoreFile) {
+          status.push(`Skipped ${file.name}: no-core XML is already loaded from the dedicated No Core upload field.`);
+          continue;
+        }
         parsed.originalFileName = "ShipCoreConfig_No_Core.xml";
+        parsed.outputDirectory = "";
         state.noCoreCore = parsed;
         status.push(`Loaded no-core '${parsed.subtypeId || file.name}'.`);
       } else {
