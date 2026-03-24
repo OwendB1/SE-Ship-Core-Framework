@@ -172,7 +172,7 @@ namespace ShipCoreFramework
         {
             Limits.Clear();
 
-            foreach (var comp in GetGridComponentsCopy())
+            foreach (var comp in GridDictionary.Values)
             {
                 comp.RecalculateLimits(this);
                 foreach (var gridLimitKv in comp.Limits)
