@@ -20,7 +20,7 @@ namespace ShipCoreFramework
                 if (startGrid.IsPreview) return;
 
                 var gridComp = new GridComponent();
-                TryAddGridComponent(startGrid, gridComp);
+                GridDictionary.Add(startGrid, gridComp);
                 gridComp.Init(startGrid, MyGroup);
             }
         }
@@ -78,10 +78,10 @@ namespace ShipCoreFramework
             var g = grid as MyCubeGrid;
             if (g == null || g.IsPreview) return;
 
-            if (TryGetGridComponent(g, out _)) return;
+            if (GridDictionary.ContainsKey(g)) return;
             var gc = new GridComponent();
             gc.Init(g, addedTo);
-            TryAddGridComponent(g, gc);
+            GridDictionary.Add(g, gc);
 
             Utils.Log($"OnGridAdded: {grid.EntityId}, {OwnerId}, {grid.CustomName}", 2);
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
@@ -113,7 +113,7 @@ namespace ShipCoreFramework
             if (g == null || g.IsPreview) return;
 
             GridComponent comp;
-            if (TryGetGridComponent(g, out comp))
+            if (GridDictionary.TryGetValue(g, out comp))
             {
                 if (MainCoreComponent?.GridComponent.Grid.EntityId == g.EntityId)
                 {
@@ -124,10 +124,10 @@ namespace ShipCoreFramework
                 }
 
                 comp.Clean();
-                RemoveGridComponent(g);
+                GridDictionary.Remove(g);
             }
 
-            if (GridCount == 0)
+            if (GridDictionary.Count == 0)
             {
                 _closing = true;
                 return;
@@ -176,7 +176,7 @@ namespace ShipCoreFramework
             }
 
             foreach (var kvp in GridDictionary) kvp.Value.Clean();
-            ClearGridDictionary();
+            GridDictionary.Clear();
             Limits.Clear();
         }
     }
