@@ -3,6 +3,8 @@ const state = {
   blockGroups: [],
   shipCores: [],
   upgradeModules: [],
+  outputCoreDirectory: "Data/Cores/",
+  outputUpgradeModuleDirectory: "Data/UpgradeModules/",
   selectedGroupIndex: 0,
   selectedCoreIndex: 0,
   selectedUpgradeModuleIndex: 0,
@@ -98,6 +100,8 @@ function persistDraftToStorage() {
       shipCores: state.shipCores.map((core) => cloneShipCore(core)),
       upgradeModules: state.upgradeModules.map((module) => cloneUpgradeModule(module)),
       noCoreCore: state.noCoreCore ? cloneShipCore(state.noCoreCore) : null,
+      outputCoreDirectory: state.outputCoreDirectory,
+      outputUpgradeModuleDirectory: state.outputUpgradeModuleDirectory,
       selectedGroupIndex: state.selectedGroupIndex,
       selectedCoreIndex: state.selectedCoreIndex,
       selectedUpgradeModuleIndex: state.selectedUpgradeModuleIndex,
@@ -133,6 +137,8 @@ function restoreDraftFromStorage() {
       ? parsedDraft.upgradeModules.map((module) => cloneUpgradeModule(module))
       : [];
     state.noCoreCore = parsedDraft.noCoreCore ? cloneShipCore(parsedDraft.noCoreCore) : null;
+    state.outputCoreDirectory = normalizeOutputDirectory(parsedDraft.outputCoreDirectory, "Data/Cores/");
+    state.outputUpgradeModuleDirectory = normalizeOutputDirectory(parsedDraft.outputUpgradeModuleDirectory, "Data/UpgradeModules/");
     state.selectedGroupIndex = Number.isInteger(parsedDraft.selectedGroupIndex) ? parsedDraft.selectedGroupIndex : 0;
     state.selectedCoreIndex = Number.isInteger(parsedDraft.selectedCoreIndex) ? parsedDraft.selectedCoreIndex : 0;
     state.selectedUpgradeModuleIndex = Number.isInteger(parsedDraft.selectedUpgradeModuleIndex) ? parsedDraft.selectedUpgradeModuleIndex : 0;
@@ -162,6 +168,34 @@ function boolOf(parent, tag, fallback = false) {
   if (value === "true") return true;
   if (value === "false") return false;
   return fallback;
+}
+
+function normalizeOutputDirectory(path, fallbackDirectory) {
+  if (typeof path !== "string") return fallbackDirectory;
+  const normalizedPath = path.replaceAll("\\", "/").trim().replace(/^\/+/, "");
+  if (!normalizedPath) return fallbackDirectory;
+  return normalizedPath.endsWith("/") ? normalizedPath : `${normalizedPath}/`;
+}
+
+function getDirectoryFromManifestPath(path, fallbackDirectory) {
+  if (typeof path !== "string") return fallbackDirectory;
+  const normalizedPath = path.replaceAll("\\", "/").trim().replace(/^\/+/, "");
+  if (!normalizedPath.includes("/")) return fallbackDirectory;
+  return normalizeOutputDirectory(normalizedPath.slice(0, normalizedPath.lastIndexOf("/")), fallbackDirectory);
+}
+
+function getManifestDirectory(paths, fallbackDirectory, label, status) {
+  const directories = Array.from(new Set(
+    paths
+      .map((path) => getDirectoryFromManifestPath(path, fallbackDirectory))
+      .filter(Boolean)
+  ));
+
+  if (!directories.length) return fallbackDirectory;
+  if (directories.length > 1) {
+    status.push(`Manifest listed multiple ${label} directories; using '${directories[0]}' for generated output zips.`);
+  }
+  return directories[0];
 }
 
 function parseModConfigCs(source) {
@@ -264,6 +298,7 @@ function createDefaultCore() {
     subtypeId: "",
     uniqueName: "",
     originalFileName: "",
+    outputDirectory: state.outputCoreDirectory || "Data/Cores/",
     mobilityType: "Both",
     maxBlocks: -1,
     minBlocks: -1,
@@ -420,6 +455,7 @@ function cloneShipCore(core = createDefaultCore()) {
   return {
     ...createDefaultCore(),
     ...core,
+    outputDirectory: normalizeOutputDirectory(core.outputDirectory, state.outputCoreDirectory || "Data/Cores/"),
     allowedUpgradeModules: Array.isArray(core.allowedUpgradeModules)
       ? core.allowedUpgradeModules.map((entry) => ({
           subtypeId: String(entry.subtypeId ?? ""),
@@ -451,6 +487,8 @@ function resetEditor(seed = true) {
   state.blockGroups = [];
   state.shipCores = [];
   state.upgradeModules = [];
+  state.outputCoreDirectory = "Data/Cores/";
+  state.outputUpgradeModuleDirectory = "Data/UpgradeModules/";
   state.selectedGroupIndex = 0;
   state.selectedCoreIndex = 0;
   state.selectedUpgradeModuleIndex = 0;
@@ -609,6 +647,7 @@ function renderShipCores() {
       <div class="row wrap">
         <label class="inline">Core Subtype <input data-action="core-subtype" data-c="${coreIndex}" class="small" placeholder="SubtypeId" value="${escapeXml(core.subtypeId)}" /></label>
         <label class="inline">Core Name <input data-action="core-unique" data-c="${coreIndex}" class="small" placeholder="UniqueName" value="${escapeXml(core.uniqueName)}" /></label>
+        <label class="inline">Output Folder <input data-action="core-output-directory" data-c="${coreIndex}" class="small" placeholder="Data/Cores/" value="${escapeXml(core.outputDirectory)}" /></label>
         <label class="inline">Mobility
           <select data-action="core-mobility" data-c="${coreIndex}" class="small">
             ${["Static", "Mobile", "Both"].map((value) => `<option ${core.mobilityType === value ? "selected" : ""}>${value}</option>`).join("")}
@@ -1146,6 +1185,10 @@ function deriveCoreFilename(core) {
   return `${withoutSuffix || "unnamed"}_core.xml`;
 }
 
+function buildCoreOutputPath(core, filename) {
+  return `${normalizeOutputDirectory(core?.outputDirectory, state.outputCoreDirectory || "Data/Cores/")}${filename}`;
+}
+
 function getUniqueCoreFilenames(cores) {
   const usedNames = new Set();
 
@@ -1311,16 +1354,17 @@ function generateXml(options = {}) {
 <CoreManifest>
 ${state.shipCores
     .filter((core) => core.subtypeId.trim())
-    .map((core, coreIndex) => `  <ShipCoreFilenames>Data/Cores/${escapeXml(coreFilenames[coreIndex])}</ShipCoreFilenames>`)
+    .map((core, coreIndex) => `  <ShipCoreFilenames>${escapeXml(buildCoreOutputPath(core, coreFilenames[coreIndex]))}</ShipCoreFilenames>`)
     .join("\n")}
 ${state.upgradeModules
     .filter((module) => module.subtypeId.trim())
-    .map((module, moduleIndex) => `  <UpgradeModuleFilenames>Data/UpgradeModules/${escapeXml(upgradeModuleFilenames[moduleIndex])}</UpgradeModuleFilenames>`)
+    .map((module, moduleIndex) => `  <UpgradeModuleFilenames>${escapeXml(state.outputUpgradeModuleDirectory)}${escapeXml(upgradeModuleFilenames[moduleIndex])}</UpgradeModuleFilenames>`)
     .join("\n")}
 </CoreManifest>`;
 
   const cores = state.shipCores.map((core, coreIndex) => ({
     file: coreFilenames[coreIndex],
+    outputPath: buildCoreOutputPath(core, coreFilenames[coreIndex]),
     body: `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(core.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(core.uniqueName)}</UniqueName>\n  <ForceBroadCast>${core.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${core.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(core.mobilityType)}</MobilityType>\n  <MaxBlocks>${core.maxBlocks}</MaxBlocks>\n  <MinBlocks>${core.minBlocks}</MinBlocks>\n  <MaxMass>${core.maxMass}</MaxMass>\n  <MaxPCU>${core.maxPcu}</MaxPCU>\n  <MaxBackupCores>${core.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${core.maxPerPlayer}</MaxPerPlayer>\n  <MinPlayers>${core.minPerFaction}</MinPlayers>\n  <MaxPerFaction>${core.maxPerFaction}</MaxPerFaction>\n  <SpeedBoostEnabled>${core.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(core.speedLimitType)}</SpeedLimitType>\n  <EnableActiveDefenseModifiers>${core.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeAllowedUpgradeModulesXml(core.allowedUpgradeModules)}${core.allowedUpgradeModules?.length ? "\n" : ""}${writeModifierXml("Modifiers", core.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeModifierXml("SpeedModifiers", core.speedModifiers, DEFAULT_SPEED_MODIFIERS)}\n${writeModifierXml("PassiveDefenseModifiers", core.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", core.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${core.blockLimits
       .map((limit) => writeBlockLimitXml(limit))
       .join("\n")}\n</ShipCore>`
@@ -1531,6 +1575,9 @@ document.addEventListener("input", (event) => {
   if (action === "core-unique") {
     selectedCore.uniqueName = target.value;
     clearGeneratedFilenameForRenamedCore(coreIndex, selectedCore);
+  }
+  if (action === "core-output-directory") {
+    selectedCore.outputDirectory = normalizeOutputDirectory(target.value, state.outputCoreDirectory || "Data/Cores/");
   }
   if (action === "core-maxblocks") selectedCore.maxBlocks = Number(target.value || -1);
   if (action === "core-minblocks") selectedCore.minBlocks = Number(target.value || -1);
@@ -1759,8 +1806,8 @@ ids("downloadAllFiles").addEventListener("click", () => {
     { name: "ShipCoreConfig_No_Core.xml", content: xml.noCore },
     { name: "ShipCoreConfig_Groups.xml", content: xml.groups },
     { name: "ShipCoreConfig_Manifest.xml", content: xml.manifest },
-    ...xml.cores.map((core) => ({ name: `Cores/${core.file}`, content: core.body })),
-    ...xml.upgradeModules.map((module) => ({ name: `UpgradeModules/${module.file}`, content: module.body }))
+    ...xml.cores.map((core) => ({ name: core.outputPath, content: core.body })),
+    ...xml.upgradeModules.map((module) => ({ name: `${state.outputUpgradeModuleDirectory}${module.file}`, content: module.body }))
   ]);
   downloadBlob("ShipCore_All_Files.zip", zip);
   clearDraftFromStorage();
@@ -1768,8 +1815,8 @@ ids("downloadAllFiles").addEventListener("click", () => {
 ids("downloadCores").addEventListener("click", () => {
   const xml = generateXml({ persistDraft: false });
   const zip = createZip([
-    ...xml.cores.map((core) => ({ name: `Cores/${core.file}`, content: core.body })),
-    ...xml.upgradeModules.map((module) => ({ name: `UpgradeModules/${module.file}`, content: module.body }))
+    ...xml.cores.map((core) => ({ name: core.outputPath, content: core.body })),
+    ...xml.upgradeModules.map((module) => ({ name: `${state.outputUpgradeModuleDirectory}${module.file}`, content: module.body }))
   ]);
   downloadBlob("ShipCore_XMLs.zip", zip);
   clearDraftFromStorage();
@@ -1810,6 +1857,7 @@ ids("loadUploadedXml").addEventListener("click", async () => {
   const manifestFile = ids("manifestXmlFile").files?.[0];
   const coreFiles = Array.from(ids("coreXmlFiles").files || []);
   const status = [];
+  const manifestCoreDirectoriesByFilename = new Map();
 
   if (!groupsFile && !manifestFile && coreFiles.length === 0) {
     setImportStatus(["No XML files selected."]);
@@ -1829,7 +1877,21 @@ ids("loadUploadedXml").addEventListener("click", async () => {
     const manifestDoc = parseXml(await manifestFile.text());
     const listed = Array.from(manifestDoc.querySelectorAll("ShipCoreFilenames")).map((n) => n.textContent.trim()).filter(Boolean);
     const listedModules = Array.from(manifestDoc.querySelectorAll("UpgradeModuleFilenames")).map((n) => n.textContent.trim()).filter(Boolean);
+
+    listed.forEach((manifestPath) => {
+      const normalizedPath = manifestPath.replaceAll("\\", "/").trim();
+      const fileName = normalizedPath.split("/").pop();
+      if (!fileName) return;
+      manifestCoreDirectoriesByFilename.set(
+        fileName.toLowerCase(),
+        getDirectoryFromManifestPath(normalizedPath, "Data/Cores/")
+      );
+    });
+
+    state.outputCoreDirectory = getManifestDirectory(listed, "Data/Cores/", "core", status);
+    state.outputUpgradeModuleDirectory = getManifestDirectory(listedModules, "Data/UpgradeModules/", "upgrade module", status);
     status.push(`Read manifest ${manifestFile.name} with ${listed.length} listed core files and ${listedModules.length} listed upgrade modules.`);
+    status.push(`Using '${state.outputCoreDirectory}' for generated core files and '${state.outputUpgradeModuleDirectory}' for generated upgrade module files.`);
   }
 
   for (const file of coreFiles) {
@@ -1842,6 +1904,7 @@ ids("loadUploadedXml").addEventListener("click", async () => {
         state.noCoreCore = parsed;
         status.push(`Loaded no-core '${parsed.subtypeId || file.name}'.`);
       } else {
+        parsed.outputDirectory = manifestCoreDirectoriesByFilename.get(file.name.trim().toLowerCase()) || state.outputCoreDirectory;
         state.shipCores.push(parsed);
         status.push(`Loaded core '${parsed.subtypeId || file.name}'.`);
       }
