@@ -641,6 +641,9 @@ function renderShipCores() {
   const core = getCoreBySelectorIndex(coreIndex);
   if (!core) return;
   const isNoCore = coreIndex === 0;
+  if (isNoCore) {
+    core.outputDirectory = "";
+  }
   const expandedLimitPanels = normalizeExpandedLimitPanelsForCore(coreIndex);
 
   ids("shipCores").innerHTML = `
@@ -648,7 +651,7 @@ function renderShipCores() {
       <div class="row wrap">
         <label class="inline">Core Subtype <input data-action="core-subtype" data-c="${coreIndex}" class="small" placeholder="SubtypeId" value="${escapeXml(core.subtypeId)}" /></label>
         <label class="inline">Core Name <input data-action="core-unique" data-c="${coreIndex}" class="small" placeholder="UniqueName" value="${escapeXml(core.uniqueName)}" /></label>
-        <label class="inline">Output Folder <input data-action="core-output-directory" data-c="${coreIndex}" class="small" placeholder="Data/Cores/" value="${escapeXml(core.outputDirectory)}" ${isNoCore ? "disabled title=\"No Core output always stays in the root folder.\"" : ""} /></label>
+        <label class="inline">Output Folder <input data-action="core-output-directory" data-c="${coreIndex}" class="small${isNoCore ? " no-core-output-disabled" : ""}" placeholder="Data/Cores/" value="${escapeXml(isNoCore ? "" : core.outputDirectory)}" ${isNoCore ? "disabled title=\"No Core output always stays in the root folder.\"" : ""} /></label>
         <label class="inline">Mobility
           <select data-action="core-mobility" data-c="${coreIndex}" class="small">
             ${["Static", "Mobile", "Both"].map((value) => `<option ${core.mobilityType === value ? "selected" : ""}>${value}</option>`).join("")}
