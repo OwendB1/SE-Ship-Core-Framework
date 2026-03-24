@@ -41,27 +41,25 @@ namespace ShipCoreFramework
         internal Dictionary<IMyCubeBlock, CoreComponent> CoreDictionary =>
             Utils.Flatten(GridDictionary.Values, component => component.CoreDictionary);
 
-        internal bool TryAddGridComponent(MyCubeGrid grid, GridComponent gridComponent)
+        private void TryAddGridComponent(MyCubeGrid grid, GridComponent gridComponent)
         {
-            return GridDictionary.TryAdd(grid, gridComponent);
+            GridDictionary.TryAdd(grid, gridComponent);
         }
 
-        internal bool TryGetGridComponent(MyCubeGrid grid, out GridComponent component)
+        private bool TryGetGridComponent(MyCubeGrid grid, out GridComponent component)
         {
             return GridDictionary.TryGetValue(grid, out component);
         }
 
-        internal bool RemoveGridComponent(MyCubeGrid grid)
+        private void RemoveGridComponent(MyCubeGrid grid)
         {
-            return GridDictionary.TryRemove(grid, out _);
+            GridComponent discard;
+            GridDictionary.TryRemove(grid, out discard);
         }
 
-        internal int GridCount
-        {
-            get { return GridDictionary.Count; }
-        }
+        private int GridCount => GridDictionary.Count;
 
-        internal void ClearGridDictionary()
+        private void ClearGridDictionary()
         {
             GridDictionary.Clear();
         }

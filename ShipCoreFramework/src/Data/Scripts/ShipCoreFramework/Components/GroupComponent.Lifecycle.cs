@@ -78,7 +78,8 @@ namespace ShipCoreFramework
             var g = grid as MyCubeGrid;
             if (g == null || g.IsPreview) return;
 
-            if (TryGetGridComponent(g, out _)) return;
+            GridComponent discard;
+            if (TryGetGridComponent(g, out discard)) return;
             var gc = new GridComponent();
             gc.Init(g, addedTo);
             TryAddGridComponent(g, gc);
