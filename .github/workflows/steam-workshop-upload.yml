@@ -46,8 +46,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Determine whether this matrix target should upload
+        id: matrix_gate
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SHOULD_UPLOAD=false
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ "${{ github.event.inputs.target }}" = "both" ] || [ "${{ github.event.inputs.target }}" = "${{ matrix.key }}" ]; then
+              SHOULD_UPLOAD=true
+            fi
+          else
+            BEFORE_SHA="${{ github.event.before }}"
+            CURRENT_SHA="${{ github.sha }}"
+
+            if [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+              if git diff --name-only "$BEFORE_SHA" "$CURRENT_SHA" -- "${{ matrix.src_dir }}/" | grep -q .; then
+                SHOULD_UPLOAD=true
+              fi
+            else
+              if git ls-tree -r --name-only "$CURRENT_SHA" -- "${{ matrix.src_dir }}/" | grep -q .; then
+                SHOULD_UPLOAD=true
+              fi
+            fi
+          fi
+
+          echo "should_upload=$SHOULD_UPLOAD" >> "$GITHUB_OUTPUT"
+          echo "Matrix target '${{ matrix.key }}' upload decision: $SHOULD_UPLOAD"
+
       - name: Validate required secrets
-        if: ${{ github.event_name == 'push' || github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
+        if: ${{ steps.matrix_gate.outputs.should_upload == 'true' }}
         env:
           STEAM_CONFIG_VDF: ${{ secrets.STEAM_CONFIG_VDF }}
         run: |
@@ -57,7 +87,7 @@ jobs:
           echo "Using cached SteamCMD host config authentication for workshop upload."
 
       - name: Build upload content from src only
-        if: ${{ github.event_name == 'push' || github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
+        if: ${{ steps.matrix_gate.outputs.should_upload == 'true' }}
         env:
           SBMI_PROFILE: ${{ github.event.inputs.sbmi_profile || 'beta' }}
         run: |
@@ -87,17 +117,17 @@ jobs:
           echo "STAGING_DIR=$STAGING" >> "$GITHUB_ENV"
 
       - name: Setup SteamCMD
-        if: ${{ github.event_name == 'push' || github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
+        if: ${{ steps.matrix_gate.outputs.should_upload == 'true' }}
         uses: andriivitiv/setup-steamcmd@v1.2.0
 
       - name: Prune SBMI profile files from upload staging
-        if: ${{ github.event_name == 'push' || github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
+        if: ${{ steps.matrix_gate.outputs.should_upload == 'true' }}
         run: |
           set -euo pipefail
           rm -f "$STAGING_DIR/modinfo.sbmi.beta" "$STAGING_DIR/modinfo.sbmi.main"
 
       - name: Create SteamCMD upload script
-        if: ${{ github.event_name == 'push' || github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
+        if: ${{ steps.matrix_gate.outputs.should_upload == 'true' }}
         run: |
           cat > "$RUNNER_TEMP/workshop_item.vdf" <<EOF
           "workshopitem"
@@ -110,7 +140,7 @@ jobs:
           EOF
 
       - name: Install SteamCMD cached credentials config
-        if: ${{ github.event_name == 'push' || github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
+        if: ${{ steps.matrix_gate.outputs.should_upload == 'true' }}
         env:
           STEAM_CONFIG_VDF: ${{ secrets.STEAM_CONFIG_VDF }}
         run: |
@@ -123,7 +153,7 @@ jobs:
           echo "Wrote Steam cached credentials config to: $HOME/Steam/config/config.vdf"
 
       - name: Upload to Steam Workshop item
-        if: ${{ github.event_name == 'push' || github.event.inputs.target == 'both' || github.event.inputs.target == matrix.key }}
+        if: ${{ steps.matrix_gate.outputs.should_upload == 'true' }}
         env:
           STEAM_USERNAME: ${{ secrets.STEAM_USERNAME }}
         run: |
