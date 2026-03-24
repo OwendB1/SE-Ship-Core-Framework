@@ -8,7 +8,7 @@ namespace ShipCoreFramework
     {
         private IEnumerable<UpgradeModuleComponent> GetUpgradeModules()
         {
-            return GridDictionary.Values.SelectMany(gridComponent => gridComponent.GetUpgradeModuleComponentsCopy());
+            return GetGridComponentsCopy().SelectMany(gridComponent => gridComponent.GetUpgradeModuleComponentsCopy());
         }
 
         internal IEnumerable<UpgradeModuleComponent> GetMainCoreUpgradeModules(bool requireFunctionalForEffects)

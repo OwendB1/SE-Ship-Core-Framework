@@ -34,7 +34,7 @@ namespace ShipCoreFramework
         {
             _connectedNoCoreGroups.Clear();
 
-            foreach (var grid in GridDictionary.Keys)
+            foreach (var grid in GetGridsCopy())
             {
                 if (grid == null || grid.MarkedForClose || grid.Closed) continue;
 
@@ -90,7 +90,7 @@ namespace ShipCoreFramework
                 if (!Session.GroupDict.TryGetValue(otherGroupData, out otherComp) || otherComp == null) continue;
                 if (otherComp.MainCoreComponent != null) continue;
 
-                foreach (var otherGridComp in otherComp.GridDictionary.Values)
+                foreach (var otherGridComp in otherComp.GetGridComponentsCopy())
                 {
                     var blocksCopy = otherGridComp.GetBlocksCopy();
                     foreach (var block in blocksCopy)
