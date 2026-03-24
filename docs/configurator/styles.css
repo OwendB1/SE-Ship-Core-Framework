@@ -107,6 +107,10 @@ button:hover { background: #0d9488; }
 }
 .card h4 { margin: 0.25rem 0 0.5rem; }
 .small { width: 220px; }
+.no-core-output-disabled {
+  background: #1f2937;
+  color: #9ca3af;
+}
 .inline { display: inline-flex; gap: 0.5rem; align-items: center; margin-right: 1rem; }
 .menu-controls {
   display: flex;
