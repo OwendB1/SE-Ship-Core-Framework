@@ -21,7 +21,7 @@ namespace ShipCoreFramework
                 }
 
                 var modifiers = _activeDefenseEnabled ? GetActiveDefenseModifiers() : GetPassiveDefenseModifiers();
-                foreach (var kvp in GetGridEntriesCopy()) CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
+                foreach (var kvp in GridDictionary) CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
             }
             else
             {
@@ -71,13 +71,13 @@ namespace ShipCoreFramework
                 }
 
                 var modifiers = _activeDefenseEnabled ? GetActiveDefenseModifiers() : GetPassiveDefenseModifiers();
-                foreach (var kvp in GetGridEntriesCopy()) CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
+                foreach (var kvp in GridDictionary) CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
             }
         }
 
         private bool HasWorkingBeacon()
         {
-            foreach (var grid in GetGridsCopy())
+            foreach (var grid in GridDictionary.Keys)
             {
                 if (grid == null || grid.MarkedForClose || grid.Closed) continue;
 
@@ -92,7 +92,7 @@ namespace ShipCoreFramework
 
         internal void ApplyModifiers(GridModifiers modifiers)
         {
-            foreach (var kvp in GetGridEntriesCopy())
+            foreach (var kvp in GridDictionary)
             {
                 var blocksCopy = kvp.Value.GetBlocksCopy();
                 foreach (var block in blocksCopy)
@@ -106,7 +106,7 @@ namespace ShipCoreFramework
         public void DefenseValuesChanged()
         {
             var modifiers = GetActiveDefenseModifiers();
-            foreach (var kvp in GetGridEntriesCopy()) CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
+            foreach (var kvp in GridDictionary) CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
         }
 
         internal void RunBoostTimerTick()
@@ -141,7 +141,7 @@ namespace ShipCoreFramework
                 _activeDefenseEnabled = false;
 
                 var modifiers = GetPassiveDefenseModifiers();
-                foreach (var kvp in GetGridEntriesCopy()) CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
+                foreach (var kvp in GridDictionary) CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
 
                 _activeDefenseCooldownTimer = ActiveDefenseCoolDown * 60f;
                 Utils.ShowNotification("Active Defense Disengaged! Cooldown started.", 1000);
@@ -183,7 +183,7 @@ namespace ShipCoreFramework
             _activeDefenseDurationTimer = ActiveDefenseDuration * 60f;
 
             var modifiers = GetActiveDefenseModifiers();
-            foreach (var kvp in GetGridEntriesCopy()) CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
+            foreach (var kvp in GridDictionary) CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
 
             Utils.ShowNotification("Active Defense Engaged!", 1000);
 

@@ -86,7 +86,7 @@ namespace ShipCoreFramework
         private long GetRepresentativeGridId()
         {
             var main = MainCoreComponent?.GridComponent?.Grid;
-            var grid = main ?? GetGridsCopy().FirstOrDefault();
+            var grid = main ?? GridDictionary.Keys.FirstOrDefault();
             return grid?.EntityId ?? 0;
         }
     }
