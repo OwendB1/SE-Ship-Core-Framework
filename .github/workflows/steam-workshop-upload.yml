@@ -45,6 +45,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Determine whether this matrix target should upload
         id: matrix_gate
@@ -63,7 +65,12 @@ jobs:
             CURRENT_SHA="${{ github.sha }}"
 
             if [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
-              if git diff --name-only "$BEFORE_SHA" "$CURRENT_SHA" -- "${{ matrix.src_dir }}/" | grep -q .; then
+              if git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+                if git diff --name-only "$BEFORE_SHA" "$CURRENT_SHA" -- "${{ matrix.src_dir }}/" | grep -q .; then
+                  SHOULD_UPLOAD=true
+                fi
+              else
+                echo "Previous SHA '$BEFORE_SHA' is not available in this checkout. Forcing upload to avoid missing workshop updates."
                 SHOULD_UPLOAD=true
               fi
             else
