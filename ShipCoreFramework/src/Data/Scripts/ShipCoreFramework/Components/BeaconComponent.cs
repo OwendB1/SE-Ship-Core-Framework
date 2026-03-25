@@ -40,6 +40,7 @@ namespace ShipCoreFramework
             BeaconBlock.IsWorkingChanged -= OnModuleWorkingChanged;
             BeaconBlock.PropertiesChanged -= OnPropertiesChanged;
             RestoreDefaults();
+            BeaconBlock = null;
             _groupComponent.EnforceOverCapacity();
         }
         private void OnModuleWorkingChanged(IMyCubeBlock obj)
@@ -73,7 +74,7 @@ namespace ShipCoreFramework
 
         internal void SyncForceBroadcast()
         {
-            if (BeaconBlock == null || !_groupComponent.ShipCore.ForceBroadCast) return;
+            if (!IsBeaconAvailable() || !_groupComponent.ShipCore.ForceBroadCast) return;
 
             if (!ShouldForceBroadcast())
             {
@@ -99,7 +100,7 @@ namespace ShipCoreFramework
 
         private void CaptureDefaults(bool overwrite = true)
         {
-            if (BeaconBlock == null) return;
+            if (!IsBeaconAvailable()) return;
             if (_hasCapturedDefaults && !overwrite) return;
 
             _defaultRadius = BeaconBlock.GetValue<float>("Radius");
@@ -109,7 +110,7 @@ namespace ShipCoreFramework
 
         private void RestoreDefaults()
         {
-            if (BeaconBlock == null || !_hasCapturedDefaults) return;
+            if (!IsBeaconAvailable() || !_hasCapturedDefaults) return;
 
             _isUpdatingProperties = true;
             try
@@ -121,6 +122,16 @@ namespace ShipCoreFramework
             {
                 _isUpdatingProperties = false;
             }
+        }
+
+        private bool IsBeaconAvailable()
+        {
+            return BeaconBlock != null
+                && !BeaconBlock.MarkedForClose
+                && !BeaconBlock.Closed
+                && BeaconBlock.CubeGrid != null
+                && !BeaconBlock.CubeGrid.MarkedForClose
+                && !BeaconBlock.CubeGrid.Closed;
         }
     }
 }
