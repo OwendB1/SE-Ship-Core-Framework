@@ -40,9 +40,9 @@ namespace ShipCoreFramework
             Log(msg, 3);
         }
 
-        internal static void ShowChatMessage(string msg, string tooltip = "[Ship Cores]", long playerEntityId = 0)
+        internal static void ShowChatMessage(string msg, string tooltip = "[Ship Cores]", long playerEntityId = 0, int logPriority = 0)
         {
-            Log(msg, 1);
+            Log(msg, logPriority);
             var userId = playerEntityId == 0 ? MyAPIGateway.Session.LocalHumanPlayer?.IdentityId : playerEntityId;
             if (userId != null) MyVisualScriptLogicProvider.SendChatMessage(msg, tooltip, (long)userId);
         }

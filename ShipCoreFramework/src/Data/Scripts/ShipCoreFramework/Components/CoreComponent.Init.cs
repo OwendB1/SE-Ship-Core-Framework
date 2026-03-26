@@ -14,7 +14,7 @@ namespace ShipCoreFramework
             if (builder == 0)
             {
                 var name = CoreBlock.CustomName;
-                Utils.ShowChatMessage($"Was not able to determine builder of core {name}, removing from world!", 3);
+                Utils.ShowChatMessage($"Was not able to determine builder of core {name}, removing from world!", logPriority: 3);
                 CoreBlock.SlimBlock.RemoveAndRefund();
                 return false;
             }
