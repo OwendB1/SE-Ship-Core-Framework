@@ -14,7 +14,7 @@ namespace ShipCoreFramework
             if (builder == 0)
             {
                 var name = CoreBlock.CustomName;
-                Utils.ShowChatMessage($"Was not able to determine builder of core {name}, removing from world!");
+                Utils.ShowChatMessage($"Was not able to determine builder of core {name}, removing from world!", 3);
                 CoreBlock.SlimBlock.RemoveAndRefund();
                 return false;
             }
@@ -76,18 +76,16 @@ namespace ShipCoreFramework
 
             if (CheckIfCoreOfOtherTypeExists())
             {
-                Utils.Log($"Other Core Exist: {CoreBlock.CubeGrid.CustomName}", 3);
+                Utils.ShowNotification($"Other Core Type Exist On Grid: {CoreBlock.CubeGrid.CustomName}", builder);
                 CoreBlock.SlimBlock.RemoveAndRefund();
-                Utils.ShowNotification("Other Core Type Exist On Grid", builder);
                 return false;
             }
 
             if (groupComponent.CoreDictionary.Count > groupComponent.ShipCore?.MaxBackupCores &&
                 groupComponent.ShipCore?.MaxBackupCores > 0)
             {
-                Utils.Log($"Exceeds max number of backup cores: {CoreBlock.CubeGrid.CustomName}", 2);
+                Utils.ShowNotification($"This core exceeds max number of backup cores: {CoreBlock.CubeGrid.CustomName}", builder);
                 CoreBlock.SlimBlock.RemoveAndRefund();
-                Utils.ShowNotification("This core exceeds max backup cores", builder);
                 return false;
             }
 

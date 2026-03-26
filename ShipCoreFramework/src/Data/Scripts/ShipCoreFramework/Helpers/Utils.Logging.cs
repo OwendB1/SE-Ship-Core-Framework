@@ -37,7 +37,7 @@ namespace ShipCoreFramework
                 Session.Networking.SendToPlayer(new PacketNotify(msg, disappearTime, font), steamUserId);
             }
 
-            Log(msg, 1);
+            Log(msg, 3);
         }
 
         internal static void ShowChatMessage(string msg, string tooltip = "[Ship Cores]", long playerEntityId = 0)
