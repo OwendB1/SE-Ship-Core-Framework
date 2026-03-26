@@ -20,7 +20,7 @@ namespace ShipCoreFramework
                 if (startGrid.IsPreview) return;
 
                 var gridComp = new GridComponent();
-                TryAddGridComponent(startGrid, gridComp);
+                GridDictionary.Add(startGrid, gridComp);
                 gridComp.Init(startGrid, MyGroup);
             }
         }
@@ -82,7 +82,7 @@ namespace ShipCoreFramework
             if (TryGetGridComponent(g, out discard)) return;
             var gc = new GridComponent();
             gc.Init(g, addedTo);
-            TryAddGridComponent(g, gc);
+            GridDictionary.Add(g, gc);
 
             Utils.Log($"OnGridAdded: {grid.EntityId}, {OwnerId}, {grid.CustomName}", 2);
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
@@ -125,7 +125,7 @@ namespace ShipCoreFramework
                 }
 
                 comp.Clean();
-                RemoveGridComponent(g);
+                GridDictionary.Remove(g);
             }
 
             if (GridCount == 0)

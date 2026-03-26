@@ -31,11 +31,10 @@ namespace ShipCoreFramework
 
             MyAPIGateway.Parallel.StartBackground(() =>
             {
-                MyAPIGateway.Parallel.ForEach(groupStartList, GridGroupsOnOnGridGroupCreated);
-                // foreach(var group in groupStartList)
-                // {
-                //     GridGroupsOnOnGridGroupCreated(group);
-                // }
+                foreach(var group in groupStartList)
+                {
+                    GridGroupsOnOnGridGroupCreated(group);
+                }
             });
         }
         

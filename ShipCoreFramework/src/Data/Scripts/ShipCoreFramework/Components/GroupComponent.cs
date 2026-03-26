@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.ModAPI;
@@ -34,27 +33,14 @@ namespace ShipCoreFramework
         internal CoreComponent MainCoreComponent;
 
         internal readonly Dictionary<BlockLimit, LimitBucket> Limits = new Dictionary<BlockLimit, LimitBucket>();
-
-        internal readonly ConcurrentDictionary<MyCubeGrid, GridComponent> GridDictionary =
-            new ConcurrentDictionary<MyCubeGrid, GridComponent>();
+        internal readonly Dictionary<MyCubeGrid, GridComponent> GridDictionary = new Dictionary<MyCubeGrid, GridComponent>();
 
         internal Dictionary<IMyCubeBlock, CoreComponent> CoreDictionary =>
             Utils.Flatten(GridDictionary.Values, component => component.CoreDictionary);
-
-        private void TryAddGridComponent(MyCubeGrid grid, GridComponent gridComponent)
-        {
-            GridDictionary.TryAdd(grid, gridComponent);
-        }
-
+        
         private bool TryGetGridComponent(MyCubeGrid grid, out GridComponent component)
         {
             return GridDictionary.TryGetValue(grid, out component);
-        }
-
-        private void RemoveGridComponent(MyCubeGrid grid)
-        {
-            GridComponent discard;
-            GridDictionary.TryRemove(grid, out discard);
         }
 
         private int GridCount => GridDictionary.Count;
