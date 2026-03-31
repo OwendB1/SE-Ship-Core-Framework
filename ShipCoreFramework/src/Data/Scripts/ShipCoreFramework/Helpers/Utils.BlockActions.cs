@@ -40,8 +40,8 @@ namespace ShipCoreFramework
                 var refund = ComputeRefundComponents(block);
                 PutComponentsIntoInventory(selectedInventory, refund);
             }
-
-            grid.RemoveBlock(block, updatePhysics: true);
+            
+            grid.RemoveBlock(block, Session.HasStarted);
 
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {

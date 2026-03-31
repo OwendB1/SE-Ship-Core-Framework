@@ -240,7 +240,6 @@ namespace ShipCoreFramework
                         Session.Config.SelectedNoCore = DefaultNoCoreConfig.ShipCore;
 
                     Session.ApplyConfigToDefinitions();
-                    Session.HasSyncedServerConfig = true;
                 }
                 catch (System.Exception e)
                 {

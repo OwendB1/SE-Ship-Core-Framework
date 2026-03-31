@@ -22,7 +22,6 @@ namespace ShipCoreFramework
         internal static bool IsServer;
         internal static bool MpActive;
         internal static bool HasStarted;
-        internal static bool HasSyncedServerConfig;
         internal static bool IsShuttingDown;
         internal static ModConfig Config = new ModConfig();
         internal static Networking Networking = new Networking(32124);

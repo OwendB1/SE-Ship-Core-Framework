@@ -51,17 +51,14 @@ namespace ShipCoreFramework
             if (IsServer)
             {
                 ApplyConfigToDefinitions();
-                HasSyncedServerConfig = true;
             }
             else if (MpActive)
             {
-                HasSyncedServerConfig = false;
                 Networking.SendToServer(new PacketRequestConfig());
             }
             else
             {
                 ApplyConfigToDefinitions();
-                HasSyncedServerConfig = true;
             }
             
             MyAPIGateway.Session.OnSessionReady += SessionReady;
