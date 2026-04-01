@@ -36,6 +36,7 @@ namespace ShipCoreFramework
             var punishments = GroupPunishmentFlags.None;
 
             ChainPunishmentGate(ref punishments, IsOverCoreCapacity(), GetMobilityPunishmentFlags());
+            ChainPunishmentGate(ref punishments, IsBelowMinPlayers(), GroupPunishmentFlags.Both);
             ChainPunishmentGate(ref punishments, IsAtOrOverMaxPlayers(), GroupPunishmentFlags.Both);
             ChainPunishmentGate(ref punishments, HasBrokenMainCore(), GroupPunishmentFlags.Both);
             ChainPunishmentGate(ref punishments, ShipCore.ForceBroadCast && !HasWorkingBeacon(), GroupPunishmentFlags.Both);
@@ -74,6 +75,11 @@ namespace ShipCoreFramework
         private bool IsAtOrOverMaxPlayers()
         {
             return ShipCore.MaxPlayers > 0 && GetFactionPlayerCount() >= ShipCore.MaxPlayers;
+        }
+
+        private bool IsBelowMinPlayers()
+        {
+            return ShipCore.MinPlayers > 0 && GetFactionPlayerCount() < ShipCore.MinPlayers;
         }
 
         private int GetFactionPlayerCount()

@@ -48,18 +48,7 @@ namespace ShipCoreFramework
             {
                 var removedFactionGroups = GetAffectedGroupsForFactionChange(factionId, 0).ToList();
                 GridsPerFactionManager.RemoveFaction(factionId);
-
-                foreach (var comp in removedFactionGroups
-                             .Where(group => group.ShipCore.MinPlayers > 0 &&
-                                             MyAPIGateway.Session.Factions.TryGetPlayerFaction(group.OwnerId) == null)
-                             .ToList())
-                {
-                    comp.MainCoreComponent.CoreBlock.SlimBlock.RemoveAndRefund();
-                    removedFactionGroups.Remove(comp);
-                }
-
                 EnforceOverCapacityForGroups(removedFactionGroups);
-
                 return;
             }
 
@@ -71,7 +60,6 @@ namespace ShipCoreFramework
             }
 
             var oldFactionId = fromFactionId > 0 ? fromFactionId : factionId;
-            var playerFaction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(playerId);
             var affectedGroups = GetAffectedGroupsForFactionChange(oldFactionId, playerId).ToList();
 
             foreach (var comp in affectedGroups
@@ -79,12 +67,6 @@ namespace ShipCoreFramework
                          .ToList())
             {
                 GridsPerFactionManager.RemoveGridGroup(oldFactionId, comp.ShipCore.SubtypeId);
-
-                if (comp.ShipCore.MinPlayers > 0 && playerFaction == null)
-                {
-                    comp.MainCoreComponent.CoreBlock.SlimBlock.RemoveAndRefund();
-                    affectedGroups.Remove(comp);
-                }
             }
 
             EnforceOverCapacityForGroups(affectedGroups);
