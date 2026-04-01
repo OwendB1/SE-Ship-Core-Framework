@@ -75,16 +75,40 @@ namespace ShipCoreFramework
         internal static void RemoveGridGroup(IMyFaction owningFaction, string coreType)
         {
             if (owningFaction == null) return;
-            
+
+            RemoveGridGroup(owningFaction.FactionId, coreType);
+        }
+
+        internal static void RemoveGridGroup(long factionId, string coreType)
+        {
+            if (factionId <= 0) return;
+
             Dictionary<string, int> perGroup;
-            if (!PerFaction.TryGetValue(owningFaction.FactionId, out perGroup)) return;
-            
+            if (!PerFaction.TryGetValue(factionId, out perGroup)) return;
+
             int value;
             if (!perGroup.TryGetValue(coreType, out value)) return;
             if (value <= 0) return;
-            
+
             perGroup[coreType]--;
-            if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = owningFaction.FactionId, CoreType = coreType, Delta = -1 });
+            if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = factionId, CoreType = coreType, Delta = -1 });
+        }
+
+        internal static void RemoveFaction(long factionId)
+        {
+            if (factionId <= 0) return;
+
+            Dictionary<string, int> perGroup;
+            if (!PerFaction.TryGetValue(factionId, out perGroup)) return;
+
+            foreach (var coreType in perGroup.Keys.ToList())
+            {
+                var value = perGroup[coreType];
+                if (value <= 0) continue;
+
+                perGroup[coreType] = 0;
+                if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = factionId, CoreType = coreType, Delta = -value });
+            }
         }
 
         internal static void Reset()

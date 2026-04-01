@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
-using VRage.ModAPI;
 
 namespace ShipCoreFramework
 {
@@ -43,21 +42,36 @@ namespace ShipCoreFramework
         {
             if (Config.SelectedNoCore == null) return;
             if (action != MyFactionStateChange.FactionMemberKick &&
-                action != MyFactionStateChange.FactionMemberLeave) return;
-            Utils.Log(
-                $"FactionStateChanged: {action} from {fromFactionId} to {toFactionId} for faction {factionId} and player {playerId}");
-            
-            var gridEntities = new HashSet<IMyEntity>();
-            MyAPIGateway.Entities.GetEntities(gridEntities, entity => entity is IMyCubeGrid);
-            var physicalGrids = gridEntities.Cast<IMyCubeGrid>().Where(grid => grid.Physics != null).ToList();
-            
-            var factionGridLogics = physicalGrids
-                .Select(x => x.GetGroupComponent())
-                .Where(comp => comp?.OwningFaction?.FactionId == factionId)
-                .ToList();
-                
-            foreach (var comp in factionGridLogics.Where(group => group.OwningFaction.Members.Count < group.ShipCore.MinPlayers))
-                comp.ResetCore();
+                action != MyFactionStateChange.FactionMemberLeave &&
+                action != MyFactionStateChange.RemoveFaction) return;
+            Utils.Log($"FactionStateChanged: {action} from {fromFactionId} to {toFactionId} for faction {factionId} and player {playerId}");
+
+            if (action == MyFactionStateChange.RemoveFaction)
+            {
+                GridsPerFactionManager.RemoveFaction(factionId);
+
+                foreach (var comp in GroupDict.Values
+                             .Where(group => group.MainCoreComponent != null &&
+                                             group.ShipCore.MinPlayers > 0 &&
+                                             MyAPIGateway.Session.Factions.TryGetPlayerFaction(group.OwnerId) == null)
+                             .ToList())
+                    comp.MainCoreComponent.CoreBlock.SlimBlock.RemoveAndRefund();
+
+                return;
+            }
+
+            var oldFactionId = fromFactionId > 0 ? fromFactionId : factionId;
+            var playerFaction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(playerId);
+
+            foreach (var comp in GroupDict.Values
+                         .Where(group => group.MainCoreComponent != null && group.OwnerId == playerId)
+                         .ToList())
+            {
+                GridsPerFactionManager.RemoveGridGroup(oldFactionId, comp.ShipCore.SubtypeId);
+
+                if (comp.ShipCore.MinPlayers > 0 && playerFaction == null)
+                    comp.MainCoreComponent.CoreBlock.SlimBlock.RemoveAndRefund();
+            }
         }
         
         private static void SessionReady()
