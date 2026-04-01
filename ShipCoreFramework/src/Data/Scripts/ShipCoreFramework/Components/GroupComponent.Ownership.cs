@@ -53,8 +53,7 @@ namespace ShipCoreFramework
                     GridsPerFactionManager.AddGridGroup(newOwningFaction, coreType);
                     GridsPerPlayerManager.AddGridGroup(ownerId, coreType);
 
-                    var isWithinFactionLimits =
-                        GridsPerFactionManager.IsGroupWithinFactionLimits(newOwningFaction, ownerId, coreType);
+                    var isWithinFactionLimits = GridsPerFactionManager.IsGroupWithinFactionLimits(newOwningFaction, ownerId, coreType);
                     var isWithinPlayerLimits = GridsPerPlayerManager.IsGroupWithinPlayerLimits(ownerId, coreType);
                     if (!isWithinFactionLimits || !isWithinPlayerLimits)
                     {
