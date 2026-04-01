@@ -40,12 +40,11 @@ namespace ShipCoreFramework
                 var refund = ComputeRefundComponents(block);
                 PutComponentsIntoInventory(selectedInventory, refund);
             }
-            
-            grid.RemoveBlock(block, Session.HasStarted);
 
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
                 if (grid.MarkedForClose || grid.Closed) return;
+                grid.RemoveBlock(block, Session.HasStarted);
                 var projectors = grid.GetFatBlocks<IMyProjector>().ToList();
                 foreach (var projector in projectors) projector.Enabled = false;
             });
