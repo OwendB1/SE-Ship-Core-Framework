@@ -75,7 +75,7 @@ namespace ShipCoreFramework
         {
             if (IsIgnoredGroup()) return;
 
-            EnforceOverCapacity();
+            RefreshPunishmentFlags();
 
             var totalBlocksPunished = 0;
             foreach (var kv in Limits)

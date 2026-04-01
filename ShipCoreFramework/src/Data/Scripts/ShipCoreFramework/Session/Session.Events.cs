@@ -41,43 +41,82 @@ namespace ShipCoreFramework
             long factionId, long playerId)
         {
             if (Config.SelectedNoCore == null) return;
-            if (action != MyFactionStateChange.FactionMemberKick &&
-                action != MyFactionStateChange.FactionMemberLeave &&
-                action != MyFactionStateChange.RemoveFaction) return;
+            if (!IsRelevantFactionStateChange(action)) return;
             Utils.Log($"FactionStateChanged: {action} from {fromFactionId} to {toFactionId} for faction {factionId} and player {playerId}");
 
             if (action == MyFactionStateChange.RemoveFaction)
             {
+                var removedFactionGroups = GetAffectedGroupsForFactionChange(factionId, 0).ToList();
                 GridsPerFactionManager.RemoveFaction(factionId);
 
-                foreach (var comp in GroupDict.Values
-                             .Where(group => group.MainCoreComponent != null &&
-                                             group.ShipCore.MinPlayers > 0 &&
+                foreach (var comp in removedFactionGroups
+                             .Where(group => group.ShipCore.MinPlayers > 0 &&
                                              MyAPIGateway.Session.Factions.TryGetPlayerFaction(group.OwnerId) == null)
                              .ToList())
+                {
                     comp.MainCoreComponent.CoreBlock.SlimBlock.RemoveAndRefund();
+                    removedFactionGroups.Remove(comp);
+                }
 
+                EnforceOverCapacityForGroups(removedFactionGroups);
+
+                return;
+            }
+
+            if (action == MyFactionStateChange.FactionMemberAcceptJoin)
+            {
+                var newFactionId = toFactionId > 0 ? toFactionId : factionId;
+                EnforceOverCapacityForGroups(GetAffectedGroupsForFactionChange(newFactionId, playerId));
                 return;
             }
 
             var oldFactionId = fromFactionId > 0 ? fromFactionId : factionId;
             var playerFaction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(playerId);
+            var affectedGroups = GetAffectedGroupsForFactionChange(oldFactionId, playerId).ToList();
 
-            foreach (var comp in GroupDict.Values
-                         .Where(group => group.MainCoreComponent != null && group.OwnerId == playerId)
+            foreach (var comp in affectedGroups
+                         .Where(group => group.OwnerId == playerId)
                          .ToList())
             {
                 GridsPerFactionManager.RemoveGridGroup(oldFactionId, comp.ShipCore.SubtypeId);
 
                 if (comp.ShipCore.MinPlayers > 0 && playerFaction == null)
+                {
                     comp.MainCoreComponent.CoreBlock.SlimBlock.RemoveAndRefund();
+                    affectedGroups.Remove(comp);
+                }
             }
+
+            EnforceOverCapacityForGroups(affectedGroups);
         }
         
         private static void SessionReady()
         {
             if (Config.SelectedNoCore == null || !IsServer) return;
             MyAPIGateway.Session.DamageSystem.RegisterBeforeDamageHandler(-100, CubeGridModifiers.GridCoreDamageHandler);
+        }
+
+        private static bool IsRelevantFactionStateChange(MyFactionStateChange action)
+        {
+            return action == MyFactionStateChange.FactionMemberAcceptJoin ||
+                   action == MyFactionStateChange.FactionMemberKick ||
+                   action == MyFactionStateChange.FactionMemberLeave ||
+                   action == MyFactionStateChange.RemoveFaction;
+        }
+
+        private static IEnumerable<GroupComponent> GetAffectedGroupsForFactionChange(long factionId, long playerId)
+        {
+            return GroupDict.Values.Where(group => group.MainCoreComponent != null &&
+                                                   (group.OwnerId == playerId ||
+                                                    factionId > 0 &&
+                                                    group.OwningFaction != null &&
+                                                    group.OwningFaction.FactionId == factionId));
+        }
+
+        private static void EnforceOverCapacityForGroups(IEnumerable<GroupComponent> groups)
+        {
+            foreach (var comp in groups.Where(group => group?.MainCoreComponent != null).Distinct().ToList())
+                comp.RefreshPunishmentState();
         }
     }
 }

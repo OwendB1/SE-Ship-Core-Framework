@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
@@ -6,73 +7,117 @@ namespace ShipCoreFramework
 {
     public partial class GroupComponent
     {
-        internal void EnforceOverCapacity()
+        [Flags]
+        private enum GroupPunishmentFlags
         {
-            if ((ShipCore.MaxBlocks > 0 && GroupBlocksCount >= ShipCore.MaxBlocks) ||
-                (ShipCore.MaxPCU > 0 && GroupPCU >= ShipCore.MaxPCU) ||
-                (ShipCore.MaxMass > 0 && GroupMass >= ShipCore.MaxMass))
+            None = 0,
+            Speed = 1,
+            Modifiers = 2,
+            Both = Speed | Modifiers
+        }
+
+        internal void RefreshPunishmentState()
+        {
+            var mainCoreChanged = EnsureWorkingMainCore();
+            var previousPunishModifiers = PunishModifiers;
+
+            RefreshPunishmentFlags();
+            if (mainCoreChanged || previousPunishModifiers != PunishModifiers) ApplyModifiers(Modifiers);
+            UpdateDefenseModifierCache();
+        }
+
+        internal void RefreshPunishmentFlags()
+        {
+            ApplyPunishmentFlags(EvaluatePunishmentGates());
+        }
+
+        private GroupPunishmentFlags EvaluatePunishmentGates()
+        {
+            var punishments = GroupPunishmentFlags.None;
+
+            ChainPunishmentGate(ref punishments, IsOverCoreCapacity(), GetMobilityPunishmentFlags());
+            ChainPunishmentGate(ref punishments, IsAtOrOverMaxPlayers(), GroupPunishmentFlags.Both);
+            ChainPunishmentGate(ref punishments, HasBrokenMainCore(), GroupPunishmentFlags.Both);
+            ChainPunishmentGate(ref punishments, ShipCore.ForceBroadCast && !HasWorkingBeacon(), GroupPunishmentFlags.Both);
+
+            return punishments;
+        }
+
+        private static void ChainPunishmentGate(ref GroupPunishmentFlags punishments, bool isTriggered,
+            GroupPunishmentFlags flags)
+        {
+            if (!isTriggered) return;
+            punishments |= flags;
+        }
+
+        private GroupPunishmentFlags GetMobilityPunishmentFlags()
+        {
+            switch (ShipCore.MobilityType)
             {
-                if (ShipCore.MobilityType == MobilityType.Mobile) PunishSpeed = true;
-                if (ShipCore.MobilityType == MobilityType.Static) PunishModifiers = true;
-                if (ShipCore.MobilityType == MobilityType.Both)
-                {
-                    PunishModifiers = true;
-                    PunishSpeed = true;
-                }
-
-                var modifiers = _activeDefenseEnabled ? GetActiveDefenseModifiers() : GetPassiveDefenseModifiers();
-                foreach (var kvp in GridDictionary) CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
+                case MobilityType.Mobile:
+                    return GroupPunishmentFlags.Speed;
+                case MobilityType.Static:
+                    return GroupPunishmentFlags.Modifiers;
+                case MobilityType.Both:
+                default:
+                    return GroupPunishmentFlags.Both;
             }
-            else
-            {
-                if (ShipCore.MobilityType == MobilityType.Mobile) PunishSpeed = false;
-                if (ShipCore.MobilityType == MobilityType.Static) PunishModifiers = false;
-                if (ShipCore.MobilityType == MobilityType.Both)
-                {
-                    PunishModifiers = false;
-                    PunishSpeed = false;
-                }
+        }
 
-                var mainCoreBlock = MainCoreComponent?.CoreBlock;
-                if (mainCoreBlock != null)
-                {
-                    if (!mainCoreBlock.IsWorking && CoreDictionary.Any())
-                    {
-                        var newMain = CoreDictionary.Values.FirstOrDefault(core => !core.IsMainCore && core.CoreBlock.IsWorking);
-                        if (newMain != null)
-                        {
-                            Utils.ShowNotification($"Switching to new main core: {newMain.CoreBlock.CustomName}, old one was no longer functional!");
-                            MainCoreComponent.IsMainCore = false;
+        private bool IsOverCoreCapacity()
+        {
+            return (ShipCore.MaxBlocks > 0 && GroupBlocksCount >= ShipCore.MaxBlocks) ||
+                   (ShipCore.MaxPCU > 0 && GroupPCU >= ShipCore.MaxPCU) ||
+                   (ShipCore.MaxMass > 0 && GroupMass >= ShipCore.MaxMass);
+        }
 
-                            MainCoreComponent = newMain;
-                            MainCoreComponent.IsMainCore = true;
-                            SyncBeaconComponents();
-                        }
-                        else
-                        {
-                            PunishModifiers = true;
-                            PunishSpeed = true;
-                            ApplyModifiers(Modifiers);
-                        }
-                    }
-                    else
-                    {
-                        PunishModifiers = false;
-                        PunishSpeed = false;
-                        ApplyModifiers(Modifiers);
-                    }
-                }
+        private bool IsAtOrOverMaxPlayers()
+        {
+            return ShipCore.MaxPlayers > 0 && GetFactionPlayerCount() >= ShipCore.MaxPlayers;
+        }
 
-                if (ShipCore.ForceBroadCast && !HasWorkingBeacon())
-                {
-                    PunishModifiers = true;
-                    PunishSpeed = true;
-                    ApplyModifiers(Modifiers);
-                }
+        private int GetFactionPlayerCount()
+        {
+            var faction = OwningFaction;
+            if (faction != null) return faction.Members.Count;
+            return OwnerId > 0 ? 1 : 0;
+        }
 
-                var modifiers = _activeDefenseEnabled ? GetActiveDefenseModifiers() : GetPassiveDefenseModifiers();
-                foreach (var kvp in GridDictionary) CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
-            }
+        private bool HasBrokenMainCore()
+        {
+            var mainCoreBlock = MainCoreComponent?.CoreBlock;
+            return mainCoreBlock != null && !mainCoreBlock.IsWorking;
+        }
+
+        private bool EnsureWorkingMainCore()
+        {
+            var currentMain = MainCoreComponent;
+            var mainCoreBlock = currentMain?.CoreBlock;
+            if (mainCoreBlock == null || mainCoreBlock.IsWorking || !CoreDictionary.Any()) return false;
+
+            var newMain = CoreDictionary.Values.FirstOrDefault(core => !core.IsMainCore && core.CoreBlock.IsWorking);
+            if (newMain == null) return false;
+
+            Utils.ShowNotification(
+                $"Switching to new main core: {newMain.CoreBlock.CustomName}, old one was no longer functional!");
+
+            currentMain.IsMainCore = false;
+            MainCoreComponent = newMain;
+            MainCoreComponent.IsMainCore = true;
+            SyncBeaconComponents();
+            return true;
+        }
+
+        private void ApplyPunishmentFlags(GroupPunishmentFlags punishments)
+        {
+            PunishSpeed = (punishments & GroupPunishmentFlags.Speed) != 0;
+            PunishModifiers = (punishments & GroupPunishmentFlags.Modifiers) != 0;
+        }
+
+        private void UpdateDefenseModifierCache()
+        {
+            var modifiers = _activeDefenseEnabled ? GetActiveDefenseModifiers() : GetPassiveDefenseModifiers();
+            foreach (var kvp in GridDictionary) CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
         }
 
         private bool HasWorkingBeacon()

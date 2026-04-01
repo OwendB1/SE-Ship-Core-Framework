@@ -35,10 +35,10 @@ namespace ShipCoreFramework
                 RebuildConnectorPunishmentLinks();
                 RecalculateAllLimits();
                 RefreshMinimumBlocksPunishmentState();
+                RefreshPunishmentFlags();
                 ApplyModifiers(Modifiers);
                 DefenseValuesChanged();
                 EnforceGroupPunishment(_minimumBlocksPunishmentActive);
-                EnforceOverCapacity();
             }
             finally
             {

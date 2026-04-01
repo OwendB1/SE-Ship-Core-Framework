@@ -101,6 +101,9 @@ namespace ShipCoreFramework
         [XmlElement("MinPlayers")]
         public int MinPlayers = -1;
 
+        [XmlElement("MaxPlayers")]
+        public int MaxPlayers = -1;
+
         [XmlElement("AllowedUpgradeModules")]
         public UpgradeModuleAllowance[] AllowedUpgradeModules = Array.Empty<UpgradeModuleAllowance>();
 

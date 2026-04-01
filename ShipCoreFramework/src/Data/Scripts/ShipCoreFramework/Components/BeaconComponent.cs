@@ -29,7 +29,7 @@ namespace ShipCoreFramework
             BeaconBlock.IsWorkingChanged += OnModuleWorkingChanged;
             BeaconBlock.PropertiesChanged += OnPropertiesChanged;
             SyncForceBroadcast();
-            _groupComponent.EnforceOverCapacity();
+            _groupComponent.RefreshPunishmentState();
             return true;
         }
 
@@ -41,7 +41,7 @@ namespace ShipCoreFramework
             BeaconBlock.PropertiesChanged -= OnPropertiesChanged;
             RestoreDefaults();
             BeaconBlock = null;
-            _groupComponent.EnforceOverCapacity();
+            _groupComponent.RefreshPunishmentState();
         }
         private void OnModuleWorkingChanged(IMyCubeBlock obj)
         {
@@ -49,7 +49,7 @@ namespace ShipCoreFramework
 
             SyncForceBroadcast();
             if (ShouldForceBroadcast()) BeaconBlock.Enabled = true;
-            _groupComponent.EnforceOverCapacity();
+            _groupComponent.RefreshPunishmentState();
         }
 
         private void OnPropertiesChanged(IMyTerminalBlock obj)

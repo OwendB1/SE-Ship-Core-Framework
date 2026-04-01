@@ -27,22 +27,33 @@ namespace ShipCoreFramework
                 return false;
             }
 
-            var maxAllowedGrids = Config.GetShipCoreByTypeId(coreType).MaxPerFaction;
-            var minNeededPlayers = Config.GetShipCoreByTypeId(coreType).MinPlayers;
+            var core = Config.GetShipCoreByTypeId(coreType);
+            var maxAllowedGrids = core.MaxPerFaction;
+            var minNeededPlayers = core.MinPlayers;
+            var maxAllowedPlayers = core.MaxPlayers;
 
-            if (maxAllowedGrids < 0) return true;
             if (factionId == -1 && minNeededPlayers > 1)
             {
                 Utils.ShowChatMessage($"Player is not in Faction [OwningPlayer:{ownerId}] and therefore cannot build faction limited core: {coreType}");
                 return false;
             }
 
-            if (owningFaction?.Members.Count < minNeededPlayers)
+            var playerCount = owningFaction?.Members.Count ?? (ownerId > 0 ? 1 : 0);
+
+            if (playerCount < minNeededPlayers)
             {
-                Utils.ShowChatMessage($"{owningFaction.Members.Count}/{minNeededPlayers} players needed to build: {coreType}");
+                Utils.ShowChatMessage($"{playerCount}/{minNeededPlayers} players needed to build: {coreType}");
                 return false;
             }
 
+            if (maxAllowedPlayers > 0 && playerCount > maxAllowedPlayers)
+            {
+                Utils.ShowChatMessage(
+                    $"{playerCount}/{maxAllowedPlayers} players exceeds the allowed faction size for: {coreType}");
+                return false;
+            }
+
+            if (maxAllowedGrids < 0) return true;
             if (!PerFaction.ContainsKey(factionId) || !PerFaction[factionId].ContainsKey(coreType)) return true;
             var currentCount = PerFaction[factionId][coreType];
             if (currentCount <= maxAllowedGrids) return true;

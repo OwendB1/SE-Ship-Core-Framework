@@ -9,7 +9,7 @@ namespace ShipCoreFramework
     {
         private void OnIsWorkingChanged(IMyCubeBlock obj)
         {
-            _groupComponent.EnforceOverCapacity();
+            _groupComponent.RefreshPunishmentState();
         }
 
         private void OnUpgradeValuesChanged()
