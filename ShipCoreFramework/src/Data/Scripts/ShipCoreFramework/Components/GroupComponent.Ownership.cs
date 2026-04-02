@@ -54,10 +54,10 @@ namespace ShipCoreFramework
 
                         ownerId = _lastOwnerId;
                     }
+                    SaveOwnerIdToMainCore(ownerId);
                 }
 
                 _lastOwnerId = ownerId;
-                SaveOwnerIdToMainCore(ownerId);
                 return ownerId;
             }
         }
