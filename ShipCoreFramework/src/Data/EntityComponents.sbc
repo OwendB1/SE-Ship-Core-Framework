@@ -18,5 +18,14 @@
         <guid>f5bad034-f449-4a0a-a1a5-190783244f3d</guid>
       </RegisteredStorageGuids>
     </EntityComponent>
+    <EntityComponent xsi:type="MyObjectBuilder_ModStorageComponentDefinition">
+      <Id>
+        <TypeId>ModStorageComponent</TypeId>
+        <SubtypeId>CoreLastOwner</SubtypeId>
+      </Id>
+      <RegisteredStorageGuids>
+        <guid>3521026e-9025-4c62-9de7-98379fd2439d</guid>
+      </RegisteredStorageGuids>
+    </EntityComponent>
   </EntityComponents>
 </Definitions>

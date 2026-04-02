@@ -28,6 +28,7 @@ namespace ShipCoreFramework
         internal static float AppliedSpeedDifferential;
         internal static readonly ConcurrentDictionary<IMyGridGroupData, GroupComponent> GroupDict = new ConcurrentDictionary<IMyGridGroupData, GroupComponent>();
         internal static readonly Guid CoreStateStorageGUID = new Guid("a8807ad4-524d-441a-a89a-0671fbfb1dd3");
+        internal static readonly Guid CoreLastOwnerStorageGUID = new Guid("3521026e-9025-4c62-9de7-98379fd2439d");
         
         internal static IMyPlayer LocalPlayer => MyAPIGateway.Session.LocalHumanPlayer;
     }

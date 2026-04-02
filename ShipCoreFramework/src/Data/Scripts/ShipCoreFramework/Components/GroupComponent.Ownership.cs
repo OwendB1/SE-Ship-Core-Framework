@@ -1,5 +1,6 @@
 using System.Linq;
 using Sandbox.Game.Entities;
+using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.Entity;
@@ -18,6 +19,7 @@ namespace ShipCoreFramework
                 {
                     ownerId = MainCoreComponent.CoreBlock.OwnerId;
                     ownerId = ownerId == 0 ? MainCoreComponent.CoreBlock.SlimBlock.BuiltBy : ownerId;
+                    ownerId = ownerId == 0 ? GetSavedOwnerIdFromMainCore() : ownerId;
                 }
                 else
                 {
@@ -55,8 +57,26 @@ namespace ShipCoreFramework
                 }
 
                 _lastOwnerId = ownerId;
+                SaveOwnerIdToMainCore(ownerId);
                 return ownerId;
             }
+        }
+        
+        private long GetSavedOwnerIdFromMainCore()
+        {
+            var storage = MainCoreComponent?.CoreBlock?.Storage;
+            if (storage == null || !storage.ContainsKey(Session.CoreLastOwnerStorageGUID)) return 0;
+
+            long ownerId;
+            return long.TryParse(storage[Session.CoreLastOwnerStorageGUID], out ownerId) ? ownerId : 0;
+        }
+
+        private void SaveOwnerIdToMainCore(long ownerId)
+        {
+            var coreBlock = MainCoreComponent?.CoreBlock;
+            if (coreBlock == null) return;
+            if (coreBlock.Storage == null) coreBlock.Storage = new MyModStorageComponent();
+            coreBlock.Storage[Session.CoreLastOwnerStorageGUID] = ownerId.ToString();
         }
 
         internal bool IsIgnoredGroup()
