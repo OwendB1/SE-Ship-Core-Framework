@@ -26,22 +26,6 @@ namespace ShipCoreFramework
 
                 if (_lastOwnerId != 0 && ownerId != 0 && _lastOwnerId != ownerId)
                 {
-                    var relation = MyIDModule.GetRelationPlayerPlayer(_lastOwnerId, ownerId);
-                    if (relation != MyRelationsBetweenPlayers.Allies)
-                    {
-                        if (MainCoreComponent == null)
-                        {
-                            _lastOwnerId = ownerId;
-                        }
-                        else
-                        {
-                            Utils.ShowChatMessage($"Not changing ownership to {ownerId} because it's not an ally!");
-                            var cube = MainCoreComponent?.CoreBlock as MyCubeBlock;
-                            cube?.ChangeOwner(_lastOwnerId, MyOwnershipShareModeEnum.Faction);
-                        }
-                        return _lastOwnerId;
-                    }
-
                     Utils.Log($"OwnerId: Changed from {_lastOwnerId} to {ownerId}", 2);
                     var newOwningFaction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(ownerId);
                     var oldOwningFaction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(_lastOwnerId);
