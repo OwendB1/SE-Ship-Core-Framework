@@ -22,3 +22,9 @@ A static configurator lives under `docs/configurator` and is deployable through 
 python3 -m http.server 8080 --directory docs
 ```
 Then open `http://localhost:8080/configurator/`.
+
+## License
+
+This project is licensed under the GNU General Public License v3.0 (GPL-3.0-or-later).
+If you distribute modified versions, you must also provide the corresponding source code
+under the same GPL terms.
