@@ -88,6 +88,7 @@ namespace ShipCoreFramework
             catch { /**/ }
 
             RevertAmmoSpeedAdjustments();
+            CoreTerminalControls.Unregister();
             
             LimitsNexusSync.Stop();
             _myNexusApi?.Unload();

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -10,6 +11,9 @@ namespace ShipCoreFramework
     {
         private const string IdPrefix = "ShipCoreFramework_CoreTerminalControls_";
         private static bool _done;
+        private static IMyTerminalControlCheckbox _mainCoreCheckbox;
+        private static IMyTerminalAction _boostAction;
+        private static IMyTerminalAction _defenseAction;
         
         public static void RegisterOnce()
         {
@@ -20,18 +24,28 @@ namespace ShipCoreFramework
             
             CreateControls();
             CreateActions();
+
+            MyAPIGateway.TerminalControls.CustomControlGetter += CustomControlGetter;
+            MyAPIGateway.TerminalControls.CustomActionGetter += CustomActionGetter;
+        }
+
+        public static void Unregister()
+        {
+            if (!_done) return;
+
+            MyAPIGateway.TerminalControls.CustomControlGetter -= CustomControlGetter;
+            MyAPIGateway.TerminalControls.CustomActionGetter -= CustomActionGetter;
+            _done = false;
         }
 
         private static void CreateControls()
         {
-            var checkbox = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyTerminalBlock>(IdPrefix + "IsMainCoreCheckbox");
-            checkbox.Title = MyStringId.GetOrCompute("Main Core");
-            checkbox.Tooltip = MyStringId.GetOrCompute("Mark this core as the main core for the grid.");
-            checkbox.SupportsMultipleBlocks = false;
-            checkbox.Visible = TerminalChainedDelegate.Create(checkbox.Visible, 
-                b => Utils.IsCoreBlock(b as IMyFunctionalBlock));
+            _mainCoreCheckbox = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyTerminalBlock>(IdPrefix + "IsMainCoreCheckbox");
+            _mainCoreCheckbox.Title = MyStringId.GetOrCompute("Main Core");
+            _mainCoreCheckbox.Tooltip = MyStringId.GetOrCompute("Mark this core as the main core for the grid.");
+            _mainCoreCheckbox.SupportsMultipleBlocks = false;
 
-            checkbox.Getter = b => {
+            _mainCoreCheckbox.Getter = b => {
                 var group = b.GetGroupComponent();
                 CoreComponent cc;
                 var cubeBlock = b as MyCubeBlock;
@@ -41,16 +55,15 @@ namespace ShipCoreFramework
                        && cc.IsMainCore;
             };
 
-            checkbox.Enabled = TerminalChainedDelegate.Create(checkbox.Enabled, b => {
-                if (!Utils.IsCoreBlock(b as IMyFunctionalBlock)) return false;
+            _mainCoreCheckbox.Enabled = b => {
                 var group = b.GetGroupComponent();
                 if (group == null) return false;
                 CoreComponent cc;
                 var cubeBlock = b as MyCubeBlock;
                 return cubeBlock != null && group.CoreDictionary.TryGetValue(cubeBlock, out cc) && !cc.IsMainCore;
-            });
+            };
 
-            checkbox.Setter = (b, val) =>
+            _mainCoreCheckbox.Setter = (b, val) =>
             {
                 if (!val) return;
                 var groupComp = b.GetGroupComponent();
@@ -83,18 +96,16 @@ namespace ShipCoreFramework
                     }
                 });
             };
-
-            MyAPIGateway.TerminalControls.AddControl<IMyFunctionalBlock>(checkbox);
         }
         
         private static void CreateActions()
         {
-            var boost = MyAPIGateway.TerminalControls.CreateAction<IMyFunctionalBlock>("ShipCore_ActivateBoost");
-            boost.Name = new StringBuilder("Activate Boost");
-            boost.Icon = @"Textures\BoostButton_Sad_Static.png";
-            boost.ValidForGroups = false;
+            _boostAction = MyAPIGateway.TerminalControls.CreateAction<IMyTerminalBlock>("ShipCore_ActivateBoost");
+            _boostAction.Name = new StringBuilder("Activate Boost");
+            _boostAction.Icon = @"Textures\BoostButton_Sad_Static.png";
+            _boostAction.ValidForGroups = false;
             
-            boost.Enabled = delegate(IMyTerminalBlock b)
+            _boostAction.Enabled = delegate(IMyTerminalBlock b)
             {
                 if (!Utils.IsCoreBlock(b as IMyFunctionalBlock)) return false;
                 var groupComp = b.GetGroupComponent();
@@ -103,7 +114,7 @@ namespace ShipCoreFramework
                 return false;
             };
             
-            boost.Action = b =>
+            _boostAction.Action = b =>
             {
                 var groupComp = b.GetGroupComponent();
                 if (groupComp == null)
@@ -113,14 +124,13 @@ namespace ShipCoreFramework
                 }
                 Session.Networking.SendToServer(new PacketAction{ActionData = new ButtonAction {CubegridEntityId = b.CubeGrid.EntityId, IsBoost = true }});
             };
-            MyAPIGateway.TerminalControls.AddAction<IMyFunctionalBlock>(boost);
 
-            var defense = MyAPIGateway.TerminalControls.CreateAction<IMyFunctionalBlock>("ShipCore_ActivateDefense");
-            defense.Name = new StringBuilder("Activate Defense");
-            defense.Icon = @"Textures\BoostButton_Sad_Static.png";
-            defense.ValidForGroups = false;
+            _defenseAction = MyAPIGateway.TerminalControls.CreateAction<IMyTerminalBlock>("ShipCore_ActivateDefense");
+            _defenseAction.Name = new StringBuilder("Activate Defense");
+            _defenseAction.Icon = @"Textures\BoostButton_Sad_Static.png";
+            _defenseAction.ValidForGroups = false;
             
-            defense.Enabled = delegate(IMyTerminalBlock b)
+            _defenseAction.Enabled = delegate(IMyTerminalBlock b)
             {
                 if (!Utils.IsCoreBlock(b as IMyFunctionalBlock)) return false;
                 var groupComp = b.GetGroupComponent();
@@ -129,7 +139,7 @@ namespace ShipCoreFramework
                 return false;
             };
             
-            defense.Action = b =>
+            _defenseAction.Action = b =>
             {
                 var groupComp = b.GetGroupComponent();
                 if (groupComp == null)
@@ -139,7 +149,36 @@ namespace ShipCoreFramework
                 }
                 Session.Networking.SendToServer(new PacketAction{ActionData = new ButtonAction {CubegridEntityId = b.CubeGrid.EntityId, IsBoost = false }});
             };
-            MyAPIGateway.TerminalControls.AddAction<IMyFunctionalBlock>(defense);
+        }
+
+        private static void CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controls)
+        {
+            if (controls == null || _mainCoreCheckbox == null) return;
+
+            ToggleMember(controls, _mainCoreCheckbox, Utils.IsCoreBlock(block as IMyFunctionalBlock));
+        }
+
+        private static void CustomActionGetter(IMyTerminalBlock block, List<IMyTerminalAction> actions)
+        {
+            if (actions == null || _boostAction == null || _defenseAction == null) return;
+
+            var isCoreBlock = Utils.IsCoreBlock(block as IMyFunctionalBlock);
+            ToggleMember(actions, _boostAction, isCoreBlock);
+            ToggleMember(actions, _defenseAction, isCoreBlock);
+        }
+
+        private static void ToggleMember<T>(List<T> list, T member, bool shouldBePresent)
+        {
+            var index = list.IndexOf(member);
+            if (shouldBePresent)
+            {
+                if (index < 0)
+                    list.Add(member);
+            }
+            else if (index >= 0)
+            {
+                list.RemoveAt(index);
+            }
         }
     }
 }
