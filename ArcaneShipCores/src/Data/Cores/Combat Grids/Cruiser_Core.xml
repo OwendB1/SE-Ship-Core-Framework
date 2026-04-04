@@ -33,7 +33,7 @@
     <ThrusterForce>1</ThrusterForce>
   </Modifiers>
   <SpeedBoostEnabled>true</SpeedBoostEnabled>
-  <SpeedLimitType>Friction</SpeedLimitType>
+  <SpeedLimitType>Normal</SpeedLimitType>
   <SpeedModifiers>
     <MaxSpeed>0.6</MaxSpeed>
     <MaxBoost>0.7</MaxBoost>
