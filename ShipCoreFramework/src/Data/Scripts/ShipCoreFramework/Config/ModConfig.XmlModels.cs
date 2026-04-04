@@ -375,8 +375,7 @@ namespace ShipCoreFramework
                 foreach (var blockType in group.BlockTypes)
                 {
                     if (blockType == null) continue;
-                    if (blockType.TypeId != key.TypeId) continue;
-                    if (blockType.SubtypeId == key.SubtypeId || blockType.SubtypeId == "any")
+                    if (blockType.Matches(key))
                         return blockType.CountWeight;
                 }
             }
@@ -419,6 +418,25 @@ namespace ShipCoreFramework
             TypeId = typeId;
             SubtypeId = subtypeId;
             CountWeight = countWeight;
+        }
+
+        internal bool Matches(BlockKey key)
+        {
+            return Matches(key.TypeId, key.SubtypeId);
+        }
+
+        internal bool Matches(string typeId, string subtypeId)
+        {
+            var configuredTypeId = (TypeId ?? string.Empty).Trim();
+            if (!string.Equals(configuredTypeId, (typeId ?? string.Empty).Trim(), StringComparison.Ordinal))
+                return false;
+
+            var configuredSubtypeId = (SubtypeId ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(configuredSubtypeId))
+                return true;
+
+            return string.Equals(configuredSubtypeId, "any", StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(configuredSubtypeId, (subtypeId ?? string.Empty).Trim(), StringComparison.Ordinal);
         }
     }
 

@@ -45,6 +45,7 @@ namespace ShipCoreFramework
                     foreach (var block in blocksCopy)
                     {
                         if (block?.CubeGrid == null) continue;
+                        var blockKey = GridComponent.KeyOf(block);
 
                         if (zone.ForceOff)
                         {
@@ -61,8 +62,7 @@ namespace ShipCoreFramework
 
                                 var match = limit.BlockGroups
                                     .SelectMany(g => g.BlockTypes)
-                                    .Any(b => b.TypeId == Utils.GetBlockTypeId(block) &&
-                                              (b.SubtypeId == "any" || b.SubtypeId == Utils.GetBlockSubtypeId(block)));
+                                    .Any(b => b != null && b.Matches(blockKey));
 
                                 if (!match) continue;
                                 if (limit.PunishByNoFlyZone) MyAPIGateway.Utilities.InvokeOnGameThread(() => block.WhackABlock(limit.PunishmentType, DamageTypeNoFlyZone));

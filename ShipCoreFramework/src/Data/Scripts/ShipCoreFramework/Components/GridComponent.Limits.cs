@@ -21,7 +21,7 @@ namespace ShipCoreFramework
                 if (limit == null) continue;
                 var hit = limit.BlockGroups.Any(group =>
                     group.BlockTypes.Any(blockType =>
-                        blockType.TypeId == blockKey.TypeId && blockType.SubtypeId == blockKey.SubtypeId));
+                        blockType != null && blockType.Matches(blockKey)));
                 if (!hit) continue;
 
                 var weight = limit.GetWeight(blockKey);
