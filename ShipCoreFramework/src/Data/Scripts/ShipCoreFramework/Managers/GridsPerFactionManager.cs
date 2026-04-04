@@ -34,7 +34,7 @@ namespace ShipCoreFramework
 
             if (factionId == -1 && minNeededPlayers > 1)
             {
-                Utils.ShowChatMessage($"Player is not in Faction [OwningPlayer:{ownerId}] and therefore cannot build faction limited core: {coreType}");
+                Utils.ShowChatMessage($"Player is not in Faction [OwningPlayer:{ownerId}] and therefore cannot build faction limited core: {coreType}", playerEntityId: ownerId);
                 return false;
             }
 
@@ -42,14 +42,14 @@ namespace ShipCoreFramework
 
             if (playerCount < minNeededPlayers)
             {
-                Utils.ShowChatMessage($"{playerCount}/{minNeededPlayers} players needed to build: {coreType}");
+                Utils.ShowChatMessage($"{playerCount}/{minNeededPlayers} players needed to build: {coreType}", playerEntityId: ownerId);
                 return false;
             }
 
             if (maxAllowedPlayers > 0 && playerCount > maxAllowedPlayers)
             {
                 Utils.ShowChatMessage(
-                    $"{playerCount}/{maxAllowedPlayers} players exceeds the allowed faction size for: {coreType}");
+                    $"{playerCount}/{maxAllowedPlayers} players exceeds the allowed faction size for: {coreType}", playerEntityId: ownerId);
                 return false;
             }
 
