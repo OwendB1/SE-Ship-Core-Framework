@@ -84,9 +84,7 @@ namespace ShipCoreFramework
 
         private int GetFactionPlayerCount()
         {
-            var faction = OwningFaction;
-            if (faction != null) return faction.Members.Count;
-            return OwnerId > 0 ? 1 : 0;
+            return GridsPerFactionManager.GetFactionPlayerCount(OwningFaction, OwnerId);
         }
 
         private bool HasBrokenMainCore()

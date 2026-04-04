@@ -373,9 +373,21 @@ namespace ShipCoreFramework
             {
                 return $"Debug mode is {(Session.Config.DebugMode ? "ON" : "OFF")}";
             }
-            var debugVal = args[1].ToLower();
+
+            var debugVal = args[1].ToLowerInvariant();
+            if (debugVal != "on" && debugVal != "off")
+            {
+                return "Usage: /core debug on|off";
+            }
+
+            if (!Session.IsServer)
+            {
+                return $"Requested world debug mode {(debugVal == "on" ? "ON" : "OFF")} from server.";
+            }
+
             Session.Config.DebugMode = (debugVal == "on");
-            return $"Debug mode set to {(Session.Config.DebugMode ? "ON" : "OFF")}";
+            Session.Config.SaveConfig(true);
+            return $"World debug mode set to {(Session.Config.DebugMode ? "ON" : "OFF")}";
         }
 
         private static string CombatLog(string[] args)
@@ -878,7 +890,7 @@ The 'forceoff' flag determines whether block limits are overridden and forced sh
 Deletes a NoFlyZone by its ID.
 
 /core debug on|off
-Toggles debug mode (Local Client)
+Toggles world debug mode and syncs it to clients.
 
 /core combatlog on|off
 Toggles combat logging (Admin Required)

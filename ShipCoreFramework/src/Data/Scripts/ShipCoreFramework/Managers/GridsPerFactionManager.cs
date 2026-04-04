@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
@@ -17,6 +18,25 @@ namespace ShipCoreFramework
         private static bool _suppressEvents;
 
         private static ModConfig Config => Session.Config;
+
+        internal static int GetFactionPlayerCount(IMyFaction owningFaction, long ownerId)
+        {
+            if (owningFaction != null)
+                return owningFaction.Members.Count(member => ShouldCountTowardsPlayerLimits(member.Key));
+
+            return ShouldCountTowardsPlayerLimits(ownerId) ? 1 : 0;
+        }
+
+        private static bool ShouldCountTowardsPlayerLimits(long identityId)
+        {
+            if (identityId <= 0)
+                return false;
+
+            if (Config.DebugMode)
+                return true;
+
+            return MyAPIGateway.Players != null && MyAPIGateway.Players.TryGetSteamId(identityId) != 0;
+        }
 
         internal static bool IsGroupWithinFactionLimits(IMyFaction owningFaction, long ownerId, string coreType)
         {
@@ -38,7 +58,7 @@ namespace ShipCoreFramework
                 return false;
             }
 
-            var playerCount = owningFaction?.Members.Count ?? (ownerId > 0 ? 1 : 0);
+            var playerCount = GetFactionPlayerCount(owningFaction, ownerId);
 
             if (playerCount < minNeededPlayers)
             {

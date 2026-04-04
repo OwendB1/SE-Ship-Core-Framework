@@ -35,7 +35,7 @@ namespace ShipCoreFramework
 
         internal void ApplyWorldSettingsFrom(ModConfig import)
         {
-            DebugMode = !Session.IsClient && import.DebugMode;
+            DebugMode = import.DebugMode;
             CombatLogging = import.CombatLogging;
             LogLevel = import.LogLevel;
             ClientOutputLogLevel = import.ClientOutputLogLevel;
