@@ -9,7 +9,7 @@ namespace ShipCoreFramework
     {
         private static void GridGroupsOnOnGridGroupCreated(IMyGridGroupData group)
         {
-            if (group.LinkType != GridLinkTypeEnum.Mechanical) return;
+            if (group == null || group.LinkType != GridLinkTypeEnum.Mechanical) return;
             
             var tempGridList = new List<IMyCubeGrid>();
             group.GetGrids(tempGridList);
