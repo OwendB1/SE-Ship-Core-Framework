@@ -103,7 +103,7 @@ namespace ShipCoreFramework
             if (!IsBeaconAvailable()) return;
             if (_hasCapturedDefaults && !overwrite) return;
 
-            _defaultRadius = BeaconBlock.GetValue<float>("Radius");
+            _defaultRadius = BeaconBlock.Radius;
             _defaultHudText = BeaconBlock.HudText;
             _hasCapturedDefaults = true;
         }
