@@ -8,20 +8,33 @@ namespace ShipCoreFramework
     [XmlRoot("ModConfig")]
     public partial class ModConfig
     {
-        [XmlIgnore] private const string IgnoreAiKey = "ShipCore.IgnoreAiV1";
-        [XmlIgnore] private const string IgnoredFactionsKey = "ShipCore.IgnoredFactionsV1";
-        [XmlIgnore] private const string SelectedNoCoreKey = "ShipCore.SelectedNoCoreBlobV1";
         [XmlIgnore] private const string GlobalConfigFileName = "ShipCoreConfig_World.xml";
         [XmlIgnore] private const string CoreManifestFileName = @"Data\ShipCoreConfig_Manifest.xml";
         [XmlIgnore] private const string BlockGroupsFileName = @"Data\ShipCoreConfig_Groups.xml";
         [XmlIgnore] private const string DefaultNoCoreFileName = @"Data\ShipCoreConfig_No_Core.xml";
+        [XmlIgnore] private const string LegacyIgnoreAiKey = "ShipCore.IgnoreAiV1";
+        [XmlIgnore] private const string LegacyIgnoredFactionsKey = "ShipCore.IgnoredFactionsV1";
+        [XmlIgnore] private const string LegacySelectedNoCoreKey = "ShipCore.SelectedNoCoreBlobV1";
+        [XmlIgnore] private static readonly string[] DefaultIgnoredFactionTagValues =
+        {
+            "SPRT", "ADMIN", "FMCA", "BORG", "TERA"
+        };
         [XmlIgnore] public readonly List<ShipCore> NoCoreConfigs = new List<ShipCore>();
         [XmlIgnore] public readonly List<BlockGroup> BlockGroups = new List<BlockGroup>();
         [XmlIgnore] public readonly List<ShipCore> ShipCores = new List<ShipCore>();
         [XmlIgnore] public readonly List<UpgradeModuleConfig> UpgradeModules = new List<UpgradeModuleConfig>();
-        [XmlIgnore] public List<string> IgnoredFactionTags = new List<string>();
+
+        [XmlElement("IgnoreAiFactions")]
+        public bool IgnoreAiFactions;
+
+        [XmlArray("IgnoredFactionTags")]
+        [XmlArrayItem("Tag")]
+        public List<string> IgnoredFactionTags = new List<string>(DefaultIgnoredFactionTagValues);
+
+        [XmlElement("SelectedNoCoreUniqueName")]
+        public string SelectedNoCoreUniqueName = string.Empty;
+
         [XmlIgnore] public ShipCore SelectedNoCore;
-        [XmlIgnore] public bool IgnoreAiFactions;
 
         [XmlElement("DebugMode")] public bool DebugMode;
         [XmlElement("CombatLogging")] public bool CombatLogging = true;

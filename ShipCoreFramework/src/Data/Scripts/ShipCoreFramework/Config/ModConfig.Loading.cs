@@ -15,11 +15,18 @@ namespace ShipCoreFramework
 
         public void LoadConfig(bool allowWorldStorageReadWrite)
         {
+            var hasIgnoreAiSetting = false;
+            var hasIgnoredFactionTagsSetting = false;
+            var hasSelectedNoCoreSetting = false;
+
             if (allowWorldStorageReadWrite && MyAPIGateway.Utilities.FileExistsInWorldStorage(GlobalConfigFileName, typeof(ModConfig)))
             {
                 using (var reader = MyAPIGateway.Utilities.ReadFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig)))
                 {
                     var text = reader.ReadToEnd();
+                    hasIgnoreAiSetting = text.IndexOf("<IgnoreAiFactions>", StringComparison.OrdinalIgnoreCase) >= 0;
+                    hasIgnoredFactionTagsSetting = text.IndexOf("<IgnoredFactionTags>", StringComparison.OrdinalIgnoreCase) >= 0;
+                    hasSelectedNoCoreSetting = text.IndexOf("<SelectedNoCoreUniqueName>", StringComparison.OrdinalIgnoreCase) >= 0;
                     var import = MyAPIGateway.Utilities.SerializeFromXML<ModConfig>(text);
                     if (import == null) throw new Exception("Failed to load world config.");
                     ApplyWorldSettingsFrom(import);
@@ -31,11 +38,6 @@ namespace ShipCoreFramework
                 globalConfigWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this));
                 globalConfigWriter.Close();
             }
-
-            IgnoreAiFactions = Utils.LoadFromSandbox<bool>(IgnoreAiKey);
-            IgnoredFactionTags = Utils.LoadFromSandbox<List<string>>(IgnoredFactionsKey) ??
-                                 new List<string> { "SPRT", "ADMIN", "FMCA", "BORG", "TERA" };
-            SelectedNoCore = Utils.LoadFromSandbox<ShipCore>(SelectedNoCoreKey);
 
             foreach (var mod in MyAPIGateway.Session.Mods)
             {
@@ -55,9 +57,69 @@ namespace ShipCoreFramework
 
             ResolveBlockGroupsForCores(ShipCores);
 
-            if (SelectedNoCore == null) SelectedNoCore = DefaultNoCoreConfig.ShipCore;
-            NormalizeShipCoreBlockLimits(SelectedNoCore, "WorldStorage", SelectedNoCoreKey);
+            ImportLegacyWorldSettingsIfNeeded(allowWorldStorageReadWrite, hasIgnoreAiSetting, hasIgnoredFactionTagsSetting, hasSelectedNoCoreSetting);
+            EnsurePersistedWorldSettings();
+            ResolveSelectedNoCore();
+            NormalizeShipCoreBlockLimits(SelectedNoCore, "WorldStorage", SelectedNoCoreUniqueName);
             ResolveBlockGroups(SelectedNoCore);
+        }
+
+        internal void EnsurePersistedWorldSettings()
+        {
+            if (IgnoredFactionTags == null)
+                IgnoredFactionTags = new List<string>(DefaultIgnoredFactionTagValues);
+
+            if (SelectedNoCoreUniqueName == null)
+                SelectedNoCoreUniqueName = string.Empty;
+        }
+
+        internal void ResolveSelectedNoCore()
+        {
+            SelectedNoCore = null;
+
+            if (!string.IsNullOrWhiteSpace(SelectedNoCoreUniqueName))
+            {
+                SelectedNoCore = NoCoreConfigs.FirstOrDefault(core =>
+                    !string.IsNullOrWhiteSpace(core?.UniqueName) &&
+                    core.UniqueName.Equals(SelectedNoCoreUniqueName, StringComparison.OrdinalIgnoreCase));
+
+                if (SelectedNoCore == null)
+                    Utils.Log($"No-core config '{SelectedNoCoreUniqueName}' was not found. Falling back to default.", 2, "Config Validation");
+            }
+
+            if (SelectedNoCore == null)
+                SelectedNoCore = DefaultNoCoreConfig.ShipCore;
+
+            SelectedNoCoreUniqueName = SelectedNoCore?.UniqueName ?? string.Empty;
+        }
+
+        private void ImportLegacyWorldSettingsIfNeeded(bool allowWorldStorageReadWrite, bool hasIgnoreAiSetting,
+            bool hasIgnoredFactionTagsSetting, bool hasSelectedNoCoreSetting)
+        {
+            if (!allowWorldStorageReadWrite)
+                return;
+
+            if (!hasIgnoreAiSetting)
+            {
+                bool ignoreAiFactions;
+                
+                if (Utils.TryLoadFromSandbox(LegacyIgnoreAiKey, out ignoreAiFactions))
+                    IgnoreAiFactions = ignoreAiFactions;
+            }
+
+            if (!hasIgnoredFactionTagsSetting)
+            {
+                List<string> ignoredFactionTags;
+                if (Utils.TryLoadFromSandbox(LegacyIgnoredFactionsKey, out ignoredFactionTags) && ignoredFactionTags != null)
+                    IgnoredFactionTags = ignoredFactionTags;
+            }
+
+            if (!hasSelectedNoCoreSetting)
+            {
+                ShipCore legacySelectedNoCore;
+                if (Utils.TryLoadFromSandbox(LegacySelectedNoCoreKey, out legacySelectedNoCore) && legacySelectedNoCore != null)
+                    SelectedNoCoreUniqueName = legacySelectedNoCore.UniqueName ?? string.Empty;
+            }
         }
 
         private void LoadBlockGroupsFromMod(MyObjectBuilder_Checkpoint.ModItem mod)

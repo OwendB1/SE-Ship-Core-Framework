@@ -6,21 +6,18 @@ namespace ShipCoreFramework
 {
     internal static partial class Utils
     {
-        internal static T LoadFromSandbox<T>(string keyName)
+        internal static bool TryLoadFromSandbox<T>(string keyName, out T item)
         {
             string savedBlobB64;
-            MyAPIGateway.Utilities.GetVariable(keyName, out savedBlobB64);
-            return string.IsNullOrWhiteSpace(savedBlobB64)
-                ? default(T)
-                : MyAPIGateway.Utilities.SerializeFromXML<T>(
-                    Encoding.UTF8.GetString(Convert.FromBase64String(savedBlobB64)));
-        }
+            if (!MyAPIGateway.Utilities.GetVariable(keyName, out savedBlobB64) || string.IsNullOrWhiteSpace(savedBlobB64))
+            {
+                item = default(T);
+                return false;
+            }
 
-        internal static void SaveToSandbox<T>(string keyName, T item)
-        {
-            if (item == null) return;
-            var encodedCore = Encoding.UTF8.GetBytes(MyAPIGateway.Utilities.SerializeToXML(item));
-            MyAPIGateway.Utilities.SetVariable(keyName, Convert.ToBase64String(encodedCore));
+            item = MyAPIGateway.Utilities.SerializeFromXML<T>(
+                Encoding.UTF8.GetString(Convert.FromBase64String(savedBlobB64)));
+            return true;
         }
     }
 }

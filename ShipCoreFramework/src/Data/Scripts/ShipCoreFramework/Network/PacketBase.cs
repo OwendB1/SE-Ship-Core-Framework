@@ -169,12 +169,7 @@ namespace ShipCoreFramework
             if (!MyAPIGateway.Multiplayer.IsServer)
                 return;
 
-            var response = new PacketSendConfig(
-                MyAPIGateway.Utilities.SerializeToXML(Session.Config),
-                Session.Config.IgnoreAiFactions,
-                Session.Config.IgnoredFactionTags,
-                Session.Config.SelectedNoCore?.SubtypeId,
-                Session.Config.MassTypeMode);
+            var response = new PacketSendConfig(MyAPIGateway.Utilities.SerializeToXML(Session.Config));
 
             Session.Networking.SendToPlayer(response, SenderSteamId);
         }
@@ -186,27 +181,11 @@ namespace ShipCoreFramework
         [ProtoMember(1)]
         internal string ConfigXml;
 
-        [ProtoMember(2)]
-        internal bool IgnoreAiFactions;
-
-        [ProtoMember(3)]
-        internal List<string> IgnoredFactionTags;
-
-        [ProtoMember(4)]
-        internal string SelectedNoCoreSubtypeId;
-
-        [ProtoMember(5)]
-        internal MassTypeMode MassTypeMode;
-
         internal PacketSendConfig() { } // for deserialization
 
-        internal PacketSendConfig(string configXml, bool ignoreAiFactions, List<string> ignoredFactionTags, string selectedNoCoreSubtypeId, MassTypeMode massTypeMode)
+        internal PacketSendConfig(string configXml)
         {
             ConfigXml = configXml;
-            IgnoreAiFactions = ignoreAiFactions;
-            IgnoredFactionTags = ignoredFactionTags;
-            SelectedNoCoreSubtypeId = selectedNoCoreSubtypeId;
-            MassTypeMode = massTypeMode;
         }
 
         internal override void Received()
@@ -219,26 +198,12 @@ namespace ShipCoreFramework
                     var import = MyAPIGateway.Utilities.SerializeFromXML<ModConfig>(ConfigXml);
                     if (import != null)
                     {
-                        // Only the [XmlElement] settings are present in the XML, so copy them onto the already-loaded config instance.
+                        // Only world-level settings are serialized here, so copy them onto the already-loaded config instance.
                         Session.Config.ApplyWorldSettingsFrom(import);
                     }
 
-                    Session.Config.IgnoreAiFactions = IgnoreAiFactions;
-                    Session.Config.IgnoredFactionTags = IgnoredFactionTags ?? new List<string>();
-                    Session.Config.MassTypeMode = MassTypeMode;
-
-                    if (!string.IsNullOrWhiteSpace(SelectedNoCoreSubtypeId))
-                    {
-                        var match = Session.Config.NoCoreConfigs.FirstOrDefault(c =>
-                            c.SubtypeId != null &&
-                            c.SubtypeId.Equals(SelectedNoCoreSubtypeId, System.StringComparison.OrdinalIgnoreCase));
-                        if (match != null)
-                            Session.Config.SelectedNoCore = match;
-                    }
-
-                    if (Session.Config.SelectedNoCore == null)
-                        Session.Config.SelectedNoCore = DefaultNoCoreConfig.ShipCore;
-
+                    Session.Config.EnsurePersistedWorldSettings();
+                    Session.Config.ResolveSelectedNoCore();
                     Session.ApplyConfigToDefinitions();
                 }
                 catch (System.Exception e)

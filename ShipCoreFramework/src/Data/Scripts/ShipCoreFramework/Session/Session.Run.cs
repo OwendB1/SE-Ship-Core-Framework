@@ -233,12 +233,7 @@ namespace ShipCoreFramework
             var players = new List<IMyPlayer>();
             MyAPIGateway.Players.GetPlayers(players);
 
-            var packet = new PacketSendConfig(
-                MyAPIGateway.Utilities.SerializeToXML(Config),
-                Config.IgnoreAiFactions,
-                Config.IgnoredFactionTags,
-                Config.SelectedNoCore?.SubtypeId,
-                Config.MassTypeMode);
+            var packet = new PacketSendConfig(MyAPIGateway.Utilities.SerializeToXML(Config));
 
             foreach (var p in players)
                 Networking.SendToPlayer(packet, p.SteamUserId);

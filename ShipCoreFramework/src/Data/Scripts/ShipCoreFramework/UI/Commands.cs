@@ -458,6 +458,7 @@ namespace ShipCoreFramework
             }
 
             Session.Config.SelectedNoCore = found;
+            Session.Config.SelectedNoCoreUniqueName = found.UniqueName ?? string.Empty;
             Session.Config.SaveConfig(true);
             return $"Selected 'no core' config: {found.UniqueName} ({found.SubtypeId}). Please save the world and reload the save file afterwards.";
         }
