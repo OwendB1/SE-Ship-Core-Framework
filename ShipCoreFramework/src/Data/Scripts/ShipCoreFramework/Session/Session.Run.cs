@@ -160,6 +160,7 @@ namespace ShipCoreFramework
             {
                 MyAPIGateway.Parallel.ForEach(GroupDict, kvp =>
                 {
+                    kvp.Value.UpdateDeactivationState();
                     kvp.Value.RunBoostTimerTick();
                     kvp.Value.RunActiveDefenseTimerTick();
                     kvp.Value.RunMinimumBlocksTimerTick();

@@ -27,6 +27,12 @@ namespace ShipCoreFramework
 
         internal void Activate(CoreComponent coreComponent)
         {
+            if (Deactivated)
+            {
+                coreComponent.IsMainCore = false;
+                return;
+            }
+
             var old = MainCoreComponent;
             if (!ReferenceEquals(old, coreComponent))
             {
@@ -56,6 +62,7 @@ namespace ShipCoreFramework
         {
             var old = MainCoreComponent;
             if (old == null) return;
+            old.IsMainCore = false;
 
             var type = ShipCore.SubtypeId;
             var grid = old.CoreBlock.CubeGrid;
@@ -93,10 +100,7 @@ namespace ShipCoreFramework
                     Utils.Log(
                         $"OnGridAdded: Group became ignored after grid addition (Faction: {OwningFaction?.Tag ?? "None"})",
                         2);
-
-                    if (MainCoreComponent == null) return;
-                    MainCoreComponent.CoreBlock.SlimBlock.RemoveAndRefund();
-                    ResetCore();
+                    Deactivate("Group became ignored after grid addition.");
                     return;
                 }
 
@@ -142,6 +146,16 @@ namespace ShipCoreFramework
         internal void CoreRemoved(CoreComponent lost)
         {
             if (!ReferenceEquals(lost, MainCoreComponent)) return;
+            lost.IsMainCore = false;
+
+            if (Deactivated)
+            {
+                MainCoreComponent = null;
+                SyncBeaconComponents();
+                OnUpgradeModulesChanged();
+                return;
+            }
+
             var newMain = CoreDictionary.Values.FirstOrDefault();
             if (newMain == null)
             {

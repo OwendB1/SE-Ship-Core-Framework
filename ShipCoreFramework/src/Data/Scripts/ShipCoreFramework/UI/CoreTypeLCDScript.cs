@@ -168,6 +168,35 @@ namespace ShipCoreFramework
                 new Cell(punishSpeed ? "Yes" : "No", punishSpeed ? failColor : successColor),
                 punishSpeed ? new Cell("X", failColor) : new Cell()
             });
+
+            var deactivated = GroupComponent.Deactivated;
+            _gridResultsTable.Rows.Add(new Row
+            {
+                new Cell("Deactivated: "),
+                new Cell(""),
+                new Cell(""),
+                new Cell(deactivated ? "Yes" : "No", deactivated ? failColor : successColor),
+                deactivated ? new Cell("X", failColor) : new Cell()
+            });
+
+            if (deactivated)
+            {
+                var deactivatedTableTopLeft = currentPosition + new Vector2(0, 5);
+                _gridResultsTable.RenderToSprites(spritesToRender, deactivatedTableTopLeft, screenInnerWidth, cellGap,
+                    out currentPosition, bodyScale);
+
+                var deactivatedScrollPosition = GetScrollPosition(currentPosition + padding);
+
+                foreach (var t in spritesToRender)
+                {
+                    var sprite = t;
+                    if (deactivatedScrollPosition.Y != 0) sprite.Position -= deactivatedScrollPosition;
+                    frame.Add(sprite);
+                }
+
+                frame.Dispose();
+                return;
+            }
             
             var speed = Session.Config.MaxPossibleSpeedMetersPerSecond * (GroupComponent.BoostEnabled
                 ? GroupComponent.SpeedModifiers.MaxBoost

@@ -13,13 +13,13 @@ namespace ShipCoreFramework
             
             var tempGridList = new List<IMyCubeGrid>();
             group.GetGrids(tempGridList);
-            if (Config.IgnoreAiFactions && tempGridList.Any(g => g.IsNpcSpawnedGrid)) return;
             
             var gComp = new GroupComponent
             {
                 MyGroup = group
             };
             GroupDict.TryAdd(group, gComp);
+            gComp.InitializeDeactivationState();
             gComp.InitGrids();
 
             group.OnGridAdded += gComp.OnGridAdded;

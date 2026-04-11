@@ -609,11 +609,6 @@ namespace ShipCoreFramework
             }
             
             var shipCore = groupKvp.Value.ShipCore;
-            if (groupKvp.Value.OwningFaction != null &&(Session.Config.IgnoreAiFactions && groupKvp.Value.OwningFaction.IsEveryoneNpc() || Session.Config.IgnoredFactionTags.Contains(groupKvp.Value.OwningFaction.Tag)))
-            {
-                Utils.ShowChatMessage($"Grid '{targetGrid.CustomName}' is ignored.");
-                return;
-            }
             var body = GetCoreInfo(targetGrid, shipCore,groupKvp);
             MyAPIGateway.Utilities.ShowMissionScreen(
                 "Ship Core Framework",
@@ -628,10 +623,17 @@ namespace ShipCoreFramework
         {
             var shipCoreSubtypeId = groupKvp.Value.ShipCore.SubtypeId;
             var body = $"Grid: {targetGrid.CustomName}\nShip Class: {shipCore.UniqueName}\n\n";
+            body += $"Deactivated: {(groupKvp.Value.Deactivated ? "Yes" : "No")}\n";
+            if (groupKvp.Value.Deactivated)
+            {
+                return body;
+            }
+
+            body += $"Ignored: {(groupKvp.Value.IsIgnoredGroup() ? "Yes" : "No")}\n\n";
             var currentMaxPerPlayer = groupKvp.Value.ShipCore.MaxPerPlayer;
             if (currentMaxPerPlayer > 0)
             {
-                var ownerId = groupKvp.Value.MainCoreComponent.CoreBlock.OwnerId;
+                var ownerId = groupKvp.Value.OwnerId;
                 if (GridsPerPlayerManager.PerPlayer.ContainsKey(ownerId) && GridsPerPlayerManager.PerPlayer[ownerId].ContainsKey(shipCoreSubtypeId))
                 {
                     body += $"Per Player Limit:{GridsPerPlayerManager.PerPlayer[ownerId][shipCoreSubtypeId]}/{currentMaxPerPlayer}\n";

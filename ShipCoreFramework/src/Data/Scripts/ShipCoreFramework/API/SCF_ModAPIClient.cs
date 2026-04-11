@@ -650,6 +650,17 @@ namespace ShipCoreFramework
             return false;
         }
 
+        /// <summary>
+        /// Gets whether the logical grid group has been deactivated.
+        /// </summary>
+        public bool IsGroupDeactivated(IMyCubeGrid grid) => IsGroupDeactivated(GetEntityId(grid));
+
+        public bool IsGroupDeactivated(long cubeGridEntityId)
+        {
+            var result = Invoke(ApiMethodId.IsGroupDeactivated, cubeGridEntityId);
+            return result is bool && (bool)result;
+        }
+
 
         // ===== Internals =====
 

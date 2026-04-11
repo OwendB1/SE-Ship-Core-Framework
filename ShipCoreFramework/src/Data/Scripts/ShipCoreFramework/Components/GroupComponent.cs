@@ -53,6 +53,7 @@ namespace ShipCoreFramework
         internal bool PunishModifiers;
         internal bool PunishSpeed;
         internal bool BoostEnabled;
+        internal bool Deactivated;
 
         internal bool FrictionEnforcementEnabled = true;
 
@@ -79,6 +80,8 @@ namespace ShipCoreFramework
 
         private bool _closing;
         private bool _refreshingUpgradeModules;
+        private bool _ignoredStateInitialized;
+        private bool _wasIgnoredGroup;
 
         internal float ActiveDefenseDuration => GetActiveDefenseModifiers().Duration;
         internal float ActiveDefenseCoolDown => GetActiveDefenseModifiers().Cooldown;

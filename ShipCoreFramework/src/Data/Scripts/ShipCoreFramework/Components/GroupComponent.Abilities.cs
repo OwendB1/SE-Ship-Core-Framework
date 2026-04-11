@@ -95,6 +95,8 @@ namespace ShipCoreFramework
 
         private bool EnsureWorkingMainCore()
         {
+            if (Deactivated) return false;
+
             var currentMain = MainCoreComponent;
             var mainCoreBlock = currentMain?.CoreBlock;
             if (mainCoreBlock == null || mainCoreBlock.IsWorking || !CoreDictionary.Any()) return false;

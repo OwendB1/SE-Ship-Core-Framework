@@ -216,6 +216,9 @@ namespace ShipCoreFramework
                 case ApiMethodId.GetFrictionMaximumSpeedModifierForGroup:
                     return arg => GetFrictionMaximumSpeedModifierForGroup(arg as long? ?? 0);
 
+                case ApiMethodId.IsGroupDeactivated:
+                    return arg => IsGroupDeactivated(arg as long? ?? 0);
+
                 // Optional primitive getters:
                 case ApiMethodId.GetGridCore_SubtypeId:
                     return arg =>
@@ -761,6 +764,20 @@ namespace ShipCoreFramework
             return !TryGetGroupComponent(gridId, out groupComponent) ? MyTuple.Create(-1f, "Could not resolve logical grid group for the provided grid.") : MyTuple.Create(groupComponent.MaximumFrictionSpeedModifierOverride, string.Empty);
         }
 
+        public static bool IsGroupDeactivated(long gridId)
+        {
+            try
+            {
+                GroupComponent groupComponent;
+                return TryGetGroupComponent(gridId, out groupComponent) && groupComponent.Deactivated;
+            }
+            catch (Exception ex)
+            {
+                Utils.Log($"ModAPI.IsGroupDeactivated: Exception - {ex}");
+                return false;
+            }
+        }
+
         private static bool TryGetGroupComponent(long gridId, out GroupComponent groupComponent)
         {
             groupComponent = null;
@@ -837,7 +854,7 @@ namespace ShipCoreFramework
 
         // ===== Helper Methods =====
 
-        private static ShipCoreData ConvertToShipCoreData(ShipCore core)
+        private static ShipCoreData ConvertToShipCoreData(ShipCore core, bool isDeactivated = false)
         {
             if (core == null)
             {
@@ -869,7 +886,8 @@ namespace ShipCoreFramework
                         MaximumFrictionDeceleration = 0f,
                         MinimumFrictionSpeedModifier = 0f,
                         MaximumFrictionSpeedModifier = 0f
-                    }
+                    },
+                    IsDeactivated = isDeactivated
                 };
             }
 
@@ -895,6 +913,7 @@ namespace ShipCoreFramework
                 ActiveDefenseModifiers = ConvertToDefenseModifiersData(core.ActiveDefenseModifiers),
                 DynamicBoostEnabled = false,
                 SpeedModifiers = ConvertToSpeedModifiersData(core.SpeedModifiers),
+                IsDeactivated = isDeactivated
             };
         }
 
@@ -1015,7 +1034,7 @@ namespace ShipCoreFramework
                 GroupComponent groupComponent;
                 return !Session.GroupDict.TryGetValue(groupData, out groupComponent) ? 
                     ConvertToShipCoreData(Session.Config.SelectedNoCore) : 
-                    ConvertToShipCoreData(groupComponent.ShipCore ?? Session.Config.SelectedNoCore);
+                    ConvertToShipCoreData(groupComponent.ShipCore ?? Session.Config.SelectedNoCore, groupComponent.Deactivated);
             }
             catch (Exception ex)
             {
@@ -1043,7 +1062,7 @@ namespace ShipCoreFramework
         {
             try
             {
-                return Session.Config.ShipCores.Select(ConvertToShipCoreData).ToList();
+                return Session.Config.ShipCores.Select(core => ConvertToShipCoreData(core)).ToList();
             }
             catch (Exception ex)
             {

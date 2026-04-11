@@ -117,6 +117,7 @@ namespace ShipCoreFramework
             _boostAction.Action = b =>
             {
                 var groupComp = b.GetGroupComponent();
+                Utils.ShowChatMessage("Test: " + b.CustomName);
                 if (groupComp == null)
                 {
                     Utils.ShowChatMessage("Could not trigger boost, main grid group match was not found??");

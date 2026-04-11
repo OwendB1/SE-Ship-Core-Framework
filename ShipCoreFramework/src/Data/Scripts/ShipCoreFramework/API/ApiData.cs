@@ -252,6 +252,12 @@ namespace ShipCoreFramework
         /// </summary>
         public const int GetFrictionMaximumSpeedModifierForGroup = 38;
 
+        /// <summary>
+        /// Gets whether the logical grid group has been deactivated.
+        /// Signature: IMyCubeGrid -> bool.
+        /// </summary>
+        public const int IsGroupDeactivated = 39;
+
         // Optional: Field getters for "no parsing" access (primitives only).
         // These can be handy if a consumer only needs a single field and wants to avoid deserializing a full DTO.
         public const int GetGridCore_SubtypeId = 100;   // IMyCubeGrid -> string
@@ -295,6 +301,7 @@ namespace ShipCoreFramework
         [ProtoMember(18)] public SpeedModifiersData SpeedModifiers;
         [ProtoMember(19)] public int MinBlocks;
         [ProtoMember(20)] public int MaxPlayers;
+        [ProtoMember(21)] public bool IsDeactivated;
     }
 
     /// <summary>

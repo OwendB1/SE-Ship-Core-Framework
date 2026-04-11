@@ -10,8 +10,9 @@ namespace ShipCoreFramework
         public bool Init(IMyFunctionalBlock coreBlock, GridComponent gridComponent, GroupComponent groupComponent)
         {
             CoreBlock = coreBlock;
+            var isIgnoredNpcGrid = Session.Config.IgnoreAiFactions && CoreBlock.CubeGrid.IsNpcSpawnedGrid;
             var builder = CoreBlock.SlimBlock.BuiltBy;
-            if (builder == 0)
+            if (builder == 0 && !isIgnoredNpcGrid)
             {
                 var name = CoreBlock.CustomName;
                 Utils.ShowChatMessage($"Was not able to determine builder of core {name}, removing from world!", logPriority: 3);
@@ -90,8 +91,9 @@ namespace ShipCoreFramework
             }
 
             var relationship = CoreBlock.GetUserRelationToOwner(CoreBlock.CubeGrid.BigOwners.FirstOrDefault());
-            if (relationship == MyRelationsBetweenPlayerAndBlock.Neutral ||
-                relationship == MyRelationsBetweenPlayerAndBlock.Enemies)
+            if (!isIgnoredNpcGrid &&
+                (relationship == MyRelationsBetweenPlayerAndBlock.Neutral ||
+                 relationship == MyRelationsBetweenPlayerAndBlock.Enemies))
             {
                 var builderSteamId = MyAPIGateway.Players.TryGetSteamId(builder);
                 if (MyAPIGateway.Session.IsUserAdmin(builderSteamId) &&
@@ -118,8 +120,9 @@ namespace ShipCoreFramework
                 IsMainCore = false;
             }
 
-            if (!GridsPerFactionManager.IsGroupWithinFactionLimits(_groupComponent.OwningFaction, _groupComponent.OwnerId, SubtypeId)
-                || !GridsPerPlayerManager.IsGroupWithinPlayerLimits(_groupComponent.OwnerId, SubtypeId))
+            if (!isIgnoredNpcGrid &&
+                (!GridsPerFactionManager.IsGroupWithinFactionLimits(_groupComponent.OwningFaction, _groupComponent.OwnerId, SubtypeId)
+                 || !GridsPerPlayerManager.IsGroupWithinPlayerLimits(_groupComponent.OwnerId, SubtypeId)))
             {
                 CoreBlock.SlimBlock.RemoveAndRefund();
                 _groupComponent.ResetCore();

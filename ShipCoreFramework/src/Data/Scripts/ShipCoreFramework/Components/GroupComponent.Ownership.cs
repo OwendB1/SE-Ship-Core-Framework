@@ -3,13 +3,22 @@ using Sandbox.Game.Entities;
 using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI;
 using VRage.Game;
-using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
 {
     public partial class GroupComponent
     {
+        internal bool IsIgnoredNpcGroup()
+        {
+            if (!Session.Config.IgnoreAiFactions) return false;
+
+            var mainGrid = MainCoreComponent?.CoreBlock?.CubeGrid;
+            if (mainGrid != null) return mainGrid.IsNpcSpawnedGrid;
+
+            return GridDictionary.Keys.Any(grid => grid != null && grid.IsNpcSpawnedGrid);
+        }
+
         internal long OwnerId
         {
             get
@@ -24,6 +33,12 @@ namespace ShipCoreFramework
                 else
                 {
                     ownerId = this.GetMajorityOwnerId();
+                }
+
+                if (IsIgnoredNpcGroup())
+                {
+                    _lastOwnerId = 0;
+                    return 0;
                 }
 
                 if (_lastOwnerId != 0 && ownerId != 0 && _lastOwnerId != ownerId)
@@ -81,6 +96,7 @@ namespace ShipCoreFramework
 
         internal bool IsIgnoredGroup()
         {
+            if (IsIgnoredNpcGroup()) return true;
             if (OwnerId == 0) return true;
             var player = MyAPIGateway.Players.TryGetIdentityId(OwnerId);
             if (player != null && player.PromoteLevel == MyPromoteLevel.Admin &&
