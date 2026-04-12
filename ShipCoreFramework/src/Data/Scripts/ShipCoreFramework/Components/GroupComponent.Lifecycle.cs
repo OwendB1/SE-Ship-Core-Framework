@@ -34,6 +34,7 @@ namespace ShipCoreFramework
             }
 
             var old = MainCoreComponent;
+            var wasInactive = old == null;
             if (!ReferenceEquals(old, coreComponent))
             {
                 if (old != null) old.IsMainCore = false;
@@ -46,15 +47,19 @@ namespace ShipCoreFramework
             var grid = MainCoreComponent.GridComponent.Grid;
             Utils.Log($"Activate: Activating logic for {((IMyCubeGrid)grid).CustomName}!", 1);
 
-            GridsPerFactionManager.AddGridGroup(OwningFaction, ShipCore.SubtypeId);
-            GridsPerPlayerManager.AddGridGroup(OwnerId, ShipCore.SubtypeId);
+            if (wasInactive)
+            {
+                GridsPerFactionManager.AddGridGroup(OwningFaction, ShipCore.SubtypeId);
+                GridsPerPlayerManager.AddGridGroup(OwnerId, ShipCore.SubtypeId);
+            }
 
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
                 if (_closing) return;
                 OnUpgradeModulesChanged();
 
-                ModAPI.BroadcastCoreActivated(GetRepresentativeGridId(), ShipCore.SubtypeId, ShipCore.UniqueName);
+                if (wasInactive)
+                    ModAPI.BroadcastCoreActivated(GetRepresentativeGridId(), ShipCore.SubtypeId, ShipCore.UniqueName);
             });
         }
 
