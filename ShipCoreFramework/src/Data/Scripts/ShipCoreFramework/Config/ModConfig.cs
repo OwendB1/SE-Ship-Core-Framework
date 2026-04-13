@@ -12,9 +12,9 @@ namespace ShipCoreFramework
             return shipCore ?? SelectedNoCore;
         }
 
-        public bool IsValidCoreType(string coreTypeName)
+        public bool IsValidCoreType(string coreTypeId)
         {
-            return ShipCores.Any(core => core.SubtypeId == coreTypeName);
+            return ShipCores.Any(core => core.SubtypeId == coreTypeId) || SelectedNoCore.SubtypeId == coreTypeId;
         }
 
         public UpgradeModuleConfig GetUpgradeModuleByTypeId(string moduleTypeId)

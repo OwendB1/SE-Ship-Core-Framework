@@ -29,7 +29,7 @@ namespace ShipCoreFramework
 
         [XmlArray("IgnoredFactionTags")]
         [XmlArrayItem("Tag")]
-        public List<string> IgnoredFactionTags = new List<string>(DefaultIgnoredFactionTagValues);
+        public List<string> IgnoredFactionTags = new List<string>();
 
         [XmlElement("SelectedNoCoreUniqueName")]
         public string SelectedNoCoreUniqueName = string.Empty;
