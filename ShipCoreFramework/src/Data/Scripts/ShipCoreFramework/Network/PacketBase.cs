@@ -1,5 +1,5 @@
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using ProtoBuf;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -40,6 +40,7 @@ namespace ShipCoreFramework
         
         internal override void Received()
         {
+            Utils.Log($"Received action from {SenderSteamId}: {ActionData.IsBoost}");
             GroupComponent group;
             if (!Utils.TryFindByGridId(ActionData.CubegridEntityId, out group)) return;
             if (ActionData.IsBoost)
@@ -166,8 +167,7 @@ namespace ShipCoreFramework
 
         internal override void Received()
         {
-            if (!MyAPIGateway.Multiplayer.IsServer)
-                return;
+            if (!MyAPIGateway.Multiplayer.IsServer) return;
 
             var response = new PacketSendConfig(MyAPIGateway.Utilities.SerializeToXML(Session.Config));
 
@@ -206,7 +206,7 @@ namespace ShipCoreFramework
                     Session.Config.ResolveSelectedNoCore();
                     Session.ApplyConfigToDefinitions();
                 }
-                catch (System.Exception e)
+                catch (Exception e)
                 {
                     Utils.Log($"Config sync failed: {e}", 2, "Config Sync");
                 }

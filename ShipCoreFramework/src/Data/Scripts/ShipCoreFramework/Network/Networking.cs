@@ -37,8 +37,7 @@ namespace ShipCoreFramework
 
         internal void SendToPlayer(PacketBase packet, ulong steamId)
         {
-            if (!MyAPIGateway.Multiplayer.IsServer)
-                return;
+            if (!MyAPIGateway.Multiplayer.IsServer) return;
             var bytes = MyAPIGateway.Utilities.SerializeToBinary(packet);
             MyAPIGateway.Multiplayer.SendMessageTo(_channelId, bytes, steamId);
         }
