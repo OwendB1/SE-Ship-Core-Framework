@@ -14,7 +14,7 @@ namespace ShipCoreFramework
 
         public bool IsValidCoreType(string coreTypeName)
         {
-            return ShipCores.Any(core => core.SubtypeId == coreTypeName);
+            return ShipCores.Any(core => core.SubtypeId == coreTypeName) || SelectedNoCore.SubtypeId == coreTypeName;
         }
 
         public UpgradeModuleConfig GetUpgradeModuleByTypeId(string moduleTypeId)
