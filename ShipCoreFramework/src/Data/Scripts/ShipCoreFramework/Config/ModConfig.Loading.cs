@@ -58,6 +58,7 @@ namespace ShipCoreFramework
             ResolveBlockGroupsForCores(ShipCores);
 
             ImportLegacyWorldSettingsIfNeeded(allowWorldStorageReadWrite, hasIgnoreAiSetting, hasIgnoredFactionTagsSetting, hasSelectedNoCoreSetting);
+            NormalizeIgnoredFactionTags(hasIgnoredFactionTagsSetting);
             EnsurePersistedWorldSettings();
             ResolveSelectedNoCore();
             NormalizeShipCoreBlockLimits(SelectedNoCore, "WorldStorage", SelectedNoCoreUniqueName);
@@ -67,7 +68,7 @@ namespace ShipCoreFramework
         internal void EnsurePersistedWorldSettings()
         {
             if (IgnoredFactionTags == null)
-                IgnoredFactionTags = new List<string>(DefaultIgnoredFactionTagValues);
+                IgnoredFactionTags = new List<string>();
 
             if (SelectedNoCoreUniqueName == null)
                 SelectedNoCoreUniqueName = string.Empty;
@@ -120,6 +121,21 @@ namespace ShipCoreFramework
                 if (Utils.TryLoadFromSandbox(LegacySelectedNoCoreKey, out legacySelectedNoCore) && legacySelectedNoCore != null)
                     SelectedNoCoreUniqueName = legacySelectedNoCore.UniqueName ?? string.Empty;
             }
+        }
+
+        private void NormalizeIgnoredFactionTags(bool hasIgnoredFactionTagsSetting)
+        {
+            if (IgnoredFactionTags == null)
+                IgnoredFactionTags = new List<string>();
+
+            IgnoredFactionTags = IgnoredFactionTags
+                .Where(tag => !string.IsNullOrWhiteSpace(tag))
+                .Select(tag => tag.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (!hasIgnoredFactionTagsSetting && IgnoredFactionTags.Count == 0)
+                IgnoredFactionTags = new List<string>(DefaultIgnoredFactionTagValues);
         }
 
         private void LoadBlockGroupsFromMod(MyObjectBuilder_Checkpoint.ModItem mod)
