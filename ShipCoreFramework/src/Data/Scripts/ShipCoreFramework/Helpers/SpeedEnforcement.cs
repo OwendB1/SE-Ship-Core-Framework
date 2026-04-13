@@ -54,8 +54,7 @@ namespace ShipCoreFramework
                     var rampSeconds = MathHelper.Clamp(speedModifiers.BoostDuration, 0.5f, 10f);
                     var stepPerTick = (boostMaxSpeed - baseMaxSpeed) / (rampSeconds * 60f);
                     if (stepPerTick < 0f) stepPerTick = 0f;
-
-                    Utils.ShowNotification($"Boost ramp: {rampSeconds:0.0}s, {stepPerTick:0.000}m/s", 1000);
+                    
                     cap -= stepPerTick;
 
                     if (cap <= baseMaxSpeed)

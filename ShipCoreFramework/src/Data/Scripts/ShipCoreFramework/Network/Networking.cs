@@ -42,15 +42,11 @@ namespace ShipCoreFramework
             MyAPIGateway.Multiplayer.SendMessageTo(_channelId, bytes, steamId);
         }
         
-        internal void SendToServer(PacketBase packet)
+        internal void SendToServer(PacketBase packet, bool onlyToServer = false)
         {
-            if (MyAPIGateway.Multiplayer.IsServer)
-            {
-                packet.Received();
-                return;
-            }
             var bytes = MyAPIGateway.Utilities.SerializeToBinary(packet);
             MyAPIGateway.Multiplayer.SendMessageToServer(_channelId, bytes);
+            if(!onlyToServer) packet.Received();
         }
     }
 }

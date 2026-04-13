@@ -54,7 +54,7 @@ namespace ShipCoreFramework
             }
             else if (MpActive)
             {
-                Networking.SendToServer(new PacketRequestConfig());
+                Networking.SendToServer(new PacketRequestConfig(), onlyToServer: true);
             }
             else
             {

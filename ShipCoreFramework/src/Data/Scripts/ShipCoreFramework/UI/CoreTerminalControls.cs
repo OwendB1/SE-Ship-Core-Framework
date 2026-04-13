@@ -123,6 +123,7 @@ namespace ShipCoreFramework
                     Utils.ShowChatMessage("Could not trigger boost, main grid group match was not found??");
                     return;
                 }
+                
                 Session.Networking.SendToServer(new PacketAction{ActionData = new ButtonAction {CubegridEntityId = b.CubeGrid.EntityId, IsBoost = true }});
             };
 

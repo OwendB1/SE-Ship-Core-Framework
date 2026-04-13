@@ -226,8 +226,7 @@ namespace ShipCoreFramework
             Session.Config = null;
             Session.Config = new ModConfig();
             Session.Config.LoadConfig();
-            if (Session.MpActive && !Session.IsServer)
-                Session.Networking.SendToServer(new PacketRequestConfig());
+            if (Session.MpActive && !Session.IsServer) Session.Networking.SendToServer(new PacketRequestConfig(), onlyToServer: true);
             return "Config reloaded from disk.";
         }
 
@@ -244,8 +243,7 @@ namespace ShipCoreFramework
                 return "Usage: /core coreinfo <uniquename>";
             }
             var infoName = string.Join(" ", args.Skip(1));
-            var infoCore = Session.Config.ShipCores.FirstOrDefault(
-                c => c.UniqueName.Equals(infoName, StringComparison.OrdinalIgnoreCase));
+            var infoCore = Session.Config.ShipCores.FirstOrDefault(c => c.UniqueName.Equals(infoName, StringComparison.OrdinalIgnoreCase));
             if (infoCore == null)
             {
                 return $"No core found with name '{infoName}'.";
