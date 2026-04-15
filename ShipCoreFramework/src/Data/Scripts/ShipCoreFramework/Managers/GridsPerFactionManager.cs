@@ -11,7 +11,7 @@ namespace ShipCoreFramework
         {
             public long FactionId;
             public string CoreType;
-            public int Delta;
+            public int Count;
         }
 
         public static readonly Dictionary<long, Dictionary<string, int>> PerFaction = new Dictionary<long, Dictionary<string, int>>();
@@ -100,7 +100,7 @@ namespace ShipCoreFramework
             }
 
             perGroup[coreType]++;
-            if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = owningFaction.FactionId, CoreType = coreType, Delta = 1 });
+            if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = owningFaction.FactionId, CoreType = coreType, Count = perGroup[coreType] });
         }
 
         internal static void RemoveGridGroup(IMyFaction owningFaction, string coreType)
@@ -122,7 +122,7 @@ namespace ShipCoreFramework
             if (value <= 0) return;
 
             perGroup[coreType]--;
-            if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = factionId, CoreType = coreType, Delta = -1 });
+            if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = factionId, CoreType = coreType, Count = perGroup[coreType] });
         }
 
         internal static void RemoveFaction(long factionId)
@@ -138,7 +138,7 @@ namespace ShipCoreFramework
                 if (value <= 0) continue;
 
                 perGroup[coreType] = 0;
-                if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = factionId, CoreType = coreType, Delta = -value });
+                if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = factionId, CoreType = coreType, Count = 0 });
             }
         }
 

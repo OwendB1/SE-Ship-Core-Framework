@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.Entities;
 using VRage.Game.ModAPI;
+using IngameIMyEntity = VRage.Game.ModAPI.Ingame.IMyEntity;
 
 namespace ShipCoreFramework
 {
@@ -39,6 +40,7 @@ namespace ShipCoreFramework
             Grid = (MyCubeGrid)grid;
             _groupData = groupData;
 
+            Grid.OnMarkForClose += GridMarkedForClose;
             Grid.OnBlockAdded += BlockAddedEvent;
             Grid.OnBlockRemoved += BlockRemoved;
 
@@ -50,6 +52,12 @@ namespace ShipCoreFramework
 
             var otherBlocks = blocks.Where(block => !Utils.IsCoreBlock(block)).ToList();
             foreach (var otherBlock in otherBlocks) BlockAddedInternal(otherBlock);
+        }
+
+        private void GridMarkedForClose(IngameIMyEntity entity)
+        {
+            if (entity != Grid) return;
+            LimitsNexusSync.NotifyLocalGridClose();
         }
     }
 }

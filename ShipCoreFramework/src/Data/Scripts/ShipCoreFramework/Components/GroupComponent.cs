@@ -9,6 +9,7 @@ namespace ShipCoreFramework
     public partial class GroupComponent
     {
         private const int MinimumBlocksRecheckIntervalTicks = 10 * 60 * 60;
+        private const int ExternalLimitValidationDelayTicks = 2 * 60;
 
         internal ShipCore ShipCore => Session.Config.GetShipCoreByTypeId(MainCoreComponent?.SubtypeId ?? string.Empty);
         internal GridModifiers Modifiers => CubeGridModifiers.GetActiveModifiers(this);
@@ -77,6 +78,7 @@ namespace ShipCoreFramework
         private float _activeDefenseDurationTimer;
         private bool _minimumBlocksPunishmentActive;
         private int _nextMinimumBlocksCheckTick;
+        private int _pendingExternalLimitValidationTick;
 
         private bool _closing;
         private bool _refreshingUpgradeModules;

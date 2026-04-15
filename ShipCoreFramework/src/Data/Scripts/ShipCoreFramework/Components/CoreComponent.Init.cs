@@ -126,6 +126,17 @@ namespace ShipCoreFramework
                 (!GridsPerFactionManager.IsGroupWithinFactionLimits(_groupComponent.OwningFaction, _groupComponent.OwnerId, SubtypeId)
                  || !GridsPerPlayerManager.IsGroupWithinPlayerLimits(_groupComponent.OwnerId, SubtypeId)))
             {
+                if (LimitsNexusSync.IsSettling)
+                {
+                    _groupComponent.ScheduleExternalLimitValidation();
+                    Utils.Log($"Deferring core limit validation for {SubtypeId} on {CoreBlock.CubeGrid.CustomName} while Nexus sync is settling.", 1);
+                    CoreBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged;
+                    CoreBlock.AppendingCustomInfo += AppendingCustomInfo;
+                    CoreBlock.IsWorkingChanged += OnIsWorkingChanged;
+                    _groupComponent.DefenseValuesChanged();
+                    return true;
+                }
+
                 CoreBlock.SlimBlock.RemoveAndRefund();
                 _groupComponent.ResetCore();
                 return false;

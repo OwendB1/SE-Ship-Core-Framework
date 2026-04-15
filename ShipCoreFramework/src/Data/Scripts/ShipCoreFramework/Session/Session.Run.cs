@@ -153,6 +153,7 @@ namespace ShipCoreFramework
 
             _tick++;
             CurrentTick = _tick;
+            if (IsServer) LimitsNexusSync.RunPeriodicSnapshotTick();
             var runNfz = _tick % 10 == 0;
             var doPunish = _tick % 60 == 0;
 
@@ -164,6 +165,7 @@ namespace ShipCoreFramework
                     kvp.Value.RunBoostTimerTick();
                     kvp.Value.RunActiveDefenseTimerTick();
                     kvp.Value.RunMinimumBlocksTimerTick();
+                    kvp.Value.RunExternalLimitValidationTick();
                     SpeedEnforcement.EnforceSpeedLimit(kvp.Value);
                     if (runNfz) NoFlyZoneEnforcement.EnforceNoFlyZones(kvp.Value, doPunish);
                 });

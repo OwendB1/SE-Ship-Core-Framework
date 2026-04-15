@@ -9,7 +9,7 @@ namespace ShipCoreFramework
         {
             internal long PlayerId;
             internal string CoreType;
-            internal int Delta;
+            internal int Count;
         }
 
         public static readonly Dictionary<long, Dictionary<string, int>> PerPlayer = new Dictionary<long, Dictionary<string, int>>();
@@ -59,7 +59,7 @@ namespace ShipCoreFramework
 
             perGridClass[coreType]++;
             Utils.Log($"GridsPerPlayerClass::AddCubeGrid: Player {ownerId} now has {perGridClass[coreType]} grids with {coreType}", 1);
-            if (!_suppressEvents) LimitsNexusSync.BroadcastPlayerChange(new PlayerChange { PlayerId = ownerId, CoreType = coreType, Delta = 1 });
+            if (!_suppressEvents) LimitsNexusSync.BroadcastPlayerChange(new PlayerChange { PlayerId = ownerId, CoreType = coreType, Count = perGridClass[coreType] });
         }
 
         internal static void RemoveGridGroup(long ownerId, string coreType)
@@ -74,7 +74,7 @@ namespace ShipCoreFramework
             if (value <= 0) return;
 
             perGridClass[coreType]--;
-            if (!_suppressEvents) LimitsNexusSync.BroadcastPlayerChange(new PlayerChange { PlayerId = ownerId, CoreType = coreType, Delta = -1 });
+            if (!_suppressEvents) LimitsNexusSync.BroadcastPlayerChange(new PlayerChange { PlayerId = ownerId, CoreType = coreType, Count = perGridClass[coreType] });
         }
 
         internal static void Reset()

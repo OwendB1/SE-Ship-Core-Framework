@@ -11,6 +11,7 @@ namespace ShipCoreFramework
         {
             if (Grid != null)
             {
+                Grid.OnMarkForClose -= GridMarkedForClose;
                 Grid.OnBlockAdded -= BlockAddedEvent;
                 Grid.OnBlockRemoved -= BlockRemoved;
             }

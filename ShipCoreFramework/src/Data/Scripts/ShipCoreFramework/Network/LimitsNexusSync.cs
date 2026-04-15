@@ -9,10 +9,14 @@ namespace ShipCoreFramework
     internal static class LimitsNexusSync
     {
         private const long ChannelId = 9876543210L;
+        private const int SyncSettlingWindowTicks = 5 * 60;
+        private const int PeriodicSnapshotIntervalTicks = 2 * 60 * 60;
 
         private static NexusAPI _nexus;
         private static bool _started;
         private static byte _thisServerId;
+        private static int _syncSettledAfterTick;
+        private static int _nextPeriodicSnapshotTick;
 
         internal static void Start(NexusAPI nexus)
         {
@@ -24,6 +28,8 @@ namespace ShipCoreFramework
             MyAPIGateway.Utilities.RegisterMessageHandler(ChannelId, OnMessage);
 
             _started = true;
+            MarkSyncActivity();
+            _nextPeriodicSnapshotTick = Session.CurrentTick + PeriodicSnapshotIntervalTicks;
             BroadcastHello();
             BroadcastSnapshot();
         }
@@ -36,15 +42,21 @@ namespace ShipCoreFramework
         }
 
         private static bool Ready => _started && _nexus != null && _nexus.Enabled;
+        internal static bool IsSettling => Ready && Session.CurrentTick <= _syncSettledAfterTick;
+        internal static void NotifyLocalGridClose()
+        {
+            if (!Ready) return;
+            MarkSyncActivity();
+        }
 
         internal static void BroadcastFactionChange(GridsPerFactionManager.FactionChange c)
         {
-            BroadcastDiff(factionId: c.FactionId, coreType: c.CoreType, delta: c.Delta);
+            BroadcastCountUpdate(factionId: c.FactionId, coreType: c.CoreType, count: c.Count);
         }
 
         internal static void BroadcastPlayerChange(GridsPerPlayerManager.PlayerChange c)
         {
-            BroadcastDiff(playerId: c.PlayerId, coreType: c.CoreType, delta: c.Delta);
+            BroadcastCountUpdate(playerId: c.PlayerId, coreType: c.CoreType, count: c.Count);
         }
 
         internal static void BroadcastSnapshot()
@@ -54,7 +66,16 @@ namespace ShipCoreFramework
             _nexus.SendModMsgToAllServers(Serialize(env), ChannelId);
         }
 
-        private static void BroadcastDiff(long? factionId = null, long? playerId = null, string coreType = null, int delta = 0)
+        internal static void RunPeriodicSnapshotTick()
+        {
+            if (!Ready) return;
+            if (Session.CurrentTick < _nextPeriodicSnapshotTick) return;
+
+            _nextPeriodicSnapshotTick = Session.CurrentTick + PeriodicSnapshotIntervalTicks;
+            BroadcastSnapshot();
+        }
+
+        private static void BroadcastCountUpdate(long? factionId = null, long? playerId = null, string coreType = null, int count = 0)
         {
             if (!Ready) return;
             if ((factionId == null && playerId == null) || string.IsNullOrEmpty(coreType)) return;
@@ -64,7 +85,7 @@ namespace ShipCoreFramework
                 Faction = factionId.HasValue ? new TargetFaction { Id = factionId.Value } : null,
                 Player = playerId.HasValue ? new TargetPlayer { Id = playerId.Value } : null,
                 CoreType = coreType,
-                Delta = delta
+                Count = count < 0 ? 0 : count
             };
 
             var env = new Envelope { Kind = EnvelopeKind.Diff, Payload = Serialize(diff) };
@@ -93,6 +114,7 @@ namespace ShipCoreFramework
                 if (apiMsg.targetModMessageID != ChannelId) return;
                 if (apiMsg.toServerID != 0 && apiMsg.toServerID != _thisServerId) return;
 
+                MarkSyncActivity();
                 var env = Deserialize<Envelope>(apiMsg.msgData);
                 if (env == null) return;
 
@@ -118,6 +140,11 @@ namespace ShipCoreFramework
                 }
             }
             catch { /**/ }
+        }
+
+        private static void MarkSyncActivity()
+        {
+            _syncSettledAfterTick = Session.CurrentTick + SyncSettlingWindowTicks;
         }
 
         private static LimitsState BuildSnapshot()
@@ -187,9 +214,7 @@ namespace ShipCoreFramework
                     GridsPerFactionManager.PerFaction.Add(diff.Faction.Id, new Dictionary<string, int>());
 
                 var dict = GridsPerFactionManager.PerFaction[diff.Faction.Id];
-                if (!dict.ContainsKey(diff.CoreType)) dict[diff.CoreType] = 0;
-                dict[diff.CoreType] += diff.Delta;
-                if (dict[diff.CoreType] < 0) dict[diff.CoreType] = 0; // Safety check
+                dict[diff.CoreType] = diff.Count < 0 ? 0 : diff.Count;
             }
 
             if (diff.Player != null)
@@ -198,9 +223,7 @@ namespace ShipCoreFramework
                     GridsPerPlayerManager.PerPlayer.Add(diff.Player.Id, new Dictionary<string, int>());
 
                 var dict = GridsPerPlayerManager.PerPlayer[diff.Player.Id];
-                if (!dict.ContainsKey(diff.CoreType)) dict[diff.CoreType] = 0;
-                dict[diff.CoreType] += diff.Delta;
-                if (dict[diff.CoreType] < 0) dict[diff.CoreType] = 0; // Safety check
+                dict[diff.CoreType] = diff.Count < 0 ? 0 : diff.Count;
             }
         }
 
@@ -261,7 +284,7 @@ namespace ShipCoreFramework
             [ProtoMember(1)] internal TargetFaction Faction { get; set; }
             [ProtoMember(2)] internal TargetPlayer Player { get; set; }
             [ProtoMember(3)] internal string CoreType { get; set; }
-            [ProtoMember(4)] internal int Delta { get; set; }
+            [ProtoMember(4)] internal int Count { get; set; }
         }
 
         [ProtoContract]

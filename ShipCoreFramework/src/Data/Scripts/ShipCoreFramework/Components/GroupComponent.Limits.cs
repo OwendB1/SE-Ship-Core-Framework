@@ -38,6 +38,12 @@ namespace ShipCoreFramework
             return _minimumBlocksPunishmentActive && IsBelowMinimumBlocksRequirement();
         }
 
+        internal void ScheduleExternalLimitValidation()
+        {
+            if (_closing) return;
+            _pendingExternalLimitValidationTick = Session.CurrentTick + ExternalLimitValidationDelayTicks;
+        }
+
         internal void OnBlockAddedToGroup()
         {
             if (!_minimumBlocksPunishmentActive) return;
@@ -69,6 +75,41 @@ namespace ShipCoreFramework
 
             _minimumBlocksPunishmentActive = true;
             EnforceGroupPunishment(true);
+        }
+
+        internal void RunExternalLimitValidationTick()
+        {
+            if (_closing)
+            {
+                _pendingExternalLimitValidationTick = 0;
+                return;
+            }
+
+            if (_pendingExternalLimitValidationTick == 0 || Session.CurrentTick < _pendingExternalLimitValidationTick)
+                return;
+
+            if (LimitsNexusSync.IsSettling)
+            {
+                ScheduleExternalLimitValidation();
+                return;
+            }
+
+            _pendingExternalLimitValidationTick = 0;
+
+            var mainCore = MainCoreComponent;
+            if (mainCore?.CoreBlock?.SlimBlock == null) return;
+            if (mainCore.CoreBlock.MarkedForClose || mainCore.CoreBlock.Closed) return;
+
+            var subtypeId = mainCore.SubtypeId;
+            if (string.IsNullOrEmpty(subtypeId)) return;
+            if (IsIgnoredNpcGroup()) return;
+
+            if (GridsPerFactionManager.IsGroupWithinFactionLimits(OwningFaction, OwnerId, subtypeId) &&
+                GridsPerPlayerManager.IsGroupWithinPlayerLimits(OwnerId, subtypeId))
+                return;
+
+            mainCore.CoreBlock.SlimBlock.RemoveAndRefund();
+            ResetCore();
         }
 
         private void EnforceGroupPunishment(bool forceShutOffPunishment = false)
