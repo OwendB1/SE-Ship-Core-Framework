@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Sandbox.Game;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 
@@ -76,6 +77,7 @@ namespace ShipCoreFramework
         {
             if (Config.SelectedNoCore == null || !IsServer) return;
             MyAPIGateway.Session.DamageSystem.RegisterBeforeDamageHandler(-100, CubeGridModifiers.GridCoreDamageHandler);
+            MyExplosions.OnExplosion += CubeGridModifiers.HandleLightningExplosions;
         }
 
         private static bool IsRelevantFactionStateChange(MyFactionStateChange action)

@@ -18,6 +18,11 @@
     <ModifierType>Multiplicative</ModifierType>
   </Modifiers>
   <Modifiers>
+    <Stat>PassiveEnvironmentDamage</Stat>
+    <Value>0</Value>
+    <ModifierType>Multiplicative</ModifierType>
+  </Modifiers>
+  <Modifiers>
     <Stat>PassiveRocketDamage</Stat>
     <Value>0.92</Value>
     <ModifierType>Multiplicative</ModifierType>

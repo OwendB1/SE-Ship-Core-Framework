@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using NexusModAPI;
+using Sandbox.Game;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using VRage.Game;
@@ -79,6 +80,7 @@ namespace ShipCoreFramework
             MyAPIGateway.Session.Factions.FactionStateChanged -= FactionStateChanged;
             MyAPIGateway.Utilities.MessageEnteredSender -= Commands.OnChatCommand;
             MyAPIGateway.Multiplayer.UnregisterSecureMessageHandler(CommandsSyncId, Commands.ServerMessageHandler);
+            MyExplosions.OnExplosion -= CubeGridModifiers.HandleLightningExplosions;
             
             try //Because this throws a NRE in keen code if you alt-F4
             {

@@ -111,14 +111,13 @@ namespace ShipCoreFramework
 
                 RebuildConnectorPunishmentLinks();
                 RecalculateAllLimits();
+                RefreshPunishmentState();
                 ModAPI.BroadcastGridAddedToGroup(grid.EntityId);
             });
         }
 
         internal void OnGridRemoved(IMyGridGroupData removedFrom, IMyCubeGrid grid, IMyGridGroupData addedTo)
         {
-            if (addedTo != null) return;
-
             var g = grid as MyCubeGrid;
             if (g == null || g.IsPreview) return;
 
@@ -137,6 +136,8 @@ namespace ShipCoreFramework
                 GridDictionary.Remove(g);
             }
 
+            RemoveDefenseModifierCache(g.EntityId);
+
             if (GridCount == 0)
             {
                 _closing = true;
@@ -145,6 +146,7 @@ namespace ShipCoreFramework
 
             RebuildConnectorPunishmentLinks();
             RecalculateAllLimits();
+            RefreshPunishmentState();
             ModAPI.BroadcastGridRemovedFromGroup(grid.EntityId, GetRepresentativeGridId());
         }
 
@@ -195,6 +197,7 @@ namespace ShipCoreFramework
                 Utils.Log("LOGGING EXCEPTION (most likely due to closure of world): " + e, 1);
             }
 
+            ClearDefenseModifierCache();
             foreach (var kvp in GridDictionary) kvp.Value.Clean();
             ClearGridDictionary();
             Limits.Clear();

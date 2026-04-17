@@ -23,7 +23,7 @@ namespace ShipCoreFramework
 
             RefreshPunishmentFlags();
             if (mainCoreChanged || previousPunishModifiers != PunishModifiers) ApplyModifiers(Modifiers);
-            UpdateDefenseModifierCache();
+            RefreshDefenseModifierCache();
         }
 
         internal void RefreshPunishmentFlags()
@@ -120,10 +120,36 @@ namespace ShipCoreFramework
             PunishModifiers = (punishments & GroupPunishmentFlags.Modifiers) != 0;
         }
 
-        private void UpdateDefenseModifierCache()
+        private GridDefenseModifiers GetCurrentDefenseModifiers()
         {
-            var modifiers = _activeDefenseEnabled ? GetActiveDefenseModifiers() : GetPassiveDefenseModifiers();
+            return _activeDefenseEnabled ? GetActiveDefenseModifiers() : GetPassiveDefenseModifiers();
+        }
+
+        internal void RefreshDefenseModifierCache()
+        {
+            GridDefenseModifiers discardedModifiers;
+            if (Deactivated || MainCoreComponent == null)
+            {
+                foreach (var kvp in GridDictionary)
+                    CubeGridModifiers.DefenseModifiers.TryRemove(kvp.Key.EntityId, out discardedModifiers);
+                return;
+            }
+
+            var modifiers = GetCurrentDefenseModifiers();
             foreach (var kvp in GridDictionary) CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
+        }
+
+        internal void RemoveDefenseModifierCache(long gridEntityId)
+        {
+            GridDefenseModifiers discardedModifiers;
+            CubeGridModifiers.DefenseModifiers.TryRemove(gridEntityId, out discardedModifiers);
+        }
+
+        internal void ClearDefenseModifierCache()
+        {
+            GridDefenseModifiers discardedModifiers;
+            foreach (var kvp in GridDictionary)
+                CubeGridModifiers.DefenseModifiers.TryRemove(kvp.Key.EntityId, out discardedModifiers);
         }
 
         private bool HasWorkingBeacon()
@@ -156,8 +182,7 @@ namespace ShipCoreFramework
 
         public void DefenseValuesChanged()
         {
-            var modifiers = GetActiveDefenseModifiers();
-            foreach (var kvp in GridDictionary) CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
+            RefreshDefenseModifierCache();
         }
 
         internal void RunBoostTimerTick()
@@ -191,8 +216,7 @@ namespace ShipCoreFramework
                 if (!(_activeDefenseDurationTimer <= 0f)) return;
                 _activeDefenseEnabled = false;
 
-                var modifiers = GetPassiveDefenseModifiers();
-                foreach (var kvp in GridDictionary) CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
+                RefreshDefenseModifierCache();
 
                 _activeDefenseCooldownTimer = ActiveDefenseCoolDown * 60f;
                 Utils.ShowNotification("Active Defense Disengaged! Cooldown started.", 1000);
@@ -233,8 +257,7 @@ namespace ShipCoreFramework
             _activeDefenseEnabled = true;
             _activeDefenseDurationTimer = ActiveDefenseDuration * 60f;
 
-            var modifiers = GetActiveDefenseModifiers();
-            foreach (var kvp in GridDictionary) CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
+            RefreshDefenseModifierCache();
 
             Utils.ShowNotification("Active Defense Engaged!", 1000);
 
