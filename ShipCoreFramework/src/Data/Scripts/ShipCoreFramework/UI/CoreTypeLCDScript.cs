@@ -16,6 +16,11 @@ namespace ShipCoreFramework
     {
         private static readonly float ScrollSpeed = 3; //pixels per update
         private static readonly int ScrollPauseUpdates = 15; //how many updates to say paused at the start and end when scrolling
+        private const string CustomDataSection = "ShipCoreLCD";
+        private const string FontSizeKey = "FontSize";
+        private const float DefaultFontScale = 1f;
+        private const float MinFontScale = 0.5f;
+        private const float MaxFontScale = 2.5f;
 
         private readonly Table _appliedModifiersTable = new Table
         {
@@ -61,12 +66,14 @@ namespace ShipCoreFramework
         };
 
         private readonly IMyTerminalBlock _terminalBlock;
+        private float _fontScale = DefaultFontScale;
         private int _scrollTime;
 
         public CoreTypeLCDScript(IMyTextSurface surface, IngameCubeBlock block, Vector2 size) : base(surface, block, size)
         {
             _terminalBlock = (IMyTerminalBlock)block; // internal stored m_block is the in-game interface that has no events, so can't unhook later on therefore, this field is required.
             _terminalBlock.OnMarkForClose += BlockMarkedForClose; // required if you're going to make use of Dispose() as it won't get called when the block is removed or grid is cut/unloaded.
+            ReloadCustomDataSettings();
 
             // Called when the script is created.
             // This class is instanced per LCD that uses it, which means the same block can have multiple instances of this script as well (e.g., a cockpit with all its screens set to use this script).
@@ -88,7 +95,7 @@ namespace ShipCoreFramework
         {
             Dispose();
         }
-        
+
         public override void Run()
         {
             if (Session.Config.SelectedNoCore == null) return;
@@ -110,16 +117,18 @@ namespace ShipCoreFramework
         {
             if (!Session.IsClient) return;
             if (GroupComponent == null) return;
+
+            ReloadCustomDataSettings();
             
             var screenSize = Surface.SurfaceSize;
             var screenTopLeft = (Surface.TextureSize - screenSize) * 0.5f;
-            var padding = new Vector2(10, 10);
-            var cellGap = new Vector2(12, 5);
+            var padding = new Vector2(10, 10) * _fontScale;
+            var cellGap = new Vector2(12, 5) * _fontScale;
             var screenInnerWidth = Surface.SurfaceSize.X - padding.X * 2;
             var successColor = Color.Green;
             var failColor = Color.Red;
-            const float baseScale = 1;
-            var bodyScale = baseScale * 13 / TextUtils.CharWidth;
+            var headerScale = _fontScale;
+            var bodyScale = _fontScale * 13 / TextUtils.CharWidth;
 
             var frame = Surface.DrawFrame();
 
@@ -145,7 +154,8 @@ namespace ShipCoreFramework
                 new Cell()
             });
 
-            _headerTable.RenderToSprites(spritesToRender, screenTopLeft + padding, screenInnerWidth, new Vector2(15, 0), out currentPosition);
+            _headerTable.RenderToSprites(spritesToRender, screenTopLeft + padding, screenInnerWidth,
+                new Vector2(15, 0) * _fontScale, out currentPosition, headerScale);
 
             //Render the results checklist
 
@@ -181,7 +191,7 @@ namespace ShipCoreFramework
 
             if (deactivated)
             {
-                var deactivatedTableTopLeft = currentPosition + new Vector2(0, 5);
+                var deactivatedTableTopLeft = currentPosition + new Vector2(0, 5) * _fontScale;
                 _gridResultsTable.RenderToSprites(spritesToRender, deactivatedTableTopLeft, screenInnerWidth, cellGap,
                     out currentPosition, bodyScale);
 
@@ -267,7 +277,7 @@ namespace ShipCoreFramework
                     Grid.BlocksPCU <= ShipCore.MaxPCU ? new Cell() : new Cell("X", failColor)
                 });
             
-            var gridResultsTableTopLeft = currentPosition + new Vector2(0, 5);
+            var gridResultsTableTopLeft = currentPosition + new Vector2(0, 5) * _fontScale;
 
             _gridResultsTable.RenderToSprites(spritesToRender, gridResultsTableTopLeft, screenInnerWidth, cellGap,
                 out currentPosition, bodyScale);
@@ -294,18 +304,18 @@ namespace ShipCoreFramework
                 }
             }
 
-            var gridLimitsTableTopLeft = currentPosition + new Vector2(0, 5);
+            var gridLimitsTableTopLeft = currentPosition + new Vector2(0, 5) * _fontScale;
 
             _gridLimitsTable.RenderToSprites(spritesToRender, gridLimitsTableTopLeft, screenInnerWidth, cellGap,
                 out currentPosition, bodyScale);
 
             //Applied modifiers
-            spritesToRender.Add(CreateLine("Applied modifiers", currentPosition + new Vector2(0, 5),
-                out currentPosition));
+            spritesToRender.Add(CreateLine("Applied modifiers", currentPosition + new Vector2(0, 5) * _fontScale,
+                out currentPosition, headerScale));
 
             _appliedModifiersTable.Clear();
 
-            var appliedModifiersTableTopLeft = currentPosition + new Vector2(0, 5);
+            var appliedModifiersTableTopLeft = currentPosition + new Vector2(0, 5) * _fontScale;
 
             foreach (var modifierValue in GroupComponent.Modifiers.GetModifierValues())
                 _appliedModifiersTable.Rows.Add(new Row
@@ -328,6 +338,47 @@ namespace ShipCoreFramework
             frame.Dispose(); // send sprites to the screen
         }
 
+        private void ReloadCustomDataSettings()
+        {
+            _fontScale = DefaultFontScale;
+
+            var customData = _terminalBlock?.CustomData;
+            if (string.IsNullOrWhiteSpace(customData)) return;
+
+            string currentSection = null;
+
+            var lines = customData.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var rawLine in lines)
+            {
+                var line = rawLine.Trim();
+                if (line.Length == 0 || line.StartsWith(";") || line.StartsWith("#") || line.StartsWith("//")) continue;
+
+                if (line.StartsWith("[") && line.EndsWith("]"))
+                {
+                    currentSection = line.Substring(1, line.Length - 2).Trim();
+                    continue;
+                }
+
+                var separatorIndex = line.IndexOf('=');
+                if (separatorIndex < 0) separatorIndex = line.IndexOf(':');
+                if (separatorIndex <= 0) continue;
+
+                var key = line.Substring(0, separatorIndex).Trim();
+                if (!string.Equals(currentSection, CustomDataSection, StringComparison.OrdinalIgnoreCase) ||
+                    !string.Equals(key, FontSizeKey, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var value = line.Substring(separatorIndex + 1).Trim();
+                float parsedValue;
+                if (!float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out parsedValue) &&
+                    !float.TryParse(value, NumberStyles.Float, CultureInfo.CurrentCulture, out parsedValue))
+                    return;
+
+                _fontScale = MathHelper.Clamp(parsedValue, MinFontScale, MaxFontScale);
+                return;
+            }
+        }
+
         private Vector2 GetScrollPosition(Vector2 contentBottomRight)
         {
             var screenSize = Surface.SurfaceSize;
@@ -336,19 +387,20 @@ namespace ShipCoreFramework
 
             if (!(contentHeight > screenSize.Y)) return new Vector2();
             var scrollRange = contentHeight - screenSize.Y;
-            var numUpdatesToScroll = (int)Math.Ceiling(scrollRange / ScrollSpeed);
+            var scrollSpeed = ScrollSpeed * _fontScale;
+            var numUpdatesToScroll = (int)Math.Ceiling(scrollRange / scrollSpeed);
             var fullScrollCycleTime = (ScrollPauseUpdates + numUpdatesToScroll) * 2;
             Vector2 scrollPosition;
 
             if (_scrollTime < ScrollPauseUpdates)
                 scrollPosition = new Vector2();
             else if (_scrollTime < ScrollPauseUpdates + numUpdatesToScroll)
-                scrollPosition = new Vector2(0, (_scrollTime - ScrollPauseUpdates) * ScrollSpeed);
+                scrollPosition = new Vector2(0, (_scrollTime - ScrollPauseUpdates) * scrollSpeed);
             else if (_scrollTime < ScrollPauseUpdates * 2 + numUpdatesToScroll)
                 scrollPosition = new Vector2(0, scrollRange);
             else
                 scrollPosition = new Vector2(0,
-                    scrollRange - (_scrollTime - (ScrollPauseUpdates * 2 + numUpdatesToScroll)) * ScrollSpeed);
+                    scrollRange - (_scrollTime - (ScrollPauseUpdates * 2 + numUpdatesToScroll)) * scrollSpeed);
 
             _scrollTime++;
 
