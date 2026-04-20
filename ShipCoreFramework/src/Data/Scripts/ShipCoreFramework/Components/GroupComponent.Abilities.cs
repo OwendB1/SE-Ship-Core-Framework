@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
@@ -31,6 +32,20 @@ namespace ShipCoreFramework
             ApplyPunishmentFlags(EvaluatePunishmentGates());
         }
 
+        internal List<string> GetSpeedPunishmentGateDescriptions()
+        {
+            var speedReasons = new List<string>();
+            CollectTriggeredPunishmentGates(speedReasons, null);
+            return speedReasons;
+        }
+
+        internal List<string> GetModifierPunishmentGateDescriptions()
+        {
+            var modifierReasons = new List<string>();
+            CollectTriggeredPunishmentGates(null, modifierReasons);
+            return modifierReasons;
+        }
+
         private GroupPunishmentFlags EvaluatePunishmentGates()
         {
             var punishments = GroupPunishmentFlags.None;
@@ -49,6 +64,34 @@ namespace ShipCoreFramework
         {
             if (!isTriggered) return;
             punishments |= flags;
+        }
+
+        private void CollectTriggeredPunishmentGates(ICollection<string> speedReasons,
+            ICollection<string> modifierReasons)
+        {
+            AddTriggeredPunishmentGate(speedReasons, modifierReasons, IsOverCoreCapacity(),
+                GetMobilityPunishmentFlags(), GetCoreCapacityPunishmentReason());
+            AddTriggeredPunishmentGate(speedReasons, modifierReasons, IsBelowMinPlayers(),
+                GroupPunishmentFlags.Both, GetBelowMinimumPlayersPunishmentReason());
+            AddTriggeredPunishmentGate(speedReasons, modifierReasons, IsAtOrOverMaxPlayers(),
+                GroupPunishmentFlags.Both, GetAtOrOverMaxPlayersPunishmentReason());
+            AddTriggeredPunishmentGate(speedReasons, modifierReasons, HasBrokenMainCore(),
+                GroupPunishmentFlags.Both, "Main core is offline");
+            AddTriggeredPunishmentGate(speedReasons, modifierReasons,
+                ShipCore.ForceBroadCast && !HasWorkingBeacon(),
+                GroupPunishmentFlags.Both, "Required working beacon missing");
+        }
+
+        private static void AddTriggeredPunishmentGate(ICollection<string> speedReasons,
+            ICollection<string> modifierReasons, bool isTriggered, GroupPunishmentFlags flags, string description)
+        {
+            if (!isTriggered) return;
+
+            if ((flags & GroupPunishmentFlags.Speed) != 0 && speedReasons != null)
+                speedReasons.Add(description);
+
+            if ((flags & GroupPunishmentFlags.Modifiers) != 0 && modifierReasons != null)
+                modifierReasons.Add(description);
         }
 
         private GroupPunishmentFlags GetMobilityPunishmentFlags()
@@ -80,6 +123,36 @@ namespace ShipCoreFramework
         private bool IsBelowMinPlayers()
         {
             return ShipCore.MinPlayers > 0 && GetFactionPlayerCount() < ShipCore.MinPlayers;
+        }
+
+        private string GetCoreCapacityPunishmentReason()
+        {
+            var triggeredLimits = new List<string>();
+
+            if (ShipCore.MaxBlocks > 0 && GroupBlocksCount >= ShipCore.MaxBlocks)
+                triggeredLimits.Add($"blocks {GroupBlocksCount}/{ShipCore.MaxBlocks}");
+
+            if (ShipCore.MaxPCU > 0 && GroupPCU >= ShipCore.MaxPCU)
+                triggeredLimits.Add($"PCU {GroupPCU}/{ShipCore.MaxPCU}");
+
+            if (ShipCore.MaxMass > 0 && GroupMass >= ShipCore.MaxMass)
+                triggeredLimits.Add($"mass {GroupMass:F0}/{ShipCore.MaxMass:F0} kg");
+
+            return triggeredLimits.Count == 0
+                ? "Core capacity exceeded"
+                : $"Core capacity exceeded ({string.Join(", ", triggeredLimits)})";
+        }
+
+        private string GetBelowMinimumPlayersPunishmentReason()
+        {
+            var factionPlayerCount = GetFactionPlayerCount();
+            return $"Below minimum players ({factionPlayerCount}/{ShipCore.MinPlayers})";
+        }
+
+        private string GetAtOrOverMaxPlayersPunishmentReason()
+        {
+            var factionPlayerCount = GetFactionPlayerCount();
+            return $"At or over max players ({factionPlayerCount}/{ShipCore.MaxPlayers})";
         }
 
         private int GetFactionPlayerCount()

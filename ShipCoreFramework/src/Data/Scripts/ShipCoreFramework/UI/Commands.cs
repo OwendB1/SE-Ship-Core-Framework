@@ -629,6 +629,26 @@ namespace ShipCoreFramework
             }
 
             body += $"Ignored: {(groupKvp.Value.IsIgnoredGroup() ? "Yes" : "No")}\n\n";
+
+            var speedPunishmentGates = groupKvp.Value.GetSpeedPunishmentGateDescriptions();
+            var modifierPunishmentGates = groupKvp.Value.GetModifierPunishmentGateDescriptions();
+
+            body += "Punishments:\n";
+            body += $"  Speed: {(groupKvp.Value.PunishSpeed ? "Yes" : "No")}\n";
+            if (speedPunishmentGates.Count > 0)
+            {
+                foreach (var gate in speedPunishmentGates)
+                    body += $"    - {gate}\n";
+            }
+
+            body += $"  Modifiers: {(groupKvp.Value.PunishModifiers ? "Yes" : "No")}\n";
+            if (modifierPunishmentGates.Count > 0)
+            {
+                foreach (var gate in modifierPunishmentGates)
+                    body += $"    - {gate}\n";
+            }
+            body += "\n";
+
             var currentMaxPerPlayer = groupKvp.Value.ShipCore.MaxPerPlayer;
             if (currentMaxPerPlayer > 0)
             {
