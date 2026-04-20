@@ -7,6 +7,20 @@ namespace ShipCoreFramework
 {
     internal partial class CoreComponent
     {
+        private void DetachBlockEvents()
+        {
+            if (CoreBlock == null) return;
+
+            CoreBlock.OnUpgradeValuesChanged -= OnUpgradeValuesChanged;
+            CoreBlock.AppendingCustomInfo -= AppendingCustomInfo;
+            CoreBlock.IsWorkingChanged -= OnIsWorkingChanged;
+        }
+
+        internal void Clean()
+        {
+            DetachBlockEvents();
+        }
+
         private void OnIsWorkingChanged(IMyCubeBlock obj)
         {
             _groupComponent.RefreshPunishmentState();
@@ -36,10 +50,7 @@ namespace ShipCoreFramework
                     : $"A backup core of grid {grid.CustomName} was destroyed!",
                 0, 5000, true);
 
-            CoreBlock.OnUpgradeValuesChanged -= OnUpgradeValuesChanged;
-            CoreBlock.AppendingCustomInfo -= AppendingCustomInfo;
-            CoreBlock.IsWorkingChanged -= OnIsWorkingChanged;
-
+            DetachBlockEvents();
             _groupComponent.CoreRemoved(this);
         }
     }

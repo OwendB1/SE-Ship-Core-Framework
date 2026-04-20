@@ -45,6 +45,7 @@ namespace ShipCoreFramework
             BeaconDictionary.Clear();
             foreach (var moduleComponent in _upgradeModuleDictionary.Values) moduleComponent.Clean();
             _upgradeModuleDictionary.Clear();
+            foreach (var coreComponent in CoreDictionary.Values) coreComponent.Clean();
             CoreDictionary.Clear();
         }
     }

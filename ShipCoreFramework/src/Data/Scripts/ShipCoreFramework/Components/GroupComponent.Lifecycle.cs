@@ -122,19 +122,17 @@ namespace ShipCoreFramework
             if (g == null || g.IsPreview) return;
 
             GridComponent comp;
+            CoreComponent removedMain = null;
             if (TryGetGridComponent(g, out comp))
             {
                 if (MainCoreComponent?.GridComponent.Grid.EntityId == g.EntityId)
-                {
-                    var removedMain = MainCoreComponent;
-                    removedMain.CoreBlock.SlimBlock.RemoveAndRefund();
-
-                    if (ReferenceEquals(MainCoreComponent, removedMain)) ResetCore();
-                }
+                    removedMain = MainCoreComponent;
 
                 comp.Clean();
                 GridDictionary.Remove(g);
             }
+
+            if (removedMain != null) MainCoreLeftGroup(removedMain);
 
             RemoveDefenseModifierCache(g.EntityId);
 
@@ -148,6 +146,43 @@ namespace ShipCoreFramework
             RecalculateAllLimits();
             RefreshPunishmentState();
             ModAPI.BroadcastGridRemovedFromGroup(grid.EntityId, GetRepresentativeGridId());
+        }
+
+        private void MainCoreLeftGroup(CoreComponent lost)
+        {
+            if (!ReferenceEquals(lost, MainCoreComponent)) return;
+
+            var oldType = lost.SubtypeId;
+            var oldName = lost.CoreBlock?.CustomName ?? string.Empty;
+            var oldOwnerId = OwnerId;
+            var oldFaction = OwningFaction;
+
+            MainCoreComponent = null;
+
+            if (Deactivated)
+            {
+                SyncBeaconComponents();
+                OnUpgradeModulesChanged();
+                return;
+            }
+
+            var newMain = CoreDictionary.Values.FirstOrDefault();
+            if (newMain == null)
+            {
+                GridsPerFactionManager.RemoveGridGroup(oldFaction, oldType);
+                GridsPerPlayerManager.RemoveGridGroup(oldOwnerId, oldType);
+                ModAPI.BroadcastCoreDeactivated(GetRepresentativeGridId(), oldType, oldName);
+                SyncBeaconComponents();
+            }
+            else
+            {
+                MainCoreComponent = newMain;
+                MainCoreComponent.IsMainCore = true;
+                SyncBeaconComponents();
+            }
+
+            if (_closing || !Session.HasStarted || Session.IsShuttingDown) return;
+            OnUpgradeModulesChanged();
         }
 
         internal void CoreRemoved(CoreComponent lost)
