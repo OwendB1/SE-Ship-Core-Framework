@@ -9,12 +9,13 @@ namespace ShipCoreFramework
         private bool TryApplyLimitsOnAdd(IMySlimBlock block, bool limitBasedPunish)
         {
             var firstOwner = Grid?.BigOwners.FirstOrDefault() ?? 0;
+            var deferPunishment = GroupComponent.IsInitializingGrids;
 
             var limits = GroupComponent.ShipCore.BlockLimits;
             if (limits == null || limits.Length == 0) return true;
 
             var blockKey = KeyOf(block);
-            var forceShutOff = GroupComponent.ShouldForceLimitedBlocksOff();
+            var forceShutOff = !deferPunishment && GroupComponent.ShouldForceLimitedBlocksOff();
 
             foreach (var limit in limits)
             {
@@ -29,10 +30,11 @@ namespace ShipCoreFramework
 
                 if (forceShutOff)
                     block.WhackABlock(PunishmentType.ShutOff);
-
-                if (GroupComponent.MainCoreComponent?.CoreBlock != null)
-                    if (!GroupComponent.IsValidDirection(GroupComponent.MainCoreComponent.CoreBlock, block,
-                            limit.AllowedDirections))
+                
+                if (GroupComponent.MainCoreComponent?.CoreBlock != null && 
+                    !GroupComponent.IsValidDirection(GroupComponent.MainCoreComponent.CoreBlock, block, limit.AllowedDirections))
+                {
+                    if (!deferPunishment)
                     {
                         Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violated directional locking!");
                         block.WhackABlock(forceShutOff
@@ -40,6 +42,7 @@ namespace ShipCoreFramework
                             : limitBasedPunish ? limit.PunishmentType : PunishmentType.Delete);
                         if (!forceShutOff) return false;
                     }
+                }
 
                 LimitBucket groupBucket;
                 if (!GroupComponent.Limits.TryGetValue(limit, out groupBucket))
@@ -57,17 +60,20 @@ namespace ShipCoreFramework
                 var effectiveMaxCount = GroupComponent.GetEffectiveMaxCount(limit);
                 if (currentWeight + weight > effectiveMaxCount)
                 {
-                    var message = Utils.GetBlockSubtypeId(block) + " violates Block limit " + limit.Name + ": " +
-                                  (currentWeight + weight) + "/" + effectiveMaxCount;
-                    if (firstOwner != 0) Utils.ShowNotification(message, firstOwner);
-                    else Utils.ShowNotification(message);
-                    var punishmentType = forceShutOff
-                        ? PunishmentType.ShutOff
-                        : limitBasedPunish ? limit.PunishmentType : PunishmentType.Delete;
-                    block.WhackABlock(punishmentType);
+                    if (!deferPunishment)
+                    {
+                        var message = Utils.GetBlockSubtypeId(block) + " violates Block limit " + limit.Name + ": " +
+                                      (currentWeight + weight) + "/" + effectiveMaxCount;
+                        if (firstOwner != 0) Utils.ShowNotification(message, firstOwner);
+                        else Utils.ShowNotification(message);
+                        var punishmentType = forceShutOff
+                            ? PunishmentType.ShutOff
+                            : limitBasedPunish ? limit.PunishmentType : PunishmentType.Delete;
+                        block.WhackABlock(punishmentType);
 
-                    if (punishmentType == PunishmentType.Delete || punishmentType == PunishmentType.Explode)
-                        return false;
+                        if (punishmentType == PunishmentType.Delete || punishmentType == PunishmentType.Explode)
+                            return false;
+                    }
                 }
 
                 LimitBucket gridBucket;

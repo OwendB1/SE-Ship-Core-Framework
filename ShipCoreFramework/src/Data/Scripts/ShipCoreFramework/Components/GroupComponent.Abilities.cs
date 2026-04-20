@@ -19,6 +19,8 @@ namespace ShipCoreFramework
 
         internal void RefreshPunishmentState()
         {
+            if (IsInitializingGrids) return;
+
             var mainCoreChanged = EnsureWorkingMainCore();
             var previousPunishModifiers = PunishModifiers;
 

@@ -14,15 +14,53 @@ namespace ShipCoreFramework
             var tempGridList = new List<IMyCubeGrid>();
             MyGroup.GetGrids(tempGridList);
 
-            foreach (var myCubeGrid in tempGridList)
-            {
-                var startGrid = (MyCubeGrid)myCubeGrid;
-                if (startGrid.IsPreview) return;
+            tempGridList = tempGridList
+                .OrderByDescending(HasPotentialCore)
+                .ThenBy(grid => grid.EntityId)
+                .ToList();
 
-                var gridComp = new GridComponent();
-                GridDictionary.Add(startGrid, gridComp);
-                gridComp.Init(startGrid, MyGroup);
+            BeginGridInitialization();
+            try
+            {
+                foreach (var myCubeGrid in tempGridList)
+                {
+                    var startGrid = (MyCubeGrid)myCubeGrid;
+                    if (startGrid.IsPreview) continue;
+
+                    InitializeGridComponent(startGrid, MyGroup);
+                }
             }
+            finally
+            {
+                EndGridInitialization();
+            }
+
+            OnUpgradeModulesChanged();
+        }
+
+        private void BeginGridInitialization()
+        {
+            _gridInitializationDepth++;
+        }
+
+        private void EndGridInitialization()
+        {
+            if (_gridInitializationDepth > 0)
+                _gridInitializationDepth--;
+        }
+
+        private void InitializeGridComponent(MyCubeGrid grid, IMyGridGroupData groupData)
+        {
+            var gridComp = new GridComponent();
+            GridDictionary.Add(grid, gridComp);
+            gridComp.Init(grid, groupData);
+        }
+
+        private static bool HasPotentialCore(IMyCubeGrid grid)
+        {
+            var coreBlocks = new List<IMySlimBlock>();
+            grid.GetBlocks(coreBlocks, Utils.IsCoreBlock);
+            return coreBlocks.Count > 0;
         }
 
         internal void Activate(CoreComponent coreComponent)
@@ -92,26 +130,23 @@ namespace ShipCoreFramework
 
             GridComponent discard;
             if (TryGetGridComponent(g, out discard)) return;
-            var gc = new GridComponent();
-            gc.Init(g, addedTo);
-            GridDictionary.Add(g, gc);
+
+            BeginGridInitialization();
+            try
+            {
+                InitializeGridComponent(g, addedTo);
+            }
+            finally
+            {
+                EndGridInitialization();
+            }
 
             Utils.Log($"OnGridAdded: {grid.EntityId}, {OwnerId}, {grid.CustomName}", 2);
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
                 if (grid.MarkedForClose || grid.Closed) return;
-                if (IsIgnoredGroup())
-                {
-                    Utils.Log(
-                        $"OnGridAdded: Group became ignored after grid addition (Faction: {OwningFaction?.Tag ?? "None"})",
-                        2);
-                    Deactivate("Group became ignored after grid addition.");
-                    return;
-                }
 
-                RebuildConnectorPunishmentLinks();
-                RecalculateAllLimits();
-                RefreshPunishmentState();
+                OnUpgradeModulesChanged();
                 ModAPI.BroadcastGridAddedToGroup(grid.EntityId);
             });
         }

@@ -82,10 +82,12 @@ namespace ShipCoreFramework
 
         private bool _closing;
         private bool _refreshingUpgradeModules;
+        private int _gridInitializationDepth;
         private bool _ignoredStateInitialized;
         private bool _wasIgnoredGroup;
 
         internal float ActiveDefenseDuration => GetActiveDefenseModifiers().Duration;
         internal float ActiveDefenseCoolDown => GetActiveDefenseModifiers().Cooldown;
+        internal bool IsInitializingGrids => _gridInitializationDepth > 0;
     }
 }

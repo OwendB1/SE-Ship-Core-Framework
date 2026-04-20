@@ -26,24 +26,29 @@ namespace ShipCoreFramework
 
         internal void OnUpgradeModulesChanged()
         {
-            if (_closing || _refreshingUpgradeModules) return;
+            if (_closing || _refreshingUpgradeModules || IsInitializingGrids) return;
 
             _refreshingUpgradeModules = true;
             try
             {
-                RefreshUpgradeModules();
-                RebuildConnectorPunishmentLinks();
-                RecalculateAllLimits();
-                RefreshMinimumBlocksPunishmentState();
-                RefreshPunishmentFlags();
-                ApplyModifiers(Modifiers);
-                DefenseValuesChanged();
-                EnforceGroupPunishment(_minimumBlocksPunishmentActive);
+                RefreshGroupStateAndEnforce();
             }
             finally
             {
                 _refreshingUpgradeModules = false;
             }
+        }
+
+        private void RefreshGroupStateAndEnforce()
+        {
+            RefreshUpgradeModules();
+            RebuildConnectorPunishmentLinks();
+            RecalculateAllLimits();
+            RefreshMinimumBlocksPunishmentState();
+            RefreshPunishmentState();
+            ApplyModifiers(Modifiers);
+            DefenseValuesChanged();
+            EnforceGroupPunishment(_minimumBlocksPunishmentActive);
         }
 
         private void RefreshUpgradeModules()
