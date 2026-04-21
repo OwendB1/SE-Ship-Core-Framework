@@ -10,6 +10,7 @@ namespace ShipCoreFramework
         public bool Init(IMyFunctionalBlock coreBlock, GridComponent gridComponent, GroupComponent groupComponent)
         {
             CoreBlock = coreBlock;
+            //CoreBlock.AddUpgradeValue("ShipCoreLink", 0f);
             var isIgnoredNpcGrid = Session.Config.IgnoreAiFactions && CoreBlock.CubeGrid.IsNpcSpawnedGrid;
             var builder = CoreBlock.SlimBlock.BuiltBy;
             if (builder == 0 && !isIgnoredNpcGrid)
@@ -110,7 +111,7 @@ namespace ShipCoreFramework
                     return false;
                 }
             }
-
+            
             Utils.Log($"Core Initial: {SubtypeId}, GroupHasMain: {groupHasMain}, PersistedMain: {persistedMain}", 1);
             if (!groupHasMain || (persistedMain && !hasSameTypeMain))
             {

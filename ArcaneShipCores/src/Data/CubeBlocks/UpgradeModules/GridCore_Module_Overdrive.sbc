@@ -30,11 +30,11 @@
 			</BuildProgressModels>
 			<!-- Required dummy vanilla upgrade channel so MyUpgradeModule can resolve connections without crashing. Actual gameplay modifiers live in the upgrade module XML config. -->
 			<Upgrades>
-				<Upgrade>
+				<MyUpgradeModuleInfo>
 					<UpgradeType>ShipCoreLink</UpgradeType>
 					<Modifier>1</Modifier>
 					<ModifierType>Additive</ModifierType>
-				</Upgrade>
+				</MyUpgradeModuleInfo>
 			</Upgrades>
             <ScreenAreas>
                 <ScreenArea Name="CockpitScreen_01" DisplayName="Screen 1" TextureResolution="512" ScreenWidth="5" ScreenHeight="3" Script="CoreTypeLCDScript"/>
