@@ -982,28 +982,53 @@ function writeBlockLimitXml(limit, indent = "  ") {
 }
 
 function parseUpgradeModuleXml(text) {
-  const doc = parseXml(text);
-  const root = xmlRoot(doc);
-  const moduleNode = (root && root.localName === "UpgradeModule") ? root : null;
+  // Strip BOM and re-strip the XML declaration independently of parseXml() so
+  // that any stray whitespace or encoding issues don't leave DOMParser with a
+  // malformed prolog that silently returns a parsererror document.
+  const cleaned = text.replace(/^\uFEFF/, "").replace(/^\s*<\?xml[^?]*\?>\s*/i, "").trim();
+  const doc = new DOMParser().parseFromString(cleaned, "application/xml");
+  const root = doc && doc.documentElement;
+  if (!root || root.nodeName === "parsererror" || root.localName === "parsererror") return null;
+
+  // Support both a bare <UpgradeModule> root and any wrapper element (e.g. a
+  // future <Definitions> container) by searching the whole document.
+  let moduleNode = null;
+  if (root.localName === "UpgradeModule") {
+    moduleNode = root;
+  } else {
+    const found = doc.getElementsByTagName("UpgradeModule");
+    if (found.length > 0) moduleNode = found[0];
+  }
   if (!moduleNode) return null;
 
-  // Use getElementsByTagName directly on each <Modifiers> child to bypass any
-  // namespace-related querySelector issues with repeated sibling elements.
-  const modifiers = Array.from(moduleNode.getElementsByTagName("Modifiers")).map((n) => ({
-    stat:         (n.getElementsByTagName("Stat")[0]?.textContent          || "").trim(),
-    value:        Number((n.getElementsByTagName("Value")[0]?.textContent   || "0").trim()),
-    modifierType: (n.getElementsByTagName("ModifierType")[0]?.textContent  || "Multiplicative").trim()
-  })).filter((m) => m.stat);
+  // Use getElementsByTagName with an explicit localName guard so that browsers
+  // whose namespace-aware XML DOM let "Modifiers" match "BlockLimitModifiers"
+  // (a known Firefox quirk when xmlns: attributes are present) don't pollute
+  // the modifiers list with block-limit entries.
+  const modifiers = Array.from(moduleNode.getElementsByTagName("Modifiers"))
+    .filter((n) => n.localName === "Modifiers")
+    .map((n) => ({
+      stat:         (n.getElementsByTagName("Stat")[0]?.textContent          || "").trim(),
+      value:        Number((n.getElementsByTagName("Value")[0]?.textContent   || "0").trim()),
+      modifierType: (n.getElementsByTagName("ModifierType")[0]?.textContent  || "Multiplicative").trim()
+    })).filter((m) => m.stat);
 
-  const blockLimitModifiers = Array.from(moduleNode.getElementsByTagName("BlockLimitModifiers")).map((n) => ({
-    blockLimitName: (n.getElementsByTagName("BlockLimitName")[0]?.textContent || "").trim(),
-    value:          Number((n.getElementsByTagName("Value")[0]?.textContent   || "0").trim()),
-    modifierType:   (n.getElementsByTagName("ModifierType")[0]?.textContent  || "Additive").trim()
-  })).filter((m) => m.blockLimitName);
+  const blockLimitModifiers = Array.from(moduleNode.getElementsByTagName("BlockLimitModifiers"))
+    .filter((n) => n.localName === "BlockLimitModifiers")
+    .map((n) => ({
+      blockLimitName: (n.getElementsByTagName("BlockLimitName")[0]?.textContent || "").trim(),
+      value:          Number((n.getElementsByTagName("Value")[0]?.textContent   || "0").trim()),
+      modifierType:   (n.getElementsByTagName("ModifierType")[0]?.textContent  || "Additive").trim()
+    })).filter((m) => m.blockLimitName);
+
+  // Resolve SubtypeId and UniqueName as direct children of <UpgradeModule>
+  // using a parentNode check so deeper descendants are never accidentally matched.
+  const subtypeIdNode  = Array.from(moduleNode.getElementsByTagName("SubtypeId")).find((n) => n.localName === "SubtypeId"  && n.parentNode === moduleNode);
+  const uniqueNameNode = Array.from(moduleNode.getElementsByTagName("UniqueName")).find((n) => n.localName === "UniqueName" && n.parentNode === moduleNode);
 
   return cloneUpgradeModule({
-    subtypeId: textOf(moduleNode, "SubtypeId"),
-    uniqueName: textOf(moduleNode, "UniqueName"),
+    subtypeId:  (subtypeIdNode?.textContent  || "").trim(),
+    uniqueName: (uniqueNameNode?.textContent || "").trim(),
     modifiers,
     blockLimitModifiers
   });
@@ -2134,7 +2159,32 @@ async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, cor
       continue;
     }
 
-    // Not a recognised config file — pass through unchanged into Download All
+    // Try parsing as a game block-definition SBC (<Definitions><CubeBlocks><Definition
+    // xsi:type="MyObjectBuilder_UpgradeModuleDefinition">) and import any upgrade-module
+    // definitions found inside it. Block-definition SBCs can contain multiple definitions
+    // so we extract all upgradeModule entries and add them. The file is still passed
+    // through unchanged so it stays in the output ZIP.
+    const sbcDefs = parseSbcDefinitions(fileText);
+    const sbcUpgradeDefs = sbcDefs.filter((d) => d.blockType === "upgradeModule");
+    if (sbcUpgradeDefs.length > 0) {
+      for (const def of sbcUpgradeDefs) {
+        const upgradeModule = cloneUpgradeModule({
+          subtypeId:  def.subtypeId,
+          uniqueName: def.displayName,
+          modifiers:  def.modifiers,
+          blockLimitModifiers: []
+        });
+        state.upgradeModules.push(upgradeModule);
+      }
+      status.push(`Loaded ${sbcUpgradeDefs.length} upgrade module(s) from ${file.name}.`);
+      // Still pass through so the original block-definition SBC is included in the output ZIP
+      const zipPath = fileZipPathMap.get(file) || file.zipPath || file.name;
+      const capturedText = fileText;
+      state.uploadedPassthroughFiles.push({ zipPath, getText: () => Promise.resolve(capturedText) });
+      continue;
+    }
+
+    // Not a recognised config file — pass through unchanged into Download All.
     const zipPath = fileZipPathMap.get(file) || file.zipPath || file.name;
     const capturedText = fileText;
     state.uploadedPassthroughFiles.push({ zipPath, getText: () => Promise.resolve(capturedText) });
