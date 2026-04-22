@@ -2320,11 +2320,11 @@ ids("loadUploadedXml").addEventListener("click", async () => {
 });
 
 (async () => {
-  const response = await fetch("./assets/ModConfig.cs", { cache: "no-cache" });
+  const response = await fetch("./assets/ModConfig.XmlModels.cs", { cache: "no-cache" });
   const text = await response.text();
   state.schema = parseModConfigCs(text);
   ids("schemaPreview").textContent = JSON.stringify(state.schema, null, 2);
-  ids("parserStatus").textContent = `Loaded bundled ModConfig.cs and parsed ${Object.keys(state.schema).length} XML classes.`;
+  ids("parserStatus").textContent = `Loaded bundled ModConfig.XmlModels.cs and parsed ${Object.keys(state.schema).length} XML classes.`;
 
   if (restoreDraftFromStorage()) {
     renderBlockGroups();
