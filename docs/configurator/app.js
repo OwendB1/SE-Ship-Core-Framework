@@ -1,3 +1,4 @@
+// app.js build v1009
 const state = {
   schema: {},
   blockGroups: [],
@@ -9,7 +10,12 @@ const state = {
   selectedCoreIndex: 0,
   selectedUpgradeModuleIndex: 0,
   noCoreCore: null,
-  expandedLimitPanelsByCore: {}
+  expandedLimitPanelsByCore: {},
+  // Files from the original upload that are passed through unchanged into Download All
+  // Each entry: { name: string (zip path), getText: () => Promise<string> }
+  uploadedPassthroughFiles: [],
+  // Full output path from manifest per core filename (lowercase) e.g. "frigate_core.xml" -> "Data/Cores/Combat Grids/Frigate_Core.xml"
+  manifestCoreFullPathByFilename: new Map()
 };
 
 const DEFAULT_GRID_MODIFIERS = {
@@ -83,7 +89,44 @@ function escapeXml(value) {
 }
 
 function parseXml(text) {
-  return new DOMParser().parseFromString(text, "application/xml");
+  // Strip the XML declaration — some browsers reject encoding declarations
+  // in strings passed to DOMParser with application/xml.
+  const stripped = text.replace(/^\s*<\?xml[^?]*\?>\s*/i, "");
+  return new DOMParser().parseFromString(stripped, "application/xml");
+}
+
+// Get the XML root element, safe against parse errors
+function xmlRoot(doc) {
+  const root = doc?.documentElement;
+  if (!root || root.nodeName === "parsererror" || root.localName === "parsererror") return null;
+  return root;
+}
+
+// Namespace-safe querySelector: tries plain selector first, falls back to
+// getElementsByTagName which ignores namespaces entirely.
+function qsel(node, tag) {
+  if (!node) return null;
+  try {
+    const r = node.querySelector(tag);
+    if (r) return r;
+  } catch (_) {}
+  // getElementsByTagName with "*" local name trick — strip any prefix
+  const local = tag.split(":").pop();
+  const list = node.getElementsByTagName(local);
+  if (list.length) return list[0];
+  // Also try the wildcard namespace version
+  const listStar = node.getElementsByTagNameNS("*", local);
+  return listStar.length ? listStar[0] : null;
+}
+
+// Namespace-safe querySelectorAll
+function qselAll(node, tag) {
+  if (!node) return [];
+  const local = tag.split(":").pop();
+  const list = node.getElementsByTagName(local);
+  if (list.length) return Array.from(list);
+  const listStar = node.getElementsByTagNameNS("*", local);
+  return Array.from(listStar);
 }
 
 function cloneBlockGroup(group = { name: "", blockTypes: [] }) {
@@ -155,7 +198,7 @@ function restoreDraftFromStorage() {
 }
 
 function textOf(parent, tag) {
-  return parent?.querySelector(tag)?.textContent?.trim() ?? "";
+  return qsel(parent, tag)?.textContent?.trim() ?? "";
 }
 
 function numberOf(parent, tag, fallback = 0) {
@@ -847,10 +890,10 @@ function renderUpgradeModules() {
 
 function parseGroupsXml(text) {
   const doc = parseXml(text);
-  return Array.from(doc.querySelectorAll("BlockGroup"))
+  return qselAll(doc, "BlockGroup")
     .map((groupNode) => ({
       name: textOf(groupNode, "Name"),
-      blockTypes: Array.from(groupNode.querySelectorAll(":scope > BlockTypes")).map((typeNode) => ({
+      blockTypes: qselAll(groupNode, "BlockTypes").map((typeNode) => ({
         typeId: textOf(typeNode, "TypeId"),
         subtypeId: textOf(typeNode, "SubtypeId"),
         countWeight: numberOf(typeNode, "CountWeight", 1)
@@ -861,7 +904,8 @@ function parseGroupsXml(text) {
 
 function parseCoreXml(text, originalFileName = "") {
   const doc = parseXml(text);
-  const coreNode = doc.querySelector("ShipCore");
+  const root = xmlRoot(doc);
+  const coreNode = (root && root.localName === "ShipCore") ? root : null;
   if (!coreNode) return null;
 
   return {
@@ -884,22 +928,22 @@ function parseCoreXml(text, originalFileName = "") {
     speedBoostEnabled: boolOf(coreNode, "SpeedBoostEnabled", false),
     speedLimitType: textOf(coreNode, "SpeedLimitType") || "Normal",
     enableActiveDefenseModifiers: boolOf(coreNode, "EnableActiveDefenseModifiers", false),
-    allowedUpgradeModules: Array.from(coreNode.querySelectorAll(":scope > AllowedUpgradeModules")).map((entryNode) => ({
+    allowedUpgradeModules: qselAll(coreNode, "AllowedUpgradeModules").map((entryNode) => ({
       subtypeId: textOf(entryNode, "SubtypeId"),
       maxCount: numberOf(entryNode, "MaxCount", 0)
     })).filter((entry) => entry.subtypeId),
-    modifiers: parseModifierNode(coreNode.querySelector(":scope > Modifiers"), DEFAULT_GRID_MODIFIERS),
-    speedModifiers: parseModifierNode(coreNode.querySelector(":scope > SpeedModifiers"), DEFAULT_SPEED_MODIFIERS),
-    passiveDefenseModifiers: parseModifierNode(coreNode.querySelector(":scope > PassiveDefenseModifiers"), DEFAULT_DEFENSE_MODIFIERS),
-    activeDefenseModifiers: parseModifierNode(coreNode.querySelector(":scope > ActiveDefenseModifiers"), DEFAULT_DEFENSE_MODIFIERS),
-    blockLimits: Array.from(coreNode.querySelectorAll(":scope > BlockLimits")).map((limitNode) => ({
+    modifiers: parseModifierNode(qsel(coreNode, "Modifiers"), DEFAULT_GRID_MODIFIERS),
+    speedModifiers: parseModifierNode(qsel(coreNode, "SpeedModifiers"), DEFAULT_SPEED_MODIFIERS),
+    passiveDefenseModifiers: parseModifierNode(qsel(coreNode, "PassiveDefenseModifiers"), DEFAULT_DEFENSE_MODIFIERS),
+    activeDefenseModifiers: parseModifierNode(qsel(coreNode, "ActiveDefenseModifiers"), DEFAULT_DEFENSE_MODIFIERS),
+    blockLimits: qselAll(coreNode, "BlockLimits").map((limitNode) => ({
       name: textOf(limitNode, "Name"),
       maxCount: numberOf(limitNode, "MaxCount", 0),
       crossConnectorPunishment: boolOf(limitNode, "CrossConnectorPunishment", false),
       punishByNoFlyZone: boolOf(limitNode, "PunishByNoFlyZone", boolOf(limitNode, "TurnedOffByNoFlyZone", false)),
       punishmentType: textOf(limitNode, "PunishmentType") || "ShutOff",
-      allowedDirections: Array.from(limitNode.querySelectorAll(":scope > AllowedDirections")).map((node) => node.textContent.trim()).filter(Boolean),
-      blockGroups: Array.from(limitNode.querySelectorAll(":scope > BlockGroups")).map((node) => node.textContent.trim()).filter(Boolean),
+      allowedDirections: qselAll(limitNode, "AllowedDirections").map((node) => node.textContent.trim()).filter(Boolean),
+      blockGroups: qselAll(limitNode, "BlockGroups").map((node) => node.textContent.trim()).filter(Boolean),
       groupSearch: ""
     }))
   };
@@ -939,22 +983,29 @@ function writeBlockLimitXml(limit, indent = "  ") {
 
 function parseUpgradeModuleXml(text) {
   const doc = parseXml(text);
-  const moduleNode = doc.querySelector("UpgradeModule");
+  const root = xmlRoot(doc);
+  const moduleNode = (root && root.localName === "UpgradeModule") ? root : null;
   if (!moduleNode) return null;
+
+  // Use getElementsByTagName directly on each <Modifiers> child to bypass any
+  // namespace-related querySelector issues with repeated sibling elements.
+  const modifiers = Array.from(moduleNode.getElementsByTagName("Modifiers")).map((n) => ({
+    stat:         (n.getElementsByTagName("Stat")[0]?.textContent          || "").trim(),
+    value:        Number((n.getElementsByTagName("Value")[0]?.textContent   || "0").trim()),
+    modifierType: (n.getElementsByTagName("ModifierType")[0]?.textContent  || "Multiplicative").trim()
+  })).filter((m) => m.stat);
+
+  const blockLimitModifiers = Array.from(moduleNode.getElementsByTagName("BlockLimitModifiers")).map((n) => ({
+    blockLimitName: (n.getElementsByTagName("BlockLimitName")[0]?.textContent || "").trim(),
+    value:          Number((n.getElementsByTagName("Value")[0]?.textContent   || "0").trim()),
+    modifierType:   (n.getElementsByTagName("ModifierType")[0]?.textContent  || "Additive").trim()
+  })).filter((m) => m.blockLimitName);
 
   return cloneUpgradeModule({
     subtypeId: textOf(moduleNode, "SubtypeId"),
     uniqueName: textOf(moduleNode, "UniqueName"),
-    modifiers: Array.from(moduleNode.querySelectorAll(":scope > Modifiers")).map((modifierNode) => ({
-      stat: textOf(modifierNode, "Stat"),
-      value: numberOf(modifierNode, "Value", 0),
-      modifierType: textOf(modifierNode, "ModifierType") || "Multiplicative"
-    })).filter((modifier) => modifier.stat),
-    blockLimitModifiers: Array.from(moduleNode.querySelectorAll(":scope > BlockLimitModifiers")).map((modifierNode) => ({
-      blockLimitName: textOf(modifierNode, "BlockLimitName"),
-      value: numberOf(modifierNode, "Value", 0),
-      modifierType: textOf(modifierNode, "ModifierType") || "Additive"
-    })).filter((modifier) => modifier.blockLimitName)
+    modifiers,
+    blockLimitModifiers
   });
 }
 
@@ -1154,11 +1205,11 @@ function applyLegacyGroupDedup(noCoreCore, shipCores, mergeMode = "strict") {
 
 function migrateLegacyModConfig(text, sourceName = "uploaded xml", mergeMode = "strict") {
   const doc = parseXml(text);
-  const root = doc.querySelector("ModConfig");
-  if (!root) return { error: `No <ModConfig> root found in ${sourceName}.` };
+  const root = xmlRoot(doc);
+  if (!root || root.localName !== "ModConfig") return { error: `No <ModConfig> root found in ${sourceName}.` };
 
-  const defaultGridClassNode = root.querySelector(":scope > DefaultGridClass");
-  const gridClassNodes = Array.from(root.querySelectorAll(":scope > GridClasses > GridClass"));
+  const defaultGridClassNode = qsel(root, "DefaultGridClass");
+  const gridClassNodes = qselAll(qsel(root, "GridClasses"), "GridClass");
 
   if (!defaultGridClassNode && gridClassNodes.length === 0) {
     return { error: `No <DefaultGridClass> or <GridClass> entries found in ${sourceName}.` };
@@ -1355,7 +1406,7 @@ function generateXml(options = {}) {
   const coreFilenames = getUniqueCoreFilenames(state.shipCores);
   const upgradeModuleFilenames = state.upgradeModules.map((module, moduleIndex) => {
     const rawName = sanitizeFilenamePart(module.subtypeId) || sanitizeFilenamePart(module.uniqueName) || `Upgrade_Module_${moduleIndex + 1}`;
-    return `${rawName}.xml`;
+    return `${rawName}.sbc`;
   });
 
   const manifest = `${header}
@@ -1810,14 +1861,32 @@ ids("downloadManifest").addEventListener("click", () => {
   download("ShipCoreConfig_Manifest.xml", xml.manifest);
   clearDraftFromStorage();
 });
-ids("downloadAllFiles").addEventListener("click", () => {
+ids("downloadAllFiles").addEventListener("click", async () => {
   const xml = generateXml({ persistDraft: false });
+
+  // Build a set of zip paths that are being replaced by generated versions
+  const generatedPaths = new Set([
+    "ShipCoreConfig_No_Core.xml",
+    "ShipCoreConfig_Groups.xml",
+    "ShipCoreConfig_Manifest.xml",
+    ...xml.cores.map((core) => core.outputPath),
+    ...xml.upgradeModules.map((module) => `${state.outputUpgradeModuleDirectory}${module.file}`)
+  ].map((p) => p.toLowerCase()));
+
+  // Passthrough files that are NOT being replaced (e.g. SBCs, CubeBlock XMLs)
+  const passthroughEntries = await Promise.all(
+    state.uploadedPassthroughFiles
+      .filter((f) => !generatedPaths.has(f.zipPath.toLowerCase()))
+      .map(async (f) => ({ name: f.zipPath, content: await f.getText() }))
+  );
+
   const zip = createZip([
     { name: "ShipCoreConfig_No_Core.xml", content: xml.noCore },
     { name: "ShipCoreConfig_Groups.xml", content: xml.groups },
     { name: "ShipCoreConfig_Manifest.xml", content: xml.manifest },
     ...xml.cores.map((core) => ({ name: core.outputPath, content: core.body })),
-    ...xml.upgradeModules.map((module) => ({ name: `${state.outputUpgradeModuleDirectory}${module.file}`, content: module.body }))
+    ...xml.upgradeModules.map((module) => ({ name: `${state.outputUpgradeModuleDirectory}${module.file}`, content: module.body })),
+    ...passthroughEntries
   ]);
   downloadBlob("ShipCore_All_Files.zip", zip);
   clearDraftFromStorage();
@@ -1862,20 +1931,117 @@ ids("loadLegacyModConfig").addEventListener("click", async () => {
   setImportStatus(migrated.status);
 });
 
-ids("loadUploadedXml").addEventListener("click", async () => {
-  const groupsFile = ids("groupsXmlFile").files?.[0];
-  const manifestFile = ids("manifestXmlFile").files?.[0];
-  const noCoreFile = ids("noCoreXmlFile").files?.[0];
-  const coreFiles = Array.from(ids("coreXmlFiles").files || []);
-  const status = [];
-  const manifestCoreDirectoriesByFilename = new Map();
+function parseSbcDefinitions(text) {
+  const doc = parseXml(text);
+  const results = [];
+  for (const def of Array.from(doc.getElementsByTagName("Definition"))) {
+    const rawType  = (def.getAttribute("xsi:type") || "").toLowerCase();
+    const typeId   = (def.getElementsByTagName("TypeId")[0]?.textContent   || "").trim().toLowerCase();
+    const subtype  = (def.getElementsByTagName("SubtypeId")[0]?.textContent || "").trim();
+    const dispName = (def.getElementsByTagName("DisplayName")[0]?.textContent || subtype).trim();
+    if (!subtype) continue;
+    let blockType = null;
+    if (rawType.includes("upgrademodule") || typeId === "upgrademodule") {
+      blockType = "upgradeModule";
+    } else if (
+      rawType.includes("functionalblock") || typeId === "functionalblock" ||
+      rawType.includes("beacon")          || typeId === "beacon"          ||
+      rawType.includes("cockpit")         || typeId === "cockpit"         ||
+      rawType.includes("shipcoreblock")   || typeId === "shipcoreblock"
+    ) {
+      blockType = "core";
+    }
+    if (!blockType) continue;
 
-  if (!groupsFile && !manifestFile && !noCoreFile && coreFiles.length === 0) {
-    setImportStatus(["No XML files selected."]);
-    return;
+    // Extract upgrade stats from <Upgrades><MyUpgradeModuleInfo> elements
+    const modifiers = Array.from(def.getElementsByTagName("MyUpgradeModuleInfo")).map((info) => ({
+      stat:         (info.getElementsByTagName("UpgradeType")[0]?.textContent  || "").trim(),
+      value:        Number((info.getElementsByTagName("Modifier")[0]?.textContent || "0").trim()),
+      modifierType: (info.getElementsByTagName("ModifierType")[0]?.textContent  || "Multiplicative").trim()
+    })).filter((m) => m.stat);
+
+    results.push({ subtypeId: subtype, displayName: dispName, blockType, modifiers });
+  }
+  return results;
+}
+
+async function readZipFiles(zipFile) {
+  const buffer = await zipFile.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  const view = new DataView(buffer);
+  const results = [];
+
+  // Locate End of Central Directory record (signature 0x06054b50)
+  let eocdOffset = -1;
+  for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 65558); i--) {
+    if (view.getUint32(i, true) === 0x06054b50) { eocdOffset = i; break; }
+  }
+  if (eocdOffset === -1) throw new Error("Not a valid ZIP file.");
+
+  const cdEntryCount = view.getUint16(eocdOffset + 8, true);
+  let cdPos = view.getUint32(eocdOffset + 16, true);
+
+  for (let i = 0; i < cdEntryCount; i++) {
+    if (view.getUint32(cdPos, true) !== 0x02014b50) break;
+    const compression   = view.getUint16(cdPos + 10, true);
+    const compressedSz  = view.getUint32(cdPos + 20, true);
+    const filenameLen   = view.getUint16(cdPos + 28, true);
+    const extraLen      = view.getUint16(cdPos + 30, true);
+    const commentLen    = view.getUint16(cdPos + 32, true);
+    const localOffset   = view.getUint32(cdPos + 42, true);
+    const filename      = new TextDecoder().decode(bytes.subarray(cdPos + 46, cdPos + 46 + filenameLen));
+    cdPos += 46 + filenameLen + extraLen + commentLen;
+
+    const lowerFilename = filename.toLowerCase();
+    const isXml = lowerFilename.endsWith(".xml");
+    const isSbc = lowerFilename.endsWith(".sbc");
+    if ((!isXml && !isSbc) || lowerFilename.endsWith("/")) continue;
+
+    const localFilenameLen = view.getUint16(localOffset + 26, true);
+    const localExtraLen    = view.getUint16(localOffset + 28, true);
+    const dataStart        = localOffset + 30 + localFilenameLen + localExtraLen;
+    const compressed       = bytes.subarray(dataStart, dataStart + compressedSz);
+
+    let text;
+    if (compression === 0) {
+      text = new TextDecoder().decode(compressed);
+    } else if (compression === 8) {
+      const ds = new DecompressionStream("deflate-raw");
+      const writer = ds.writable.getWriter();
+      writer.write(compressed);
+      writer.close();
+      const chunks = [];
+      const reader = ds.readable.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+      const out = new Uint8Array(chunks.reduce((s, c) => s + c.length, 0));
+      let off = 0;
+      for (const chunk of chunks) { out.set(chunk, off); off += chunk.length; }
+      text = new TextDecoder().decode(out);
+    } else {
+      continue;
+    }
+
+    const name = filename.replace(/\\/g, "/").split("/").pop();
+    const capturedText = text;
+    const capturedPath = filename.replace(/\\/g, "/");
+    results.push({ name, zipPath: capturedPath, text: () => Promise.resolve(capturedText) });
   }
 
+  return results;
+}
+
+async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, coreFiles, initialStatus = [], sbcFiles = [], passthroughFiles = [], fileZipPathMap = new Map()) {
+  const status = [...initialStatus];
+  const manifestCoreDirectoriesByFilename = new Map();
+
   resetEditor(false);
+  // Store passthrough files (SBCs and unrecognised files) for re-inclusion in Download All
+  state.uploadedPassthroughFiles = passthroughFiles.slice();
+  state.manifestCoreFullPathByFilename = new Map();
 
   if (groupsFile) {
     const groups = parseGroupsXml(await groupsFile.text());
@@ -1886,17 +2052,19 @@ ids("loadUploadedXml").addEventListener("click", async () => {
 
   if (manifestFile) {
     const manifestDoc = parseXml(await manifestFile.text());
-    const listed = Array.from(manifestDoc.querySelectorAll("ShipCoreFilenames")).map((n) => n.textContent.trim()).filter(Boolean);
-    const listedModules = Array.from(manifestDoc.querySelectorAll("UpgradeModuleFilenames")).map((n) => n.textContent.trim()).filter(Boolean);
+    const listed = Array.from(manifestDoc.getElementsByTagName("ShipCoreFilenames")).map((n) => n.textContent.trim()).filter(Boolean);
+    const listedModules = Array.from(manifestDoc.getElementsByTagName("UpgradeModuleFilenames")).map((n) => n.textContent.trim()).filter(Boolean);
 
     listed.forEach((manifestPath) => {
       const normalizedPath = manifestPath.replaceAll("\\", "/").trim();
       const fileName = normalizedPath.split("/").pop();
       if (!fileName) return;
+      // Store both directory (for outputDirectory) and full path (for originalFileName)
       manifestCoreDirectoriesByFilename.set(
         fileName.toLowerCase(),
         getDirectoryFromManifestPath(normalizedPath, "Data/Cores/")
       );
+      state.manifestCoreFullPathByFilename.set(fileName.toLowerCase(), normalizedPath);
     });
 
     state.outputCoreDirectory = getManifestDirectory(listed, "Data/Cores/", "core", status);
@@ -1932,7 +2100,27 @@ ids("loadUploadedXml").addEventListener("click", async () => {
         state.noCoreCore = parsed;
         status.push(`Loaded no-core '${parsed.subtypeId || file.name}'.`);
       } else {
-        parsed.outputDirectory = manifestCoreDirectoriesByFilename.get(file.name.trim().toLowerCase()) || state.outputCoreDirectory;
+        const fileZipPath = fileZipPathMap.get(file) || file.zipPath || file.name;
+        // Use manifest-derived full path if available so the output ZIP mirrors the manifest exactly
+        const manifestDir      = manifestCoreDirectoriesByFilename.get(file.name.trim().toLowerCase());
+        const manifestFullPath = state.manifestCoreFullPathByFilename.get(file.name.trim().toLowerCase());
+        let inferredDir = state.outputCoreDirectory;
+        if (!manifestDir) {
+          // Use pre-computed zip path (folder-root-relative) to infer output directory
+          const norm = "/" + fileZipPath;
+          const dataIdx = norm.toLowerCase().indexOf("/data/");
+          if (dataIdx !== -1) {
+            const fromData = norm.slice(dataIdx + 1);
+            const lastSlash = fromData.lastIndexOf("/");
+            if (lastSlash > 0) inferredDir = normalizeOutputDirectory(fromData.slice(0, lastSlash), state.outputCoreDirectory);
+          }
+        }
+        parsed.outputDirectory = manifestDir || inferredDir;
+        // Keep the original filename from manifest so the ZIP output path is exact
+        if (manifestFullPath) {
+          const manifestFileName = manifestFullPath.split("/").pop();
+          parsed.originalFileName = manifestFileName || file.name;
+        }
         state.shipCores.push(parsed);
         status.push(`Loaded core '${parsed.subtypeId || file.name}'.`);
       }
@@ -1942,11 +2130,15 @@ ids("loadUploadedXml").addEventListener("click", async () => {
     const parsedUpgrade = parseUpgradeModuleXml(fileText);
     if (parsedUpgrade) {
       state.upgradeModules.push(parsedUpgrade);
-      status.push(`Loaded upgrade module '${parsedUpgrade.subtypeId || file.name}'.`);
+      status.push(`Loaded upgrade module '${parsedUpgrade.subtypeId || file.name}' with ${parsedUpgrade.modifiers.length} modifier(s).`);
       continue;
     }
 
-    status.push(`Skipped ${file.name}: no <ShipCore> or <UpgradeModule> root found.`);
+    // Not a recognised config file — pass through unchanged into Download All
+    const zipPath = fileZipPathMap.get(file) || file.zipPath || file.name;
+    const capturedText = fileText;
+    state.uploadedPassthroughFiles.push({ zipPath, getText: () => Promise.resolve(capturedText) });
+    status.push(`Passed through ${file.name}.`);
   }
 
   state.selectedCoreIndex = 0;
@@ -1963,6 +2155,117 @@ ids("loadUploadedXml").addEventListener("click", async () => {
   renderUpgradeModules();
   generateXml();
   setImportStatus(status);
+}
+
+// Store folder files captured directly from the change event's FileList
+let _cachedFolderFiles = [];
+ids("folderUpload").addEventListener("change", (evt) => {
+  // Capture files immediately from the event — more reliable than reading
+  // .files later on click, especially when served from file:// protocol.
+  const input = evt.target;
+  _cachedFolderFiles = Array.from(input.files || []);
+  if (_cachedFolderFiles.length > 0) {
+    const label = input.closest("label");
+    if (label) {
+      const existing = label.querySelector(".folder-file-count");
+      if (existing) existing.remove();
+      const badge = document.createElement("span");
+      badge.className = "folder-file-count";
+      badge.textContent = ` (${_cachedFolderFiles.length} files)`;
+      label.appendChild(badge);
+    }
+  }
+});
+
+ids("loadUploadedXml").addEventListener("click", async () => {
+  let groupsFile   = ids("groupsXmlFile").files?.[0] || null;
+  let manifestFile = ids("manifestXmlFile").files?.[0] || null;
+  let noCoreFile   = ids("noCoreXmlFile").files?.[0] || null;
+  const coreFiles  = Array.from(ids("coreXmlFiles").files || []);
+  const sbcFiles   = [];
+  const preStatus  = [];
+  const passthroughFiles = [];
+
+  const folderFiles = (() => {
+    // Merge the cached files (from the change event) with any live files currently
+    // in the input — deduplicating by webkitRelativePath so neither source is missed.
+    const liveFiles = Array.from(ids("folderUpload").files || []);
+    if (liveFiles.length >= _cachedFolderFiles.length) return liveFiles;
+    const seen = new Set(liveFiles.map((f) => f.webkitRelativePath || f.name));
+    const extra = _cachedFolderFiles.filter((f) => !seen.has(f.webkitRelativePath || f.name));
+    return [...liveFiles, ...extra];
+  })();
+
+  // Determine the root prefix to strip from webkitRelativePath.
+  // webkitRelativePath is always "<uploadedFolderName>/rest/of/path"
+  // We want zip paths relative to the contents of the uploaded folder.
+  let folderRootPrefix = "";
+  if (folderFiles.length > 0 && folderFiles[0].webkitRelativePath) {
+    const firstSlash = folderFiles[0].webkitRelativePath.replace(/\\/g, "/").indexOf("/");
+    if (firstSlash > 0) {
+      folderRootPrefix = folderFiles[0].webkitRelativePath.replace(/\\/g, "/").slice(0, firstSlash + 1);
+    }
+  }
+
+  function folderZipPath(f) {
+    const rel = (f.webkitRelativePath || f.name).replace(/\\/g, "/");
+    return folderRootPrefix && rel.startsWith(folderRootPrefix)
+      ? rel.slice(folderRootPrefix.length)
+      : rel;
+  }
+
+  // Map from File object → computed zip path (can't add properties to File objects)
+  const fileZipPathMap = new Map();
+
+  for (const f of folderFiles) {
+    const lname = f.name.trim().toLowerCase();
+    const zp = folderZipPath(f);
+    fileZipPathMap.set(f, zp);
+    if (lname === "shipcoreconfig_groups.xml"   && !groupsFile)   { groupsFile   = f; continue; }
+    if (lname === "shipcoreconfig_manifest.xml" && !manifestFile) { manifestFile = f; continue; }
+    if (lname === "shipcoreconfig_no_core.xml"  && !noCoreFile)   { noCoreFile   = f; continue; }
+    if (lname.endsWith(".sbc")) {
+      // Config SBCs (<UpgradeModule> root) go through the same parse pipeline as XMLs.
+      // Block definition SBCs (<Definitions> root) will fail both parsers and be passed through.
+      coreFiles.push(f);
+      continue;
+    }
+    if (lname.endsWith(".xml")) {
+      coreFiles.push(f);
+      continue;
+    }
+  }
+
+  const zipInputFile = ids("zipUpload").files?.[0] || null;
+  if (zipInputFile) {
+    try {
+      const allZipFiles = await readZipFiles(zipInputFile);
+      let zipXmlCount = 0, zipSbcCount = 0;
+      for (const f of allZipFiles) {
+        const lname = f.name.trim().toLowerCase();
+        if (lname === "shipcoreconfig_groups.xml"   && !groupsFile)   { groupsFile   = f; zipXmlCount++; continue; }
+        if (lname === "shipcoreconfig_manifest.xml" && !manifestFile) { manifestFile = f; zipXmlCount++; continue; }
+        if (lname === "shipcoreconfig_no_core.xml"  && !noCoreFile)   { noCoreFile   = f; zipXmlCount++; continue; }
+        if (lname.endsWith(".sbc")) {
+          // Config SBCs (<UpgradeModule> root) go through the parse pipeline.
+          // Block definition SBCs will fail both parsers and be passed through.
+          coreFiles.push(f); zipSbcCount++; continue;
+        }
+        if (lname.endsWith(".xml")) { coreFiles.push(f); zipXmlCount++; continue; }
+      }
+      preStatus.push(`Extracted ${zipXmlCount} XML and ${zipSbcCount} SBC file(s) from ${zipInputFile.name}.`);
+    } catch (e) {
+      preStatus.push(`Error reading ZIP ${zipInputFile.name}: ${e.message}`);
+    }
+  }
+
+  const hasAnything = groupsFile || manifestFile || noCoreFile || coreFiles.length > 0 || sbcFiles.length > 0;
+  if (!hasAnything) {
+    setImportStatus([...preStatus, "No files found. Select a folder or ZIP containing your mod Data/ files."]);
+    return;
+  }
+
+  await processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, coreFiles, preStatus, sbcFiles, passthroughFiles, fileZipPathMap);
 });
 
 (async () => {

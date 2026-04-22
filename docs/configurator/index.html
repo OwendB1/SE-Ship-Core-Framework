@@ -22,7 +22,7 @@
 
     <section class="panel">
       <h2>2) Renovate Existing XML (optional)</h2>
-      <p class="muted">Upload existing XML files. Recognized tags are loaded into the editor; unknown tags are ignored.</p>
+      <p class="muted">Upload existing XML files, a mod Data/ folder, or a ZIP archive. Recognized tags are loaded into the editor; unknown tags are ignored.</p>
       <div class="row wrap file-upload-row">
         <label class="file-label">Groups XML
           <input id="groupsXmlFile" type="file" accept=".xml" />
@@ -35,6 +35,15 @@
         </label>
         <label class="file-label">ShipCore / UpgradeModule XML files
           <input id="coreXmlFiles" type="file" accept=".xml" multiple />
+        </label>
+        <label class="file-label">Upload Folder
+          <input id="folderUpload" type="file" webkitdirectory multiple />
+        </label>
+        <label class="file-label">Upload ZIP
+          <input id="zipUpload" type="file" accept=".zip" />
+        </label>
+        <label class="file-label">Upgrade Module SBCs
+          <input id="upgradeModuleSbcFiles" type="file" accept=".sbc" multiple />
         </label>
       </div>
       <div class="row wrap">
@@ -114,6 +123,6 @@
     </section>
   </main>
 
-  <script type="module" src="./app.js"></script>
+  <script type="module" src="./app.js?v=1009"></script>
 </body>
 </html>
