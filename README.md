@@ -5,7 +5,7 @@ This mod serves as an alternative to the standard block limit system in Space En
 A static configurator lives under `docs/configurator` and is deployable through GitHub Pages.
 
 ### What it does
-- Always loads the bundled latest `ModConfig.cs` snapshot shipped with this repository.
+- Always loads the bundled latest `ModConfig.XmlModels.cs` snapshot shipped with this repository.
 - Lets you build reusable `BlockGroup` definitions once and reference them from multiple core `BlockLimits`.
 - Supports renovating existing XML by uploading prior:
   - `ShipCoreConfig_Groups.xml`
