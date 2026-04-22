@@ -1431,7 +1431,7 @@ function generateXml(options = {}) {
   const coreFilenames = getUniqueCoreFilenames(state.shipCores);
   const upgradeModuleFilenames = state.upgradeModules.map((module, moduleIndex) => {
     const rawName = sanitizeFilenamePart(module.subtypeId) || sanitizeFilenamePart(module.uniqueName) || `Upgrade_Module_${moduleIndex + 1}`;
-    return `${rawName}.sbc`;
+    return `${rawName}.xml`;
   });
 
   const manifest = `${header}
