@@ -8,26 +8,40 @@ namespace ShipCoreFramework
     [XmlRoot("ModConfig")]
     public partial class ModConfig
     {
-        [XmlIgnore] private const string IgnoreAiKey = "ShipCore.IgnoreAiV1";
-        [XmlIgnore] private const string IgnoredFactionsKey = "ShipCore.IgnoredFactionsV1";
-        [XmlIgnore] private const string SelectedNoCoreKey = "ShipCore.SelectedNoCoreBlobV1";
         [XmlIgnore] private const string GlobalConfigFileName = "ShipCoreConfig_World.xml";
         [XmlIgnore] private const string CoreManifestFileName = @"Data\ShipCoreConfig_Manifest.xml";
         [XmlIgnore] private const string BlockGroupsFileName = @"Data\ShipCoreConfig_Groups.xml";
         [XmlIgnore] private const string DefaultNoCoreFileName = @"Data\ShipCoreConfig_No_Core.xml";
+        [XmlIgnore] private const string LegacyIgnoreAiKey = "ShipCore.IgnoreAiV1";
+        [XmlIgnore] private const string LegacyIgnoredFactionsKey = "ShipCore.IgnoredFactionsV1";
+        [XmlIgnore] private const string LegacySelectedNoCoreKey = "ShipCore.SelectedNoCoreBlobV1";
+        [XmlIgnore] private static readonly string[] DefaultIgnoredFactionTagValues =
+        {
+            "SPRT", "ADMIN", "FMCA", "BORG", "TERA"
+        };
         [XmlIgnore] public readonly List<ShipCore> NoCoreConfigs = new List<ShipCore>();
         [XmlIgnore] public readonly List<BlockGroup> BlockGroups = new List<BlockGroup>();
         [XmlIgnore] public readonly List<ShipCore> ShipCores = new List<ShipCore>();
         [XmlIgnore] public readonly List<UpgradeModuleConfig> UpgradeModules = new List<UpgradeModuleConfig>();
-        [XmlIgnore] public List<string> IgnoredFactionTags = new List<string>();
+
+        [XmlElement("IgnoreAiFactions")]
+        public bool IgnoreAiFactions;
+
+        [XmlArray("IgnoredFactionTags")]
+        [XmlArrayItem("Tag")]
+        public List<string> IgnoredFactionTags = new List<string>();
+
+        [XmlElement("SelectedNoCoreUniqueName")]
+        public string SelectedNoCoreUniqueName = string.Empty;
+
         [XmlIgnore] public ShipCore SelectedNoCore;
-        [XmlIgnore] public bool IgnoreAiFactions;
 
         [XmlElement("DebugMode")] public bool DebugMode;
         [XmlElement("CombatLogging")] public bool CombatLogging = true;
         [XmlElement("LOG_LEVEL")] public int LogLevel = 2;
         [XmlElement("CLIENT_OUTPUT_LOG_LEVEL")] public int ClientOutputLogLevel = 2;
         [XmlElement("MaxPossibleSpeedMetersPerSecond")] public float MaxPossibleSpeedMetersPerSecond = 300;
+        [XmlElement("MassTypeMode")] public MassTypeMode MassTypeMode = MassTypeMode.Dry;
         [XmlElement("FrictionSpeedValueMode")] public FrictionSpeedValueMode FrictionSpeedValueMode = FrictionSpeedValueMode.Modifier;
         [XmlElement("NoFlyZones")] public List<Zones> NoFlyZones = new List<Zones>();
     }
@@ -104,7 +118,7 @@ namespace ShipCoreFramework
         public int MaxPlayers = -1;
 
         [XmlElement("AllowedUpgradeModules")]
-        public UpgradeModuleAllowance[] AllowedUpgradeModules = new UpgradeModuleAllowance[0];
+        public UpgradeModuleAllowance[] AllowedUpgradeModules = Array.Empty<UpgradeModuleAllowance>();
 
         [XmlIgnore]
         public readonly Dictionary<string, int> AllowedUpgradeModuleCounts =
@@ -132,12 +146,12 @@ namespace ShipCoreFramework
         public GridDefenseModifiers ActiveDefenseModifiers = new GridDefenseModifiers();
 
         [XmlElement("BlockLimits")]
-        public BlockLimit[] BlockLimits = new BlockLimit[0];
+        public BlockLimit[] BlockLimits = Array.Empty<BlockLimit>();
 
         public bool IsUpgradeModuleAllowed(string moduleSubtypeId)
         {
-            if (string.IsNullOrWhiteSpace(moduleSubtypeId)) return false;
-            return AllowedUpgradeModuleCounts.ContainsKey(moduleSubtypeId);
+            return !string.IsNullOrWhiteSpace(moduleSubtypeId) && 
+                   AllowedUpgradeModuleCounts.ContainsKey(moduleSubtypeId);
         }
 
         public bool TryGetAllowedUpgradeModuleCount(string moduleSubtypeId, out int maxCount)
@@ -156,7 +170,7 @@ namespace ShipCoreFramework
             AllowedUpgradeModuleCounts.Clear();
             if (AllowedUpgradeModules == null)
             {
-                AllowedUpgradeModules = new UpgradeModuleAllowance[0];
+                AllowedUpgradeModules = Array.Empty<UpgradeModuleAllowance>();
                 return;
             }
 
@@ -193,10 +207,10 @@ namespace ShipCoreFramework
         public string UniqueName = string.Empty;
 
         [XmlElement("Modifiers")]
-        public UpgradeStatModifier[] Modifiers = new UpgradeStatModifier[0];
+        public UpgradeStatModifier[] Modifiers = Array.Empty<UpgradeStatModifier>();
 
         [XmlElement("BlockLimitModifiers")]
-        public BlockLimitModifier[] BlockLimitModifiers = new BlockLimitModifier[0];
+        public BlockLimitModifier[] BlockLimitModifiers = Array.Empty<BlockLimitModifier>();
     }
 
     [XmlRoot("Modifiers")]
@@ -343,7 +357,7 @@ namespace ShipCoreFramework
         public string Name = string.Empty;
 
         [XmlElement("BlockGroups")]
-        public string[] BlockGroupsShortHand = new string[0];
+        public string[] BlockGroupsShortHand = Array.Empty<string>();
 
         [XmlIgnore]
         public List<BlockGroup> BlockGroups = new List<BlockGroup>();
@@ -374,8 +388,7 @@ namespace ShipCoreFramework
                 foreach (var blockType in group.BlockTypes)
                 {
                     if (blockType == null) continue;
-                    if (blockType.TypeId != key.TypeId) continue;
-                    if (blockType.SubtypeId == key.SubtypeId || blockType.SubtypeId == "any")
+                    if (blockType.Matches(key))
                         return blockType.CountWeight;
                 }
             }
@@ -418,6 +431,25 @@ namespace ShipCoreFramework
             TypeId = typeId;
             SubtypeId = subtypeId;
             CountWeight = countWeight;
+        }
+
+        internal bool Matches(BlockKey key)
+        {
+            return Matches(key.TypeId, key.SubtypeId);
+        }
+
+        internal bool Matches(string typeId, string subtypeId)
+        {
+            var configuredTypeId = (TypeId ?? string.Empty).Trim();
+            if (!string.Equals(configuredTypeId, (typeId ?? string.Empty).Trim(), StringComparison.Ordinal))
+                return false;
+
+            var configuredSubtypeId = (SubtypeId ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(configuredSubtypeId))
+                return true;
+
+            return string.Equals(configuredSubtypeId, "any", StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(configuredSubtypeId, (subtypeId ?? string.Empty).Trim(), StringComparison.Ordinal);
         }
     }
 
@@ -467,6 +499,13 @@ namespace ShipCoreFramework
         Friction = 1
     }
 
+    [XmlRoot("MassTypeMode")]
+    public enum MassTypeMode
+    {
+        Dry = 0,
+        Wet = 1
+    }
+    
     [XmlRoot("FrictionSpeedValueMode")]
     public enum FrictionSpeedValueMode
     {
