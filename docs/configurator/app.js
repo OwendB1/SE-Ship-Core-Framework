@@ -715,6 +715,7 @@ function renderShipCores() {
       <div class="row wrap">
         <label class="inline">MaxBackupCores <input data-action="core-maxbackupcores" data-c="${coreIndex}" class="small" type="number" value="${core.maxBackupCores}" /></label>
         <label class="inline">MaxPerPlayer <input data-action="core-maxpp" data-c="${coreIndex}" class="small" type="number" value="${core.maxPerPlayer}" /></label>
+        <label class="inline">MaxPerFaction <input data-action="core-maxpf" data-c="${coreIndex}" class="small" type="number" value="${core.maxPerFaction}" /></label>
         <label class="inline">MinPlayers <input data-action="core-minplayers" data-c="${coreIndex}" class="small" type="number" value="${core.minPerFaction}" /></label>
         <label class="inline">MaxPlayers <input data-action="core-maxplayers" data-c="${coreIndex}" class="small" type="number" value="${core.maxPlayers}" /></label>
       </div>
