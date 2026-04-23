@@ -268,7 +268,7 @@ namespace ShipCoreFramework
                 if (!(_boostDurationTimer <= 0f)) return;
                 BoostEnabled = false;
                 _boostCooldownTimer = BoostCoolDown * 60f;
-                Utils.ShowNotification("Boost Disengaged! Cooldown started.", 1000);
+                Utils.ShowNotification("Boost Disengaged! Cooldown started.");
 
                 PostBoostRampActive = true;
                 PostBoostRampCap = -1f;
@@ -294,7 +294,7 @@ namespace ShipCoreFramework
                 RefreshDefenseModifierCache();
 
                 _activeDefenseCooldownTimer = ActiveDefenseCoolDown * 60f;
-                Utils.ShowNotification("Active Defense Disengaged! Cooldown started.", 1000);
+                Utils.ShowNotification("Active Defense Disengaged! Cooldown started.");
 
                 if (MainCoreComponent?.GridComponent?.Grid != null)
                     ModAPI.BroadcastActiveDefenseDeactivated(GetRepresentativeGridId());
@@ -310,22 +310,21 @@ namespace ShipCoreFramework
         {
             if (!ShipCore.EnableActiveDefenseModifiers)
             {
-                Utils.ShowNotification("Active defense is not allowed on this grid!", 1000);
+                Utils.ShowNotification("Active defense is not allowed on this grid!");
                 return;
             }
 
             if (_activeDefenseEnabled)
             {
                 Utils.ShowNotification(
-                    "Active Defense Time Remaining:" + (_activeDefenseDurationTimer / 60f).ToString("0.0"), 1000);
+                    "Active Defense Time Remaining:" + (_activeDefenseDurationTimer / 60f).ToString("0.0"));
                 return;
             }
 
             if (_activeDefenseCooldownTimer > 0f)
             {
                 Utils.ShowNotification(
-                    "Active Defense is cooling down! Cooldown Time:" + (_boostCooldownTimer / 60f).ToString("0.0"),
-                    1000);
+                    "Active Defense is cooling down! Cooldown Time:" + (_boostCooldownTimer / 60f).ToString("0.0"));
                 return;
             }
 
@@ -334,7 +333,7 @@ namespace ShipCoreFramework
 
             RefreshDefenseModifierCache();
 
-            Utils.ShowNotification("Active Defense Engaged!", 1000);
+            Utils.ShowNotification("Active Defense Engaged!");
 
             if (MainCoreComponent?.GridComponent?.Grid != null)
                 ModAPI.BroadcastActiveDefenseActivated(GetRepresentativeGridId());
@@ -344,20 +343,20 @@ namespace ShipCoreFramework
         {
             if (!ShipCore.SpeedBoostEnabled)
             {
-                Utils.ShowNotification("Boosting is not allowed on this grid!", 1000);
+                Utils.ShowNotification("Boosting is not allowed on this grid!");
                 return;
             }
 
             if (BoostEnabled)
             {
-                Utils.ShowNotification("Boost Time Remaining:" + (_boostDurationTimer / 60f).ToString("0.0"), 1000);
+                Utils.ShowNotification("Boost Time Remaining:" + (_boostDurationTimer / 60f).ToString("0.0"));
                 return;
             }
 
             if (_boostCooldownTimer > 0f)
             {
                 Utils.ShowNotification(
-                    "Boost is cooling down! Cooldown Time:" + (_boostCooldownTimer / 60f).ToString("0.0"), 1000);
+                    "Boost is cooling down! Cooldown Time:" + (_boostCooldownTimer / 60f).ToString("0.0"));
                 return;
             }
 
@@ -366,7 +365,7 @@ namespace ShipCoreFramework
             PostBoostRampCap = -1f;
 
             _boostDurationTimer = BoostDuration * 60f;
-            Utils.ShowNotification("Boost Engaged!", 1000);
+            Utils.ShowNotification("Boost Engaged!");
 
             if (MainCoreComponent?.GridComponent?.Grid != null)
                 ModAPI.BroadcastBoostActivated(MainCoreComponent.GridComponent.Grid.EntityId);
