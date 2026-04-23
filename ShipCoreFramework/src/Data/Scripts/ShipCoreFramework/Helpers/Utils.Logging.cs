@@ -55,19 +55,34 @@ namespace ShipCoreFramework
 
         internal static void Log(string msg, int logPriority = 0, string tooltip = "Ship Cores")
         {
-            var config = Session.Config;
-            if (config != null && logPriority >= config.LogLevel)
-                MyLog.Default.WriteLine($"[{tooltip}]: {msg}");
-
             try
             {
+                var config = Session.Config;
                 if (config == null) return;
+
+                if (logPriority >= config.LogLevel)
+                {
+                    var log = MyLog.Default;
+                    if (log != null) log.WriteLine($"[{tooltip}]: {msg}");
+                }
+
+                if (Session.IsShuttingDown) return;
                 if (logPriority >= config.ClientOutputLogLevel && config.DebugMode)
-                    MyAPIGateway.Utilities.InvokeOnGameThread(() => MyAPIGateway.Utilities.ShowMessage($"[{tooltip}={logPriority}]: ", msg));
+                {
+                    var utilities = MyAPIGateway.Utilities;
+                    if (utilities == null) return;
+
+                    utilities.InvokeOnGameThread(() =>
+                    {
+                        var gameThreadUtilities = MyAPIGateway.Utilities;
+                        if (gameThreadUtilities != null)
+                            gameThreadUtilities.ShowMessage($"[{tooltip}={logPriority}]: ", msg);
+                    });
+                }
             }
             catch (Exception)
             {
-                // Ignore client output failures during startup/shutdown.
+                // Logging may be called while Keen API state is being torn down.
             }
         }
     }

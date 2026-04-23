@@ -316,20 +316,18 @@ namespace ShipCoreFramework
 
             if (_activeDefenseEnabled)
             {
-                Utils.ShowNotification(
-                    "Active Defense Time Remaining:" + (_activeDefenseDurationTimer / 60f).ToString("0.0"));
+                Utils.ShowNotification("Active Defense Time Remaining:" + (_activeDefenseDurationTimer / 60f).ToString("0.0"));
                 return;
             }
 
             if (_activeDefenseCooldownTimer > 0f)
             {
-                Utils.ShowNotification(
-                    "Active Defense is cooling down! Cooldown Time:" + (_boostCooldownTimer / 60f).ToString("0.0"));
+                Utils.ShowNotification("Active Defense is cooling down! Cooldown Time:" + (_activeDefenseCooldownTimer / 60f).ToString("0.0"));
                 return;
             }
 
-            _activeDefenseEnabled = true;
             _activeDefenseDurationTimer = ActiveDefenseDuration * 60f;
+            _activeDefenseEnabled = true;
 
             RefreshDefenseModifierCache();
 

@@ -86,8 +86,8 @@ namespace ShipCoreFramework
         private bool _ignoredStateInitialized;
         private bool _wasIgnoredGroup;
 
-        internal float ActiveDefenseDuration => GetActiveDefenseModifiers().Duration;
-        internal float ActiveDefenseCoolDown => GetActiveDefenseModifiers().Cooldown;
+        internal float ActiveDefenseDuration => ShipCore.ActiveDefenseModifiers.Duration;
+        internal float ActiveDefenseCoolDown => ShipCore.ActiveDefenseModifiers.Cooldown;
         internal bool IsInitializingGrids => _gridInitializationDepth > 0;
     }
 }
