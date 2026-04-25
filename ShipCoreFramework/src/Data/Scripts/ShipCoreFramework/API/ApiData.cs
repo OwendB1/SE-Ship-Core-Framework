@@ -302,6 +302,7 @@ namespace ShipCoreFramework
         [ProtoMember(19)] public int MinBlocks;
         [ProtoMember(20)] public int MaxPlayers;
         [ProtoMember(21)] public bool IsDeactivated;
+        [ProtoMember(22)] public int FactionPlayersNeededPerCore;
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
@@ -38,6 +39,39 @@ namespace ShipCoreFramework
             return MyAPIGateway.Players != null && MyAPIGateway.Players.TryGetSteamId(identityId) != 0;
         }
 
+        internal static bool HasFactionCoreLimit(ShipCore core)
+        {
+            return core != null && (core.MaxPerFaction >= 0 || core.FactionPlayersNeededPerCore > 0);
+        }
+
+        internal static int GetPlayerScaledFactionCoreLimit(ShipCore core, int playerCount)
+        {
+            if (core == null || core.FactionPlayersNeededPerCore <= 0)
+                return -1;
+
+            if (playerCount <= 0)
+                return 0;
+
+            return playerCount / core.FactionPlayersNeededPerCore;
+        }
+
+        internal static int GetEffectiveFactionCoreLimit(ShipCore core, int playerCount)
+        {
+            if (core == null)
+                return -1;
+
+            var fixedLimit = core.MaxPerFaction;
+            var playerScaledLimit = GetPlayerScaledFactionCoreLimit(core, playerCount);
+
+            if (playerScaledLimit < 0)
+                return fixedLimit;
+
+            if (fixedLimit < 0)
+                return playerScaledLimit;
+
+            return Math.Min(fixedLimit, playerScaledLimit);
+        }
+
         internal static bool IsGroupWithinFactionLimits(IMyFaction owningFaction, long ownerId, string coreType)
         {
             var factionId = owningFaction?.FactionId ?? -1;
@@ -48,17 +82,19 @@ namespace ShipCoreFramework
             }
 
             var core = Config.GetShipCoreByTypeId(coreType);
-            var maxAllowedGrids = core.MaxPerFaction;
             var minNeededPlayers = core.MinPlayers;
             var maxAllowedPlayers = core.MaxPlayers;
+            var requiresFaction = core.FactionPlayersNeededPerCore > 0;
 
-            if (factionId == -1 && minNeededPlayers > 1)
+            if (factionId == -1 && (minNeededPlayers > 1 || requiresFaction))
             {
                 Utils.ShowChatMessage($"Player is not in Faction [OwningPlayer:{ownerId}] and therefore cannot build faction limited core: {coreType}", playerEntityId: ownerId);
                 return false;
             }
 
             var playerCount = GetFactionPlayerCount(owningFaction, ownerId);
+            var maxAllowedGrids = GetEffectiveFactionCoreLimit(core, playerCount);
+            var playerScaledLimit = GetPlayerScaledFactionCoreLimit(core, playerCount);
 
             if (playerCount < minNeededPlayers)
             {
@@ -77,7 +113,17 @@ namespace ShipCoreFramework
             if (!PerFaction.ContainsKey(factionId) || !PerFaction[factionId].ContainsKey(coreType)) return true;
             var currentCount = PerFaction[factionId][coreType];
             if (currentCount <= maxAllowedGrids) return true;
-            Utils.ShowChatMessage($"Faction limit reached, you already have {currentCount - 1}/{maxAllowedGrids} {coreType} built!");
+            if (playerScaledLimit == 0)
+            {
+                Utils.ShowChatMessage($"{playerCount}/{core.FactionPlayersNeededPerCore} faction players needed per {coreType}.", playerEntityId: ownerId);
+                return false;
+            }
+
+            var message = $"Faction limit reached, you already have {currentCount - 1}/{maxAllowedGrids} {coreType} built!";
+            if (playerScaledLimit >= 0)
+                message += $" Player-scaled cap: {playerCount} players -> {playerScaledLimit} allowed (1 per {core.FactionPlayersNeededPerCore} players).";
+
+            Utils.ShowChatMessage(message, playerEntityId: ownerId);
             return false;
         }
 

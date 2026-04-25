@@ -148,10 +148,14 @@ namespace ShipCoreFramework
                 {
                     foreach (var classCount in factionVal)
                     {
-                        var max = Session.Config.GetShipCoreByTypeId(classCount.Key).MaxPerFaction;
+                        var core = Session.Config.GetShipCoreByTypeId(classCount.Key);
+                        var max = GridsPerFactionManager.GetEffectiveFactionCoreLimit(core, GridsPerFactionManager.GetFactionPlayerCount(faction, playerId));
                         if(max != -1 && classCount.Value>0)
                         {
-                            bodySort[classCount.Key]+=$"            > Per Faction:{classCount.Value}/{max}\n";
+                            if (!bodySort.ContainsKey(classCount.Key))
+                                bodySort[classCount.Key] = $"> {classCount.Key}:\n";
+
+                            bodySort[classCount.Key]+=$"            > Per Faction:{FormatFactionLimit(core, faction, playerId, classCount.Value)}\n";
                         }
                     }                
                 }
@@ -178,10 +182,11 @@ namespace ShipCoreFramework
                         {
                             foreach (var classCount in factionVal)
                             {
-                                var max = Session.Config.GetShipCoreByTypeId(classCount.Key).MaxPerFaction;
+                                var core = Session.Config.GetShipCoreByTypeId(classCount.Key);
+                                var max = GridsPerFactionManager.GetEffectiveFactionCoreLimit(core, GridsPerFactionManager.GetFactionPlayerCount(faction, playerId));
                                 if(max != -1)
                                 {
-                                    bodySort[classCount.Key]=$"            > Per Faction:{classCount.Value}/{max}\n";
+                                    bodySort[classCount.Key]=$"            > Per Faction:{FormatFactionLimit(core, faction, playerId, classCount.Value)}\n";
                                 }
                             }                
                         }
@@ -248,7 +253,7 @@ namespace ShipCoreFramework
             {
                 return $"No core found with name '{infoName}'.";
             }
-            return $"Core: {infoCore.UniqueName}\nSubtype: {infoCore.SubtypeId}\nMaxBlocks: {infoCore.MaxBlocks}\nModifiers: {infoCore.Modifiers}";
+            return $"Core: {infoCore.UniqueName}\nSubtype: {infoCore.SubtypeId}\nMaxBlocks: {infoCore.MaxBlocks}\nFactionLimit: {DescribeFactionLimitConfig(infoCore)}\nModifiers: {infoCore.Modifiers}";
         }
 
         private static string ListNoCores()
@@ -664,15 +669,14 @@ namespace ShipCoreFramework
                 
             }
             
-            var currentMaxPerFaction = groupKvp.Value.ShipCore.MaxPerFaction;
-            if(currentMaxPerFaction > 0)
+            if(GridsPerFactionManager.HasFactionCoreLimit(groupKvp.Value.ShipCore))
             {
                 if (groupKvp.Value.OwningFaction != null)
                 {
                     var owningFactionId = groupKvp.Value.OwningFaction.FactionId;
                     if (GridsPerFactionManager.PerFaction.ContainsKey(owningFactionId) && GridsPerFactionManager.PerFaction[owningFactionId].ContainsKey(shipCoreSubtypeId))
                     {
-                        body += $"Per Faction Limit:{GridsPerFactionManager.PerFaction[owningFactionId][shipCoreSubtypeId]}/{currentMaxPerFaction}\n";
+                        body += $"Per Faction Limit:{FormatFactionLimit(groupKvp.Value.ShipCore, groupKvp.Value.OwningFaction, groupKvp.Value.OwnerId, GridsPerFactionManager.PerFaction[owningFactionId][shipCoreSubtypeId])}\n";
                     }
                     else
                     {
@@ -967,6 +971,33 @@ Raycasts from crosshairs to find a grid and displays all its core information.";
             string[] options = {"Cool Beans","I Understand","I Understand","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","I Don't like reading","It's MoMo's fault"};
             var rng = new Random();
             return options[rng.Next(options.Length)];
+        }
+
+        private static string DescribeFactionLimitConfig(ShipCore core)
+        {
+            if (core == null || !GridsPerFactionManager.HasFactionCoreLimit(core))
+                return "Unlimited";
+
+            if (core.MaxPerFaction >= 0 && core.FactionPlayersNeededPerCore > 0)
+                return $"{core.MaxPerFaction} max and 1 per {core.FactionPlayersNeededPerCore} faction players";
+
+            if (core.MaxPerFaction >= 0)
+                return core.MaxPerFaction.ToString();
+
+            return $"1 per {core.FactionPlayersNeededPerCore} faction players";
+        }
+
+        private static string FormatFactionLimit(ShipCore core, IMyFaction faction, long ownerId, int currentCount)
+        {
+            var playerCount = GridsPerFactionManager.GetFactionPlayerCount(faction, ownerId);
+            var max = GridsPerFactionManager.GetEffectiveFactionCoreLimit(core, playerCount);
+            if (max < 0)
+                return currentCount.ToString();
+
+            if (core != null && core.FactionPlayersNeededPerCore > 0)
+                return $"{currentCount}/{max} (1 per {core.FactionPlayersNeededPerCore} players, faction size {playerCount})";
+
+            return $"{currentCount}/{max}";
         }
     }
 }
