@@ -52,7 +52,8 @@ namespace ShipCoreFramework
         {
             var punishments = GroupPunishmentFlags.None;
 
-            ChainPunishmentGate(ref punishments, IsOverCoreCapacity(), GetMobilityPunishmentFlags());
+            ChainPunishmentGate(ref punishments, IsOverCoreCapacity(), GetCoreCapacityPunishmentFlags());
+            ChainPunishmentGate(ref punishments, HasMobilityTypeMismatch(), GroupPunishmentFlags.Both);
             ChainPunishmentGate(ref punishments, IsBelowMinPlayers(), GroupPunishmentFlags.Both);
             ChainPunishmentGate(ref punishments, IsAtOrOverMaxPlayers(), GroupPunishmentFlags.Both);
             ChainPunishmentGate(ref punishments, HasBrokenMainCore(), GroupPunishmentFlags.Both);
@@ -72,7 +73,9 @@ namespace ShipCoreFramework
             ICollection<string> modifierReasons)
         {
             AddTriggeredPunishmentGate(speedReasons, modifierReasons, IsOverCoreCapacity(),
-                GetMobilityPunishmentFlags(), GetCoreCapacityPunishmentReason());
+                GetCoreCapacityPunishmentFlags(), GetCoreCapacityPunishmentReason());
+            AddTriggeredPunishmentGate(speedReasons, modifierReasons, HasMobilityTypeMismatch(),
+                GroupPunishmentFlags.Both, GetMobilityMismatchPunishmentReason());
             AddTriggeredPunishmentGate(speedReasons, modifierReasons, IsBelowMinPlayers(),
                 GroupPunishmentFlags.Both, GetBelowMinimumPlayersPunishmentReason());
             AddTriggeredPunishmentGate(speedReasons, modifierReasons, IsAtOrOverMaxPlayers(),
@@ -96,7 +99,7 @@ namespace ShipCoreFramework
                 modifierReasons.Add(description);
         }
 
-        private GroupPunishmentFlags GetMobilityPunishmentFlags()
+        private GroupPunishmentFlags GetCoreCapacityPunishmentFlags()
         {
             switch (ShipCore.MobilityType)
             {
@@ -107,6 +110,24 @@ namespace ShipCoreFramework
                 case MobilityType.Both:
                 default:
                     return GroupPunishmentFlags.Both;
+            }
+        }
+
+        private bool HasMobilityTypeMismatch()
+        {
+            var referenceGrid = GetMobilityReferenceGrid();
+            var shipCore = ShipCore;
+            if (referenceGrid == null || shipCore == null) return false;
+
+            switch (shipCore.MobilityType)
+            {
+                case MobilityType.Static:
+                    return !referenceGrid.IsStatic;
+                case MobilityType.Mobile:
+                    return referenceGrid.IsStatic;
+                case MobilityType.Both:
+                default:
+                    return false;
             }
         }
 
@@ -143,6 +164,25 @@ namespace ShipCoreFramework
             return triggeredLimits.Count == 0
                 ? "Core capacity exceeded"
                 : $"Core capacity exceeded ({string.Join(", ", triggeredLimits)})";
+        }
+
+        private string GetMobilityMismatchPunishmentReason()
+        {
+            var referenceGrid = GetMobilityReferenceGrid();
+            var shipCore = ShipCore;
+            if (referenceGrid == null || shipCore == null) return "Core mobility mismatch";
+
+            var currentMobility = referenceGrid.IsStatic ? "static" : "mobile";
+            switch (shipCore.MobilityType)
+            {
+                case MobilityType.Static:
+                    return $"Mobility mismatch ({currentMobility} grid, static core)";
+                case MobilityType.Mobile:
+                    return $"Mobility mismatch ({currentMobility} grid, mobile core)";
+                case MobilityType.Both:
+                default:
+                    return "Core mobility mismatch";
+            }
         }
 
         private string GetBelowMinimumPlayersPunishmentReason()

@@ -159,6 +159,12 @@ namespace ShipCoreFramework
             var runNfz = _tick % 10 == 0;
             var doPunish = _tick % 60 == 0;
 
+            if (doPunish)
+            {
+                foreach (var group in new List<GroupComponent>(GroupDict.Values))
+                    group.RefreshPunishmentState();
+            }
+
             MyAPIGateway.Parallel.StartBackground(() =>
             {
                 MyAPIGateway.Parallel.ForEach(GroupDict, kvp =>

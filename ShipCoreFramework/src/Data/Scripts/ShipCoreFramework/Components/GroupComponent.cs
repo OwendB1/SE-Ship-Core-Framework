@@ -51,6 +51,18 @@ namespace ShipCoreFramework
             GridDictionary.Clear();
         }
 
+        private MyCubeGrid GetMobilityReferenceGrid()
+        {
+            var mainGrid = MainCoreComponent?.CoreBlock?.CubeGrid as MyCubeGrid;
+            if (mainGrid != null) return mainGrid;
+
+            return GridDictionary.Keys
+                .Where(grid => grid != null && !grid.MarkedForClose && !grid.Closed)
+                .OrderByDescending(grid => grid.BlocksCount)
+                .ThenBy(grid => grid.EntityId)
+                .FirstOrDefault();
+        }
+
         internal bool PunishModifiers;
         internal bool PunishSpeed;
         internal bool BoostEnabled;

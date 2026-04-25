@@ -35,30 +35,6 @@ namespace ShipCoreFramework
                 Utils.Log($"Core {subType} does not have any computer components by the looks of it, double check this is correct?", 2);
             }
 
-            var shipCoreType = Session.Config.GetShipCoreByTypeId(CoreBlock.BlockDefinition.SubtypeId);
-            switch (shipCoreType.MobilityType)
-            {
-                case MobilityType.Static:
-                    if (!CoreBlock.CubeGrid.IsStatic)
-                    {
-                        CoreBlock.SlimBlock.RemoveAndRefund();
-                        Utils.ShowNotification("This core is only meant for static grids!", builder);
-                        return false;
-                    }
-                    break;
-                case MobilityType.Mobile:
-                    if (CoreBlock.CubeGrid.IsStatic)
-                    {
-                        CoreBlock.SlimBlock.RemoveAndRefund();
-                        Utils.ShowNotification("This core is only meant for mobile grids!", builder);
-                        return false;
-                    }
-                    break;
-                case MobilityType.Both:
-                default:
-                    break;
-            }
-
             if (Session.Config.SelectedNoCore == null)
             {
                 Utils.Log("NOCORE is NULL for CORE", 3);
