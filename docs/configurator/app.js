@@ -350,6 +350,7 @@ function createDefaultCore() {
     maxPcu: -1,
     maxBackupCores: -1,
     maxPerFaction: -1,
+    factionPlayersNeededPerCore: -1,
     minPerFaction: -1,
     maxPlayers: -1,
     maxPerPlayer: -1,
@@ -716,6 +717,7 @@ function renderShipCores() {
         <label class="inline">MaxBackupCores <input data-action="core-maxbackupcores" data-c="${coreIndex}" class="small" type="number" value="${core.maxBackupCores}" /></label>
         <label class="inline">MaxPerPlayer <input data-action="core-maxpp" data-c="${coreIndex}" class="small" type="number" value="${core.maxPerPlayer}" /></label>
         <label class="inline">MaxPerFaction <input data-action="core-maxpf" data-c="${coreIndex}" class="small" type="number" value="${core.maxPerFaction}" /></label>
+        <label class="inline">FactionPlayersNeededPerCore <input data-action="core-faction-players-needed" data-c="${coreIndex}" class="small" type="number" value="${core.factionPlayersNeededPerCore}" /></label>
         <label class="inline">MinPlayers <input data-action="core-minplayers" data-c="${coreIndex}" class="small" type="number" value="${core.minPerFaction}" /></label>
         <label class="inline">MaxPlayers <input data-action="core-maxplayers" data-c="${coreIndex}" class="small" type="number" value="${core.maxPlayers}" /></label>
       </div>
@@ -921,6 +923,7 @@ function parseCoreXml(text, originalFileName = "") {
     maxPcu: numberOf(coreNode, "MaxPCU", -1),
     maxBackupCores: numberOf(coreNode, "MaxBackupCores", -1),
     maxPerFaction: numberOf(coreNode, "MaxPerFaction", -1),
+    factionPlayersNeededPerCore: numberOf(coreNode, "FactionPlayersNeededPerCore", -1),
     minPerFaction: numberOf(coreNode, "MinPlayers", numberOf(coreNode, "MinPerFaction", -1)),
     maxPlayers: numberOf(coreNode, "MaxPlayers", -1),
     maxPerPlayer: numberOf(coreNode, "MaxPerPlayer", -1),
@@ -1149,6 +1152,7 @@ function parseLegacyGridClass(gridClassNode, fallbackSubtype) {
     maxMass: numberOf(gridClassNode, "MaxMass", -1),
     maxPcu: numberOf(gridClassNode, "MaxPCU", -1),
     maxPerFaction: numberOf(gridClassNode, "MaxPerFaction", -1),
+    factionPlayersNeededPerCore: numberOf(gridClassNode, "FactionPlayersNeededPerCore", -1),
     minPerFaction: numberOf(gridClassNode, "MinPlayers", -1),
     maxPlayers: numberOf(gridClassNode, "MaxPlayers", -1),
     maxPerPlayer: numberOf(gridClassNode, "MaxPerPlayer", -1),
@@ -1418,7 +1422,7 @@ function generateXml(options = {}) {
   const header = '<?xml version="1.0" encoding="UTF-8"?>';
 
   const noCore = state.noCoreCore
-    ? `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(state.noCoreCore.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(state.noCoreCore.uniqueName)}</UniqueName>\n  <ForceBroadCast>${state.noCoreCore.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${state.noCoreCore.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(state.noCoreCore.mobilityType)}</MobilityType>\n  <MaxBlocks>${state.noCoreCore.maxBlocks}</MaxBlocks>\n  <MinBlocks>${state.noCoreCore.minBlocks}</MinBlocks>\n  <MaxMass>${state.noCoreCore.maxMass}</MaxMass>\n  <MaxPCU>${state.noCoreCore.maxPcu}</MaxPCU>\n  <MaxBackupCores>${state.noCoreCore.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${state.noCoreCore.maxPerPlayer}</MaxPerPlayer>\n  <MaxPerFaction>${state.noCoreCore.maxPerFaction}</MaxPerFaction>\n  <MinPlayers>${state.noCoreCore.minPerFaction}</MinPlayers>\n  <MaxPlayers>${state.noCoreCore.maxPlayers}</MaxPlayers>\n  <SpeedBoostEnabled>${state.noCoreCore.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(state.noCoreCore.speedLimitType)}</SpeedLimitType>\n  <EnableActiveDefenseModifiers>${state.noCoreCore.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeAllowedUpgradeModulesXml(state.noCoreCore.allowedUpgradeModules)}${state.noCoreCore.allowedUpgradeModules?.length ? "\n" : ""}${writeModifierXml("Modifiers", state.noCoreCore.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeModifierXml("SpeedModifiers", state.noCoreCore.speedModifiers, DEFAULT_SPEED_MODIFIERS)}\n${writeModifierXml("PassiveDefenseModifiers", state.noCoreCore.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", state.noCoreCore.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${state.noCoreCore.blockLimits
+    ? `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(state.noCoreCore.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(state.noCoreCore.uniqueName)}</UniqueName>\n  <ForceBroadCast>${state.noCoreCore.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${state.noCoreCore.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(state.noCoreCore.mobilityType)}</MobilityType>\n  <MaxBlocks>${state.noCoreCore.maxBlocks}</MaxBlocks>\n  <MinBlocks>${state.noCoreCore.minBlocks}</MinBlocks>\n  <MaxMass>${state.noCoreCore.maxMass}</MaxMass>\n  <MaxPCU>${state.noCoreCore.maxPcu}</MaxPCU>\n  <MaxBackupCores>${state.noCoreCore.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${state.noCoreCore.maxPerPlayer}</MaxPerPlayer>\n  <MaxPerFaction>${state.noCoreCore.maxPerFaction}</MaxPerFaction>\n  <FactionPlayersNeededPerCore>${state.noCoreCore.factionPlayersNeededPerCore}</FactionPlayersNeededPerCore>\n  <MinPlayers>${state.noCoreCore.minPerFaction}</MinPlayers>\n  <MaxPlayers>${state.noCoreCore.maxPlayers}</MaxPlayers>\n  <SpeedBoostEnabled>${state.noCoreCore.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(state.noCoreCore.speedLimitType)}</SpeedLimitType>\n  <EnableActiveDefenseModifiers>${state.noCoreCore.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeAllowedUpgradeModulesXml(state.noCoreCore.allowedUpgradeModules)}${state.noCoreCore.allowedUpgradeModules?.length ? "\n" : ""}${writeModifierXml("Modifiers", state.noCoreCore.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeModifierXml("SpeedModifiers", state.noCoreCore.speedModifiers, DEFAULT_SPEED_MODIFIERS)}\n${writeModifierXml("PassiveDefenseModifiers", state.noCoreCore.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", state.noCoreCore.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${state.noCoreCore.blockLimits
       .map((limit) => writeBlockLimitXml(limit))
       .join("\n")}\n</ShipCore>`
     : `${header}\n<ShipCore />`;
@@ -1450,7 +1454,7 @@ ${state.upgradeModules
   const cores = state.shipCores.map((core, coreIndex) => ({
     file: coreFilenames[coreIndex],
     outputPath: buildCoreOutputPath(core, coreFilenames[coreIndex]),
-    body: `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(core.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(core.uniqueName)}</UniqueName>\n  <ForceBroadCast>${core.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${core.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(core.mobilityType)}</MobilityType>\n  <MaxBlocks>${core.maxBlocks}</MaxBlocks>\n  <MinBlocks>${core.minBlocks}</MinBlocks>\n  <MaxMass>${core.maxMass}</MaxMass>\n  <MaxPCU>${core.maxPcu}</MaxPCU>\n  <MaxBackupCores>${core.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${core.maxPerPlayer}</MaxPerPlayer>\n  <MaxPerFaction>${core.maxPerFaction}</MaxPerFaction>\n  <MinPlayers>${core.minPerFaction}</MinPlayers>\n  <MaxPlayers>${core.maxPlayers}</MaxPlayers>\n  <SpeedBoostEnabled>${core.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(core.speedLimitType)}</SpeedLimitType>\n  <EnableActiveDefenseModifiers>${core.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeAllowedUpgradeModulesXml(core.allowedUpgradeModules)}${core.allowedUpgradeModules?.length ? "\n" : ""}${writeModifierXml("Modifiers", core.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeModifierXml("SpeedModifiers", core.speedModifiers, DEFAULT_SPEED_MODIFIERS)}\n${writeModifierXml("PassiveDefenseModifiers", core.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", core.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${core.blockLimits
+    body: `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(core.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(core.uniqueName)}</UniqueName>\n  <ForceBroadCast>${core.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${core.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(core.mobilityType)}</MobilityType>\n  <MaxBlocks>${core.maxBlocks}</MaxBlocks>\n  <MinBlocks>${core.minBlocks}</MinBlocks>\n  <MaxMass>${core.maxMass}</MaxMass>\n  <MaxPCU>${core.maxPcu}</MaxPCU>\n  <MaxBackupCores>${core.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${core.maxPerPlayer}</MaxPerPlayer>\n  <MaxPerFaction>${core.maxPerFaction}</MaxPerFaction>\n  <FactionPlayersNeededPerCore>${core.factionPlayersNeededPerCore}</FactionPlayersNeededPerCore>\n  <MinPlayers>${core.minPerFaction}</MinPlayers>\n  <MaxPlayers>${core.maxPlayers}</MaxPlayers>\n  <SpeedBoostEnabled>${core.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(core.speedLimitType)}</SpeedLimitType>\n  <EnableActiveDefenseModifiers>${core.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeAllowedUpgradeModulesXml(core.allowedUpgradeModules)}${core.allowedUpgradeModules?.length ? "\n" : ""}${writeModifierXml("Modifiers", core.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeModifierXml("SpeedModifiers", core.speedModifiers, DEFAULT_SPEED_MODIFIERS)}\n${writeModifierXml("PassiveDefenseModifiers", core.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", core.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${core.blockLimits
       .map((limit) => writeBlockLimitXml(limit))
       .join("\n")}\n</ShipCore>`
   }));
@@ -1670,6 +1674,7 @@ document.addEventListener("input", (event) => {
   if (action === "core-maxpcu") selectedCore.maxPcu = Number(target.value || -1);
   if (action === "core-maxbackupcores") selectedCore.maxBackupCores = Number(target.value || -1);
   if (action === "core-maxpf") selectedCore.maxPerFaction = Number(target.value || -1);
+  if (action === "core-faction-players-needed") selectedCore.factionPlayersNeededPerCore = Number(target.value || -1);
   if (action === "core-minpf") selectedCore.minPerFaction = Number(target.value || -1);
   if (action === "core-minplayers") selectedCore.minPerFaction = Number(target.value || -1);
   if (action === "core-maxplayers") selectedCore.maxPlayers = Number(target.value || -1);
