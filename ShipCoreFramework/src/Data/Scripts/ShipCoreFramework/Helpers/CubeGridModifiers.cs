@@ -20,10 +20,10 @@ namespace ShipCoreFramework
         Active = 1
     }
 
-    public static class CubeGridModifiers
+    internal static class CubeGridModifiers
     {
-        internal const string UpgradeModuleLinkType = "ShipCoreLink";
-        public static readonly ConcurrentDictionary<long, GridDefenseModifiers> DefenseModifiers = new ConcurrentDictionary<long, GridDefenseModifiers>();
+        internal static readonly ConcurrentDictionary<long, GridDefenseModifiers> DefenseModifiers = new ConcurrentDictionary<long, GridDefenseModifiers>();
+        private const string UpgradeModuleLinkType = "ShipCoreLink";
         private static readonly List<MyEntity> ExplosionEntities = new List<MyEntity>();
         private static readonly MyStringHash EnergyDamageType = MyStringHash.GetOrCompute("Energy");
         private static readonly MyStringHash KineticDamageType = MyStringHash.GetOrCompute("Kinetic");

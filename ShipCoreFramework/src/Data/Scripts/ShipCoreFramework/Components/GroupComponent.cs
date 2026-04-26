@@ -6,7 +6,7 @@ using MyCubeGrid = Sandbox.Game.Entities.MyCubeGrid;
 
 namespace ShipCoreFramework
 {
-    public partial class GroupComponent
+    internal partial class GroupComponent
     {
         private const int MinimumBlocksRecheckIntervalTicks = 10 * 60 * 60;
         private const int ExternalLimitValidationDelayTicks = 2 * 60;

@@ -10,19 +10,13 @@ using VRageMath;
 
 namespace ShipCoreFramework
 {
-    public static class Commands
+    internal static class Commands
     {
         public static void ServerMessageHandler(ushort id, byte[] data, ulong sender, bool fromServer)
         {
             var message = Encoding.UTF8.GetString(data);
             Utils.Log($"Server: Command received from {sender}: {message}");
             CommandSwitch(Utils.GetPlayerIdFromSteamId(sender),message);
-        }
-        
-        private static void ForwardToServer(string message)
-        {
-            var bytes = Encoding.UTF8.GetBytes(message);
-            MyAPIGateway.Multiplayer.SendMessageToServer(Session.CommandsSyncId, bytes);
         }
         
         public static void OnChatCommand(ulong sender,string messageText, ref bool sendToOthers)
@@ -32,6 +26,12 @@ namespace ShipCoreFramework
             sendToOthers = false;
             if(!Session.IsServer) ForwardToServer(messageText);
             CommandSwitch(MyAPIGateway.Session.Player.IdentityId,messageText);
+        }
+        
+        private static void ForwardToServer(string message)
+        {
+            var bytes = Encoding.UTF8.GetBytes(message);
+            MyAPIGateway.Multiplayer.SendMessageToServer(Session.CommandsSyncId, bytes);
         }
         
         private static void CommandSwitch(long playerId, string messageText)
@@ -623,7 +623,8 @@ namespace ShipCoreFramework
                 RandomConsent()
             );
         }
-        public static string GetCoreInfo(IMyCubeGrid targetGrid, ShipCore shipCore, GroupComponent groupComponent)
+        
+        internal static string GetCoreInfo(IMyCubeGrid targetGrid, ShipCore shipCore, GroupComponent groupComponent)
         {
             var shipCoreSubtypeId = groupComponent.ShipCore.SubtypeId;
             var body = $"Grid: {targetGrid.CustomName}\nShip Class: {shipCore.UniqueName}\n\n";
@@ -981,10 +982,7 @@ Raycasts from crosshairs to find a grid and displays all its core information.";
             if (core.MaxPerFaction >= 0 && core.FactionPlayersNeededPerCore > 0)
                 return $"{core.MaxPerFaction} max and 1 per {core.FactionPlayersNeededPerCore} faction players";
 
-            if (core.MaxPerFaction >= 0)
-                return core.MaxPerFaction.ToString();
-
-            return $"1 per {core.FactionPlayersNeededPerCore} faction players";
+            return core.MaxPerFaction >= 0 ? core.MaxPerFaction.ToString() : $"1 per {core.FactionPlayersNeededPerCore} faction players";
         }
 
         private static string FormatFactionLimit(ShipCore core, IMyFaction faction, long ownerId, int currentCount)

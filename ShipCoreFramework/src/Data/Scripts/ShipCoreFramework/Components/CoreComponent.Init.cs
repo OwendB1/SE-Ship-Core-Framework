@@ -7,7 +7,7 @@ namespace ShipCoreFramework
 {
     internal partial class CoreComponent
     {
-        public bool Init(IMyFunctionalBlock coreBlock, GridComponent gridComponent, GroupComponent groupComponent)
+        internal bool Init(IMyFunctionalBlock coreBlock, GridComponent gridComponent, GroupComponent groupComponent)
         {
             CoreBlock = coreBlock;
             CoreBlock.AddUpgradeValue("ShipCoreLink", 0f);

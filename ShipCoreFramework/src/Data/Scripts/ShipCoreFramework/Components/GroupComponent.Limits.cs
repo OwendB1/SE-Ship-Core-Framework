@@ -6,7 +6,7 @@ using VRageMath;
 
 namespace ShipCoreFramework
 {
-    public partial class GroupComponent
+    internal partial class GroupComponent
     {
         private bool IsBelowMinimumBlocksRequirement()
         {

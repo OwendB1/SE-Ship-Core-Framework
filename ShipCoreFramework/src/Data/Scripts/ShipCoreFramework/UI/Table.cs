@@ -5,18 +5,18 @@ using VRageMath;
 
 namespace ShipCoreFramework
 {
-    public class Table
+    internal class Table
     {
-        public List<Column> Columns = new List<Column>();
+        internal List<Column> Columns = new List<Column>();
 
-        public List<Row> Rows = new List<Row>();
+        internal List<Row> Rows = new List<Row>();
 
-        public void Clear()
+        internal void Clear()
         {
             Rows.Clear();
         }
 
-        public void RenderToSprites(List<MySprite> sprites, Vector2 topLeft, float width, Vector2 cellGap,
+        internal void RenderToSprites(List<MySprite> sprites, Vector2 topLeft, float width, Vector2 cellGap,
             out Vector2 positionAfter, float scale = 1)
         {
             //Calculate column widths & row heights
@@ -99,31 +99,31 @@ namespace ShipCoreFramework
         }
     }
 
-    public class Column
+    internal class Column
     {
-        public TextAlignment Alignment = TextAlignment.LEFT;
-        public float FreeSpace = 0;
-        public string Name;
+        internal TextAlignment Alignment = TextAlignment.LEFT;
+        internal float FreeSpace = 0;
+        internal string Name;
     }
 
-    public class Row : List<Cell>
+    internal class Row : List<Cell>
     {
     }
 
-    public struct Cell
+    internal struct Cell
     {
-        public string Value;
-        public Color Color;
+        internal string Value;
+        internal Color Color;
 
-        public bool IsEmpty => string.IsNullOrEmpty(Value);
+        internal bool IsEmpty => string.IsNullOrEmpty(Value);
 
-        public Cell(string value, Color color)
+        internal Cell(string value, Color color)
         {
             Value = value;
             Color = color;
         }
 
-        public Cell(string value)
+        internal Cell(string value)
         {
             Value = value;
             Color = Color.White;

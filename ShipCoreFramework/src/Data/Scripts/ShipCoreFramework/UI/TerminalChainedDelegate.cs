@@ -6,7 +6,7 @@ namespace ShipCoreFramework
     /// <summary>
     /// Designed for appending custom conditions to Visible/Enabled of terminal controls or toolbar actions so that they can be hidden for specific conditions/subtypes/whatever.
     /// </summary>
-    public class TerminalChainedDelegate
+    internal class TerminalChainedDelegate
     {
         /// <summary>
         /// <paramref name="originalFunc"/> should always be the delegate this replaces, to properly chain with other mods doing the same.
@@ -14,7 +14,7 @@ namespace ShipCoreFramework
         /// <para>As for <paramref name="checkOR"/>, leave false if you want to hide controls by returning false with your <paramref name="customFunc"/>.</para>
         /// <para>Otherwise set to true if you want to force-show otherwise hidden controls by returning true with your <paramref name="customFunc"/>.</para> 
         /// </summary>
-        public static Func<IMyTerminalBlock, bool> Create(Func<IMyTerminalBlock, bool> originalFunc, Func<IMyTerminalBlock, bool> customFunc, bool checkOR = false)
+        internal static Func<IMyTerminalBlock, bool> Create(Func<IMyTerminalBlock, bool> originalFunc, Func<IMyTerminalBlock, bool> customFunc, bool checkOR = false)
         {
             return new TerminalChainedDelegate(originalFunc, customFunc, checkOR).ResultFunc;
         }

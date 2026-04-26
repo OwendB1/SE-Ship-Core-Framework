@@ -8,12 +8,12 @@ namespace ShipCoreFramework
 {
     public partial class ModConfig
     {
-        public void LoadConfig()
+        internal void LoadConfig()
         {
             LoadConfig(Session.IsServer);
         }
 
-        public void LoadConfig(bool allowWorldStorageReadWrite)
+        internal void LoadConfig(bool allowWorldStorageReadWrite)
         {
             var hasIgnoreAiSetting = false;
             var hasIgnoredFactionTagsSetting = false;

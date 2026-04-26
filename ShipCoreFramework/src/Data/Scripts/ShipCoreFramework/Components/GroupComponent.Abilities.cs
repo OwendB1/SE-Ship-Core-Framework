@@ -6,7 +6,7 @@ using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
 {
-    public partial class GroupComponent
+    internal partial class GroupComponent
     {
         [Flags]
         private enum GroupPunishmentFlags
@@ -295,7 +295,7 @@ namespace ShipCoreFramework
             }
         }
 
-        public void DefenseValuesChanged()
+        internal void DefenseValuesChanged()
         {
             RefreshDefenseModifierCache();
         }

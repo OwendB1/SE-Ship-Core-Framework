@@ -8,7 +8,7 @@ using VRageMath;
 
 namespace NexusModAPI
 {
-    public class NexusAPI
+    internal class NexusAPI
     {
         private const long MessageId = 20240902;
 
@@ -258,25 +258,25 @@ namespace NexusModAPI
              */
 
             [ProtoMember(10)]
-            public List<Cluster> clusters;
+            internal List<Cluster> clusters;
 
             [ProtoMember(20)]
-            public List<Server> servers;
+            internal List<Server> servers;
 
             [ProtoMember(30)]
-            public List<Sector> sectors;
+            internal List<Sector> sectors;
 
             [ProtoMember(40)]
-            public byte thisServerID;
+            internal byte thisServerID;
 
             [ProtoMember(50)]
-            public byte thisClusterID;
+            internal byte thisClusterID;
 
 
         }
 
         [ProtoContract]
-        public class Cluster
+        internal class Cluster
         {
             public Cluster() { }
 
@@ -289,7 +289,7 @@ namespace NexusModAPI
         }
 
         [ProtoContract]
-        public class Sector
+        internal class Sector
         {
             [ProtoMember(1), DefaultValue("NewSector")]
             public string SectorName { get; set; } = "NewSector";
@@ -356,7 +356,7 @@ namespace NexusModAPI
         }
 
         [ProtoContract]
-        public class Server
+        internal class Server
         {
             public Server() { }
 
@@ -404,19 +404,19 @@ namespace NexusModAPI
 
         [ProtoContract]
         //This is the datamsg you get back on your custom nexusmod channel you registered with keen
-        public class ModAPIMsg
+        internal class ModAPIMsg
         {
             [ProtoMember(10)]
-            public byte fromServerID;
+            internal byte fromServerID;
 
             [ProtoMember(20)]
-            public byte toServerID;
+            internal byte toServerID;
 
             [ProtoMember(25)]
-            public long targetModMessageID;
+            internal long targetModMessageID;
 
             [ProtoMember(30)]
-            public byte[] msgData;
+            internal byte[] msgData;
         }
         #endregion
     }

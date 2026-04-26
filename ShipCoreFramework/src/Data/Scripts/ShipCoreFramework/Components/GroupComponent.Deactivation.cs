@@ -4,7 +4,7 @@ using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
 {
-    public partial class GroupComponent
+    internal partial class GroupComponent
     {
         internal void InitializeDeactivationState()
         {

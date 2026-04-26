@@ -12,7 +12,7 @@ namespace ShipCoreFramework
             internal int Count;
         }
 
-        public static readonly Dictionary<long, Dictionary<string, int>> PerPlayer = new Dictionary<long, Dictionary<string, int>>();
+        internal static readonly Dictionary<long, Dictionary<string, int>> PerPlayer = new Dictionary<long, Dictionary<string, int>>();
         private static bool _suppressEvents;
 
         private static ModConfig Config => Session.Config;

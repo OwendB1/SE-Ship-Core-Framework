@@ -5,7 +5,7 @@ using IMyShipConnector = Sandbox.ModAPI.IMyShipConnector;
 
 namespace ShipCoreFramework
 {
-    public partial class GroupComponent
+    internal partial class GroupComponent
     {
         internal void OnConnectorConnectionChanged(IMyShipConnector connector)
         {

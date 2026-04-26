@@ -3,7 +3,7 @@ using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
 {
-    public static class NotificationInstance
+    internal static class NotificationInstance
     {
         private static IMyHudNotification _notification;
         private static int _baseMs;

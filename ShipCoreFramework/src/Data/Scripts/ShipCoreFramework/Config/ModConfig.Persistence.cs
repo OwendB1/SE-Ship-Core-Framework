@@ -5,7 +5,7 @@ namespace ShipCoreFramework
 {
     public partial class ModConfig
     {
-        public void SaveConfig(bool showInChat = false)
+        internal void SaveConfig(bool showInChat = false)
         {
             if (!Session.IsServer) return;
 

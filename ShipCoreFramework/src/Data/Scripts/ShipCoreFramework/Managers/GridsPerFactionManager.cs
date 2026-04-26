@@ -10,12 +10,12 @@ namespace ShipCoreFramework
     {
         internal struct FactionChange
         {
-            public long FactionId;
-            public string CoreType;
-            public int Count;
+            internal long FactionId;
+            internal string CoreType;
+            internal int Count;
         }
 
-        public static readonly Dictionary<long, Dictionary<string, int>> PerFaction = new Dictionary<long, Dictionary<string, int>>();
+        internal static readonly Dictionary<long, Dictionary<string, int>> PerFaction = new Dictionary<long, Dictionary<string, int>>();
         private static bool _suppressEvents;
 
         private static ModConfig Config => Session.Config;

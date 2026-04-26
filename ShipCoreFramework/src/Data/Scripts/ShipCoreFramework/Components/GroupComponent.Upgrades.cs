@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace ShipCoreFramework
 {
-    public partial class GroupComponent
+    internal partial class GroupComponent
     {
         private IEnumerable<UpgradeModuleComponent> GetUpgradeModules()
         {

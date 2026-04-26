@@ -5,26 +5,26 @@ namespace ShipCoreFramework
 {
     public partial class ModConfig
     {
-        public ShipCore GetShipCoreByTypeId(string coreTypeId)
+        internal ShipCore GetShipCoreByTypeId(string coreTypeId)
         {
             if (coreTypeId == string.Empty) return SelectedNoCore;
             var shipCore = ShipCores.FirstOrDefault(core => core.SubtypeId == coreTypeId);
             return shipCore ?? SelectedNoCore;
         }
 
-        public bool IsValidCoreType(string coreTypeId)
+        internal bool IsValidCoreType(string coreTypeId)
         {
             return ShipCores.Any(core => core.SubtypeId == coreTypeId) || SelectedNoCore.SubtypeId == coreTypeId;
         }
 
-        public UpgradeModuleConfig GetUpgradeModuleByTypeId(string moduleTypeId)
+        internal UpgradeModuleConfig GetUpgradeModuleByTypeId(string moduleTypeId)
         {
             if (string.IsNullOrWhiteSpace(moduleTypeId)) return null;
             return UpgradeModules.FirstOrDefault(module =>
                 module != null && module.SubtypeId.Equals(moduleTypeId, StringComparison.OrdinalIgnoreCase));
         }
 
-        public bool IsTrackedUpgradeModuleType(string moduleTypeId)
+        internal bool IsTrackedUpgradeModuleType(string moduleTypeId)
         {
             if (string.IsNullOrWhiteSpace(moduleTypeId)) return false;
             if (GetUpgradeModuleByTypeId(moduleTypeId) != null) return true;

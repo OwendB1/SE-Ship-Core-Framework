@@ -7,7 +7,7 @@ using VRage.Utils;
 
 namespace ShipCoreFramework
 {
-    public static class CoreTerminalControls
+    internal static class CoreTerminalControls
     {
         private const string IdPrefix = "ShipCoreFramework_CoreTerminalControls_";
         private static bool _done;
@@ -15,7 +15,7 @@ namespace ShipCoreFramework
         private static IMyTerminalAction _boostAction;
         private static IMyTerminalAction _defenseAction;
         
-        public static void RegisterOnce()
+        internal static void RegisterOnce()
         {
             if (Session.LocalPlayer == null) return;
             if(_done)
@@ -29,7 +29,7 @@ namespace ShipCoreFramework
             MyAPIGateway.TerminalControls.CustomActionGetter += CustomActionGetter;
         }
 
-        public static void Unregister()
+        internal static void Unregister()
         {
             if (!_done) return;
 
