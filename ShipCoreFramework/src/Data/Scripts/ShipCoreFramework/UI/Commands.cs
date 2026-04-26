@@ -605,15 +605,15 @@ namespace ShipCoreFramework
                 }
             }
         
-            var groupKvp = Session.GroupDict.FirstOrDefault(gk => gk.Value.GridDictionary.Any(kvp => kvp.Key == targetGrid));
-            if (groupKvp.Value == null)
+            var groupComponent = targetGrid.GetGroupComponent();
+            if (groupComponent == null)
             {
                 Utils.ShowChatMessage($"Grid '{targetGrid.CustomName}' has no ship core or configuration.");
                 return;
             }
             
-            var shipCore = groupKvp.Value.ShipCore;
-            var body = GetCoreInfo(targetGrid, shipCore,groupKvp);
+            var shipCore = groupComponent.ShipCore;
+            var body = GetCoreInfo(targetGrid, shipCore, groupComponent);
             MyAPIGateway.Utilities.ShowMissionScreen(
                 "Ship Core Framework",
                 $"Ship Class Limits - {targetGrid.CustomName}",
@@ -623,30 +623,30 @@ namespace ShipCoreFramework
                 RandomConsent()
             );
         }
-        public static string GetCoreInfo(IMyCubeGrid targetGrid,ShipCore shipCore,KeyValuePair<IMyGridGroupData, GroupComponent> groupKvp)
+        public static string GetCoreInfo(IMyCubeGrid targetGrid, ShipCore shipCore, GroupComponent groupComponent)
         {
-            var shipCoreSubtypeId = groupKvp.Value.ShipCore.SubtypeId;
+            var shipCoreSubtypeId = groupComponent.ShipCore.SubtypeId;
             var body = $"Grid: {targetGrid.CustomName}\nShip Class: {shipCore.UniqueName}\n\n";
-            body += $"Deactivated: {(groupKvp.Value.Deactivated ? "Yes" : "No")}\n";
-            if (groupKvp.Value.Deactivated)
+            body += $"Deactivated: {(groupComponent.Deactivated ? "Yes" : "No")}\n";
+            if (groupComponent.Deactivated)
             {
                 return body;
             }
 
-            body += $"Ignored: {(groupKvp.Value.IsIgnoredGroup() ? "Yes" : "No")}\n\n";
+            body += $"Ignored: {(groupComponent.IsIgnoredGroup() ? "Yes" : "No")}\n\n";
 
-            var speedPunishmentGates = groupKvp.Value.GetSpeedPunishmentGateDescriptions();
-            var modifierPunishmentGates = groupKvp.Value.GetModifierPunishmentGateDescriptions();
+            var speedPunishmentGates = groupComponent.GetSpeedPunishmentGateDescriptions();
+            var modifierPunishmentGates = groupComponent.GetModifierPunishmentGateDescriptions();
 
             body += "Punishments:\n";
-            body += $"  Speed: {(groupKvp.Value.PunishSpeed ? "Yes" : "No")}\n";
+            body += $"  Speed: {(groupComponent.PunishSpeed ? "Yes" : "No")}\n";
             if (speedPunishmentGates.Count > 0)
             {
                 foreach (var gate in speedPunishmentGates)
                     body += $"    - {gate}\n";
             }
 
-            body += $"  Modifiers: {(groupKvp.Value.PunishModifiers ? "Yes" : "No")}\n";
+            body += $"  Modifiers: {(groupComponent.PunishModifiers ? "Yes" : "No")}\n";
             if (modifierPunishmentGates.Count > 0)
             {
                 foreach (var gate in modifierPunishmentGates)
@@ -654,10 +654,10 @@ namespace ShipCoreFramework
             }
             body += "\n";
 
-            var currentMaxPerPlayer = groupKvp.Value.ShipCore.MaxPerPlayer;
+            var currentMaxPerPlayer = groupComponent.ShipCore.MaxPerPlayer;
             if (currentMaxPerPlayer > 0)
             {
-                var ownerId = groupKvp.Value.OwnerId;
+                var ownerId = groupComponent.OwnerId;
                 if (GridsPerPlayerManager.PerPlayer.ContainsKey(ownerId) && GridsPerPlayerManager.PerPlayer[ownerId].ContainsKey(shipCoreSubtypeId))
                 {
                     body += $"Per Player Limit:{GridsPerPlayerManager.PerPlayer[ownerId][shipCoreSubtypeId]}/{currentMaxPerPlayer}\n";
@@ -669,14 +669,14 @@ namespace ShipCoreFramework
                 
             }
             
-            if(GridsPerFactionManager.HasFactionCoreLimit(groupKvp.Value.ShipCore))
+            if(GridsPerFactionManager.HasFactionCoreLimit(groupComponent.ShipCore))
             {
-                if (groupKvp.Value.OwningFaction != null)
+                if (groupComponent.OwningFaction != null)
                 {
-                    var owningFactionId = groupKvp.Value.OwningFaction.FactionId;
+                    var owningFactionId = groupComponent.OwningFaction.FactionId;
                     if (GridsPerFactionManager.PerFaction.ContainsKey(owningFactionId) && GridsPerFactionManager.PerFaction[owningFactionId].ContainsKey(shipCoreSubtypeId))
                     {
-                        body += $"Per Faction Limit:{FormatFactionLimit(groupKvp.Value.ShipCore, groupKvp.Value.OwningFaction, groupKvp.Value.OwnerId, GridsPerFactionManager.PerFaction[owningFactionId][shipCoreSubtypeId])}\n";
+                        body += $"Per Faction Limit:{FormatFactionLimit(groupComponent.ShipCore, groupComponent.OwningFaction, groupComponent.OwnerId, GridsPerFactionManager.PerFaction[owningFactionId][shipCoreSubtypeId])}\n";
                     }
                     else
                     {
@@ -692,24 +692,24 @@ namespace ShipCoreFramework
             body += "Grid Statistics:\n";
             
             // Block Count
-            var blockCountStatus = shipCore.MaxBlocks > 0 ? $"{groupKvp.Value.GroupBlocksCount} / {shipCore.MaxBlocks}" : groupKvp.Value.GroupBlocksCount.ToString();
-            var blockCountPercent = shipCore.MaxBlocks > 0 ? groupKvp.Value.GroupBlocksCount / (float)shipCore.MaxBlocks * 100 : -1;
+            var blockCountStatus = shipCore.MaxBlocks > 0 ? $"{groupComponent.GroupBlocksCount} / {shipCore.MaxBlocks}" : groupComponent.GroupBlocksCount.ToString();
+            var blockCountPercent = shipCore.MaxBlocks > 0 ? groupComponent.GroupBlocksCount / (float)shipCore.MaxBlocks * 100 : -1;
             body += $"  Blocks: {blockCountStatus}";
             if (shipCore.MaxBlocks > 0)
                 body += $" ({blockCountPercent:F1}%)";
             body += "\n";
             
             // Mass
-            var massStatus = shipCore.MaxMass > 0 ? $"{groupKvp.Value.GroupMass:F0} / {shipCore.MaxMass:F0} kg" : $"{groupKvp.Value.GroupMass:F0} kg";
-            var massPercent = shipCore.MaxMass > 0 ? groupKvp.Value.GroupMass / shipCore.MaxMass * 100 : -1;
+            var massStatus = shipCore.MaxMass > 0 ? $"{groupComponent.GroupMass:F0} / {shipCore.MaxMass:F0} kg" : $"{groupComponent.GroupMass:F0} kg";
+            var massPercent = shipCore.MaxMass > 0 ? groupComponent.GroupMass / shipCore.MaxMass * 100 : -1;
             body += $"  Mass: {massStatus}";
             if (shipCore.MaxMass > 0)
                 body += $" ({massPercent:F1}%)";
             body += "\n";
             
             // PCU
-            var pcuStatus = shipCore.MaxPCU > 0 ? $"{groupKvp.Value.GroupPCU} / {shipCore.MaxPCU}" : groupKvp.Value.GroupPCU.ToString();
-            var pcuPercent = shipCore.MaxPCU > 0 ? groupKvp.Value.GroupPCU / (float)shipCore.MaxPCU * 100 : -1;
+            var pcuStatus = shipCore.MaxPCU > 0 ? $"{groupComponent.GroupPCU} / {shipCore.MaxPCU}" : groupComponent.GroupPCU.ToString();
+            var pcuPercent = shipCore.MaxPCU > 0 ? groupComponent.GroupPCU / (float)shipCore.MaxPCU * 100 : -1;
             body += $"  PCU: {pcuStatus}";
             if (shipCore.MaxPCU > 0)
                 body += $" ({pcuPercent:F1}%)";
@@ -717,7 +717,7 @@ namespace ShipCoreFramework
             
             body += "Modifiers:\n";
 
-            var gridMods = groupKvp.Value.Modifiers;
+            var gridMods = groupComponent.Modifiers;
             foreach (var m in gridMods.GetModifierValues())
             {
                 var n = m.Name.ToLowerInvariant();
@@ -728,18 +728,18 @@ namespace ShipCoreFramework
             }
             //Speed Info
             body += "Speed Modifiers:\n";
-            var speedmods = groupKvp.Value.SpeedModifiers;
+            var speedmods = groupComponent.SpeedModifiers;
             if (speedmods != null)
             {
                 body += $"    Max Speed:       {speedmods.MaxSpeed:F2}\n";
                 body += $"    Max Boost Speed: {speedmods.MaxBoost:F2}\n";
                 if (Session.Config.FrictionSpeedValueMode == FrictionSpeedValueMode.Modifier)
                 {
-                    var minMod = groupKvp.Value.MinimumFrictionSpeedModifierOverride >= 0f
-                        ? groupKvp.Value.MinimumFrictionSpeedModifierOverride
+                    var minMod = groupComponent.MinimumFrictionSpeedModifierOverride >= 0f
+                        ? groupComponent.MinimumFrictionSpeedModifierOverride
                         : speedmods.MinimumFrictionSpeedModifier;
-                    var maxMod = groupKvp.Value.MaximumFrictionSpeedModifierOverride >= 0f
-                        ? groupKvp.Value.MaximumFrictionSpeedModifierOverride
+                    var maxMod = groupComponent.MaximumFrictionSpeedModifierOverride >= 0f
+                        ? groupComponent.MaximumFrictionSpeedModifierOverride
                         : speedmods.MaximumFrictionSpeedModifier;
 
                     var minReal = Session.Config.MaxPossibleSpeedMetersPerSecond * minMod;
@@ -749,11 +749,11 @@ namespace ShipCoreFramework
                 }
                 else
                 {
-                    var minAbs = groupKvp.Value.MinimumFrictionSpeedAbsoluteOverride >= 0f
-                        ? groupKvp.Value.MinimumFrictionSpeedAbsoluteOverride
+                    var minAbs = groupComponent.MinimumFrictionSpeedAbsoluteOverride >= 0f
+                        ? groupComponent.MinimumFrictionSpeedAbsoluteOverride
                         : speedmods.MinimumFrictionSpeedAbsolute;
-                    var maxAbs = groupKvp.Value.MaximumFrictionSpeedAbsoluteOverride >= 0f
-                        ? groupKvp.Value.MaximumFrictionSpeedAbsoluteOverride
+                    var maxAbs = groupComponent.MaximumFrictionSpeedAbsoluteOverride >= 0f
+                        ? groupComponent.MaximumFrictionSpeedAbsoluteOverride
                         : speedmods.MaximumFrictionSpeedAbsolute;
 
                     body += $"    Min Friction:    {minAbs:F1} m/s\n";
@@ -763,8 +763,8 @@ namespace ShipCoreFramework
                 body += $"    Boost Duration:  {speedmods.BoostDuration:F2}\n";
                 body += $"    Boost Cooldown:  {speedmods.BoostCoolDown:F2}\n";
             }
-            var passive = groupKvp.Value.GetPassiveDefenseModifiers();
-            var active = groupKvp.Value.GetActiveDefenseModifiers();
+            var passive = groupComponent.GetPassiveDefenseModifiers();
+            var active = groupComponent.GetActiveDefenseModifiers();
 
             if (passive != null)
             {
@@ -789,8 +789,8 @@ namespace ShipCoreFramework
                 body += $"    Environment: x{active.Environment:F2}\n";
                 body += $"    Energy: x{active.Energy:F2}\n";
                 body += $"    Kinetic: x{active.Kinetic:F2}\n";
-                body += $"  Duration: {groupKvp.Value.ActiveDefenseDuration:F1}s\n";
-                body += $"  Cooldown: {groupKvp.Value.ActiveDefenseCoolDown:F1}s\n";
+                body += $"  Duration: {groupComponent.ActiveDefenseDuration:F1}s\n";
+                body += $"  Cooldown: {groupComponent.ActiveDefenseCoolDown:F1}s\n";
             }
             body += "\n";
             
@@ -806,10 +806,10 @@ namespace ShipCoreFramework
                 {
                     var totalWeight = 0d;
                     LimitBucket bucket;
-                    if (groupKvp.Value.Limits.TryGetValue(blockLimit, out bucket))
+                    if (groupComponent.Limits.TryGetValue(blockLimit, out bucket))
                         totalWeight = bucket.TotalWeight;
 
-                    var effectiveMaxCount = groupKvp.Value.GetEffectiveMaxCount(blockLimit);
+                    var effectiveMaxCount = groupComponent.GetEffectiveMaxCount(blockLimit);
                     var percentage = effectiveMaxCount > 0
                         ? (totalWeight / effectiveMaxCount) * 100d
                         : 0d;
@@ -823,7 +823,7 @@ namespace ShipCoreFramework
                     var sample = new List<KeyValuePair<IMySlimBlock, double>>(10);
                     var totalCount = 0;
 
-                    foreach (var gridKvp in groupKvp.Value.GridDictionary)
+                    foreach (var gridKvp in groupComponent.GridDictionary)
                     {
                         var gridComp = gridKvp.Value;
                         if (!gridComp.Limits.TryGetValue(blockLimit, out bucket))

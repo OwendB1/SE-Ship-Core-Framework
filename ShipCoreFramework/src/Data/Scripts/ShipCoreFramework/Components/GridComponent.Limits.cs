@@ -15,6 +15,7 @@ namespace ShipCoreFramework
             if (limits == null || limits.Length == 0) return true;
 
             var blockKey = KeyOf(block);
+            var localizedBlockName = Utils.GetLocalizedBlockName(block);
             var forceShutOff = !deferPunishment && GroupComponent.ShouldForceLimitedBlocksOff();
 
             foreach (var limit in limits)
@@ -36,7 +37,7 @@ namespace ShipCoreFramework
                 {
                     if (!deferPunishment)
                     {
-                        Utils.ShowNotification(Utils.GetBlockSubtypeId(block) + " violated directional locking!");
+                        Utils.ShowNotification(localizedBlockName + " violated directional locking!");
                         block.WhackABlock(forceShutOff
                             ? PunishmentType.ShutOff
                             : limitBasedPunish ? limit.PunishmentType : PunishmentType.Delete);
@@ -62,7 +63,7 @@ namespace ShipCoreFramework
                 {
                     if (!deferPunishment)
                     {
-                        var message = Utils.GetBlockSubtypeId(block) + " violates Block limit " + limit.Name + ": " +
+                        var message = localizedBlockName + " violates Block limit " + limit.Name + ": " +
                                       (currentWeight + weight) + "/" + effectiveMaxCount;
                         if (firstOwner != 0) Utils.ShowNotification(message, firstOwner);
                         else Utils.ShowNotification(message);

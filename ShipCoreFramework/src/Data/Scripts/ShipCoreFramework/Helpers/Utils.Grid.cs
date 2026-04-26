@@ -60,6 +60,19 @@ namespace ShipCoreFramework
             return Convert.ToString(block.BlockDefinition.Id.SubtypeId);
         }
 
+        internal static string GetLocalizedBlockName(IMySlimBlock block)
+        {
+            if (block == null) return string.Empty;
+
+            var definitionDisplayName = block.FatBlock?.DefinitionDisplayNameText;
+            if (!string.IsNullOrWhiteSpace(definitionDisplayName)) return definitionDisplayName;
+
+            var blockDefinitionDisplayName = block.BlockDefinition?.DisplayNameText;
+            if (!string.IsNullOrWhiteSpace(blockDefinitionDisplayName)) return blockDefinitionDisplayName;
+
+            return GetBlockSubtypeId(block);
+        }
+
         internal static long GetMajorityOwnerId(this GroupComponent groupComponent)
         {
             var ownersPerGrid = new Dictionary<long, int>();

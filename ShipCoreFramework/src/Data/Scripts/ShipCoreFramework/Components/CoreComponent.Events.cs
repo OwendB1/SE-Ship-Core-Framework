@@ -1,4 +1,3 @@
-using System.Linq;
 using System.Text;
 using VRage.Game.ModAPI;
 using IMyTerminalBlock = Sandbox.ModAPI.IMyTerminalBlock;
@@ -33,12 +32,10 @@ namespace ShipCoreFramework
 
         private static void AppendingCustomInfo(IMyTerminalBlock block, StringBuilder myText)
         {
-            var targetGrid = block.CubeGrid;
-            var groupKvp = Session.GroupDict.FirstOrDefault(gk => gk.Value.GridDictionary.Any(kvp => kvp.Key == targetGrid));
-            if (groupKvp.Value == null || targetGrid == null) return;
-            var shipCore = groupKvp.Value.ShipCore;
+            var groupComponent = block.GetGroupComponent();
+            var shipCore = groupComponent?.ShipCore;
             if (shipCore == null) return;
-            myText.Append(Commands.GetCoreInfo(targetGrid, shipCore, groupKvp));
+            myText.Append(Commands.GetCoreInfo(block.CubeGrid, shipCore, groupComponent));
         }
 
         internal void CoreDestroyed()

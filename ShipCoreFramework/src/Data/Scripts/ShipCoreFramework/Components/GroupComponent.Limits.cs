@@ -277,7 +277,7 @@ namespace ShipCoreFramework
             var isValid = allowedDirections.Contains(xyDirection);
             if (!isValid)
                 Utils.ShowNotification(
-                    Utils.GetBlockSubtypeId(block) + ": the direction " + xyDirection + " is invalid",
+                    Utils.GetLocalizedBlockName(block) + ": the direction " + xyDirection + " is invalid",
                     myCore.SlimBlock.BuiltBy);
 
             return isValid;
