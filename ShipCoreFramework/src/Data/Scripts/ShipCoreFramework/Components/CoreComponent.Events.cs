@@ -33,6 +33,7 @@ namespace ShipCoreFramework
         private static void AppendingCustomInfo(IMyTerminalBlock block, StringBuilder myText)
         {
             var groupComponent = block.GetGroupComponent();
+            if (groupComponent == null) Utils.Log($"Group component is null for {block.CustomName}",3);
             var shipCore = groupComponent?.ShipCore;
             if (shipCore == null) return;
             myText.Append(Commands.GetCoreInfo(block.CubeGrid, shipCore, groupComponent));

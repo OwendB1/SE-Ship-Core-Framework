@@ -29,8 +29,7 @@ namespace ShipCoreFramework
                 var weight = limit.GetWeight(blockKey);
                 if (weight <= 0d) continue;
 
-                if (forceShutOff)
-                    block.WhackABlock(PunishmentType.ShutOff);
+                if (forceShutOff) block.WhackABlock(PunishmentType.ShutOff);
                 
                 if (GroupComponent.MainCoreComponent?.CoreBlock != null && 
                     !GroupComponent.IsValidDirection(GroupComponent.MainCoreComponent.CoreBlock, block, limit.AllowedDirections))
