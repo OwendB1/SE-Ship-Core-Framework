@@ -44,6 +44,99 @@ namespace ShipCoreFramework
             }
         }
 
+        private static void NormalizeCoreManifest(CoreManifest manifest, string source)
+        {
+            if (manifest == null) return;
+
+            if (manifest.ShipCores == null)
+            {
+                manifest.ShipCores = new List<ManifestShipCoreEntry>();
+            }
+            else
+            {
+                for (var i = manifest.ShipCores.Count - 1; i >= 0; i--)
+                {
+                    var coreEntry = manifest.ShipCores[i];
+                    if (coreEntry == null)
+                    {
+                        manifest.ShipCores.RemoveAt(i);
+                        Utils.Log($"Config warning: Null manifest ship core entry found in {source}; ignoring.", 2, "Config Validation");
+                        continue;
+                    }
+
+                    coreEntry.Filename = coreEntry.Filename == null ? string.Empty : coreEntry.Filename.Trim();
+                    if (coreEntry.Groups == null)
+                    {
+                        coreEntry.Groups = new List<string>();
+                    }
+                    else
+                    {
+                        coreEntry.Groups = coreEntry.Groups
+                            .Where(groupName => !string.IsNullOrWhiteSpace(groupName))
+                            .Select(groupName => groupName.Trim())
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .ToList();
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(coreEntry.Filename)) continue;
+
+                    manifest.ShipCores.RemoveAt(i);
+                    Utils.Log($"Config warning: Manifest ship core entry found in {source} without a filename; ignoring.", 2, "Config Validation");
+                }
+            }
+
+            if (manifest.UpgradeModules == null)
+            {
+                manifest.UpgradeModules = new List<ManifestUpgradeModuleEntry>();
+            }
+            else
+            {
+                for (var i = manifest.UpgradeModules.Count - 1; i >= 0; i--)
+                {
+                    var moduleEntry = manifest.UpgradeModules[i];
+                    if (moduleEntry == null)
+                    {
+                        manifest.UpgradeModules.RemoveAt(i);
+                        Utils.Log($"Config warning: Null manifest upgrade module entry found in {source}; ignoring.", 2, "Config Validation");
+                        continue;
+                    }
+
+                    moduleEntry.Filename = moduleEntry.Filename == null ? string.Empty : moduleEntry.Filename.Trim();
+                    if (!string.IsNullOrWhiteSpace(moduleEntry.Filename)) continue;
+
+                    manifest.UpgradeModules.RemoveAt(i);
+                    Utils.Log($"Config warning: Manifest upgrade module entry found in {source} without a filename; ignoring.", 2, "Config Validation");
+                }
+            }
+
+            if (manifest.ManifestGroups == null)
+            {
+                manifest.ManifestGroups = new List<ManifestCoreGroup>();
+            }
+            else
+            {
+                for (var i = manifest.ManifestGroups.Count - 1; i >= 0; i--)
+                {
+                    var group = manifest.ManifestGroups[i];
+                    if (group == null)
+                    {
+                        manifest.ManifestGroups.RemoveAt(i);
+                        Utils.Log($"Config warning: Null manifest group entry found in {source}; ignoring.", 2, "Config Validation");
+                        continue;
+                    }
+
+                    group.Name = group.Name == null ? string.Empty : group.Name.Trim();
+                    group.CoreSubtypeIds.Clear();
+
+                    if (string.IsNullOrWhiteSpace(group.Name))
+                        throw new Exception($"Manifest group in {source} is missing <Name>.");
+
+                    if (group.MaxCount < 0)
+                        throw new Exception($"Manifest group '{group.Name}' in {source} is missing a valid non-negative <MaxCount>.");
+                }
+            }
+        }
+
         private static void NormalizeBlockGroups(List<BlockGroup> groups, string source)
         {
             if (groups == null) return;

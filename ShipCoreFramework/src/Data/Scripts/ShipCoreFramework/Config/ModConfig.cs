@@ -12,6 +12,15 @@ namespace ShipCoreFramework
             return shipCore ?? SelectedNoCore;
         }
 
+        internal ManifestCoreGroup GetManifestGroupByName(string groupName)
+        {
+            if (string.IsNullOrWhiteSpace(groupName))
+                return null;
+
+            return ManifestCoreGroups.FirstOrDefault(group =>
+                group != null && group.Name.Equals(groupName, StringComparison.OrdinalIgnoreCase));
+        }
+
         internal bool IsValidCoreType(string coreTypeId)
         {
             return ShipCores.Any(core => core.SubtypeId == coreTypeId) || SelectedNoCore.SubtypeId == coreTypeId;

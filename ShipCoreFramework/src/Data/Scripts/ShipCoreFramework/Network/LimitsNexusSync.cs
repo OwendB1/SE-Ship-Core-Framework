@@ -49,14 +49,19 @@ namespace ShipCoreFramework
             MarkSyncActivity();
         }
 
-        internal static void BroadcastFactionChange(GridsPerFactionManager.FactionChange c)
+        internal static void BroadcastFactionChange(PerFactionManager.FactionChange c)
         {
             BroadcastCountUpdate(factionId: c.FactionId, coreType: c.CoreType, count: c.Count);
         }
 
-        internal static void BroadcastPlayerChange(GridsPerPlayerManager.PlayerChange c)
+        internal static void BroadcastPlayerChange(PerPlayerManager.PlayerChange c)
         {
             BroadcastCountUpdate(playerId: c.PlayerId, coreType: c.CoreType, count: c.Count);
+        }
+
+        internal static void BroadcastManifestGroupChange(PerManifestGroupManager.ManifestGroupChange c)
+        {
+            BroadcastCountUpdate(manifestGroupName: c.GroupName, count: c.Count);
         }
 
         internal static void BroadcastSnapshot()
@@ -75,16 +80,19 @@ namespace ShipCoreFramework
             BroadcastSnapshot();
         }
 
-        private static void BroadcastCountUpdate(long? factionId = null, long? playerId = null, string coreType = null, int count = 0)
+        private static void BroadcastCountUpdate(long? factionId = null, long? playerId = null, string coreType = null,
+            string manifestGroupName = null, int count = 0)
         {
             if (!Ready) return;
-            if ((factionId == null && playerId == null) || string.IsNullOrEmpty(coreType)) return;
+            if (factionId == null && playerId == null && string.IsNullOrEmpty(manifestGroupName)) return;
+            if ((factionId != null || playerId != null) && string.IsNullOrEmpty(coreType)) return;
 
             var diff = new LimitsDiff
             {
                 Faction = factionId.HasValue ? new TargetFaction { Id = factionId.Value } : null,
                 Player = playerId.HasValue ? new TargetPlayer { Id = playerId.Value } : null,
                 CoreType = coreType,
+                ManifestGroupName = manifestGroupName,
                 Count = count < 0 ? 0 : count
             };
 
@@ -151,7 +159,7 @@ namespace ShipCoreFramework
         {
             var s = new LimitsState();
 
-            foreach (var f in GridsPerFactionManager.PerFaction)
+            foreach (var f in PerFactionManager.PerFaction)
             {
                 var fe = new FactionEntry { FactionId = f.Key };
                 foreach (var kv in f.Value)
@@ -159,7 +167,7 @@ namespace ShipCoreFramework
                 s.Factions.Add(fe);
             }
 
-            foreach (var p in GridsPerPlayerManager.PerPlayer)
+            foreach (var p in PerPlayerManager.PerPlayer)
             {
                 var pe = new PlayerEntry { PlayerId = p.Key };
                 foreach (var kv in p.Value)
@@ -167,42 +175,51 @@ namespace ShipCoreFramework
                 s.Players.Add(pe);
             }
 
+            foreach (var g in PerManifestGroupManager.PerManifestGroup)
+                s.ManifestGroups.Add(new ManifestGroupEntry { GroupName = g.Key, Count = g.Value });
+
             return s;
         }
 
         private static void ApplySnapshot(LimitsState state)
         {
-            GridsPerFactionManager.BeginExternalUpdate();
-            GridsPerPlayerManager.BeginExternalUpdate();
+            PerFactionManager.BeginExternalUpdate();
+            PerPlayerManager.BeginExternalUpdate();
+            PerManifestGroupManager.BeginExternalUpdate();
             try
             {
-                GridsPerFactionManager.Reset();
-                GridsPerPlayerManager.Reset();
+                PerFactionManager.Reset();
+                PerPlayerManager.Reset();
+                PerManifestGroupManager.Reset();
 
                 foreach (var f in state.Factions)
                 {
-                    if (!GridsPerFactionManager.PerFaction.ContainsKey(f.FactionId))
-                        GridsPerFactionManager.PerFaction.Add(f.FactionId, new Dictionary<string, int>());
+                    if (!PerFactionManager.PerFaction.ContainsKey(f.FactionId))
+                        PerFactionManager.PerFaction.Add(f.FactionId, new Dictionary<string, int>());
 
-                    var dict = GridsPerFactionManager.PerFaction[f.FactionId];
+                    var dict = PerFactionManager.PerFaction[f.FactionId];
                     foreach (var c in f.Cores)
                         dict[c.CoreType] = c.Count;
                 }
 
                 foreach (var p in state.Players)
                 {
-                    if (!GridsPerPlayerManager.PerPlayer.ContainsKey(p.PlayerId))
-                        GridsPerPlayerManager.PerPlayer.Add(p.PlayerId, new Dictionary<string, int>());
+                    if (!PerPlayerManager.PerPlayer.ContainsKey(p.PlayerId))
+                        PerPlayerManager.PerPlayer.Add(p.PlayerId, new Dictionary<string, int>());
 
-                    var dict = GridsPerPlayerManager.PerPlayer[p.PlayerId];
+                    var dict = PerPlayerManager.PerPlayer[p.PlayerId];
                     foreach (var c in p.Cores)
                         dict[c.CoreType] = c.Count;
                 }
+
+                foreach (var g in state.ManifestGroups)
+                    PerManifestGroupManager.PerManifestGroup[g.GroupName] = g.Count;
             }
             finally
             {
-                GridsPerPlayerManager.EndExternalUpdate();
-                GridsPerFactionManager.EndExternalUpdate();
+                PerManifestGroupManager.EndExternalUpdate();
+                PerPlayerManager.EndExternalUpdate();
+                PerFactionManager.EndExternalUpdate();
             }
         }
 
@@ -210,21 +227,24 @@ namespace ShipCoreFramework
         {
             if (diff.Faction != null)
             {
-                if (!GridsPerFactionManager.PerFaction.ContainsKey(diff.Faction.Id))
-                    GridsPerFactionManager.PerFaction.Add(diff.Faction.Id, new Dictionary<string, int>());
+                if (!PerFactionManager.PerFaction.ContainsKey(diff.Faction.Id))
+                    PerFactionManager.PerFaction.Add(diff.Faction.Id, new Dictionary<string, int>());
 
-                var dict = GridsPerFactionManager.PerFaction[diff.Faction.Id];
+                var dict = PerFactionManager.PerFaction[diff.Faction.Id];
                 dict[diff.CoreType] = diff.Count < 0 ? 0 : diff.Count;
             }
 
             if (diff.Player != null)
             {
-                if (!GridsPerPlayerManager.PerPlayer.ContainsKey(diff.Player.Id))
-                    GridsPerPlayerManager.PerPlayer.Add(diff.Player.Id, new Dictionary<string, int>());
+                if (!PerPlayerManager.PerPlayer.ContainsKey(diff.Player.Id))
+                    PerPlayerManager.PerPlayer.Add(diff.Player.Id, new Dictionary<string, int>());
 
-                var dict = GridsPerPlayerManager.PerPlayer[diff.Player.Id];
+                var dict = PerPlayerManager.PerPlayer[diff.Player.Id];
                 dict[diff.CoreType] = diff.Count < 0 ? 0 : diff.Count;
             }
+
+            if (!string.IsNullOrEmpty(diff.ManifestGroupName))
+                PerManifestGroupManager.PerManifestGroup[diff.ManifestGroupName] = diff.Count < 0 ? 0 : diff.Count;
         }
 
         private static byte[] Serialize<T>(T obj) => MyAPIGateway.Utilities.SerializeToBinary(obj);
@@ -255,6 +275,7 @@ namespace ShipCoreFramework
         {
             [ProtoMember(1)] internal List<FactionEntry> Factions { get; } = new List<FactionEntry>();
             [ProtoMember(2)] internal List<PlayerEntry> Players { get; } = new List<PlayerEntry>();
+            [ProtoMember(3)] internal List<ManifestGroupEntry> ManifestGroups { get; } = new List<ManifestGroupEntry>();
         }
 
         [ProtoContract]
@@ -279,12 +300,20 @@ namespace ShipCoreFramework
         }
 
         [ProtoContract]
+        private class ManifestGroupEntry
+        {
+            [ProtoMember(1)] internal string GroupName { get; set; }
+            [ProtoMember(2)] internal int Count { get; set; }
+        }
+
+        [ProtoContract]
         private class LimitsDiff
         {
             [ProtoMember(1)] internal TargetFaction Faction { get; set; }
             [ProtoMember(2)] internal TargetPlayer Player { get; set; }
             [ProtoMember(3)] internal string CoreType { get; set; }
             [ProtoMember(4)] internal int Count { get; set; }
+            [ProtoMember(5)] internal string ManifestGroupName { get; set; }
         }
 
         [ProtoContract]

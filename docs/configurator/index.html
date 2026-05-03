@@ -83,7 +83,17 @@
     </section>
 
     <section class="panel">
-      <h2>5) Ship Cores</h2>
+      <h2>5) Manifest Groups</h2>
+      <p class="muted">Manifest groups define shared core caps in <code>ShipCoreConfig_Manifest.xml</code>. Assign ship cores to one or more groups here.</p>
+      <div class="menu-controls">
+        <button id="addManifestGroup">Add Manifest Group</button>
+        <select id="selectedManifestGroup" aria-label="Selected Manifest Group"></select>
+      </div>
+      <div id="manifestGroups"></div>
+    </section>
+
+    <section class="panel">
+      <h2>6) Ship Cores</h2>
       <div class="menu-controls">
         <button id="addCore">Add Ship Core</button>
         <select id="selectedCore" aria-label="Selected Core"></select>
@@ -93,7 +103,7 @@
 
 
     <section class="panel">
-      <h2>6) Upgrade Modules</h2>
+      <h2>7) Upgrade Modules</h2>
       <div class="menu-controls">
         <button id="addUpgradeModule">Add Upgrade Module</button>
         <select id="selectedUpgradeModule" aria-label="Selected Upgrade Module"></select>
@@ -102,7 +112,7 @@
     </section>
 
     <section class="panel">
-      <h2>7) Generated XML</h2>
+      <h2>8) Generated XML</h2>
       <p class="muted">Generated XML previews update automatically as you edit.</p>
       <div class="row wrap">
         <button hidden="hidden" id="generateXml">Generate</button>
@@ -123,6 +133,6 @@
     </section>
   </main>
 
-  <script type="module" src="./app.js?v=1009"></script>
+  <script type="module" src="./app.js?v=1010"></script>
 </body>
 </html>

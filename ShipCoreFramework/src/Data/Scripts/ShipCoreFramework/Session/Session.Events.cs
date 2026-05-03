@@ -48,7 +48,7 @@ namespace ShipCoreFramework
             if (action == MyFactionStateChange.RemoveFaction)
             {
                 var removedFactionGroups = GetAffectedGroupsForFactionChange(factionId, 0).ToList();
-                GridsPerFactionManager.RemoveFaction(factionId);
+                PerFactionManager.RemoveFaction(factionId);
                 EnforceOverCapacityForGroups(removedFactionGroups);
                 return;
             }
@@ -67,7 +67,7 @@ namespace ShipCoreFramework
                          .Where(group => group.OwnerId == playerId)
                          .ToList())
             {
-                GridsPerFactionManager.RemoveGridGroup(oldFactionId, comp.ShipCore.SubtypeId);
+                PerFactionManager.RemoveGridGroup(oldFactionId, comp.ShipCore.SubtypeId);
             }
 
             EnforceOverCapacityForGroups(affectedGroups);

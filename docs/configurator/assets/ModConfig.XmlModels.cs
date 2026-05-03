@@ -22,6 +22,7 @@ namespace ShipCoreFramework
         [XmlIgnore] public readonly List<ShipCore> NoCoreConfigs = new List<ShipCore>();
         [XmlIgnore] public readonly List<BlockGroup> BlockGroups = new List<BlockGroup>();
         [XmlIgnore] public readonly List<ShipCore> ShipCores = new List<ShipCore>();
+        [XmlIgnore] public readonly List<ManifestCoreGroup> ManifestCoreGroups = new List<ManifestCoreGroup>();
         [XmlIgnore] public readonly List<UpgradeModuleConfig> UpgradeModules = new List<UpgradeModuleConfig>();
 
         [XmlElement("IgnoreAiFactions")]
@@ -68,8 +69,43 @@ namespace ShipCoreFramework
     [XmlRoot("CoreManifest")]
     public class CoreManifest
     {
-        [XmlElement("ShipCoreFilenames")] public List<string> ShipCoreFilenames;
-        [XmlElement("UpgradeModuleFilenames")] public List<string> UpgradeModuleFilenames = new List<string>();
+        [XmlArray("ManifestGroups")]
+        [XmlArrayItem("Group")]
+        public List<ManifestCoreGroup> ManifestGroups = new List<ManifestCoreGroup>();
+        [XmlElement("ShipCore")]
+        public List<ManifestShipCoreEntry> ShipCores = new List<ManifestShipCoreEntry>();
+        [XmlElement("UpgradeModule")]
+        public List<ManifestUpgradeModuleEntry> UpgradeModules = new List<ManifestUpgradeModuleEntry>();
+    }
+
+    [XmlRoot("ManifestGroup")]
+    public class ManifestCoreGroup
+    {
+        [XmlElement("Name")]
+        public string Name = string.Empty;
+
+        [XmlElement("MaxCount")]
+        public int MaxCount = -1;
+
+        [XmlIgnore]
+        public readonly HashSet<string> CoreSubtypeIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    }
+
+    [XmlRoot("ManifestShipCore")]
+    public class ManifestShipCoreEntry
+    {
+        [XmlElement("Filename")]
+        public string Filename = string.Empty;
+
+        [XmlElement("Group")]
+        public List<string> Groups = new List<string>();
+    }
+
+    [XmlRoot("ManifestUpgradeModule")]
+    public class ManifestUpgradeModuleEntry
+    {
+        [XmlElement("Filename")]
+        public string Filename = string.Empty;
     }
 
     [XmlRoot("ShipCore")]
@@ -119,6 +155,9 @@ namespace ShipCoreFramework
 
         [XmlElement("MaxPlayers")]
         public int MaxPlayers = -1;
+
+        [XmlIgnore]
+        public readonly List<string> ManifestGroupNames = new List<string>();
 
         [XmlElement("AllowedUpgradeModules")]
         public UpgradeModuleAllowance[] AllowedUpgradeModules = Array.Empty<UpgradeModuleAllowance>();

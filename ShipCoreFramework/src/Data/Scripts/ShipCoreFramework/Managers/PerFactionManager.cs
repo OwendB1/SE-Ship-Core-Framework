@@ -6,7 +6,7 @@ using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
 {
-    internal static class GridsPerFactionManager
+    internal static class PerFactionManager
     {
         internal struct FactionChange
         {
@@ -77,7 +77,7 @@ namespace ShipCoreFramework
             var factionId = owningFaction?.FactionId ?? -1;
             if (!Config.IsValidCoreType(coreType))
             {
-                Utils.Log($"GridsPerFactionClass::IsGridWithinFactionLimits: Unknown core type id {coreType}", 3);
+                Utils.Log($"PerFactionManager::IsGridWithinFactionLimits: Unknown core type id {coreType}", 3);
                 return false;
             }
 
@@ -129,7 +129,7 @@ namespace ShipCoreFramework
 
         internal static void AddGridGroup(IMyFaction owningFaction, string coreType)
         {
-            Utils.Log($"GridsPerFactionClass::AddCubeGrid: Adding grid for faction {owningFaction?.FactionId} with core type {coreType}", 1);
+            Utils.Log($"PerFactionManager::AddCubeGrid: Adding grid for faction {owningFaction?.FactionId} with core type {coreType}", 1);
             if (owningFaction == null) return;
 
             Dictionary<string, int> perGroup;
@@ -141,7 +141,7 @@ namespace ShipCoreFramework
 
             if (!perGroup.ContainsKey(coreType))
             {
-                Utils.Log($"GridsPerFactionClass::AddCubeGrid: Missing entry for core type {coreType} in faction {owningFaction.FactionId}", 1);
+                Utils.Log($"PerFactionManager::AddCubeGrid: Missing entry for core type {coreType} in faction {owningFaction.FactionId}", 1);
                 perGroup[coreType] = 0;
             }
 

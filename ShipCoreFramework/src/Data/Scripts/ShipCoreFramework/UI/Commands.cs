@@ -128,7 +128,7 @@ namespace ShipCoreFramework
             if (args.Length < 3 || !CheckIfAdmin(playerId))
             {
                 Dictionary<string, int> playerVal;
-                if(GridsPerPlayerManager.PerPlayer.TryGetValue(playerId, out playerVal))
+                if(PerPlayerManager.PerPlayer.TryGetValue(playerId, out playerVal))
                 {
                     foreach (var classCount in playerVal)
                     {
@@ -144,12 +144,12 @@ namespace ShipCoreFramework
                 var faction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(playerId);
                 var factionId = faction?.FactionId ?? -1;
                 Dictionary<string, int> factionVal;
-                if(factionId != -1 && GridsPerFactionManager.PerFaction.TryGetValue(factionId, out factionVal))
+                if(factionId != -1 && PerFactionManager.PerFaction.TryGetValue(factionId, out factionVal))
                 {
                     foreach (var classCount in factionVal)
                     {
                         var core = Session.Config.GetShipCoreByTypeId(classCount.Key);
-                        var max = GridsPerFactionManager.GetEffectiveFactionCoreLimit(core, GridsPerFactionManager.GetFactionPlayerCount(faction, playerId));
+                        var max = PerFactionManager.GetEffectiveFactionCoreLimit(core, PerFactionManager.GetFactionPlayerCount(faction, playerId));
                         if(max != -1 && classCount.Value>0)
                         {
                             if (!bodySort.ContainsKey(classCount.Key))
@@ -168,8 +168,8 @@ namespace ShipCoreFramework
                 {
                     /*
                     case "update":
-                        GridsPerPlayerManager.PerPlayer=GridsPerPlayerManager.GetDefaultPlayerGridsSet();
-                        GridsPerFactionManager.PerFaction=GridsPerFactionManager.GetDefaultFactionGridsSet();
+                        PerPlayerManager.PerPlayer=PerPlayerManager.GetDefaultPlayerGridsSet();
+                        PerFactionManager.PerFaction=PerFactionManager.GetDefaultFactionGridsSet();
                         break;*/
                     case "faction":
                         goto case "f";
@@ -178,12 +178,12 @@ namespace ShipCoreFramework
                         var faction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(playerId);
                         var factionId = faction?.FactionId ?? -1;
                         Dictionary<string, int> factionVal;
-                        if(factionId != -1 && GridsPerFactionManager.PerFaction.TryGetValue(factionId, out factionVal))
+                        if(factionId != -1 && PerFactionManager.PerFaction.TryGetValue(factionId, out factionVal))
                         {
                             foreach (var classCount in factionVal)
                             {
                                 var core = Session.Config.GetShipCoreByTypeId(classCount.Key);
-                                var max = GridsPerFactionManager.GetEffectiveFactionCoreLimit(core, GridsPerFactionManager.GetFactionPlayerCount(faction, playerId));
+                                var max = PerFactionManager.GetEffectiveFactionCoreLimit(core, PerFactionManager.GetFactionPlayerCount(faction, playerId));
                                 if(max != -1)
                                 {
                                     bodySort[classCount.Key]=$"            > Per Faction:{FormatFactionLimit(core, faction, playerId, classCount.Value)}\n";
@@ -196,7 +196,7 @@ namespace ShipCoreFramework
                     case "p":
                         if (!long.TryParse(args[2], out playerId)) return;
                         Dictionary<string, int> playerVal;
-                        if(GridsPerPlayerManager.PerPlayer.TryGetValue(playerId, out playerVal))
+                        if(PerPlayerManager.PerPlayer.TryGetValue(playerId, out playerVal))
                         {
                             foreach (var classCount in playerVal)
                             {
@@ -212,7 +212,7 @@ namespace ShipCoreFramework
                 }
             }
             //{
-                //GridsPerFactionManager.
+                //PerFactionManager.
             //}
             //else
             //{
@@ -659,9 +659,9 @@ namespace ShipCoreFramework
             if (currentMaxPerPlayer > 0)
             {
                 var ownerId = groupComponent.OwnerId;
-                if (GridsPerPlayerManager.PerPlayer.ContainsKey(ownerId) && GridsPerPlayerManager.PerPlayer[ownerId].ContainsKey(shipCoreSubtypeId))
+                if (PerPlayerManager.PerPlayer.ContainsKey(ownerId) && PerPlayerManager.PerPlayer[ownerId].ContainsKey(shipCoreSubtypeId))
                 {
-                    body += $"Per Player Limit:{GridsPerPlayerManager.PerPlayer[ownerId][shipCoreSubtypeId]}/{currentMaxPerPlayer}\n";
+                    body += $"Per Player Limit:{PerPlayerManager.PerPlayer[ownerId][shipCoreSubtypeId]}/{currentMaxPerPlayer}\n";
                 }
                 else
                 {
@@ -670,14 +670,14 @@ namespace ShipCoreFramework
                 
             }
             
-            if(GridsPerFactionManager.HasFactionCoreLimit(groupComponent.ShipCore))
+            if(PerFactionManager.HasFactionCoreLimit(groupComponent.ShipCore))
             {
                 if (groupComponent.OwningFaction != null)
                 {
                     var owningFactionId = groupComponent.OwningFaction.FactionId;
-                    if (GridsPerFactionManager.PerFaction.ContainsKey(owningFactionId) && GridsPerFactionManager.PerFaction[owningFactionId].ContainsKey(shipCoreSubtypeId))
+                    if (PerFactionManager.PerFaction.ContainsKey(owningFactionId) && PerFactionManager.PerFaction[owningFactionId].ContainsKey(shipCoreSubtypeId))
                     {
-                        body += $"Per Faction Limit:{FormatFactionLimit(groupComponent.ShipCore, groupComponent.OwningFaction, groupComponent.OwnerId, GridsPerFactionManager.PerFaction[owningFactionId][shipCoreSubtypeId])}\n";
+                        body += $"Per Faction Limit:{FormatFactionLimit(groupComponent.ShipCore, groupComponent.OwningFaction, groupComponent.OwnerId, PerFactionManager.PerFaction[owningFactionId][shipCoreSubtypeId])}\n";
                     }
                     else
                     {
@@ -688,7 +688,15 @@ namespace ShipCoreFramework
                 {
                     body += "Per Faction Limit: A Faction is required for this class\n";
                 }
-            }            
+            }
+
+            if (PerManifestGroupManager.HasManifestGroupLimit(groupComponent.ShipCore))
+            {
+                foreach (var manifestGroup in PerManifestGroupManager.GetManifestGroups(groupComponent.ShipCore))
+                    body +=
+                        $"Manifest Group Limit:{manifestGroup.Name} {PerManifestGroupManager.GetCurrentCount(manifestGroup.Name)}/{manifestGroup.MaxCount}\n";
+            }
+
             // Grid Statistics
             body += "Grid Statistics:\n";
             
@@ -976,7 +984,7 @@ Raycasts from crosshairs to find a grid and displays all its core information.";
 
         private static string DescribeFactionLimitConfig(ShipCore core)
         {
-            if (core == null || !GridsPerFactionManager.HasFactionCoreLimit(core))
+            if (core == null || !PerFactionManager.HasFactionCoreLimit(core))
                 return "Unlimited";
 
             if (core.MaxPerFaction >= 0 && core.FactionPlayersNeededPerCore > 0)
@@ -987,8 +995,8 @@ Raycasts from crosshairs to find a grid and displays all its core information.";
 
         private static string FormatFactionLimit(ShipCore core, IMyFaction faction, long ownerId, int currentCount)
         {
-            var playerCount = GridsPerFactionManager.GetFactionPlayerCount(faction, ownerId);
-            var max = GridsPerFactionManager.GetEffectiveFactionCoreLimit(core, playerCount);
+            var playerCount = PerFactionManager.GetFactionPlayerCount(faction, ownerId);
+            var max = PerFactionManager.GetEffectiveFactionCoreLimit(core, playerCount);
             if (max < 0)
                 return currentCount.ToString();
 

@@ -104,8 +104,9 @@ namespace ShipCoreFramework
             if (string.IsNullOrEmpty(subtypeId)) return;
             if (IsIgnoredNpcGroup()) return;
 
-            if (GridsPerFactionManager.IsGroupWithinFactionLimits(OwningFaction, OwnerId, subtypeId) &&
-                GridsPerPlayerManager.IsGroupWithinPlayerLimits(OwnerId, subtypeId))
+            if (PerFactionManager.IsGroupWithinFactionLimits(OwningFaction, OwnerId, subtypeId) &&
+                PerPlayerManager.IsGroupWithinPlayerLimits(OwnerId, subtypeId) &&
+                PerManifestGroupManager.IsGroupWithinManifestLimits(subtypeId, OwnerId))
                 return;
 
             mainCore.CoreBlock.SlimBlock.RemoveAndRefund();

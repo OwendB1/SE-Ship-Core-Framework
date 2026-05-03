@@ -199,7 +199,7 @@ namespace ShipCoreFramework
 
         private int GetFactionPlayerCount()
         {
-            return GridsPerFactionManager.GetFactionPlayerCount(OwningFaction, OwnerId);
+            return PerFactionManager.GetFactionPlayerCount(OwningFaction, OwnerId);
         }
 
         private bool HasBrokenMainCore()

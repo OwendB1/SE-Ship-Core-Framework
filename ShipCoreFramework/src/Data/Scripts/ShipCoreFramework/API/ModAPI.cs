@@ -887,9 +887,24 @@ namespace ShipCoreFramework
                         MinimumFrictionSpeedModifier = 0f,
                         MaximumFrictionSpeedModifier = 0f
                     },
+                    ManifestGroupName = string.Empty,
+                    ManifestGroupMaxCount = -1,
+                    ManifestGroupCurrentCount = 0,
+                    ManifestGroups = Array.Empty<ManifestGroupLimitData>(),
                     IsDeactivated = isDeactivated
                 };
             }
+
+            var manifestGroups = PerManifestGroupManager.GetManifestGroups(core)
+                .Select(group => new ManifestGroupLimitData
+                {
+                    Name = group.Name,
+                    MaxCount = group.MaxCount,
+                    CurrentCount = PerManifestGroupManager.GetCurrentCount(group.Name)
+                })
+                .ToArray();
+
+            var primaryManifestGroup = manifestGroups.FirstOrDefault();
 
             return new ShipCoreData
             {
@@ -907,6 +922,10 @@ namespace ShipCoreFramework
                 MinBlocks = core.MinBlocks,
                 MaxPlayers = core.MaxPlayers,
                 FactionPlayersNeededPerCore = core.FactionPlayersNeededPerCore,
+                ManifestGroupName = primaryManifestGroup?.Name ?? string.Empty,
+                ManifestGroupMaxCount = primaryManifestGroup?.MaxCount ?? -1,
+                ManifestGroupCurrentCount = primaryManifestGroup?.CurrentCount ?? 0,
+                ManifestGroups = manifestGroups,
                 Modifiers = ConvertToGridModifiersData(core.Modifiers),
                 PassiveDefenseModifiers = ConvertToDefenseModifiersData(core.PassiveDefenseModifiers),
                 SpeedBoostEnabled = core.SpeedBoostEnabled,

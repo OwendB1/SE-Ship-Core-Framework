@@ -100,8 +100,9 @@ namespace ShipCoreFramework
             }
 
             if (!isIgnoredNpcGrid &&
-                (!GridsPerFactionManager.IsGroupWithinFactionLimits(_groupComponent.OwningFaction, _groupComponent.OwnerId, SubtypeId)
-                 || !GridsPerPlayerManager.IsGroupWithinPlayerLimits(_groupComponent.OwnerId, SubtypeId)))
+                (!PerFactionManager.IsGroupWithinFactionLimits(_groupComponent.OwningFaction, _groupComponent.OwnerId, SubtypeId)
+                 || !PerPlayerManager.IsGroupWithinPlayerLimits(_groupComponent.OwnerId, SubtypeId)
+                 || !PerManifestGroupManager.IsGroupWithinManifestLimits(SubtypeId, _groupComponent.OwnerId)))
             {
                 if (LimitsNexusSync.IsSettling)
                 {

@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace ShipCoreFramework
 {
-    internal static class GridsPerPlayerManager
+    internal static class PerPlayerManager
     {
         internal struct PlayerChange
         {
@@ -21,7 +21,7 @@ namespace ShipCoreFramework
         {
             if (!Config.IsValidCoreType(coreType))
             {
-                Utils.ShowChatMessage($"GridsPerPlayerClass::IsGridWithinPlayerLimits: Unknown core type id {coreType}", playerEntityId: ownerId);
+                Utils.ShowChatMessage($"PerPlayerManager::IsGridWithinPlayerLimits: Unknown core type id {coreType}", playerEntityId: ownerId);
                 return false;
             }
 
@@ -35,13 +35,13 @@ namespace ShipCoreFramework
                 return false;
             }
 
-            Utils.Log("GridsPerPlayerClass::IsGridWithinPlayerLimits: Player or class not found in player limits data", 2);
+            Utils.Log("PerPlayerManager::IsGridWithinPlayerLimits: Player or class not found in player limits data", 2);
             return true;
         }
 
         internal static void AddGridGroup(long ownerId, string coreType)
         {
-            Utils.Log($"GridsPerPlayerClass::AddCubeGrid: Adding grid for player {ownerId} with core type {coreType}", 1);
+            Utils.Log($"PerPlayerManager::AddCubeGrid: Adding grid for player {ownerId} with core type {coreType}", 1);
             if (ownerId <= 0) return;
 
             Dictionary<string, int> perGridClass;
@@ -53,12 +53,12 @@ namespace ShipCoreFramework
 
             if (!perGridClass.ContainsKey(coreType))
             {
-                Utils.Log($"GridsPerPlayerClass::AddCubeGrid: Missing entry for core type {coreType} for player {ownerId}", 1);
+                Utils.Log($"PerPlayerManager::AddCubeGrid: Missing entry for core type {coreType} for player {ownerId}", 1);
                 perGridClass[coreType] = 0;
             }
 
             perGridClass[coreType]++;
-            Utils.Log($"GridsPerPlayerClass::AddCubeGrid: Player {ownerId} now has {perGridClass[coreType]} grids with {coreType}", 1);
+            Utils.Log($"PerPlayerManager::AddCubeGrid: Player {ownerId} now has {perGridClass[coreType]} grids with {coreType}", 1);
             if (!_suppressEvents) LimitsNexusSync.BroadcastPlayerChange(new PlayerChange { PlayerId = ownerId, CoreType = coreType, Count = perGridClass[coreType] });
         }
 

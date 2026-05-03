@@ -48,24 +48,24 @@ namespace ShipCoreFramework
                     var oldOwningFaction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(_lastOwnerId);
 
                     var coreType = ShipCore.SubtypeId;
-                    GridsPerFactionManager.RemoveGridGroup(oldOwningFaction, coreType);
-                    GridsPerPlayerManager.RemoveGridGroup(_lastOwnerId, coreType);
+                    PerFactionManager.RemoveGridGroup(oldOwningFaction, coreType);
+                    PerPlayerManager.RemoveGridGroup(_lastOwnerId, coreType);
 
-                    GridsPerFactionManager.AddGridGroup(newOwningFaction, coreType);
-                    GridsPerPlayerManager.AddGridGroup(ownerId, coreType);
+                    PerFactionManager.AddGridGroup(newOwningFaction, coreType);
+                    PerPlayerManager.AddGridGroup(ownerId, coreType);
 
-                    var isWithinFactionLimits = GridsPerFactionManager.IsGroupWithinFactionLimits(newOwningFaction, ownerId, coreType);
-                    var isWithinPlayerLimits = GridsPerPlayerManager.IsGroupWithinPlayerLimits(ownerId, coreType);
+                    var isWithinFactionLimits = PerFactionManager.IsGroupWithinFactionLimits(newOwningFaction, ownerId, coreType);
+                    var isWithinPlayerLimits = PerPlayerManager.IsGroupWithinPlayerLimits(ownerId, coreType);
                     if (!isWithinFactionLimits || !isWithinPlayerLimits)
                     {
                         var cube = MainCoreComponent?.CoreBlock as MyCubeBlock;
                         cube?.ChangeOwner(_lastOwnerId, MyOwnershipShareModeEnum.Faction);
 
-                        GridsPerFactionManager.RemoveGridGroup(newOwningFaction, coreType);
-                        GridsPerPlayerManager.RemoveGridGroup(ownerId, coreType);
+                        PerFactionManager.RemoveGridGroup(newOwningFaction, coreType);
+                        PerPlayerManager.RemoveGridGroup(ownerId, coreType);
 
-                        GridsPerFactionManager.AddGridGroup(oldOwningFaction, coreType);
-                        GridsPerPlayerManager.AddGridGroup(_lastOwnerId, coreType);
+                        PerFactionManager.AddGridGroup(oldOwningFaction, coreType);
+                        PerPlayerManager.AddGridGroup(_lastOwnerId, coreType);
 
                         ownerId = _lastOwnerId;
                     }

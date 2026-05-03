@@ -87,8 +87,9 @@ namespace ShipCoreFramework
 
             if (wasInactive)
             {
-                GridsPerFactionManager.AddGridGroup(OwningFaction, ShipCore.SubtypeId);
-                GridsPerPlayerManager.AddGridGroup(OwnerId, ShipCore.SubtypeId);
+                PerFactionManager.AddGridGroup(OwningFaction, ShipCore.SubtypeId);
+                PerPlayerManager.AddGridGroup(OwnerId, ShipCore.SubtypeId);
+                PerManifestGroupManager.AddGridGroup(ShipCore.SubtypeId);
             }
 
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
@@ -111,8 +112,9 @@ namespace ShipCoreFramework
             var grid = old.CoreBlock.CubeGrid;
             Utils.Log($"Reset: Resetting logic for {grid.CustomName}!", 2);
 
-            GridsPerFactionManager.RemoveGridGroup(OwningFaction, type);
-            GridsPerPlayerManager.RemoveGridGroup(OwnerId, type);
+            PerFactionManager.RemoveGridGroup(OwningFaction, type);
+            PerPlayerManager.RemoveGridGroup(OwnerId, type);
+            PerManifestGroupManager.RemoveGridGroup(type);
 
             ModAPI.BroadcastCoreDeactivated(GetRepresentativeGridId(), type, old.CoreBlock.CustomName);
 
@@ -204,8 +206,9 @@ namespace ShipCoreFramework
             var newMain = CoreDictionary.Values.FirstOrDefault();
             if (newMain == null)
             {
-                GridsPerFactionManager.RemoveGridGroup(oldFaction, oldType);
-                GridsPerPlayerManager.RemoveGridGroup(oldOwnerId, oldType);
+                PerFactionManager.RemoveGridGroup(oldFaction, oldType);
+                PerPlayerManager.RemoveGridGroup(oldOwnerId, oldType);
+                PerManifestGroupManager.RemoveGridGroup(oldType);
                 ModAPI.BroadcastCoreDeactivated(GetRepresentativeGridId(), oldType, oldName);
                 SyncBeaconComponents();
             }
@@ -259,8 +262,9 @@ namespace ShipCoreFramework
             _closing = true;
             try
             {
-                GridsPerFactionManager.RemoveGridGroup(OwningFaction, ShipCore.SubtypeId);
-                GridsPerPlayerManager.RemoveGridGroup(OwnerId, ShipCore.SubtypeId);
+                PerFactionManager.RemoveGridGroup(OwningFaction, ShipCore.SubtypeId);
+                PerPlayerManager.RemoveGridGroup(OwnerId, ShipCore.SubtypeId);
+                PerManifestGroupManager.RemoveGridGroup(ShipCore.SubtypeId);
             }
             catch (Exception e)
             {

@@ -1,12 +1,14 @@
-// app.js build v1009
+// app.js build v1010
 const state = {
   schema: {},
   blockGroups: [],
+  manifestGroups: [],
   shipCores: [],
   upgradeModules: [],
   outputCoreDirectory: "Data/Cores/",
   outputUpgradeModuleDirectory: "Data/UpgradeModules/",
   selectedGroupIndex: 0,
+  selectedManifestGroupIndex: 0,
   selectedCoreIndex: 0,
   selectedUpgradeModuleIndex: 0,
   noCoreCore: null,
@@ -136,16 +138,34 @@ function cloneBlockGroup(group = { name: "", blockTypes: [] }) {
   };
 }
 
+function createDefaultManifestGroup() {
+  return {
+    name: "",
+    maxCount: 1
+  };
+}
+
+function cloneManifestGroup(group = createDefaultManifestGroup()) {
+  return {
+    ...createDefaultManifestGroup(),
+    ...group,
+    name: String(group?.name ?? ""),
+    maxCount: Number.isFinite(Number(group?.maxCount)) ? Number(group.maxCount) : 1
+  };
+}
+
 function persistDraftToStorage() {
   try {
     const payload = {
       blockGroups: state.blockGroups.map((group) => cloneBlockGroup(group)),
+      manifestGroups: state.manifestGroups.map((group) => cloneManifestGroup(group)),
       shipCores: state.shipCores.map((core) => cloneShipCore(core)),
       upgradeModules: state.upgradeModules.map((module) => cloneUpgradeModule(module)),
       noCoreCore: state.noCoreCore ? cloneShipCore(state.noCoreCore) : null,
       outputCoreDirectory: state.outputCoreDirectory,
       outputUpgradeModuleDirectory: state.outputUpgradeModuleDirectory,
       selectedGroupIndex: state.selectedGroupIndex,
+      selectedManifestGroupIndex: state.selectedManifestGroupIndex,
       selectedCoreIndex: state.selectedCoreIndex,
       selectedUpgradeModuleIndex: state.selectedUpgradeModuleIndex,
       expandedLimitPanelsByCore: state.expandedLimitPanelsByCore
@@ -173,6 +193,9 @@ function restoreDraftFromStorage() {
     state.blockGroups = Array.isArray(parsedDraft.blockGroups)
       ? parsedDraft.blockGroups.map((group) => cloneBlockGroup(group))
       : [];
+    state.manifestGroups = Array.isArray(parsedDraft.manifestGroups)
+      ? parsedDraft.manifestGroups.map((group) => cloneManifestGroup(group))
+      : [];
     state.shipCores = Array.isArray(parsedDraft.shipCores)
       ? parsedDraft.shipCores.map((core) => cloneShipCore(core))
       : [];
@@ -183,6 +206,7 @@ function restoreDraftFromStorage() {
     state.outputCoreDirectory = normalizeOutputDirectory(parsedDraft.outputCoreDirectory, "Data/Cores/");
     state.outputUpgradeModuleDirectory = normalizeOutputDirectory(parsedDraft.outputUpgradeModuleDirectory, "Data/UpgradeModules/");
     state.selectedGroupIndex = Number.isInteger(parsedDraft.selectedGroupIndex) ? parsedDraft.selectedGroupIndex : 0;
+    state.selectedManifestGroupIndex = Number.isInteger(parsedDraft.selectedManifestGroupIndex) ? parsedDraft.selectedManifestGroupIndex : 0;
     state.selectedCoreIndex = Number.isInteger(parsedDraft.selectedCoreIndex) ? parsedDraft.selectedCoreIndex : 0;
     state.selectedUpgradeModuleIndex = Number.isInteger(parsedDraft.selectedUpgradeModuleIndex) ? parsedDraft.selectedUpgradeModuleIndex : 0;
     state.expandedLimitPanelsByCore = parsedDraft.expandedLimitPanelsByCore && typeof parsedDraft.expandedLimitPanelsByCore === "object"
@@ -241,6 +265,104 @@ function getManifestDirectory(paths, fallbackDirectory, label, status) {
   return directories[0];
 }
 
+function dedupeStrings(values = []) {
+  const seen = new Set();
+  return values.filter((value) => {
+    const normalized = String(value ?? "").trim();
+    if (!normalized) return false;
+    const lowered = normalized.toLowerCase();
+    if (seen.has(lowered)) return false;
+    seen.add(lowered);
+    return true;
+  });
+}
+
+function normalizeManifestGroupNames(groupNames = [], manifestGroups = state.manifestGroups) {
+  const canonicalNames = new Map(
+    (manifestGroups || [])
+      .filter((group) => String(group?.name ?? "").trim())
+      .map((group) => [String(group.name).trim().toLowerCase(), String(group.name).trim()])
+  );
+
+  return dedupeStrings((groupNames || []).map((groupName) => {
+    const normalized = String(groupName ?? "").trim();
+    if (!normalized) return "";
+    return canonicalNames.get(normalized.toLowerCase()) || normalized;
+  }));
+}
+
+function parseManifestXml(text) {
+  const doc = parseXml(text);
+  const root = xmlRoot(doc);
+  if (!root || root.localName !== "CoreManifest") {
+    return {
+      groups: [],
+      shipCores: [],
+      upgradeModules: [],
+      sourceFormat: "invalid"
+    };
+  }
+
+  const manifestGroups = qselAll(qsel(root, "ManifestGroups"), "Group")
+    .map((groupNode) => cloneManifestGroup({
+      name: textOf(groupNode, "Name"),
+      maxCount: numberOf(groupNode, "MaxCount", 1)
+    }))
+    .filter((group) => group.name.trim());
+
+  const currentShipCores = qselAll(root, "ShipCore")
+    .map((entryNode) => ({
+      filename: textOf(entryNode, "Filename"),
+      groups: dedupeStrings(qselAll(entryNode, "Group").map((groupNode) => groupNode.textContent.trim()))
+    }))
+    .filter((entry) => entry.filename);
+
+  const currentUpgradeModules = qselAll(root, "UpgradeModule")
+    .map((entryNode) => ({
+      filename: textOf(entryNode, "Filename")
+    }))
+    .filter((entry) => entry.filename);
+
+  const legacyShipCores = qselAll(root, "ShipCoreFilenames")
+    .map((node) => node.textContent.trim())
+    .filter(Boolean)
+    .map((filename) => ({ filename, groups: [] }));
+
+  const legacyUpgradeModules = qselAll(root, "UpgradeModuleFilenames")
+    .map((node) => node.textContent.trim())
+    .filter(Boolean)
+    .map((filename) => ({ filename }));
+
+  const shipCoreMap = new Map();
+  [...legacyShipCores, ...currentShipCores].forEach((entry) => {
+    shipCoreMap.set(entry.filename.trim().toLowerCase(), {
+      filename: entry.filename.trim(),
+      groups: dedupeStrings(entry.groups)
+    });
+  });
+
+  const upgradeModuleMap = new Map();
+  [...legacyUpgradeModules, ...currentUpgradeModules].forEach((entry) => {
+    upgradeModuleMap.set(entry.filename.trim().toLowerCase(), {
+      filename: entry.filename.trim()
+    });
+  });
+
+  const sourceFormat = currentShipCores.length || currentUpgradeModules.length || manifestGroups.length
+    ? "current"
+    : (legacyShipCores.length || legacyUpgradeModules.length ? "legacy" : "empty");
+
+  return {
+    groups: manifestGroups,
+    shipCores: Array.from(shipCoreMap.values()).map((entry) => ({
+      ...entry,
+      groups: normalizeManifestGroupNames(entry.groups, manifestGroups)
+    })),
+    upgradeModules: Array.from(upgradeModuleMap.values()),
+    sourceFormat
+  };
+}
+
 function parseModConfigCs(source) {
   const classes = {};
   const classRegex = /public\s+(?:partial\s+)?class\s+(\w+)\s*\{([\s\S]*?)\n\s*\}/g;
@@ -249,10 +371,10 @@ function parseModConfigCs(source) {
     const className = classMatch[1];
     const body = classMatch[2];
     const fields = [];
-    const fieldRegex = /\[XmlElement\("([^"]+)"\)\]\s*public\s+([^\s]+(?:\[\])?)\s+(\w+)/g;
+    const fieldRegex = /\[(XmlElement|XmlArray)\("([^"]+)"\)\](?:\s*\[XmlArrayItem\("([^"]+)"\)\])?\s*public\s+([^\s]+(?:\[\])?)\s+(\w+)/g;
     let fieldMatch;
     while ((fieldMatch = fieldRegex.exec(body)) !== null) {
-      fields.push({ xmlName: fieldMatch[1], type: fieldMatch[2], name: fieldMatch[3] });
+      fields.push({ xmlName: fieldMatch[2], type: fieldMatch[4], name: fieldMatch[5] });
     }
     if (fields.length) classes[className] = fields;
   }
@@ -359,6 +481,7 @@ function createDefaultCore() {
     speedBoostEnabled: false,
     speedLimitType: "Normal",
     enableActiveDefenseModifiers: false,
+    manifestGroups: [],
     allowedUpgradeModules: [],
     modifiers: { ...DEFAULT_GRID_MODIFIERS },
     speedModifiers: { ...DEFAULT_SPEED_MODIFIERS },
@@ -371,6 +494,9 @@ function createDefaultCore() {
 function ensureValidSelectedIndexes() {
   state.selectedGroupIndex = state.blockGroups.length
     ? Math.min(Math.max(state.selectedGroupIndex, 0), state.blockGroups.length - 1)
+    : -1;
+  state.selectedManifestGroupIndex = state.manifestGroups.length
+    ? Math.min(Math.max(state.selectedManifestGroupIndex, 0), state.manifestGroups.length - 1)
     : -1;
 
   if (!state.noCoreCore) state.noCoreCore = createDefaultNoCore();
@@ -385,6 +511,14 @@ function addBlockGroup(group = { name: "", blockTypes: [] }) {
   state.blockGroups.push(group);
   state.selectedGroupIndex = state.blockGroups.length - 1;
   renderBlockGroups();
+  renderManifestGroups();
+  renderShipCores();
+}
+
+function addManifestGroup(group = createDefaultManifestGroup()) {
+  state.manifestGroups.push(cloneManifestGroup(group));
+  state.selectedManifestGroupIndex = state.manifestGroups.length - 1;
+  renderManifestGroups();
   renderShipCores();
 }
 
@@ -450,9 +584,24 @@ function removeBlockGroupReferences(groupNameToRemove) {
   });
 }
 
+function renameManifestGroupReferences(previousName, nextName) {
+  if (!previousName || previousName === nextName) return;
+  state.shipCores.forEach((core) => {
+    core.manifestGroups = dedupeStrings((core.manifestGroups || []).map((groupName) => (groupName === previousName ? nextName : groupName)));
+  });
+}
+
+function removeManifestGroupReferences(groupNameToRemove) {
+  if (!groupNameToRemove) return;
+  state.shipCores.forEach((core) => {
+    core.manifestGroups = dedupeStrings((core.manifestGroups || []).filter((groupName) => groupName !== groupNameToRemove));
+  });
+}
+
 function addShipCore(core = createDefaultCore()) {
   state.shipCores.push({ ...createDefaultCore(), ...core });
   state.selectedCoreIndex = state.shipCores.length;
+  renderManifestGroups();
   renderShipCores();
 }
 
@@ -502,6 +651,7 @@ function cloneShipCore(core = createDefaultCore()) {
     ...createDefaultCore(),
     ...core,
     outputDirectory: normalizeOutputDirectory(core.outputDirectory, state.outputCoreDirectory || "Data/Cores/"),
+    manifestGroups: normalizeManifestGroupNames(Array.isArray(core?.manifestGroups) ? core.manifestGroups.map((groupName) => String(groupName ?? "").trim()) : []),
     allowedUpgradeModules: Array.isArray(core.allowedUpgradeModules)
       ? core.allowedUpgradeModules.map((entry) => ({
           subtypeId: String(entry.subtypeId ?? ""),
@@ -531,11 +681,13 @@ function createDefaultLimit() {
 
 function resetEditor(seed = true) {
   state.blockGroups = [];
+  state.manifestGroups = [];
   state.shipCores = [];
   state.upgradeModules = [];
   state.outputCoreDirectory = "Data/Cores/";
   state.outputUpgradeModuleDirectory = "Data/UpgradeModules/";
   state.selectedGroupIndex = 0;
+  state.selectedManifestGroupIndex = 0;
   state.selectedCoreIndex = 0;
   state.selectedUpgradeModuleIndex = 0;
   state.noCoreCore = createDefaultNoCore();
@@ -569,8 +721,7 @@ function resetEditor(seed = true) {
       }]
     });
   } else {
-    renderBlockGroups();
-    renderShipCores();
+    renderEditors();
   }
 
   renderUpgradeModules();
@@ -619,6 +770,77 @@ function renderBlockGroups() {
         <button data-action="remove-group" data-g="${groupIndex}">Delete Group</button>
       </div>
       ${group.blockTypes.map((bt, i) => blockTypeEditor(groupIndex, bt, i)).join("")}
+    </div>
+  `;
+}
+
+function manifestGroupCoreCheckboxes(groupIndex) {
+  const manifestGroup = state.manifestGroups[groupIndex];
+  if (!manifestGroup) return "";
+
+  return state.shipCores
+    .map((core, idx) => {
+      const labelBase = core.subtypeId?.trim() || core.uniqueName?.trim() || `Unnamed Core ${idx + 1}`;
+      const isSelected = normalizeManifestGroupNames(core.manifestGroups || []).includes(manifestGroup.name);
+      return `<label class="group-checklist-item ${isSelected ? "selected" : ""}">
+      <input data-action="manifest-core-toggle" data-gm="${groupIndex}" data-c="${idx + 1}" type="checkbox" ${isSelected ? "checked" : ""} />
+      <span>${escapeXml(labelBase)}</span>
+    </label>`;
+    })
+    .join("");
+}
+
+function manifestGroupCheckboxesForCore(coreIndex, selected = []) {
+  return state.manifestGroups
+    .filter((group) => group.name.trim())
+    .map((group) => {
+      const isSelected = selected.includes(group.name);
+      return `<label class="group-checklist-item ${isSelected ? "selected" : ""}">
+      <input data-action="core-manifest-group-toggle" data-c="${coreIndex}" data-group-name="${escapeXml(group.name)}" type="checkbox" ${isSelected ? "checked" : ""} />
+      <span>${escapeXml(group.name)}</span>
+    </label>`;
+    })
+    .join("");
+}
+
+function renderManifestGroupSelector() {
+  ensureValidSelectedIndexes();
+  const selector = ids("selectedManifestGroup");
+  if (!selector) return;
+
+  selector.innerHTML = state.manifestGroups
+    .map((group, idx) => {
+      const label = group.name?.trim() ? `${idx + 1}. ${group.name}` : `${idx + 1}. (Unnamed Manifest Group)`;
+      return `<option value="${idx}" ${idx === state.selectedManifestGroupIndex ? "selected" : ""}>${escapeXml(label)}</option>`;
+    })
+    .join("");
+  selector.disabled = state.manifestGroups.length === 0;
+}
+
+function renderManifestGroups() {
+  renderManifestGroupSelector();
+
+  if (state.selectedManifestGroupIndex < 0) {
+    ids("manifestGroups").innerHTML = `<p class="muted">No manifest groups yet. Click <strong>Add Manifest Group</strong>.</p>`;
+    return;
+  }
+
+  const groupIndex = state.selectedManifestGroupIndex;
+  const group = state.manifestGroups[groupIndex];
+  const assignedCoreCount = state.shipCores.filter((core) => normalizeManifestGroupNames(core.manifestGroups || []).includes(group.name)).length;
+
+  ids("manifestGroups").innerHTML = `
+    <div class="card">
+      <div class="row wrap">
+        <label class="inline">Group Name <input data-action="manifest-name" data-gm="${groupIndex}" placeholder="Manifest Group Name" value="${escapeXml(group.name)}" /></label>
+        <label class="inline">MaxCount <input data-action="manifest-max" data-gm="${groupIndex}" class="small" type="number" min="0" value="${Number(group.maxCount)}" /></label>
+        <button data-action="duplicate-manifest-group" data-gm="${groupIndex}">Duplicate Group</button>
+        <button data-action="remove-manifest-group" data-gm="${groupIndex}">Delete Group</button>
+      </div>
+      <p class="muted">Assigned ship cores: ${assignedCoreCount}</p>
+      ${state.shipCores.length
+        ? `<div class="group-checklist">${manifestGroupCoreCheckboxes(groupIndex)}</div>`
+        : `<p class="muted">Add ship cores, then assign them to this manifest group here.</p>`}
     </div>
   `;
 }
@@ -734,6 +956,13 @@ function renderShipCores() {
         <button data-action="add-limit" data-c="${coreIndex}">Add Block Limit</button>
         <button data-action="add-core-upgrade-allowance" data-c="${coreIndex}">Add Allowed Upgrade Module</button>
       </div>
+
+      ${isNoCore ? "" : `
+      <h4>Manifest Groups</h4>
+      ${state.manifestGroups.filter((group) => group.name.trim()).length
+        ? `<div class="group-checklist">${manifestGroupCheckboxesForCore(coreIndex, core.manifestGroups || [])}</div>`
+        : `<p class="muted">No manifest groups defined yet. Add them in the Manifest Groups section.</p>`}
+      `}
 
       <h4>Allowed Upgrade Modules</h4>
       ${(core.allowedUpgradeModules || []).map((entry, allowanceIndex) => `
@@ -889,6 +1118,13 @@ function renderUpgradeModules() {
       `).join("")}
     </div>
   `;
+}
+
+function renderEditors() {
+  renderBlockGroups();
+  renderManifestGroups();
+  renderShipCores();
+  renderUpgradeModules();
 }
 
 function parseGroupsXml(text) {
@@ -1299,6 +1535,17 @@ function getUniqueCoreFilenames(cores) {
   });
 }
 
+function getNamedManifestGroups() {
+  return state.manifestGroups
+    .map((group) => cloneManifestGroup(group))
+    .filter((group) => group.name.trim());
+}
+
+function getValidManifestGroupNamesForCore(core) {
+  const validNames = new Set(getNamedManifestGroups().map((group) => group.name.toLowerCase()));
+  return normalizeManifestGroupNames(core?.manifestGroups || []).filter((groupName) => validNames.has(groupName.toLowerCase()));
+}
+
 function createCrc32Table() {
   const table = new Uint32Array(256);
   for (let i = 0; i < 256; i += 1) {
@@ -1420,6 +1667,7 @@ function download(filename, content) {
 function generateXml(options = {}) {
   const { persistDraft = true } = options;
   const header = '<?xml version="1.0" encoding="UTF-8"?>';
+  const namedManifestGroups = getNamedManifestGroups();
 
   const noCore = state.noCoreCore
     ? `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(state.noCoreCore.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(state.noCoreCore.uniqueName)}</UniqueName>\n  <ForceBroadCast>${state.noCoreCore.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${state.noCoreCore.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(state.noCoreCore.mobilityType)}</MobilityType>\n  <MaxBlocks>${state.noCoreCore.maxBlocks}</MaxBlocks>\n  <MinBlocks>${state.noCoreCore.minBlocks}</MinBlocks>\n  <MaxMass>${state.noCoreCore.maxMass}</MaxMass>\n  <MaxPCU>${state.noCoreCore.maxPcu}</MaxPCU>\n  <MaxBackupCores>${state.noCoreCore.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${state.noCoreCore.maxPerPlayer}</MaxPerPlayer>\n  <MaxPerFaction>${state.noCoreCore.maxPerFaction}</MaxPerFaction>\n  <FactionPlayersNeededPerCore>${state.noCoreCore.factionPlayersNeededPerCore}</FactionPlayersNeededPerCore>\n  <MinPlayers>${state.noCoreCore.minPerFaction}</MinPlayers>\n  <MaxPlayers>${state.noCoreCore.maxPlayers}</MaxPlayers>\n  <SpeedBoostEnabled>${state.noCoreCore.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(state.noCoreCore.speedLimitType)}</SpeedLimitType>\n  <EnableActiveDefenseModifiers>${state.noCoreCore.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeAllowedUpgradeModulesXml(state.noCoreCore.allowedUpgradeModules)}${state.noCoreCore.allowedUpgradeModules?.length ? "\n" : ""}${writeModifierXml("Modifiers", state.noCoreCore.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeModifierXml("SpeedModifiers", state.noCoreCore.speedModifiers, DEFAULT_SPEED_MODIFIERS)}\n${writeModifierXml("PassiveDefenseModifiers", state.noCoreCore.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", state.noCoreCore.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${state.noCoreCore.blockLimits
@@ -1439,19 +1687,8 @@ function generateXml(options = {}) {
     return `${rawName}.xml`;
   });
 
-  const manifest = `${header}
-<CoreManifest>
-${state.shipCores
-    .filter((core) => core.subtypeId.trim())
-    .map((core, coreIndex) => `  <ShipCoreFilenames>${escapeXml(buildCoreOutputPath(core, coreFilenames[coreIndex]))}</ShipCoreFilenames>`)
-    .join("\n")}
-${state.upgradeModules
-    .filter((module) => module.subtypeId.trim())
-    .map((module, moduleIndex) => `  <UpgradeModuleFilenames>${escapeXml(state.outputUpgradeModuleDirectory)}${escapeXml(upgradeModuleFilenames[moduleIndex])}</UpgradeModuleFilenames>`)
-    .join("\n")}
-</CoreManifest>`;
-
   const cores = state.shipCores.map((core, coreIndex) => ({
+    core,
     file: coreFilenames[coreIndex],
     outputPath: buildCoreOutputPath(core, coreFilenames[coreIndex]),
     body: `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(core.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(core.uniqueName)}</UniqueName>\n  <ForceBroadCast>${core.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${core.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(core.mobilityType)}</MobilityType>\n  <MaxBlocks>${core.maxBlocks}</MaxBlocks>\n  <MinBlocks>${core.minBlocks}</MinBlocks>\n  <MaxMass>${core.maxMass}</MaxMass>\n  <MaxPCU>${core.maxPcu}</MaxPCU>\n  <MaxBackupCores>${core.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${core.maxPerPlayer}</MaxPerPlayer>\n  <MaxPerFaction>${core.maxPerFaction}</MaxPerFaction>\n  <FactionPlayersNeededPerCore>${core.factionPlayersNeededPerCore}</FactionPlayersNeededPerCore>\n  <MinPlayers>${core.minPerFaction}</MinPlayers>\n  <MaxPlayers>${core.maxPlayers}</MaxPlayers>\n  <SpeedBoostEnabled>${core.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(core.speedLimitType)}</SpeedLimitType>\n  <EnableActiveDefenseModifiers>${core.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeAllowedUpgradeModulesXml(core.allowedUpgradeModules)}${core.allowedUpgradeModules?.length ? "\n" : ""}${writeModifierXml("Modifiers", core.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeModifierXml("SpeedModifiers", core.speedModifiers, DEFAULT_SPEED_MODIFIERS)}\n${writeModifierXml("PassiveDefenseModifiers", core.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", core.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${core.blockLimits
@@ -1460,9 +1697,32 @@ ${state.upgradeModules
   }));
 
   const upgradeModules = state.upgradeModules.map((module, moduleIndex) => ({
+    module,
     file: upgradeModuleFilenames[moduleIndex],
     body: writeUpgradeModuleXml(module)
   }));
+
+  const manifest = `${header}
+<CoreManifest>
+${namedManifestGroups.length
+    ? `  <ManifestGroups>
+${namedManifestGroups
+      .map((group) => `    <Group>\n      <Name>${escapeXml(group.name)}</Name>\n      <MaxCount>${Number(group.maxCount)}</MaxCount>\n    </Group>`)
+      .join("\n")}
+  </ManifestGroups>`
+    : ""}
+${cores
+    .filter((entry) => entry.core.subtypeId.trim())
+    .map((entry) => {
+      const groups = getValidManifestGroupNamesForCore(entry.core);
+      return `  <ShipCore>\n    <Filename>${escapeXml(entry.outputPath)}</Filename>${groups.length ? `\n${groups.map((groupName) => `    <Group>${escapeXml(groupName)}</Group>`).join("\n")}` : ""}\n  </ShipCore>`;
+    })
+    .join("\n")}
+${upgradeModules
+    .filter((entry) => entry.module.subtypeId.trim())
+    .map((entry) => `  <UpgradeModule>\n    <Filename>${escapeXml(state.outputUpgradeModuleDirectory)}${escapeXml(entry.file)}</Filename>\n  </UpgradeModule>`)
+    .join("\n")}
+</CoreManifest>`;
 
   ids("noCoreXml").textContent = noCore;
   ids("groupsXml").textContent = groups;
@@ -1484,6 +1744,7 @@ document.addEventListener("click", (event) => {
   if (!action) return;
 
   const groupIndex = Number(target.dataset.g);
+  const manifestGroupIndex = Number(target.dataset.gm);
   const blockTypeIndex = Number(target.dataset.i);
   const coreIndex = Number(target.dataset.c);
   const shipCoreIndex = coreIndex - 1;
@@ -1526,6 +1787,36 @@ document.addEventListener("click", (event) => {
 
       state.blockGroups.splice(groupIndex + 1, 0, duplicatedGroup);
       state.selectedGroupIndex = groupIndex + 1;
+      didMutate = true;
+    }
+  }
+  if (action === "remove-manifest-group") {
+    const removedGroupName = state.manifestGroups[manifestGroupIndex]?.name || "";
+    removeManifestGroupReferences(removedGroupName);
+    state.manifestGroups.splice(manifestGroupIndex, 1);
+    if (state.selectedManifestGroupIndex >= state.manifestGroups.length) state.selectedManifestGroupIndex = state.manifestGroups.length - 1;
+    didMutate = true;
+  }
+  if (action === "duplicate-manifest-group") {
+    const sourceGroup = state.manifestGroups[manifestGroupIndex];
+    if (sourceGroup) {
+      const duplicateName = createIncrementedDuplicateName(
+        sourceGroup.name,
+        state.manifestGroups.map((group) => group.name),
+        "ManifestGroup"
+      );
+      const duplicatedGroup = cloneManifestGroup({
+        ...sourceGroup,
+        name: duplicateName
+      });
+
+      state.manifestGroups.splice(manifestGroupIndex + 1, 0, duplicatedGroup);
+      state.shipCores.forEach((core) => {
+        if ((core.manifestGroups || []).includes(sourceGroup.name)) {
+          core.manifestGroups = dedupeStrings([...(core.manifestGroups || []), duplicateName]);
+        }
+      });
+      state.selectedManifestGroupIndex = manifestGroupIndex + 1;
       didMutate = true;
     }
   }
@@ -1631,9 +1922,7 @@ document.addEventListener("click", (event) => {
 
   if (!didMutate) return;
 
-  renderBlockGroups();
-  renderShipCores();
-  renderUpgradeModules();
+  renderEditors();
   generateXml();
 });
 
@@ -1645,10 +1934,12 @@ document.addEventListener("input", (event) => {
   if (!action) return;
 
   const groupIndex = Number(target.dataset.g);
+  const manifestGroupIndex = Number(target.dataset.gm);
   const blockTypeIndex = Number(target.dataset.i);
   const coreIndex = Number(target.dataset.c);
   const limitIndex = Number(target.dataset.l);
   const upgradeIndex = Number(target.dataset.u);
+  const allowanceIndex = Number(target.dataset.au);
   const upgradeModifierIndex = Number(target.dataset.m);
   const blockLimitModifierIndex = Number(target.dataset.bm);
   const selectedCore = getCoreBySelectorIndex(coreIndex);
@@ -1657,6 +1948,7 @@ document.addEventListener("input", (event) => {
   if (action === "bt-type") state.blockGroups[groupIndex].blockTypes[blockTypeIndex].typeId = target.value;
   if (action === "bt-subtype") state.blockGroups[groupIndex].blockTypes[blockTypeIndex].subtypeId = target.value;
   if (action === "bt-weight") state.blockGroups[groupIndex].blockTypes[blockTypeIndex].countWeight = Number(target.value || 0);
+  if (action === "manifest-max") state.manifestGroups[manifestGroupIndex].maxCount = Number(target.value || 0);
 
   if (!selectedCore && (action.startsWith("core-") || action.startsWith("limit-"))) return;
   if (!selectedUpgrade && action.startsWith("upgrade-")) return;
@@ -1710,19 +2002,41 @@ function commitDeferredTextInput(target) {
 
   const action = target.dataset.action;
   const groupIndex = Number(target.dataset.g);
+  const manifestGroupIndex = Number(target.dataset.gm);
   const coreIndex = Number(target.dataset.c);
   const selectedCore = getCoreBySelectorIndex(coreIndex);
 
   if (action === "group-name") {
     const previousName = state.blockGroups[groupIndex].name;
-    const nextName = target.value;
+    const requestedName = target.value;
+    const siblingNames = state.blockGroups
+      .filter((_, idx) => idx !== groupIndex)
+      .map((group) => group.name);
+    const nextName = siblingNames.some((name) => String(name ?? "").trim().toLowerCase() === requestedName.trim().toLowerCase())
+      ? createIncrementedDuplicateName(requestedName, siblingNames, "BlockGroup")
+      : requestedName;
     if (previousName === nextName) return;
 
     state.blockGroups[groupIndex].name = nextName;
     renameBlockGroupReferences(previousName, nextName);
-    renderGroupSelector();
-    renderShipCores();
-    renderUpgradeModules();
+    renderEditors();
+    generateXml();
+  }
+
+  if (action === "manifest-name") {
+    const previousName = state.manifestGroups[manifestGroupIndex].name;
+    const requestedName = target.value;
+    const siblingNames = state.manifestGroups
+      .filter((_, idx) => idx !== manifestGroupIndex)
+      .map((group) => group.name);
+    const nextName = siblingNames.some((name) => String(name ?? "").trim().toLowerCase() === requestedName.trim().toLowerCase())
+      ? createIncrementedDuplicateName(requestedName, siblingNames, "ManifestGroup")
+      : requestedName;
+    if (previousName === nextName) return;
+
+    state.manifestGroups[manifestGroupIndex].name = nextName;
+    renameManifestGroupReferences(previousName, nextName);
+    renderEditors();
     generateXml();
   }
 
@@ -1734,8 +2048,7 @@ function commitDeferredTextInput(target) {
 
     selectedCore.subtypeId = nextSubtype;
     clearGeneratedFilenameForRenamedCore(coreIndex, selectedCore);
-    renderShipCores();
-    renderUpgradeModules();
+    renderEditors();
     generateXml();
   }
 }
@@ -1747,7 +2060,7 @@ document.addEventListener("keydown", (event) => {
   if (!(target instanceof HTMLInputElement)) return;
 
   const action = target.dataset.action;
-  if (action !== "group-name" && action !== "core-subtype") return;
+  if (action !== "group-name" && action !== "manifest-name" && action !== "core-subtype") return;
 
   target.blur();
 });
@@ -1757,6 +2070,7 @@ document.addEventListener("change", (event) => {
   if (!(target instanceof HTMLElement)) return;
   const action = target.dataset.action;
   if (!action) return;
+  const manifestGroupIndex = Number(target.dataset.gm);
   const coreIndex = Number(target.dataset.c);
   const limitIndex = Number(target.dataset.l);
   const upgradeIndex = Number(target.dataset.u);
@@ -1768,7 +2082,7 @@ document.addEventListener("change", (event) => {
   const inputElement = target instanceof HTMLInputElement ? target : null;
   const selectElement = target instanceof HTMLSelectElement ? target : null;
 
-  if (action === "group-name" || action === "core-subtype") {
+  if (action === "group-name" || action === "manifest-name" || action === "core-subtype") {
     commitDeferredTextInput(target);
     return;
   }
@@ -1815,6 +2129,27 @@ document.addEventListener("change", (event) => {
     limit.blockGroups = Array.from(selectedSet);
     renderShipCores();
   }
+  if (action === "manifest-core-toggle" && inputElement) {
+    const manifestGroup = state.manifestGroups[manifestGroupIndex];
+    const selectedShipCore = state.shipCores[coreIndex - 1];
+    if (!manifestGroup || !selectedShipCore) return;
+
+    const selectedSet = new Set(selectedShipCore.manifestGroups || []);
+    if (inputElement.checked) selectedSet.add(manifestGroup.name);
+    else selectedSet.delete(manifestGroup.name);
+    selectedShipCore.manifestGroups = normalizeManifestGroupNames(Array.from(selectedSet));
+    renderEditors();
+  }
+  if (action === "core-manifest-group-toggle" && inputElement) {
+    const groupName = inputElement.dataset.groupName || "";
+    if (!groupName) return;
+
+    const selectedSet = new Set(selectedCore.manifestGroups || []);
+    if (inputElement.checked) selectedSet.add(groupName);
+    else selectedSet.delete(groupName);
+    selectedCore.manifestGroups = normalizeManifestGroupNames(Array.from(selectedSet));
+    renderEditors();
+  }
 
   if (action === "upgrade-mod-type" && selectElement) selectedUpgrade.modifiers[upgradeModifierIndex].modifierType = selectElement.value;
   if (action === "upgrade-limit-type" && selectElement) selectedUpgrade.blockLimitModifiers[blockLimitModifierIndex].modifierType = selectElement.value;
@@ -1852,15 +2187,34 @@ ids("selectedGroup").addEventListener("change", (event) => {
   generateXml();
 });
 
+ids("selectedManifestGroup").addEventListener("change", (event) => {
+  state.selectedManifestGroupIndex = Number(event.target.value);
+  renderManifestGroups();
+  generateXml();
+});
+
 ids("selectedCore").addEventListener("change", (event) => {
   state.selectedCoreIndex = Number(event.target.value);
   renderShipCores();
   generateXml();
 });
 
-ids("addGroup").addEventListener("click", () => addBlockGroup({ name: "", blockTypes: [] }));
-ids("addCore").addEventListener("click", () => addShipCore());
-ids("addUpgradeModule").addEventListener("click", () => addUpgradeModule());
+ids("addGroup").addEventListener("click", () => {
+  addBlockGroup({ name: "", blockTypes: [] });
+  generateXml();
+});
+ids("addManifestGroup").addEventListener("click", () => {
+  addManifestGroup();
+  generateXml();
+});
+ids("addCore").addEventListener("click", () => {
+  addShipCore();
+  generateXml();
+});
+ids("addUpgradeModule").addEventListener("click", () => {
+  addUpgradeModule();
+  generateXml();
+});
 ids("selectedUpgradeModule").addEventListener("change", (event) => {
   state.selectedUpgradeModuleIndex = Number(event.target.value);
   renderUpgradeModules();
@@ -1950,14 +2304,14 @@ ids("loadLegacyModConfig").addEventListener("click", async () => {
   state.shipCores = migrated.shipCores;
   state.blockGroups = migrated.blockGroups;
   state.selectedGroupIndex = 0;
+  state.manifestGroups = [];
+  state.selectedManifestGroupIndex = -1;
   state.selectedCoreIndex = 0;
   state.upgradeModules = [];
   state.selectedUpgradeModuleIndex = 0;
   state.expandedLimitPanelsByCore = {};
 
-  renderBlockGroups();
-  renderShipCores();
-  renderUpgradeModules();
+  renderEditors();
   generateXml();
   setImportStatus(migrated.status);
 });
@@ -2068,6 +2422,7 @@ async function readZipFiles(zipFile) {
 async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, coreFiles, initialStatus = [], sbcFiles = [], passthroughFiles = [], fileZipPathMap = new Map()) {
   const status = [...initialStatus];
   const manifestCoreDirectoriesByFilename = new Map();
+  const manifestCoreGroupsByFilename = new Map();
 
   resetEditor(false);
   // Store passthrough files (SBCs and unrecognised files) for re-inclusion in Download All
@@ -2082,26 +2437,37 @@ async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, cor
   }
 
   if (manifestFile) {
-    const manifestDoc = parseXml(await manifestFile.text());
-    const listed = Array.from(manifestDoc.getElementsByTagName("ShipCoreFilenames")).map((n) => n.textContent.trim()).filter(Boolean);
-    const listedModules = Array.from(manifestDoc.getElementsByTagName("UpgradeModuleFilenames")).map((n) => n.textContent.trim()).filter(Boolean);
+    const manifest = parseManifestXml(await manifestFile.text());
+    if (manifest.sourceFormat === "invalid") {
+      status.push(`Skipped ${manifestFile.name}: no <CoreManifest> root found.`);
+    } else {
+      const listed = manifest.shipCores.map((entry) => entry.filename);
+      const listedModules = manifest.upgradeModules.map((entry) => entry.filename);
+      state.manifestGroups = manifest.groups;
+      state.selectedManifestGroupIndex = manifest.groups.length ? 0 : -1;
 
-    listed.forEach((manifestPath) => {
-      const normalizedPath = manifestPath.replaceAll("\\", "/").trim();
-      const fileName = normalizedPath.split("/").pop();
-      if (!fileName) return;
-      // Store both directory (for outputDirectory) and full path (for originalFileName)
-      manifestCoreDirectoriesByFilename.set(
-        fileName.toLowerCase(),
-        getDirectoryFromManifestPath(normalizedPath, "Data/Cores/")
-      );
-      state.manifestCoreFullPathByFilename.set(fileName.toLowerCase(), normalizedPath);
-    });
+      manifest.shipCores.forEach((entry) => {
+        const manifestPath = entry.filename;
+        const normalizedPath = manifestPath.replaceAll("\\", "/").trim();
+        const fileName = normalizedPath.split("/").pop();
+        if (!fileName) return;
+        // Store both directory (for outputDirectory) and full path (for originalFileName)
+        manifestCoreDirectoriesByFilename.set(
+          fileName.toLowerCase(),
+          getDirectoryFromManifestPath(normalizedPath, "Data/Cores/")
+        );
+        state.manifestCoreFullPathByFilename.set(fileName.toLowerCase(), normalizedPath);
+        manifestCoreGroupsByFilename.set(fileName.toLowerCase(), dedupeStrings(entry.groups));
+      });
 
-    state.outputCoreDirectory = getManifestDirectory(listed, "Data/Cores/", "core", status);
-    state.outputUpgradeModuleDirectory = getManifestDirectory(listedModules, "Data/UpgradeModules/", "upgrade module", status);
-    status.push(`Read manifest ${manifestFile.name} with ${listed.length} listed core files and ${listedModules.length} listed upgrade modules.`);
-    status.push(`Using '${state.outputCoreDirectory}' for generated core files and '${state.outputUpgradeModuleDirectory}' for generated upgrade module files.`);
+      state.outputCoreDirectory = getManifestDirectory(listed, "Data/Cores/", "core", status);
+      state.outputUpgradeModuleDirectory = getManifestDirectory(listedModules, "Data/UpgradeModules/", "upgrade module", status);
+      status.push(`Read manifest ${manifestFile.name} with ${listed.length} listed core files, ${listedModules.length} listed upgrade modules, and ${manifest.groups.length} manifest groups.`);
+      if (manifest.sourceFormat === "legacy") {
+        status.push(`Legacy manifest format detected in ${manifestFile.name}; ported into current manifest structure in editor.`);
+      }
+      status.push(`Using '${state.outputCoreDirectory}' for generated core files and '${state.outputUpgradeModuleDirectory}' for generated upgrade module files.`);
+    }
   }
 
   if (noCoreFile) {
@@ -2152,6 +2518,7 @@ async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, cor
           const manifestFileName = manifestFullPath.split("/").pop();
           parsed.originalFileName = manifestFileName || file.name;
         }
+        parsed.manifestGroups = normalizeManifestGroupNames(manifestCoreGroupsByFilename.get(file.name.trim().toLowerCase()) || [], state.manifestGroups);
         state.shipCores.push(parsed);
         status.push(`Loaded core '${parsed.subtypeId || file.name}'.`);
       }
@@ -2203,12 +2570,11 @@ async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, cor
 
   if (state.noCoreCore) status.push(`Loaded no-core from ${state.noCoreCore.originalFileName || "legacy import"}.`);
   if (state.blockGroups.length === 0) status.push("No block groups loaded (you can still create them manually).");
+  if (state.manifestGroups.length === 0) status.push("No manifest groups loaded (you can still create them manually).");
   if (state.shipCores.length === 0) status.push("No cores loaded (you can still add cores manually).");
   if (state.upgradeModules.length === 0) status.push("No upgrade modules loaded (you can still add upgrade modules manually).");
 
-  renderBlockGroups();
-  renderShipCores();
-  renderUpgradeModules();
+  renderEditors();
   generateXml();
   setImportStatus(status);
 }
@@ -2332,15 +2698,12 @@ ids("loadUploadedXml").addEventListener("click", async () => {
   ids("parserStatus").textContent = `Loaded bundled ModConfig.XmlModels.cs and parsed ${Object.keys(state.schema).length} XML classes.`;
 
   if (restoreDraftFromStorage()) {
-    renderBlockGroups();
-    renderShipCores();
-    renderUpgradeModules();
+    renderEditors();
     generateXml();
     setImportStatus(["Restored autosaved draft from your browser storage."]);
     return;
   }
 
   resetEditor(true);
-  renderUpgradeModules();
   setImportStatus(["Tip: Upload existing XML files to renovate and continue editing."]);
 })();

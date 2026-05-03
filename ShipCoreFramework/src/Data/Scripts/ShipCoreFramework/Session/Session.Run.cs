@@ -98,8 +98,9 @@ namespace ShipCoreFramework
 
             ModAPI.Close();
 
-            GridsPerFactionManager.Reset();
-            GridsPerPlayerManager.Reset();
+            PerFactionManager.Reset();
+            PerPlayerManager.Reset();
+            PerManifestGroupManager.Reset();
             if (IsServer) Config.SaveConfig();
             Networking?.Unregister();
             Networking = null;

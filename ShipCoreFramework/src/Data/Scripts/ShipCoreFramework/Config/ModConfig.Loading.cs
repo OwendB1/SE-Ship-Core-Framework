@@ -48,11 +48,13 @@ namespace ShipCoreFramework
 
             ThrowErrorIfDuplicates(NoCoreConfigs, core => core.UniqueName);
             ThrowErrorIfDuplicates(ShipCores, core => core.UniqueName);
+            ThrowErrorIfDuplicates(ManifestCoreGroups, group => group.Name);
             ThrowErrorIfDuplicates(UpgradeModules, module => module.SubtypeId);
             NormalizeBlockGroups(BlockGroups, "All Loaded Mods");
             ThrowErrorIfDuplicates(BlockGroups, groups => groups.Name);
             Utils.Log($"NoCoreConfigs.Count = {NoCoreConfigs.Count}", 1, "Ship Core Config");
             Utils.Log($"BlockGroups.Count = {BlockGroups.Count}", 1, "Ship Core Config");
+            Utils.Log($"ManifestCoreGroups.Count = {ManifestCoreGroups.Count}", 1, "Ship Core Config");
             Utils.Log($"UpgradeModules.Count = {UpgradeModules.Count}", 1, "Ship Core Config");
 
             ResolveBlockGroupsForCores(ShipCores);
@@ -183,38 +185,82 @@ namespace ShipCoreFramework
                 if (coreManifest == null)
                     throw new Exception($"Failed to Load Classes from Mod: {mod.FriendlyName}");
 
-                foreach (var shipCoreFilename in coreManifest.ShipCoreFilenames
-                             .Where(shipCoreFilename => MyAPIGateway.Utilities.FileExistsInModLocation(shipCoreFilename, mod)))
-                {
-                    using (var textReader = MyAPIGateway.Utilities.ReadFileInModLocation(shipCoreFilename, mod))
-                    {
-                        var modText = textReader.ReadToEnd();
-                        var newShipCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(modText);
+                NormalizeCoreManifest(coreManifest, mod.FriendlyName);
+                RegisterManifestGroups(coreManifest.ManifestGroups, mod.FriendlyName);
 
-                        if (newShipCore == null)
-                            throw new Exception($"Failed to load ship core from file {shipCoreFilename} in Mod: {mod.FriendlyName}");
-                        NormalizeShipCoreBlockLimits(newShipCore, mod.FriendlyName, shipCoreFilename);
-                        ShipCores.Add(newShipCore);
-                        Utils.Log($"Loaded Core {newShipCore.UniqueName} From: {mod.FriendlyName}", 1, "Ship Core Config");
-                    }
-                }
+                foreach (var shipCoreEntry in coreManifest.ShipCores
+                             .Where(shipCoreEntry => MyAPIGateway.Utilities.FileExistsInModLocation(shipCoreEntry.Filename, mod)))
+                    LoadShipCoreFromManifest(mod, shipCoreEntry.Filename, shipCoreEntry.Groups);
 
-                foreach (var moduleFilename in coreManifest.UpgradeModuleFilenames
-                             .Where(moduleFilename => MyAPIGateway.Utilities.FileExistsInModLocation(moduleFilename, mod)))
+                foreach (var upgradeModuleEntry in coreManifest.UpgradeModules
+                             .Where(upgradeModuleEntry => MyAPIGateway.Utilities.FileExistsInModLocation(upgradeModuleEntry.Filename, mod)))
                 {
-                    using (var textReader = MyAPIGateway.Utilities.ReadFileInModLocation(moduleFilename, mod))
+                    using (var textReader = MyAPIGateway.Utilities.ReadFileInModLocation(upgradeModuleEntry.Filename, mod))
                     {
                         var modText = textReader.ReadToEnd();
                         var newUpgradeModule = MyAPIGateway.Utilities.SerializeFromXML<UpgradeModuleConfig>(modText);
 
                         if (newUpgradeModule == null)
-                            throw new Exception($"Failed to load upgrade module from file {moduleFilename} in Mod: {mod.FriendlyName}");
+                            throw new Exception($"Failed to load upgrade module from file {upgradeModuleEntry.Filename} in Mod: {mod.FriendlyName}");
 
-                        NormalizeUpgradeModule(newUpgradeModule, mod.FriendlyName, moduleFilename);
+                        NormalizeUpgradeModule(newUpgradeModule, mod.FriendlyName, upgradeModuleEntry.Filename);
                         UpgradeModules.Add(newUpgradeModule);
                         Utils.Log($"Loaded Upgrade Module {newUpgradeModule.UniqueName} From: {mod.FriendlyName}", 1, "Ship Core Config");
                     }
                 }
+            }
+        }
+
+        private void RegisterManifestGroups(IEnumerable<ManifestCoreGroup> groups, string source)
+        {
+            foreach (var group in groups)
+            {
+                if (group == null) continue;
+
+                if (GetManifestGroupByName(group.Name) != null)
+                    throw new Exception($"Duplicate manifest group '{group.Name}' found while loading {source}.");
+
+                ManifestCoreGroups.Add(group);
+            }
+        }
+
+        private void LoadShipCoreFromManifest(MyObjectBuilder_Checkpoint.ModItem mod, string shipCoreFilename, IEnumerable<string> manifestGroupNames)
+        {
+            using (var textReader = MyAPIGateway.Utilities.ReadFileInModLocation(shipCoreFilename, mod))
+            {
+                var modText = textReader.ReadToEnd();
+                var newShipCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(modText);
+
+                if (newShipCore == null)
+                    throw new Exception($"Failed to load ship core from file {shipCoreFilename} in Mod: {mod.FriendlyName}");
+
+                NormalizeShipCoreBlockLimits(newShipCore, mod.FriendlyName, shipCoreFilename);
+                AssignManifestGroupsToCore(newShipCore, manifestGroupNames, mod.FriendlyName, shipCoreFilename);
+                ShipCores.Add(newShipCore);
+                Utils.Log($"Loaded Core {newShipCore.UniqueName} From: {mod.FriendlyName}", 1, "Ship Core Config");
+            }
+        }
+
+        private void AssignManifestGroupsToCore(ShipCore core, IEnumerable<string> manifestGroupNames, string source, string coreFile)
+        {
+            if (core == null)
+                return;
+
+            core.ManifestGroupNames.Clear();
+            if (manifestGroupNames == null)
+                return;
+
+            foreach (var manifestGroupName in manifestGroupNames
+                         .Where(manifestGroupName => !string.IsNullOrWhiteSpace(manifestGroupName))
+                         .Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                var group = GetManifestGroupByName(manifestGroupName);
+                if (group == null)
+                    throw new Exception($"ShipCore '{core.UniqueName}' from {source} ({coreFile}) references unknown manifest group '{manifestGroupName}'.");
+
+                core.ManifestGroupNames.Add(group.Name);
+                if (!string.IsNullOrWhiteSpace(core.SubtypeId))
+                    group.CoreSubtypeIds.Add(core.SubtypeId);
             }
         }
 
