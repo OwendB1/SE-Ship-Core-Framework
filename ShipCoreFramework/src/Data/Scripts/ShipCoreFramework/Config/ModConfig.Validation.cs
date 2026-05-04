@@ -6,15 +6,49 @@ namespace ShipCoreFramework
 {
     public partial class ModConfig
     {
-        private static void ThrowErrorIfDuplicates<T, TKey>(List<T> list, Func<T, TKey> selector)
+        private static void ThrowErrorIfDuplicates<T, TKey>(List<T> list, Func<T, TKey> selector, string valueName,
+            Func<T, string> sourceSelector = null)
         {
-            var dupeList = list.GroupBy(selector)
+            if (list == null)
+                return;
+
+            var dupeList = list.Where(item => item != null)
+                .GroupBy(selector)
                 .Where(g => g.Count() > 1)
-                .Select(g => g.Key)
+                .Select(g =>
+                {
+                    var origins = sourceSelector == null
+                        ? new string[0]
+                        : g.Select(sourceSelector)
+                            .Where(origin => !string.IsNullOrWhiteSpace(origin))
+                            .Distinct()
+                            .ToArray();
+
+                    var originText = origins.Length == 0 ? string.Empty : $": {string.Join(", ", origins)}";
+                    return $"- {FormatDuplicateValue(g.Key)} ({g.Count()} entries){originText}";
+                })
                 .ToList();
 
-            if (dupeList.Any())
-                throw new Exception($"Found duplicates f0r {selector.Method.Name}: {string.Join("\n- ", dupeList)}");
+            if (dupeList.Any()) throw new Exception($"Found duplicate {valueName} value(s):\n{string.Join("\n", dupeList)}");
+        }
+
+        private static string FormatDuplicateValue<TKey>(TKey value)
+        {
+            return value == null ? "<null>" : $"'{value}'";
+        }
+
+        private static string FormatConfigOrigin(string source, string file)
+        {
+            if (string.IsNullOrWhiteSpace(source) && string.IsNullOrWhiteSpace(file))
+                return string.Empty;
+
+            if (string.IsNullOrWhiteSpace(source))
+                return file;
+
+            if (string.IsNullOrWhiteSpace(file))
+                return source;
+
+            return $"{source} ({file})";
         }
 
         private static void NormalizeShipCoreBlockLimits(ShipCore core, string source, string coreFileOrKey)

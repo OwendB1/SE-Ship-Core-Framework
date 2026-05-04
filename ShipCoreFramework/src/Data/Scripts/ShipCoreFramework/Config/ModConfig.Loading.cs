@@ -46,12 +46,17 @@ namespace ShipCoreFramework
                 LoadManifestContentFromMod(mod);
             }
 
-            ThrowErrorIfDuplicates(NoCoreConfigs, core => core.UniqueName);
-            ThrowErrorIfDuplicates(ShipCores, core => core.UniqueName);
-            ThrowErrorIfDuplicates(ManifestCoreGroups, group => group.Name);
-            ThrowErrorIfDuplicates(UpgradeModules, module => module.SubtypeId);
+            ThrowErrorIfDuplicates(NoCoreConfigs, core => core.UniqueName, "NoCoreConfig UniqueName",
+                core => FormatConfigOrigin(core.ConfigSource, core.ConfigFile));
+            ThrowErrorIfDuplicates(ShipCores, core => core.UniqueName, "ShipCore UniqueName",
+                core => FormatConfigOrigin(core.ConfigSource, core.ConfigFile));
+            ThrowErrorIfDuplicates(ManifestCoreGroups, group => group.Name, "ManifestCoreGroup Name",
+                group => FormatConfigOrigin(group.ConfigSource, group.ConfigFile));
+            ThrowErrorIfDuplicates(UpgradeModules, module => module.SubtypeId, "UpgradeModule SubtypeId",
+                module => FormatConfigOrigin(module.ConfigSource, module.ConfigFile));
             NormalizeBlockGroups(BlockGroups, "All Loaded Mods");
-            ThrowErrorIfDuplicates(BlockGroups, groups => groups.Name);
+            ThrowErrorIfDuplicates(BlockGroups, groups => groups.Name, "BlockGroup Name",
+                group => FormatConfigOrigin(group.ConfigSource, group.ConfigFile));
             Utils.Log($"NoCoreConfigs.Count = {NoCoreConfigs.Count}", 1, "Ship Core Config");
             Utils.Log($"BlockGroups.Count = {BlockGroups.Count}", 1, "Ship Core Config");
             Utils.Log($"ManifestCoreGroups.Count = {ManifestCoreGroups.Count}", 1, "Ship Core Config");
@@ -152,6 +157,12 @@ namespace ShipCoreFramework
                 if (newBlockGroups == null)
                     throw new Exception($"Failed to load block groups from Mod: {mod.FriendlyName}");
                 NormalizeBlockGroups(newBlockGroups, mod.FriendlyName);
+                foreach (var group in newBlockGroups.Where(group => group != null))
+                {
+                    group.ConfigSource = mod.FriendlyName;
+                    group.ConfigFile = BlockGroupsFileName;
+                }
+
                 BlockGroups.AddRange(newBlockGroups);
                 Utils.Log($"Loaded Groups From: {mod.FriendlyName}", 1, "Ship Core Config");
             }
@@ -168,6 +179,8 @@ namespace ShipCoreFramework
 
                 if (newNoCore == null)
                     throw new Exception($"Failed to load no-core from Mod: {mod.FriendlyName}");
+                newNoCore.ConfigSource = mod.FriendlyName;
+                newNoCore.ConfigFile = DefaultNoCoreFileName;
                 NoCoreConfigs.Add(newNoCore);
                 Utils.Log($"Loaded No-Core Config From: {mod.FriendlyName}", 1, "Ship Core Config");
             }
@@ -186,7 +199,7 @@ namespace ShipCoreFramework
                     throw new Exception($"Failed to Load Classes from Mod: {mod.FriendlyName}");
 
                 NormalizeCoreManifest(coreManifest, mod.FriendlyName);
-                RegisterManifestGroups(coreManifest.ManifestGroups, mod.FriendlyName);
+                RegisterManifestGroups(coreManifest.ManifestGroups, mod.FriendlyName, CoreManifestFileName);
 
                 foreach (var shipCoreEntry in coreManifest.ShipCores
                              .Where(shipCoreEntry => MyAPIGateway.Utilities.FileExistsInModLocation(shipCoreEntry.Filename, mod)))
@@ -204,6 +217,8 @@ namespace ShipCoreFramework
                             throw new Exception($"Failed to load upgrade module from file {upgradeModuleEntry.Filename} in Mod: {mod.FriendlyName}");
 
                         NormalizeUpgradeModule(newUpgradeModule, mod.FriendlyName, upgradeModuleEntry.Filename);
+                        newUpgradeModule.ConfigSource = mod.FriendlyName;
+                        newUpgradeModule.ConfigFile = upgradeModuleEntry.Filename;
                         UpgradeModules.Add(newUpgradeModule);
                         Utils.Log($"Loaded Upgrade Module {newUpgradeModule.UniqueName} From: {mod.FriendlyName}", 1, "Ship Core Config");
                     }
@@ -211,15 +226,19 @@ namespace ShipCoreFramework
             }
         }
 
-        private void RegisterManifestGroups(IEnumerable<ManifestCoreGroup> groups, string source)
+        private void RegisterManifestGroups(IEnumerable<ManifestCoreGroup> groups, string source, string sourceFile)
         {
             foreach (var group in groups)
             {
                 if (group == null) continue;
 
-                if (GetManifestGroupByName(group.Name) != null)
-                    throw new Exception($"Duplicate manifest group '{group.Name}' found while loading {source}.");
+                var duplicate = GetManifestGroupByName(group.Name);
+                if (duplicate != null)
+                    throw new Exception(
+                        $"Duplicate manifest group '{group.Name}' found while loading {FormatConfigOrigin(source, sourceFile)}; already loaded from {FormatConfigOrigin(duplicate.ConfigSource, duplicate.ConfigFile)}.");
 
+                group.ConfigSource = source;
+                group.ConfigFile = sourceFile;
                 ManifestCoreGroups.Add(group);
             }
         }
@@ -236,6 +255,8 @@ namespace ShipCoreFramework
 
                 NormalizeShipCoreBlockLimits(newShipCore, mod.FriendlyName, shipCoreFilename);
                 AssignManifestGroupsToCore(newShipCore, manifestGroupNames, mod.FriendlyName, shipCoreFilename);
+                newShipCore.ConfigSource = mod.FriendlyName;
+                newShipCore.ConfigFile = shipCoreFilename;
                 ShipCores.Add(newShipCore);
                 Utils.Log($"Loaded Core {newShipCore.UniqueName} From: {mod.FriendlyName}", 1, "Ship Core Config");
             }

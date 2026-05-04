@@ -88,6 +88,12 @@ namespace ShipCoreFramework
         public int MaxCount = -1;
 
         [XmlIgnore]
+        internal string ConfigSource = string.Empty;
+
+        [XmlIgnore]
+        internal string ConfigFile = string.Empty;
+
+        [XmlIgnore]
         public readonly HashSet<string> CoreSubtypeIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     }
 
@@ -190,6 +196,12 @@ namespace ShipCoreFramework
         [XmlElement("BlockLimits")]
         public BlockLimit[] BlockLimits = Array.Empty<BlockLimit>();
 
+        [XmlIgnore]
+        internal string ConfigSource = string.Empty;
+
+        [XmlIgnore]
+        internal string ConfigFile = string.Empty;
+
         public bool IsUpgradeModuleAllowed(string moduleSubtypeId)
         {
             return !string.IsNullOrWhiteSpace(moduleSubtypeId) && 
@@ -253,6 +265,12 @@ namespace ShipCoreFramework
 
         [XmlElement("BlockLimitModifiers")]
         public BlockLimitModifier[] BlockLimitModifiers = Array.Empty<BlockLimitModifier>();
+
+        [XmlIgnore]
+        internal string ConfigSource = string.Empty;
+
+        [XmlIgnore]
+        internal string ConfigFile = string.Empty;
     }
 
     [XmlRoot("Modifiers")]
@@ -447,6 +465,12 @@ namespace ShipCoreFramework
 
         [XmlElement("BlockTypes")]
         public List<BlockType> BlockTypes = new List<BlockType>();
+
+        [XmlIgnore]
+        internal string ConfigSource = string.Empty;
+
+        [XmlIgnore]
+        internal string ConfigFile = string.Empty;
     }
 
     [XmlRoot("BlockType")]
