@@ -29,8 +29,8 @@ namespace ShipCoreFramework
                     grid.Physics != null);
                 if (referenceGrid == null) return 0f;
 
-                float dryMass = 0;
-                float wetMass = 0;
+                float dryMass;
+                float wetMass;
                 try
                 {
                     referenceGrid.GetCurrentMass(out dryMass, out wetMass, GridLinkTypeEnum.Mechanical);
