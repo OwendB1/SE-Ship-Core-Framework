@@ -251,6 +251,21 @@ namespace ShipCoreFramework
                 });
             }
 
+            if (ShipCore.MinBlocks > 0)
+            {
+                var passed = GroupComponent.GroupBlocksCount >= ShipCore.MinBlocks;
+                var target = ShipCore.MinBlocks.ToString();
+
+                _gridResultsTable.Rows.Add(new Row
+                {
+                    new Cell("Min Blocks: "),
+                    new Cell(GroupComponent.GroupBlocksCount.ToString()),
+                    new Cell("/"),
+                    new Cell(target, passed ? successColor : failColor),
+                    passed ? new Cell() : new Cell("X", failColor)
+                });
+            }
+
             if (ShipCore.MaxMass > 1)
             {
                 var passed = Grid.Mass <= ShipCore.MaxMass;

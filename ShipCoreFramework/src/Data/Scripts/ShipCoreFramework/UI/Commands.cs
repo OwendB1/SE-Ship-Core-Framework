@@ -699,6 +699,13 @@ namespace ShipCoreFramework
 
             // Grid Statistics
             body += "Grid Statistics:\n";
+
+            if (shipCore.MinBlocks > 0)
+            {
+                var minBlocksStatus = $"{groupComponent.GroupBlocksCount} / {shipCore.MinBlocks}";
+                var minBlocksPassed = groupComponent.GroupBlocksCount >= shipCore.MinBlocks;
+                body += $"  Min Blocks: {minBlocksStatus} ({(minBlocksPassed ? "met" : "below minimum")})\n";
+            }
             
             // Block Count
             var blockCountStatus = shipCore.MaxBlocks > 0 ? $"{groupComponent.GroupBlocksCount} / {shipCore.MaxBlocks}" : groupComponent.GroupBlocksCount.ToString();
