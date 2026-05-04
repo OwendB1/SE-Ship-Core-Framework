@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.ModAPI;
@@ -21,9 +22,24 @@ namespace ShipCoreFramework
         internal float GroupMass {
             get
             {
+                var referenceGrid = GridDictionary.Keys.FirstOrDefault(grid =>
+                    grid != null &&
+                    !grid.MarkedForClose &&
+                    !grid.Closed &&
+                    grid.Physics != null);
+                if (referenceGrid == null) return 0f;
+
                 float dryMass = 0;
                 float wetMass = 0;
-                GridDictionary.Keys.FirstOrDefault()?.GetCurrentMass(out dryMass, out wetMass, GridLinkTypeEnum.Mechanical);
+                try
+                {
+                    referenceGrid.GetCurrentMass(out dryMass, out wetMass, GridLinkTypeEnum.Mechanical);
+                }
+                catch (NullReferenceException)
+                {
+                    return 0f;
+                }
+
                 return Session.Config.MassTypeMode == MassTypeMode.Dry ? dryMass : wetMass;
             }
         }
