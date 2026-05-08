@@ -29,8 +29,15 @@ namespace ShipCoreFramework
                 return;
             }
 
-            _minimumBlocksLimitedBlockGateActive = GroupBlocksCount < minBlocks;
-            if (!_minimumBlocksLimitedBlockGateActive) ScheduleMinimumBlocksGateRecheck();
+            if (_minimumBlocksLimitedBlockGateActive)
+            {
+                if (IsBelowMinimumBlocksRequirement())
+                    return;
+
+                _minimumBlocksLimitedBlockGateActive = false;
+            }
+
+            ScheduleMinimumBlocksGateRecheck();
         }
 
         private bool IsMinimumBlocksLimitedBlockGateTriggered()

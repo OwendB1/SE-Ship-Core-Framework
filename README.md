@@ -55,8 +55,9 @@ Load behavior:
 - Logical groups are mechanical groups. Connectors, rotors, pistons, and similar subgrids can end up in one group depending on the game link graph.
 - Many punishment gates do not remove the core. They shut off modifiers, speed, or limited blocks instead.
 - `MinBlocks` is no longer only a one-time startup check. It also drives a limited-block punishment gate:
-  - if the group is already below minimum, limited blocks are shut off immediately
-  - if the group is healthy, it schedules a recheck about every 10 minutes
+  - falling below minimum does not shut off limited blocks immediately
+  - the group is checked on the periodic timer, about every 10 minutes
+  - if the group is still below minimum when that timer check fires, limited blocks are shut off
 - Manifest connector blacklist is separate from `CrossConnectorPunishment`.
   - `CrossConnectorPunishment` only affects limits marked with that flag and only pulls in blocks from connected no-core groups.
   - Manifest blacklist compares connected core groups and can shut off all limited blocks on the smaller blacklisted group.
@@ -167,7 +168,7 @@ The no-core file and normal core files use the same schema. Manifest groups and 
 | `ForceBroadCastRange` | `float` | Beacon radius forced onto tracked beacons. | Used when `ForceBroadCast=true`. |
 | `MobilityType` | `Static`, `Mobile`, `Both` | Allowed grid mobility type for the group. | Mismatch punishes both speed and modifiers. |
 | `MaxBlocks` | `int` | Maximum allowed total blocks in the logical group. | New blocks are removed if they exceed this. At/over cap also triggers capacity punishment. Negative disables. |
-| `MinBlocks` | `int` | Minimum blocks required to keep limited blocks enabled. | Below this shuts off limited blocks. Healthy groups still recheck about every 10 minutes. Negative disables. |
+| `MinBlocks` | `int` | Minimum blocks required to keep limited blocks enabled. | Falling below this does not punish immediately. The group is rechecked on the periodic timer, about every 10 minutes, and limited blocks are shut off only if it is still below minimum at that check. Negative disables. |
 | `MaxMass` | `float` | Maximum allowed total group mass. | Uses `MassTypeMode` to choose dry or wet mass. New blocks are removed if they exceed this. Negative disables. |
 | `MaxPCU` | `int` | Maximum allowed total group PCU. | New blocks are removed if they exceed this. Negative disables. |
 | `MaxPerFaction` | `int` | Fixed cap on how many groups of this core a faction may own. | `-1` disables fixed faction cap. |

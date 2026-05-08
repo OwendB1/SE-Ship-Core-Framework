@@ -5,8 +5,6 @@
   </ShipCore>
   <ShipCore>
     <Filename>Data\Cores\Combat Grids\Cruiser_Core.xml</Filename>
-    <BlacklistedCoreSubtypeId>Fighter_Core</BlacklistedCoreSubtypeId>
-    <BlacklistedCoreSubtypeId>Interceptor_Core</BlacklistedCoreSubtypeId>
   </ShipCore>
   <ShipCore>
     <Filename>Data\Cores\Combat Grids\Destroyer_Core.xml</Filename>
