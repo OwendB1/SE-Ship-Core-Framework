@@ -99,6 +99,9 @@ namespace ShipCoreFramework
 
         [XmlElement("Group")]
         public List<string> Groups = new List<string>();
+
+        [XmlElement("BlacklistedCoreSubtypeId")]
+        public List<string> BlacklistedCoreSubtypeIds = new List<string>();
     }
 
     [XmlRoot("ManifestUpgradeModule")]

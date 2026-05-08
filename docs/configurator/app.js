@@ -291,6 +291,10 @@ function normalizeManifestGroupNames(groupNames = [], manifestGroups = state.man
   }));
 }
 
+function normalizeManifestBlacklistSubtypeIds(subtypeIds = []) {
+  return dedupeStrings((subtypeIds || []).map((subtypeId) => String(subtypeId ?? "").trim()));
+}
+
 function parseManifestXml(text) {
   const doc = parseXml(text);
   const root = xmlRoot(doc);
@@ -313,7 +317,10 @@ function parseManifestXml(text) {
   const currentShipCores = qselAll(root, "ShipCore")
     .map((entryNode) => ({
       filename: textOf(entryNode, "Filename"),
-      groups: dedupeStrings(qselAll(entryNode, "Group").map((groupNode) => groupNode.textContent.trim()))
+      groups: dedupeStrings(qselAll(entryNode, "Group").map((groupNode) => groupNode.textContent.trim())),
+      blacklistedCoreSubtypeIds: normalizeManifestBlacklistSubtypeIds(
+        qselAll(entryNode, "BlacklistedCoreSubtypeId").map((subtypeNode) => subtypeNode.textContent.trim())
+      )
     }))
     .filter((entry) => entry.filename);
 
@@ -326,7 +333,7 @@ function parseManifestXml(text) {
   const legacyShipCores = qselAll(root, "ShipCoreFilenames")
     .map((node) => node.textContent.trim())
     .filter(Boolean)
-    .map((filename) => ({ filename, groups: [] }));
+    .map((filename) => ({ filename, groups: [], blacklistedCoreSubtypeIds: [] }));
 
   const legacyUpgradeModules = qselAll(root, "UpgradeModuleFilenames")
     .map((node) => node.textContent.trim())
@@ -335,9 +342,15 @@ function parseManifestXml(text) {
 
   const shipCoreMap = new Map();
   [...legacyShipCores, ...currentShipCores].forEach((entry) => {
-    shipCoreMap.set(entry.filename.trim().toLowerCase(), {
+    const key = entry.filename.trim().toLowerCase();
+    const existing = shipCoreMap.get(key);
+    shipCoreMap.set(key, {
       filename: entry.filename.trim(),
-      groups: dedupeStrings(entry.groups)
+      groups: dedupeStrings([...(existing?.groups || []), ...(entry.groups || [])]),
+      blacklistedCoreSubtypeIds: normalizeManifestBlacklistSubtypeIds([
+        ...(existing?.blacklistedCoreSubtypeIds || []),
+        ...(entry.blacklistedCoreSubtypeIds || [])
+      ])
     });
   });
 
@@ -356,7 +369,8 @@ function parseManifestXml(text) {
     groups: manifestGroups,
     shipCores: Array.from(shipCoreMap.values()).map((entry) => ({
       ...entry,
-      groups: normalizeManifestGroupNames(entry.groups, manifestGroups)
+      groups: normalizeManifestGroupNames(entry.groups, manifestGroups),
+      blacklistedCoreSubtypeIds: normalizeManifestBlacklistSubtypeIds(entry.blacklistedCoreSubtypeIds)
     })),
     upgradeModules: Array.from(upgradeModuleMap.values()),
     sourceFormat
@@ -482,6 +496,7 @@ function createDefaultCore() {
     speedLimitType: "Normal",
     enableActiveDefenseModifiers: false,
     manifestGroups: [],
+    manifestBlacklistedCoreSubtypeIds: [],
     allowedUpgradeModules: [],
     modifiers: { ...DEFAULT_GRID_MODIFIERS },
     speedModifiers: { ...DEFAULT_SPEED_MODIFIERS },
@@ -599,7 +614,7 @@ function removeManifestGroupReferences(groupNameToRemove) {
 }
 
 function addShipCore(core = createDefaultCore()) {
-  state.shipCores.push({ ...createDefaultCore(), ...core });
+  state.shipCores.push(cloneShipCore(core));
   state.selectedCoreIndex = state.shipCores.length;
   renderManifestGroups();
   renderShipCores();
@@ -652,6 +667,11 @@ function cloneShipCore(core = createDefaultCore()) {
     ...core,
     outputDirectory: normalizeOutputDirectory(core.outputDirectory, state.outputCoreDirectory || "Data/Cores/"),
     manifestGroups: normalizeManifestGroupNames(Array.isArray(core?.manifestGroups) ? core.manifestGroups.map((groupName) => String(groupName ?? "").trim()) : []),
+    manifestBlacklistedCoreSubtypeIds: normalizeManifestBlacklistSubtypeIds(
+      Array.isArray(core?.manifestBlacklistedCoreSubtypeIds)
+        ? core.manifestBlacklistedCoreSubtypeIds.map((subtypeId) => String(subtypeId ?? "").trim())
+        : []
+    ),
     allowedUpgradeModules: Array.isArray(core.allowedUpgradeModules)
       ? core.allowedUpgradeModules.map((entry) => ({
           subtypeId: String(entry.subtypeId ?? ""),
@@ -803,6 +823,53 @@ function manifestGroupCheckboxesForCore(coreIndex, selected = []) {
     .join("");
 }
 
+function manifestBlacklistCheckboxesForCore(coreIndex, selected = []) {
+  return state.shipCores
+    .filter((_, idx) => idx !== coreIndex - 1)
+    .filter((core) => String(core?.subtypeId ?? "").trim())
+    .map((core) => {
+      const subtypeId = String(core.subtypeId).trim();
+      const label = core.uniqueName?.trim() ? `${subtypeId} (${core.uniqueName.trim()})` : subtypeId;
+      const isSelected = selected.includes(subtypeId);
+      return `<label class="group-checklist-item ${isSelected ? "selected" : ""}">
+      <input data-action="core-manifest-blacklist-toggle" data-c="${coreIndex}" data-blacklisted-subtype="${escapeXml(subtypeId)}" type="checkbox" ${isSelected ? "checked" : ""} />
+      <span>${escapeXml(label)}</span>
+    </label>`;
+    })
+    .join("");
+}
+
+function manifestCoreEntryEditors() {
+  if (!state.shipCores.length) {
+    return `<p class="muted">Add ship cores to configure manifest entries.</p>`;
+  }
+
+  return state.shipCores.map((core, idx) => {
+    const selectorIndex = idx + 1;
+    const coreLabel = core.subtypeId?.trim() || core.uniqueName?.trim() || `Unnamed Core ${idx + 1}`;
+    const manifestPath = buildCoreOutputPath(core, deriveCoreFilename(core));
+    const manifestGroupsMarkup = state.manifestGroups.filter((group) => group.name.trim()).length
+      ? `<div class="group-checklist">${manifestGroupCheckboxesForCore(selectorIndex, core.manifestGroups || [])}</div>`
+      : `<p class="muted">No manifest groups defined yet.</p>`;
+    const blacklistMarkup = state.shipCores.filter((candidate, candidateIdx) => candidateIdx !== idx && String(candidate?.subtypeId ?? "").trim()).length
+      ? `<div class="group-checklist">${manifestBlacklistCheckboxesForCore(selectorIndex, core.manifestBlacklistedCoreSubtypeIds || [])}</div>`
+      : `<p class="muted">No other ship core subtypes available to blacklist yet.</p>`;
+
+    return `
+      <div class="card">
+        <div class="row wrap">
+          <strong>${escapeXml(coreLabel)}</strong>
+          <span class="muted">${escapeXml(manifestPath)}</span>
+        </div>
+        <h4>Manifest Groups</h4>
+        ${manifestGroupsMarkup}
+        <h4>Connector Blacklist</h4>
+        ${blacklistMarkup}
+      </div>
+    `;
+  }).join("");
+}
+
 function renderManifestGroupSelector() {
   ensureValidSelectedIndexes();
   const selector = ids("selectedManifestGroup");
@@ -820,28 +887,34 @@ function renderManifestGroupSelector() {
 function renderManifestGroups() {
   renderManifestGroupSelector();
 
-  if (state.selectedManifestGroupIndex < 0) {
-    ids("manifestGroups").innerHTML = `<p class="muted">No manifest groups yet. Click <strong>Add Manifest Group</strong>.</p>`;
-    return;
+  let manifestGroupEditor = `<p class="muted">No manifest groups yet. Click <strong>Add Manifest Group</strong>.</p>`;
+
+  if (state.selectedManifestGroupIndex >= 0) {
+    const groupIndex = state.selectedManifestGroupIndex;
+    const group = state.manifestGroups[groupIndex];
+    const assignedCoreCount = state.shipCores.filter((core) => normalizeManifestGroupNames(core.manifestGroups || []).includes(group.name)).length;
+
+    manifestGroupEditor = `
+      <div class="card">
+        <div class="row wrap">
+          <label class="inline">Group Name <input data-action="manifest-name" data-gm="${groupIndex}" placeholder="Manifest Group Name" value="${escapeXml(group.name)}" /></label>
+          <label class="inline">MaxCount <input data-action="manifest-max" data-gm="${groupIndex}" class="small" type="number" min="0" value="${Number(group.maxCount)}" /></label>
+          <button data-action="duplicate-manifest-group" data-gm="${groupIndex}">Duplicate Group</button>
+          <button data-action="remove-manifest-group" data-gm="${groupIndex}">Delete Group</button>
+        </div>
+        <p class="muted">Assigned ship cores: ${assignedCoreCount}</p>
+        ${state.shipCores.length
+          ? `<div class="group-checklist">${manifestGroupCoreCheckboxes(groupIndex)}</div>`
+          : `<p class="muted">Add ship cores, then assign them to this manifest group here.</p>`}
+      </div>
+    `;
   }
 
-  const groupIndex = state.selectedManifestGroupIndex;
-  const group = state.manifestGroups[groupIndex];
-  const assignedCoreCount = state.shipCores.filter((core) => normalizeManifestGroupNames(core.manifestGroups || []).includes(group.name)).length;
-
   ids("manifestGroups").innerHTML = `
-    <div class="card">
-      <div class="row wrap">
-        <label class="inline">Group Name <input data-action="manifest-name" data-gm="${groupIndex}" placeholder="Manifest Group Name" value="${escapeXml(group.name)}" /></label>
-        <label class="inline">MaxCount <input data-action="manifest-max" data-gm="${groupIndex}" class="small" type="number" min="0" value="${Number(group.maxCount)}" /></label>
-        <button data-action="duplicate-manifest-group" data-gm="${groupIndex}">Duplicate Group</button>
-        <button data-action="remove-manifest-group" data-gm="${groupIndex}">Delete Group</button>
-      </div>
-      <p class="muted">Assigned ship cores: ${assignedCoreCount}</p>
-      ${state.shipCores.length
-        ? `<div class="group-checklist">${manifestGroupCoreCheckboxes(groupIndex)}</div>`
-        : `<p class="muted">Add ship cores, then assign them to this manifest group here.</p>`}
-    </div>
+    ${manifestGroupEditor}
+    <h3>Manifest Core Entries</h3>
+    <p class="muted">Configure per-core manifest groups and connector blacklist entries here.</p>
+    ${manifestCoreEntryEditors()}
   `;
 }
 
@@ -1715,7 +1788,8 @@ ${cores
     .filter((entry) => entry.core.subtypeId.trim())
     .map((entry) => {
       const groups = getValidManifestGroupNamesForCore(entry.core);
-      return `  <ShipCore>\n    <Filename>${escapeXml(entry.outputPath)}</Filename>${groups.length ? `\n${groups.map((groupName) => `    <Group>${escapeXml(groupName)}</Group>`).join("\n")}` : ""}\n  </ShipCore>`;
+      const blacklistedCoreSubtypeIds = normalizeManifestBlacklistSubtypeIds(entry.core.manifestBlacklistedCoreSubtypeIds || []);
+      return `  <ShipCore>\n    <Filename>${escapeXml(entry.outputPath)}</Filename>${groups.length ? `\n${groups.map((groupName) => `    <Group>${escapeXml(groupName)}</Group>`).join("\n")}` : ""}${blacklistedCoreSubtypeIds.length ? `\n${blacklistedCoreSubtypeIds.map((subtypeId) => `    <BlacklistedCoreSubtypeId>${escapeXml(subtypeId)}</BlacklistedCoreSubtypeId>`).join("\n")}` : ""}\n  </ShipCore>`;
     })
     .join("\n")}
 ${upgradeModules
@@ -2150,6 +2224,16 @@ document.addEventListener("change", (event) => {
     selectedCore.manifestGroups = normalizeManifestGroupNames(Array.from(selectedSet));
     renderEditors();
   }
+  if (action === "core-manifest-blacklist-toggle" && inputElement) {
+    const blacklistedSubtype = inputElement.dataset.blacklistedSubtype || "";
+    if (!blacklistedSubtype) return;
+
+    const selectedSet = new Set(selectedCore.manifestBlacklistedCoreSubtypeIds || []);
+    if (inputElement.checked) selectedSet.add(blacklistedSubtype);
+    else selectedSet.delete(blacklistedSubtype);
+    selectedCore.manifestBlacklistedCoreSubtypeIds = normalizeManifestBlacklistSubtypeIds(Array.from(selectedSet));
+    renderManifestGroups();
+  }
 
   if (action === "upgrade-mod-type" && selectElement) selectedUpgrade.modifiers[upgradeModifierIndex].modifierType = selectElement.value;
   if (action === "upgrade-limit-type" && selectElement) selectedUpgrade.blockLimitModifiers[blockLimitModifierIndex].modifierType = selectElement.value;
@@ -2423,6 +2507,7 @@ async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, cor
   const status = [...initialStatus];
   const manifestCoreDirectoriesByFilename = new Map();
   const manifestCoreGroupsByFilename = new Map();
+  const manifestCoreBlacklistByFilename = new Map();
 
   resetEditor(false);
   // Store passthrough files (SBCs and unrecognised files) for re-inclusion in Download All
@@ -2458,6 +2543,7 @@ async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, cor
         );
         state.manifestCoreFullPathByFilename.set(fileName.toLowerCase(), normalizedPath);
         manifestCoreGroupsByFilename.set(fileName.toLowerCase(), dedupeStrings(entry.groups));
+        manifestCoreBlacklistByFilename.set(fileName.toLowerCase(), normalizeManifestBlacklistSubtypeIds(entry.blacklistedCoreSubtypeIds));
       });
 
       state.outputCoreDirectory = getManifestDirectory(listed, "Data/Cores/", "core", status);
@@ -2519,6 +2605,9 @@ async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, cor
           parsed.originalFileName = manifestFileName || file.name;
         }
         parsed.manifestGroups = normalizeManifestGroupNames(manifestCoreGroupsByFilename.get(file.name.trim().toLowerCase()) || [], state.manifestGroups);
+        parsed.manifestBlacklistedCoreSubtypeIds = normalizeManifestBlacklistSubtypeIds(
+          manifestCoreBlacklistByFilename.get(file.name.trim().toLowerCase()) || []
+        );
         state.shipCores.push(parsed);
         status.push(`Loaded core '${parsed.subtypeId || file.name}'.`);
       }
