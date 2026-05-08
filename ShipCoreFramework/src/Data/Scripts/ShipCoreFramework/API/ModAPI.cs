@@ -519,6 +519,32 @@ namespace ShipCoreFramework
                 Utils.Log($"ModAPI.BroadcastGridRemovedFromGroup: Exception - {ex}", 3);
             }
         }
+
+        /// <summary>
+        /// Broadcasts the effective mod config after client receives synced world settings from server.
+        /// </summary>
+        internal static void BroadcastConfigReceived()
+        {
+            if (!_isInitialized) return;
+
+            try
+            {
+                var eventData = new ConfigReceivedEventArgs
+                {
+                    Config = ConvertToModConfigData(Session.Config),
+                    Timestamp = DateTime.UtcNow
+                };
+
+                var payload = MyAPIGateway.Utilities.SerializeToBinary(eventData);
+                MyAPIGateway.Utilities.SendModMessage(ApiConstants.EVENT_CONFIG_RECEIVED, payload);
+
+                Utils.Log("ModAPI Event: ConfigReceived", 1);
+            }
+            catch (Exception ex)
+            {
+                Utils.Log($"ModAPI.BroadcastConfigReceived: Exception - {ex}", 3);
+            }
+        }
         
         /// <summary>
         /// Gets the speed modifiers for a grid's active core.
@@ -887,6 +913,12 @@ namespace ShipCoreFramework
                         MinimumFrictionSpeedModifier = 0f,
                         MaximumFrictionSpeedModifier = 0f
                     },
+                    ManifestGroupNames = Array.Empty<string>(),
+                    ConnectorBlacklistCoreSubtypeIds = Array.Empty<string>(),
+                    MaxBackupCores = -1,
+                    AllowedUpgradeModules = Array.Empty<UpgradeModuleAllowanceData>(),
+                    SpeedLimitTypeData = SpeedLimitTypeData.Normal,
+                    BlockLimits = Array.Empty<BlockLimitData>(),
                     ManifestGroupName = string.Empty,
                     ManifestGroupMaxCount = -1,
                     ManifestGroupCurrentCount = 0,
@@ -922,6 +954,24 @@ namespace ShipCoreFramework
                 MinBlocks = core.MinBlocks,
                 MaxPlayers = core.MaxPlayers,
                 FactionPlayersNeededPerCore = core.FactionPlayersNeededPerCore,
+                ManifestGroupNames = core.ManifestGroupNames
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                ConnectorBlacklistCoreSubtypeIds = core.ConnectorBlacklistCoreSubtypeIds
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                MaxBackupCores = core.MaxBackupCores,
+                AllowedUpgradeModules = (core.AllowedUpgradeModules ?? Array.Empty<UpgradeModuleAllowance>())
+                    .Where(allowance => allowance != null)
+                    .Select(ConvertToUpgradeModuleAllowanceData)
+                    .ToArray(),
+                SpeedLimitTypeData = (SpeedLimitTypeData)(int)core.SpeedLimitType,
+                BlockLimits = (core.BlockLimits ?? Array.Empty<BlockLimit>())
+                    .Where(limit => limit != null)
+                    .Select(ConvertToBlockLimitData)
+                    .ToArray(),
                 ManifestGroupName = primaryManifestGroup?.Name ?? string.Empty,
                 ManifestGroupMaxCount = primaryManifestGroup?.MaxCount ?? -1,
                 ManifestGroupCurrentCount = primaryManifestGroup?.CurrentCount ?? 0,
@@ -934,6 +984,264 @@ namespace ShipCoreFramework
                 DynamicBoostEnabled = false,
                 SpeedModifiers = ConvertToSpeedModifiersData(core.SpeedModifiers),
                 IsDeactivated = isDeactivated
+            };
+        }
+
+        private static ModConfigData ConvertToModConfigData(ModConfig config)
+        {
+            if (config == null)
+            {
+                return new ModConfigData
+                {
+                    IgnoredFactionTags = Array.Empty<string>(),
+                    NoFlyZones = Array.Empty<NoFlyZoneData>(),
+                    NoCoreConfigs = Array.Empty<ShipCoreData>(),
+                    ShipCores = Array.Empty<ShipCoreData>(),
+                    ManifestCoreGroups = Array.Empty<ManifestCoreGroupData>(),
+                    UpgradeModules = Array.Empty<UpgradeModuleConfigData>(),
+                    BlockGroups = Array.Empty<BlockGroupData>(),
+                    SelectedNoCore = ConvertToShipCoreData(null)
+                };
+            }
+
+            return new ModConfigData
+            {
+                IgnoreAiFactions = config.IgnoreAiFactions,
+                IgnoredFactionTags = (config.IgnoredFactionTags ?? new List<string>())
+                    .Where(tag => !string.IsNullOrWhiteSpace(tag))
+                    .ToArray(),
+                SelectedNoCoreUniqueName = config.SelectedNoCoreUniqueName ?? string.Empty,
+                DebugMode = config.DebugMode,
+                CombatLogging = config.CombatLogging,
+                LogLevel = config.LogLevel,
+                ClientOutputLogLevel = config.ClientOutputLogLevel,
+                MaxPossibleSpeedMetersPerSecond = config.MaxPossibleSpeedMetersPerSecond,
+                MassTypeMode = (MassTypeModeData)(int)config.MassTypeMode,
+                FrictionSpeedValueMode = (FrictionSpeedValueModeData)(int)config.FrictionSpeedValueMode,
+                NoFlyZones = config.NoFlyZones
+                    .Where(zone => zone != null)
+                    .Select(ConvertToNoFlyZoneData)
+                    .ToArray(),
+                NoCoreConfigs = config.NoCoreConfigs
+                    .Where(core => core != null)
+                    .Select(core => ConvertToShipCoreData(core))
+                    .ToArray(),
+                ShipCores = config.ShipCores
+                    .Where(core => core != null)
+                    .Select(core => ConvertToShipCoreData(core))
+                    .ToArray(),
+                ManifestCoreGroups = config.ManifestCoreGroups
+                    .Where(group => group != null)
+                    .Select(ConvertToManifestCoreGroupData)
+                    .ToArray(),
+                UpgradeModules = config.UpgradeModules
+                    .Where(module => module != null)
+                    .Select(ConvertToUpgradeModuleConfigData)
+                    .ToArray(),
+                BlockGroups = config.BlockGroups
+                    .Where(group => group != null)
+                    .Select(ConvertToBlockGroupData)
+                    .ToArray(),
+                SelectedNoCore = ConvertToShipCoreData(config.SelectedNoCore)
+            };
+        }
+
+        private static ManifestCoreGroupData ConvertToManifestCoreGroupData(ManifestCoreGroup group)
+        {
+            if (group == null)
+            {
+                return new ManifestCoreGroupData
+                {
+                    Name = string.Empty,
+                    CoreSubtypeIds = Array.Empty<string>()
+                };
+            }
+
+            return new ManifestCoreGroupData
+            {
+                Name = group.Name ?? string.Empty,
+                MaxCount = group.MaxCount,
+                CoreSubtypeIds = group.CoreSubtypeIds
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .OrderBy(id => id, StringComparer.OrdinalIgnoreCase)
+                    .ToArray()
+            };
+        }
+
+        private static NoFlyZoneData ConvertToNoFlyZoneData(Zones zone)
+        {
+            if (zone == null)
+            {
+                return new NoFlyZoneData
+                {
+                    AllowedCoresSubtype = Array.Empty<string>(),
+                    Position = new Vector3DData()
+                };
+            }
+
+            return new NoFlyZoneData
+            {
+                Id = zone.Id,
+                Position = new Vector3DData
+                {
+                    X = zone.Position.X,
+                    Y = zone.Position.Y,
+                    Z = zone.Position.Z
+                },
+                Radius = zone.Radius,
+                AllowedCoresSubtype = (zone.AllowedCoresSubtype ?? new List<string>())
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .ToArray(),
+                ForceOff = zone.ForceOff
+            };
+        }
+
+        private static UpgradeModuleAllowanceData ConvertToUpgradeModuleAllowanceData(UpgradeModuleAllowance allowance)
+        {
+            if (allowance == null)
+            {
+                return new UpgradeModuleAllowanceData
+                {
+                    SubtypeId = string.Empty
+                };
+            }
+
+            return new UpgradeModuleAllowanceData
+            {
+                SubtypeId = allowance.SubtypeId ?? string.Empty,
+                MaxCount = allowance.MaxCount
+            };
+        }
+
+        private static UpgradeModuleConfigData ConvertToUpgradeModuleConfigData(UpgradeModuleConfig module)
+        {
+            if (module == null)
+            {
+                return new UpgradeModuleConfigData
+                {
+                    SubtypeId = string.Empty,
+                    UniqueName = string.Empty,
+                    Modifiers = Array.Empty<UpgradeStatModifierData>(),
+                    BlockLimitModifiers = Array.Empty<BlockLimitModifierData>()
+                };
+            }
+
+            return new UpgradeModuleConfigData
+            {
+                SubtypeId = module.SubtypeId ?? string.Empty,
+                UniqueName = module.UniqueName ?? string.Empty,
+                Modifiers = (module.Modifiers ?? Array.Empty<UpgradeStatModifier>())
+                    .Where(modifier => modifier != null)
+                    .Select(ConvertToUpgradeStatModifierData)
+                    .ToArray(),
+                BlockLimitModifiers = (module.BlockLimitModifiers ?? Array.Empty<BlockLimitModifier>())
+                    .Where(modifier => modifier != null)
+                    .Select(ConvertToBlockLimitModifierData)
+                    .ToArray()
+            };
+        }
+
+        private static UpgradeStatModifierData ConvertToUpgradeStatModifierData(UpgradeStatModifier modifier)
+        {
+            if (modifier == null)
+            {
+                return new UpgradeStatModifierData
+                {
+                    Stat = string.Empty
+                };
+            }
+
+            return new UpgradeStatModifierData
+            {
+                Stat = modifier.Stat ?? string.Empty,
+                Value = modifier.Value,
+                ModifierType = (UpgradeModifierOperationData)(int)modifier.ModifierType
+            };
+        }
+
+        private static BlockLimitModifierData ConvertToBlockLimitModifierData(BlockLimitModifier modifier)
+        {
+            if (modifier == null)
+            {
+                return new BlockLimitModifierData
+                {
+                    BlockLimitName = string.Empty
+                };
+            }
+
+            return new BlockLimitModifierData
+            {
+                BlockLimitName = modifier.BlockLimitName ?? string.Empty,
+                Value = modifier.Value,
+                ModifierType = (UpgradeModifierOperationData)(int)modifier.ModifierType
+            };
+        }
+
+        private static BlockLimitData ConvertToBlockLimitData(BlockLimit limit)
+        {
+            if (limit == null)
+            {
+                return new BlockLimitData
+                {
+                    Name = string.Empty,
+                    BlockGroupNames = Array.Empty<string>(),
+                    AllowedDirections = Array.Empty<DirectionTypeData>()
+                };
+            }
+
+            return new BlockLimitData
+            {
+                Name = limit.Name ?? string.Empty,
+                BlockGroupNames = (limit.BlockGroupsShortHand ?? Array.Empty<string>())
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .ToArray(),
+                MaxCount = limit.MaxCount,
+                CrossConnectorPunishment = limit.CrossConnectorPunishment,
+                PunishByNoFlyZone = limit.PunishByNoFlyZone,
+                PunishmentType = (PunishmentTypeData)(int)limit.PunishmentType,
+                AllowedDirections = (limit.AllowedDirections ?? new List<DirectionType>())
+                    .Select(direction => (DirectionTypeData)(int)direction)
+                    .ToArray()
+            };
+        }
+
+        private static BlockGroupData ConvertToBlockGroupData(BlockGroup group)
+        {
+            if (group == null)
+            {
+                return new BlockGroupData
+                {
+                    Name = string.Empty,
+                    BlockTypes = Array.Empty<BlockTypeData>()
+                };
+            }
+
+            return new BlockGroupData
+            {
+                Name = group.Name ?? string.Empty,
+                BlockTypes = (group.BlockTypes ?? new List<BlockType>())
+                    .Where(blockType => blockType != null)
+                    .Select(ConvertToBlockTypeData)
+                    .ToArray()
+            };
+        }
+
+        private static BlockTypeData ConvertToBlockTypeData(BlockType blockType)
+        {
+            if (blockType == null)
+            {
+                return new BlockTypeData
+                {
+                    TypeId = string.Empty,
+                    SubtypeId = string.Empty
+                };
+            }
+
+            return new BlockTypeData
+            {
+                TypeId = blockType.TypeId ?? string.Empty,
+                SubtypeId = blockType.SubtypeId ?? string.Empty,
+                CountWeight = blockType.CountWeight
             };
         }
 

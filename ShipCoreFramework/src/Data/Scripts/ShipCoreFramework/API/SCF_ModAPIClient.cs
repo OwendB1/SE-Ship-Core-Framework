@@ -90,6 +90,11 @@ namespace ShipCoreFramework
         /// </summary>
         public event Action<GridGroupEventArgs> GridRemovedFromGroup;
 
+        /// <summary>
+        /// Fired when synced config is received from server and applied locally.
+        /// </summary>
+        public event Action<ConfigReceivedEventArgs> ConfigReceived;
+
         // ===== Optional resolved events (convenience) =====
         //
         // These provide best-effort resolution of the involved grid(s) and logical group.
@@ -127,6 +132,7 @@ namespace ShipCoreFramework
             MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_ACTIVE_DEFENSE_DEACTIVATED, OnActiveDefenseDeactivated);
             MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_GRID_ADDED_TO_GROUP, OnGridAddedToGroup);
             MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_GRID_REMOVED_FROM_GROUP, OnGridRemovedFromGroup);
+            MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_CONFIG_RECEIVED, OnConfigReceived);
         }
 
         /// <summary>
@@ -147,6 +153,7 @@ namespace ShipCoreFramework
             MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_ACTIVE_DEFENSE_DEACTIVATED, OnActiveDefenseDeactivated);
             MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_GRID_ADDED_TO_GROUP, OnGridAddedToGroup);
             MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_GRID_REMOVED_FROM_GROUP, OnGridRemovedFromGroup);
+            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_CONFIG_RECEIVED, OnConfigReceived);
 
             IsReady = false;
             ProviderApiVersion = 0;
@@ -824,6 +831,13 @@ namespace ShipCoreFramework
             var groupGrid = ResolveGrid(e.GroupGridId);
             var group = ResolveLogicalGroup(groupGrid ?? grid);
             GridRemovedFromGroupResolved(e, grid, groupGrid, group);
+        }
+
+        private void OnConfigReceived(object obj)
+        {
+            var e = Deserialize<ConfigReceivedEventArgs>(obj);
+            if (e == null) return;
+            ConfigReceived?.Invoke(e);
         }
 
         /// <summary>

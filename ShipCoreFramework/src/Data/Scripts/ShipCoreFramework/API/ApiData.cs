@@ -32,7 +32,7 @@ namespace ShipCoreFramework
         /// Increment when you add functionality in a backwards compatible way.
         /// Minor version changes remain compatible as long as the major version matches.
         /// </summary>
-        public const int API_MINOR = 4;
+        public const int API_MINOR = 5;
 
         /// <summary>
         /// Encoded API version (Major.Minor) packed into a single int.
@@ -86,6 +86,7 @@ namespace ShipCoreFramework
         public const long EVENT_ACTIVE_DEFENSE_DEACTIVATED = 3217652406L;
         public const long EVENT_GRID_ADDED_TO_GROUP = 3217652407L;
         public const long EVENT_GRID_REMOVED_FROM_GROUP = 3217652408L;
+        public const long EVENT_CONFIG_RECEIVED = 3217652409L;
     }
 
     /// <summary>
@@ -310,7 +311,6 @@ namespace ShipCoreFramework
 
     /// <summary>
     /// Ship Core configuration data.
-    /// This is a lightweight DTO containing essential core information.
     /// </summary>
     [ProtoContract]
     public class ShipCoreData
@@ -341,6 +341,12 @@ namespace ShipCoreFramework
         [ProtoMember(24)] public int ManifestGroupMaxCount;
         [ProtoMember(25)] public int ManifestGroupCurrentCount;
         [ProtoMember(26)] public ManifestGroupLimitData[] ManifestGroups = Array.Empty<ManifestGroupLimitData>();
+        [ProtoMember(27)] public string[] ManifestGroupNames = Array.Empty<string>();
+        [ProtoMember(28)] public string[] ConnectorBlacklistCoreSubtypeIds = Array.Empty<string>();
+        [ProtoMember(29)] public int MaxBackupCores;
+        [ProtoMember(30)] public UpgradeModuleAllowanceData[] AllowedUpgradeModules = Array.Empty<UpgradeModuleAllowanceData>();
+        [ProtoMember(31)] public SpeedLimitTypeData SpeedLimitTypeData;
+        [ProtoMember(32)] public BlockLimitData[] BlockLimits = Array.Empty<BlockLimitData>();
     }
 
     [ProtoContract]
@@ -349,6 +355,116 @@ namespace ShipCoreFramework
         [ProtoMember(1)] public string Name;
         [ProtoMember(2)] public int MaxCount;
         [ProtoMember(3)] public int CurrentCount;
+    }
+
+    /// <summary>
+    /// Full effective mod configuration data.
+    /// </summary>
+    [ProtoContract]
+    public class ModConfigData
+    {
+        [ProtoMember(1)] public bool IgnoreAiFactions;
+        [ProtoMember(2)] public string[] IgnoredFactionTags = Array.Empty<string>();
+        [ProtoMember(3)] public string SelectedNoCoreUniqueName;
+        [ProtoMember(4)] public bool DebugMode;
+        [ProtoMember(5)] public bool CombatLogging;
+        [ProtoMember(6)] public int LogLevel;
+        [ProtoMember(7)] public int ClientOutputLogLevel;
+        [ProtoMember(8)] public float MaxPossibleSpeedMetersPerSecond;
+        [ProtoMember(9)] public MassTypeModeData MassTypeMode;
+        [ProtoMember(10)] public FrictionSpeedValueModeData FrictionSpeedValueMode;
+        [ProtoMember(11)] public NoFlyZoneData[] NoFlyZones = Array.Empty<NoFlyZoneData>();
+        [ProtoMember(12)] public ShipCoreData[] NoCoreConfigs = Array.Empty<ShipCoreData>();
+        [ProtoMember(13)] public ShipCoreData[] ShipCores = Array.Empty<ShipCoreData>();
+        [ProtoMember(14)] public ManifestCoreGroupData[] ManifestCoreGroups = Array.Empty<ManifestCoreGroupData>();
+        [ProtoMember(15)] public UpgradeModuleConfigData[] UpgradeModules = Array.Empty<UpgradeModuleConfigData>();
+        [ProtoMember(16)] public ShipCoreData SelectedNoCore;
+        [ProtoMember(17)] public BlockGroupData[] BlockGroups = Array.Empty<BlockGroupData>();
+    }
+
+    [ProtoContract]
+    public class ManifestCoreGroupData
+    {
+        [ProtoMember(1)] public string Name;
+        [ProtoMember(2)] public int MaxCount;
+        [ProtoMember(3)] public string[] CoreSubtypeIds = Array.Empty<string>();
+    }
+
+    [ProtoContract]
+    public class NoFlyZoneData
+    {
+        [ProtoMember(1)] public int Id;
+        [ProtoMember(2)] public Vector3DData Position;
+        [ProtoMember(3)] public double Radius;
+        [ProtoMember(4)] public string[] AllowedCoresSubtype = Array.Empty<string>();
+        [ProtoMember(5)] public bool ForceOff;
+    }
+
+    [ProtoContract]
+    public class Vector3DData
+    {
+        [ProtoMember(1)] public double X;
+        [ProtoMember(2)] public double Y;
+        [ProtoMember(3)] public double Z;
+    }
+
+    [ProtoContract]
+    public class UpgradeModuleAllowanceData
+    {
+        [ProtoMember(1)] public string SubtypeId;
+        [ProtoMember(2)] public int MaxCount;
+    }
+
+    [ProtoContract]
+    public class UpgradeModuleConfigData
+    {
+        [ProtoMember(1)] public string SubtypeId;
+        [ProtoMember(2)] public string UniqueName;
+        [ProtoMember(3)] public UpgradeStatModifierData[] Modifiers = Array.Empty<UpgradeStatModifierData>();
+        [ProtoMember(4)] public BlockLimitModifierData[] BlockLimitModifiers = Array.Empty<BlockLimitModifierData>();
+    }
+
+    [ProtoContract]
+    public class UpgradeStatModifierData
+    {
+        [ProtoMember(1)] public string Stat;
+        [ProtoMember(2)] public float Value;
+        [ProtoMember(3)] public UpgradeModifierOperationData ModifierType;
+    }
+
+    [ProtoContract]
+    public class BlockLimitModifierData
+    {
+        [ProtoMember(1)] public string BlockLimitName;
+        [ProtoMember(2)] public float Value;
+        [ProtoMember(3)] public UpgradeModifierOperationData ModifierType;
+    }
+
+    [ProtoContract]
+    public class BlockLimitData
+    {
+        [ProtoMember(1)] public string Name;
+        [ProtoMember(2)] public string[] BlockGroupNames = Array.Empty<string>();
+        [ProtoMember(3)] public float MaxCount;
+        [ProtoMember(4)] public bool CrossConnectorPunishment;
+        [ProtoMember(5)] public bool PunishByNoFlyZone;
+        [ProtoMember(6)] public PunishmentTypeData PunishmentType;
+        [ProtoMember(7)] public DirectionTypeData[] AllowedDirections = Array.Empty<DirectionTypeData>();
+    }
+
+    [ProtoContract]
+    public class BlockGroupData
+    {
+        [ProtoMember(1)] public string Name;
+        [ProtoMember(2)] public BlockTypeData[] BlockTypes = Array.Empty<BlockTypeData>();
+    }
+
+    [ProtoContract]
+    public class BlockTypeData
+    {
+        [ProtoMember(1)] public string TypeId;
+        [ProtoMember(2)] public string SubtypeId;
+        [ProtoMember(3)] public float CountWeight;
     }
 
     /// <summary>
@@ -440,6 +556,42 @@ namespace ShipCoreFramework
         Absolute = 1
     }
 
+    public enum SpeedLimitTypeData
+    {
+        Normal = 0,
+        Friction = 1
+    }
+
+    public enum MassTypeModeData
+    {
+        Dry = 0,
+        Wet = 1
+    }
+
+    public enum UpgradeModifierOperationData
+    {
+        Additive = 0,
+        Multiplicative = 1
+    }
+
+    public enum PunishmentTypeData
+    {
+        ShutOff = 0,
+        Damage = 1,
+        Delete = 2,
+        Explode = 3
+    }
+
+    public enum DirectionTypeData
+    {
+        Forward = 0,
+        Backward = 1,
+        Up = 2,
+        Down = 3,
+        Left = 4,
+        Right = 5
+    }
+
     // ===== Event Argument Classes =====
     //
     // NOTE:
@@ -524,5 +676,15 @@ namespace ShipCoreFramework
         [ProtoMember(1)] public long GridId;
         [ProtoMember(2)] public long GroupGridId;
         [ProtoMember(3)] public DateTime Timestamp;
+    }
+
+    /// <summary>
+    /// Event arguments for config synchronization from server.
+    /// </summary>
+    [ProtoContract]
+    public class ConfigReceivedEventArgs
+    {
+        [ProtoMember(1)] public ModConfigData Config;
+        [ProtoMember(2)] public DateTime Timestamp;
     }
 }

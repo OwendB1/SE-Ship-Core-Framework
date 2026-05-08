@@ -205,6 +205,7 @@ namespace ShipCoreFramework
                     Session.Config.EnsurePersistedWorldSettings();
                     Session.Config.ResolveSelectedNoCore();
                     Session.ApplyConfigToDefinitions();
+                    ModAPI.BroadcastConfigReceived();
                 }
                 catch (Exception e)
                 {
