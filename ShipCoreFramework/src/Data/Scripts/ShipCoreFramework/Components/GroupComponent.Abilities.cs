@@ -145,7 +145,7 @@ namespace ShipCoreFramework
 
         private bool IsBelowMinPlayers()
         {
-            return ShipCore.MinPlayers > 0 && GetFactionPlayerCount() < ShipCore.MinPlayers;
+            return ShipCore.MinPlayers > 0 && GetMinimumFactionPlayerCount() < ShipCore.MinPlayers;
         }
 
         private string GetCoreCapacityPunishmentReason()
@@ -187,7 +187,7 @@ namespace ShipCoreFramework
 
         private string GetBelowMinimumPlayersPunishmentReason()
         {
-            var factionPlayerCount = GetFactionPlayerCount();
+            var factionPlayerCount = GetMinimumFactionPlayerCount();
             return $"Below minimum players ({factionPlayerCount}/{ShipCore.MinPlayers})";
         }
 
@@ -200,6 +200,11 @@ namespace ShipCoreFramework
         private int GetFactionPlayerCount()
         {
             return PerFactionManager.GetFactionPlayerCount(OwningFaction, OwnerId);
+        }
+
+        private int GetMinimumFactionPlayerCount()
+        {
+            return PerFactionManager.GetFactionMemberCount(OwningFaction);
         }
 
         private bool HasBrokenMainCore()

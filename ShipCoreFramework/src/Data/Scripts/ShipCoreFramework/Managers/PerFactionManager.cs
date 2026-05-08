@@ -20,10 +20,18 @@ namespace ShipCoreFramework
 
         private static ModConfig Config => Session.Config;
 
+        internal static int GetFactionMemberCount(IMyFaction owningFaction)
+        {
+            if (owningFaction == null)
+                return 0;
+
+            return owningFaction.Members.Count(member => ShouldCountTowardsPlayerLimits(member.Key));
+        }
+
         internal static int GetFactionPlayerCount(IMyFaction owningFaction, long ownerId)
         {
             if (owningFaction != null)
-                return owningFaction.Members.Count(member => ShouldCountTowardsPlayerLimits(member.Key));
+                return GetFactionMemberCount(owningFaction);
 
             return ShouldCountTowardsPlayerLimits(ownerId) ? 1 : 0;
         }
@@ -85,8 +93,9 @@ namespace ShipCoreFramework
             var minNeededPlayers = core.MinPlayers;
             var maxAllowedPlayers = core.MaxPlayers;
             var requiresFaction = core.FactionPlayersNeededPerCore > 0;
+            var factionMemberCount = GetFactionMemberCount(owningFaction);
 
-            if (factionId == -1 && (minNeededPlayers > 1 || requiresFaction))
+            if (factionId == -1 && (minNeededPlayers > 0 || requiresFaction))
             {
                 Utils.ShowChatMessage($"Player is not in Faction [OwningPlayer:{ownerId}] and therefore cannot build faction limited core: {coreType}", playerEntityId: ownerId);
                 return false;
@@ -96,9 +105,9 @@ namespace ShipCoreFramework
             var maxAllowedGrids = GetEffectiveFactionCoreLimit(core, playerCount);
             var playerScaledLimit = GetPlayerScaledFactionCoreLimit(core, playerCount);
 
-            if (playerCount < minNeededPlayers)
+            if (factionMemberCount < minNeededPlayers)
             {
-                Utils.ShowChatMessage($"{playerCount}/{minNeededPlayers} players needed to build: {coreType}", playerEntityId: ownerId);
+                Utils.ShowChatMessage($"{factionMemberCount}/{minNeededPlayers} players needed to build: {coreType}", playerEntityId: ownerId);
                 return false;
             }
 
