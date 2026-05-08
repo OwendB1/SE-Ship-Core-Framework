@@ -692,6 +692,7 @@ function createDefaultLimit() {
     maxCount: 0,
     crossConnectorPunishment: false,
     punishByNoFlyZone: false,
+    isCriticalLimit: false,
     punishmentType: "ShutOff",
     allowedDirections: [],
     blockGroups: [],
@@ -1086,6 +1087,7 @@ function renderShipCores() {
           <div class="row wrap">
             <label class="inline">CrossConnectorPunishment <input data-action="limit-cross-connector" data-c="${coreIndex}" data-l="${limitIndex}" type="checkbox" ${limit.crossConnectorPunishment ? "checked" : ""}/></label>
             <label class="inline">PunishByNoFlyZone <input data-action="limit-punish" data-c="${coreIndex}" data-l="${limitIndex}" type="checkbox" ${limit.punishByNoFlyZone ? "checked" : ""}/></label>
+            <label class="inline">IsCriticalLimit <input data-action="limit-critical" data-c="${coreIndex}" data-l="${limitIndex}" type="checkbox" ${limit.isCriticalLimit ? "checked" : ""}/></label>
             <label class="inline">Punishment Type
               <select data-action="limit-type" data-c="${coreIndex}" data-l="${limitIndex}" class="small">
                 ${["ShutOff", "Damage", "Delete", "Explode"].map((value) => `<option ${limit.punishmentType === value ? "selected" : ""}>${value}</option>`).join("")}
@@ -1254,6 +1256,7 @@ function parseCoreXml(text, originalFileName = "") {
       maxCount: numberOf(limitNode, "MaxCount", 0),
       crossConnectorPunishment: boolOf(limitNode, "CrossConnectorPunishment", false),
       punishByNoFlyZone: boolOf(limitNode, "PunishByNoFlyZone", boolOf(limitNode, "TurnedOffByNoFlyZone", false)),
+      isCriticalLimit: boolOf(limitNode, "IsCriticalLimit", false),
       punishmentType: textOf(limitNode, "PunishmentType") || "ShutOff",
       allowedDirections: qselAll(limitNode, "AllowedDirections").map((node) => node.textContent.trim()).filter(Boolean),
       blockGroups: qselAll(limitNode, "BlockGroups").map((node) => node.textContent.trim()).filter(Boolean),
@@ -1286,6 +1289,7 @@ function writeBlockLimitXml(limit, indent = "  ") {
     `${indent}  <MaxCount>${limit.maxCount}</MaxCount>`,
     `${indent}  <CrossConnectorPunishment>${limit.crossConnectorPunishment}</CrossConnectorPunishment>`,
     `${indent}  <PunishByNoFlyZone>${limit.punishByNoFlyZone}</PunishByNoFlyZone>`,
+    `${indent}  <IsCriticalLimit>${limit.isCriticalLimit}</IsCriticalLimit>`,
     `${indent}  <PunishmentType>${escapeXml(limit.punishmentType)}</PunishmentType>`,
     ...(limit.allowedDirections || []).filter(Boolean).map((direction) => `${indent}  <AllowedDirections>${escapeXml(direction)}</AllowedDirections>`),
     `${indent}</BlockLimits>`
@@ -1442,6 +1446,7 @@ function parseLegacyLimit(limitNode) {
     maxCount: numberOf(limitNode, "MaxCount", 0),
     crossConnectorPunishment: boolOf(limitNode, "CrossConnectorPunishment", false),
     punishByNoFlyZone: boolOf(limitNode, "TurnedOffByNoFlyZone", boolOf(limitNode, "PunishByNoFlyZone", false)),
+    isCriticalLimit: boolOf(limitNode, "IsCriticalLimit", false),
     punishmentType: textOf(limitNode, "PunishmentType") || "ShutOff",
     allowedDirections: [],
     blockTypes: parseLegacyBlockTypes(limitNode),
@@ -2175,6 +2180,10 @@ document.addEventListener("change", (event) => {
   }
   if (action === "limit-cross-connector" && inputElement) {
     selectedCore.blockLimits[limitIndex].crossConnectorPunishment = inputElement.checked;
+    renderShipCores();
+  }
+  if (action === "limit-critical" && inputElement) {
+    selectedCore.blockLimits[limitIndex].isCriticalLimit = inputElement.checked;
     renderShipCores();
   }
   if (action === "limit-type" && selectElement) {

@@ -1201,7 +1201,8 @@ namespace ShipCoreFramework
                 PunishmentType = (PunishmentTypeData)(int)limit.PunishmentType,
                 AllowedDirections = (limit.AllowedDirections ?? new List<DirectionType>())
                     .Select(direction => (DirectionTypeData)(int)direction)
-                    .ToArray()
+                    .ToArray(),
+                IsCriticalLimit = limit.IsCriticalLimit
             };
         }
 

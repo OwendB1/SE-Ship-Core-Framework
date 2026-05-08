@@ -73,6 +73,11 @@ namespace ShipCoreFramework
             return PunishLimitedBlocks;
         }
 
+        internal bool ShouldForceLimitedBlocksOff(BlockLimit limit)
+        {
+            return PunishLimitedBlocks && (limit == null || !limit.IsCriticalLimit);
+        }
+
         internal void ScheduleExternalLimitValidation()
         {
             if (_closing) return;
@@ -178,6 +183,8 @@ namespace ShipCoreFramework
 
                 if (forceShutOffPunishment)
                 {
+                    if (limit.IsCriticalLimit) continue;
+
                     foreach (var block in membersCopy)
                     {
                         if (block == null || block.IsMovedBySplit || block.CubeGrid == null) continue;

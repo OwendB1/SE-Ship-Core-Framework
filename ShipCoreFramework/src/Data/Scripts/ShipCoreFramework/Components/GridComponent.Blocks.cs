@@ -209,6 +209,7 @@ namespace ShipCoreFramework
                 {
                     var limit = kv.Key;
                     if (limit == null) continue;
+                    if (!GroupComponent.ShouldForceLimitedBlocksOff(limit)) continue;
                     if (!kv.Value.Members.Contains(obj.SlimBlock)) continue;
 
                     obj.SlimBlock.WhackABlock(PunishmentType.ShutOff);

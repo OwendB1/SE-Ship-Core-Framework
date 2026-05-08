@@ -25,6 +25,7 @@ This repository contains:
 - Connector-aware limit behavior:
   - `CrossConnectorPunishment` for connected no-core grids.
   - Manifest blacklist for connected core groups.
+- Critical limits that stay exempt from min-block and manifest-blacklist total limited-block shutoff.
 - Minimum-block limited-block gate with periodic recheck.
 - External mod API.
 
@@ -264,6 +265,7 @@ Each entry uses `<BlockLimit>`.
 | `MaxCount` | `float` | Maximum allowed total weight for this limit. | Weight comes from matched `BlockType.CountWeight`. |
 | `CrossConnectorPunishment` | `bool` | Pulls blocks from connected no-core groups into this limit's bucket. | Only affects this limit. Does not control min-block or manifest-blacklist limited-block gates. |
 | `PunishByNoFlyZone` | `bool` | Applies this limit's punishment inside no-fly zones. | Only used when the zone itself is not forcing everything off. |
+| `IsCriticalLimit` | `bool` | Marks this limit as exempt from total limited-block shutoff gates. | Min-block and manifest-blacklist shutoff skip this limit. Normal limit overflow, directional checks, and no-fly-zone punishment still work normally. |
 | `PunishmentType` | `ShutOff`, `Damage`, `Delete`, `Explode` | Punishment for blocks in this limit when the limit is violated. | Limited-block gate punishment always uses `ShutOff`, regardless of this setting. |
 | `AllowedDirections` | `List<DirectionType>` | Directional lock for this limit. | If set, mismatched blocks are punished even if count is under cap. Directions are relative to the main core. |
 

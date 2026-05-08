@@ -16,11 +16,10 @@ namespace ShipCoreFramework
 
             var blockKey = KeyOf(block);
             var localizedBlockName = Utils.GetLocalizedBlockName(block);
-            var forceShutOff = !deferPunishment && GroupComponent.ShouldForceLimitedBlocksOff();
-
             foreach (var limit in limits)
             {
                 if (limit == null) continue;
+                var forceShutOff = !deferPunishment && GroupComponent.ShouldForceLimitedBlocksOff(limit);
                 var hit = limit.BlockGroups.Any(group =>
                     group.BlockTypes.Any(blockType =>
                         blockType != null && blockType.Matches(blockKey)));

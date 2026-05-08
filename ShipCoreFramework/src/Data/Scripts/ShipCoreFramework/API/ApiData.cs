@@ -32,7 +32,7 @@ namespace ShipCoreFramework
         /// Increment when you add functionality in a backwards compatible way.
         /// Minor version changes remain compatible as long as the major version matches.
         /// </summary>
-        public const int API_MINOR = 5;
+        public const int API_MINOR = 6;
 
         /// <summary>
         /// Encoded API version (Major.Minor) packed into a single int.
@@ -450,6 +450,7 @@ namespace ShipCoreFramework
         [ProtoMember(5)] public bool PunishByNoFlyZone;
         [ProtoMember(6)] public PunishmentTypeData PunishmentType;
         [ProtoMember(7)] public DirectionTypeData[] AllowedDirections = Array.Empty<DirectionTypeData>();
+        [ProtoMember(8)] public bool IsCriticalLimit;
     }
 
     [ProtoContract]

@@ -416,6 +416,9 @@ namespace ShipCoreFramework
         [XmlElement("PunishByNoFlyZone")]
         public bool PunishByNoFlyZone;
 
+        [XmlElement("IsCriticalLimit")]
+        public bool IsCriticalLimit;
+
         [XmlElement("PunishmentType")]
         public PunishmentType PunishmentType = PunishmentType.ShutOff;
 
