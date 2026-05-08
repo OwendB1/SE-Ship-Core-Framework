@@ -112,6 +112,19 @@ namespace ShipCoreFramework
                             .ToList();
                     }
 
+                    if (coreEntry.BlacklistedCoreSubtypeIds == null)
+                    {
+                        coreEntry.BlacklistedCoreSubtypeIds = new List<string>();
+                    }
+                    else
+                    {
+                        coreEntry.BlacklistedCoreSubtypeIds = coreEntry.BlacklistedCoreSubtypeIds
+                            .Where(coreSubtypeId => !string.IsNullOrWhiteSpace(coreSubtypeId))
+                            .Select(coreSubtypeId => coreSubtypeId.Trim())
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .ToList();
+                    }
+
                     if (!string.IsNullOrWhiteSpace(coreEntry.Filename)) continue;
 
                     manifest.ShipCores.RemoveAt(i);

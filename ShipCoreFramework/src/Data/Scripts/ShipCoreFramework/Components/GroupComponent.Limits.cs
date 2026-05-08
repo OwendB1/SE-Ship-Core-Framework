@@ -14,28 +14,56 @@ namespace ShipCoreFramework
             return minBlocks > 0 && GroupBlocksCount < minBlocks;
         }
 
-        private void ScheduleMinimumBlocksRecheck()
+        private void ScheduleMinimumBlocksGateRecheck()
         {
-            _nextMinimumBlocksCheckTick = Session.CurrentTick + MinimumBlocksRecheckIntervalTicks;
+            _nextMinimumBlocksGateCheckTick = Session.CurrentTick + LimitedBlockMinimumBlocksRecheckIntervalTicks;
         }
 
-        private void RefreshMinimumBlocksPunishmentState()
+        private void RefreshMinimumBlocksLimitedBlockGateState()
         {
             var minBlocks = ShipCore?.MinBlocks ?? -1;
             if (minBlocks <= 0)
             {
-                _minimumBlocksPunishmentActive = false;
-                _nextMinimumBlocksCheckTick = 0;
+                _minimumBlocksLimitedBlockGateActive = false;
+                _nextMinimumBlocksGateCheckTick = 0;
                 return;
             }
 
-            _minimumBlocksPunishmentActive = GroupBlocksCount < minBlocks;
-            if (!_minimumBlocksPunishmentActive) ScheduleMinimumBlocksRecheck();
+            _minimumBlocksLimitedBlockGateActive = GroupBlocksCount < minBlocks;
+            if (!_minimumBlocksLimitedBlockGateActive) ScheduleMinimumBlocksGateRecheck();
+        }
+
+        private bool IsMinimumBlocksLimitedBlockGateTriggered()
+        {
+            return _minimumBlocksLimitedBlockGateActive && IsBelowMinimumBlocksRequirement();
+        }
+
+        private string GetBelowMinimumBlocksLimitedBlockPunishmentReason()
+        {
+            return $"Below minimum blocks ({GroupBlocksCount}/{ShipCore.MinBlocks})";
+        }
+
+        private void RefreshLimitedBlockPunishmentState()
+        {
+            PunishLimitedBlocks = IsMinimumBlocksLimitedBlockGateTriggered() || HasConnectedBlacklistedLargerGroup();
+        }
+
+        internal List<string> GetLimitedBlockPunishmentGateDescriptions()
+        {
+            var reasons = new List<string>();
+            if (IsMinimumBlocksLimitedBlockGateTriggered())
+                reasons.Add(GetBelowMinimumBlocksLimitedBlockPunishmentReason());
+
+            GroupComponent blacklistingGroup;
+            if (TryGetConnectedBlacklistingGroup(out blacklistingGroup))
+                reasons.Add(GetConnectedBlacklistLimitedBlockPunishmentReason(blacklistingGroup));
+
+            return reasons;
         }
 
         internal bool ShouldForceLimitedBlocksOff()
         {
-            return _minimumBlocksPunishmentActive && IsBelowMinimumBlocksRequirement();
+            return PunishLimitedBlocks;
         }
 
         internal void ScheduleExternalLimitValidation()
@@ -46,35 +74,41 @@ namespace ShipCoreFramework
 
         internal void OnBlockAddedToGroup()
         {
-            if (!_minimumBlocksPunishmentActive) return;
+            if (!_minimumBlocksLimitedBlockGateActive) return;
             if (IsBelowMinimumBlocksRequirement()) return;
 
-            _minimumBlocksPunishmentActive = false;
-            ScheduleMinimumBlocksRecheck();
+            _minimumBlocksLimitedBlockGateActive = false;
+            ScheduleMinimumBlocksGateRecheck();
+            RefreshLimitedBlockPunishmentState();
         }
 
-        internal void RunMinimumBlocksTimerTick()
+        internal void RunLimitedBlockPunishmentTick()
         {
-            if (_closing) return;
-            if (_minimumBlocksPunishmentActive) return;
+            if (_closing)
+            {
+                _nextMinimumBlocksGateCheckTick = 0;
+                PunishLimitedBlocks = false;
+                return;
+            }
 
             var minBlocks = ShipCore?.MinBlocks ?? -1;
             if (minBlocks <= 0)
             {
-                _nextMinimumBlocksCheckTick = 0;
-                return;
+                _nextMinimumBlocksGateCheckTick = 0;
             }
-
-            if (Session.CurrentTick < _nextMinimumBlocksCheckTick) return;
-
-            if (!IsBelowMinimumBlocksRequirement())
+            else if (!_minimumBlocksLimitedBlockGateActive && _nextMinimumBlocksGateCheckTick != 0 &&
+                     Session.CurrentTick >= _nextMinimumBlocksGateCheckTick)
             {
-                ScheduleMinimumBlocksRecheck();
-                return;
+                if (IsBelowMinimumBlocksRequirement())
+                    _minimumBlocksLimitedBlockGateActive = true;
+                else
+                    ScheduleMinimumBlocksGateRecheck();
             }
 
-            _minimumBlocksPunishmentActive = true;
-            EnforceGroupPunishment(true);
+            var wasPunishingLimitedBlocks = PunishLimitedBlocks;
+            RefreshLimitedBlockPunishmentState();
+            if (!wasPunishingLimitedBlocks && PunishLimitedBlocks)
+                EnforceGroupPunishment(true);
         }
 
         internal void RunExternalLimitValidationTick()

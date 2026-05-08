@@ -105,6 +105,9 @@ namespace ShipCoreFramework
 
         [XmlElement("Group")]
         public List<string> Groups = new List<string>();
+
+        [XmlElement("BlacklistedCoreSubtypeId")]
+        public List<string> BlacklistedCoreSubtypeIds = new List<string>();
     }
 
     [XmlRoot("ManifestUpgradeModule")]
@@ -165,6 +168,10 @@ namespace ShipCoreFramework
         [XmlIgnore]
         public readonly List<string> ManifestGroupNames = new List<string>();
 
+        [XmlIgnore]
+        public readonly HashSet<string> ConnectorBlacklistCoreSubtypeIds =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         [XmlElement("AllowedUpgradeModules")]
         public UpgradeModuleAllowance[] AllowedUpgradeModules = Array.Empty<UpgradeModuleAllowance>();
 
@@ -217,6 +224,12 @@ namespace ShipCoreFramework
             }
 
             return AllowedUpgradeModuleCounts.TryGetValue(moduleSubtypeId, out maxCount);
+        }
+
+        public bool IsConnectorBlacklistedCore(string coreSubtypeId)
+        {
+            return !string.IsNullOrWhiteSpace(coreSubtypeId) &&
+                   ConnectorBlacklistCoreSubtypeIds.Contains(coreSubtypeId);
         }
 
         internal void NormalizeAllowedUpgradeModules(string source, string coreFileOrKey)

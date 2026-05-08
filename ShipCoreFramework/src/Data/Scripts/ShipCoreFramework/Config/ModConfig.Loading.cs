@@ -203,7 +203,8 @@ namespace ShipCoreFramework
 
                 foreach (var shipCoreEntry in coreManifest.ShipCores
                              .Where(shipCoreEntry => MyAPIGateway.Utilities.FileExistsInModLocation(shipCoreEntry.Filename, mod)))
-                    LoadShipCoreFromManifest(mod, shipCoreEntry.Filename, shipCoreEntry.Groups);
+                    LoadShipCoreFromManifest(mod, shipCoreEntry.Filename, shipCoreEntry.Groups,
+                        shipCoreEntry.BlacklistedCoreSubtypeIds);
 
                 foreach (var upgradeModuleEntry in coreManifest.UpgradeModules
                              .Where(upgradeModuleEntry => MyAPIGateway.Utilities.FileExistsInModLocation(upgradeModuleEntry.Filename, mod)))
@@ -243,7 +244,8 @@ namespace ShipCoreFramework
             }
         }
 
-        private void LoadShipCoreFromManifest(MyObjectBuilder_Checkpoint.ModItem mod, string shipCoreFilename, IEnumerable<string> manifestGroupNames)
+        private void LoadShipCoreFromManifest(MyObjectBuilder_Checkpoint.ModItem mod, string shipCoreFilename,
+            IEnumerable<string> manifestGroupNames, IEnumerable<string> blacklistedCoreSubtypeIds)
         {
             using (var textReader = MyAPIGateway.Utilities.ReadFileInModLocation(shipCoreFilename, mod))
             {
@@ -255,6 +257,7 @@ namespace ShipCoreFramework
 
                 NormalizeShipCoreBlockLimits(newShipCore, mod.FriendlyName, shipCoreFilename);
                 AssignManifestGroupsToCore(newShipCore, manifestGroupNames, mod.FriendlyName, shipCoreFilename);
+                AssignManifestConnectorBlacklistToCore(newShipCore, blacklistedCoreSubtypeIds);
                 newShipCore.ConfigSource = mod.FriendlyName;
                 newShipCore.ConfigFile = shipCoreFilename;
                 ShipCores.Add(newShipCore);
@@ -283,6 +286,22 @@ namespace ShipCoreFramework
                 if (!string.IsNullOrWhiteSpace(core.SubtypeId))
                     group.CoreSubtypeIds.Add(core.SubtypeId);
             }
+        }
+
+        private static void AssignManifestConnectorBlacklistToCore(ShipCore core,
+            IEnumerable<string> blacklistedCoreSubtypeIds)
+        {
+            if (core == null)
+                return;
+
+            core.ConnectorBlacklistCoreSubtypeIds.Clear();
+            if (blacklistedCoreSubtypeIds == null)
+                return;
+
+            foreach (var coreSubtypeId in blacklistedCoreSubtypeIds
+                         .Where(coreSubtypeId => !string.IsNullOrWhiteSpace(coreSubtypeId))
+                         .Select(coreSubtypeId => coreSubtypeId.Trim()))
+                core.ConnectorBlacklistCoreSubtypeIds.Add(coreSubtypeId);
         }
 
         private void ResolveBlockGroupsForCores(IEnumerable<ShipCore> cores)

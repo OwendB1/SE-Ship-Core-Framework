@@ -173,7 +173,7 @@ namespace ShipCoreFramework
                     kvp.Value.UpdateDeactivationState();
                     kvp.Value.RunBoostTimerTick();
                     kvp.Value.RunActiveDefenseTimerTick();
-                    kvp.Value.RunMinimumBlocksTimerTick();
+                    kvp.Value.RunLimitedBlockPunishmentTick();
                     kvp.Value.RunExternalLimitValidationTick();
                     SpeedEnforcement.EnforceSpeedLimit(kvp.Value);
                     if (runNfz) NoFlyZoneEnforcement.EnforceNoFlyZones(kvp.Value, doPunish);

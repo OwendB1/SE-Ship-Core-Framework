@@ -24,6 +24,7 @@ namespace ShipCoreFramework
             var mainCoreChanged = EnsureWorkingMainCore();
             var previousPunishModifiers = PunishModifiers;
 
+            RefreshLimitedBlockPunishmentState();
             RefreshPunishmentFlags();
             if (mainCoreChanged || previousPunishModifiers != PunishModifiers) ApplyModifiers(Modifiers);
             RefreshDefenseModifierCache();

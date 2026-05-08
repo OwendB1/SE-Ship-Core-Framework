@@ -638,6 +638,7 @@ namespace ShipCoreFramework
 
             var speedPunishmentGates = groupComponent.GetSpeedPunishmentGateDescriptions();
             var modifierPunishmentGates = groupComponent.GetModifierPunishmentGateDescriptions();
+            var limitedBlockPunishmentGates = groupComponent.GetLimitedBlockPunishmentGateDescriptions();
 
             body += "Punishments:\n";
             body += $"  Speed: {(groupComponent.PunishSpeed ? "Yes" : "No")}\n";
@@ -651,6 +652,13 @@ namespace ShipCoreFramework
             if (modifierPunishmentGates.Count > 0)
             {
                 foreach (var gate in modifierPunishmentGates)
+                    body += $"    - {gate}\n";
+            }
+
+            body += $"  Limited Blocks: {(groupComponent.PunishLimitedBlocks ? "Yes" : "No")}\n";
+            if (limitedBlockPunishmentGates.Count > 0)
+            {
+                foreach (var gate in limitedBlockPunishmentGates)
                     body += $"    - {gate}\n";
             }
             body += "\n";

@@ -9,7 +9,7 @@ namespace ShipCoreFramework
 {
     internal partial class GroupComponent
     {
-        private const int MinimumBlocksRecheckIntervalTicks = 10 * 60 * 60;
+        private const int LimitedBlockMinimumBlocksRecheckIntervalTicks = 10 * 60 * 60;
         private const int ExternalLimitValidationDelayTicks = 2 * 60;
 
         internal ShipCore ShipCore => Session.Config.GetShipCoreByTypeId(MainCoreComponent?.SubtypeId ?? string.Empty);
@@ -81,6 +81,7 @@ namespace ShipCoreFramework
 
         internal bool PunishModifiers;
         internal bool PunishSpeed;
+        internal bool PunishLimitedBlocks;
         internal bool BoostEnabled;
         internal bool Deactivated;
 
@@ -90,6 +91,7 @@ namespace ShipCoreFramework
         internal float PostBoostRampCap = -1f;
 
         private readonly HashSet<IMyGridGroupData> _connectedNoCoreGroups = new HashSet<IMyGridGroupData>();
+        private readonly HashSet<IMyGridGroupData> _connectedCoreGroups = new HashSet<IMyGridGroupData>();
 
         internal float FrictionMaximumDecelerationOverride = -1f;
         internal float MinimumFrictionSpeedAbsoluteOverride = -1f;
@@ -104,8 +106,8 @@ namespace ShipCoreFramework
         private bool _activeDefenseEnabled;
         private float _activeDefenseCooldownTimer;
         private float _activeDefenseDurationTimer;
-        private bool _minimumBlocksPunishmentActive;
-        private int _nextMinimumBlocksCheckTick;
+        private bool _minimumBlocksLimitedBlockGateActive;
+        private int _nextMinimumBlocksGateCheckTick;
         private int _pendingExternalLimitValidationTick;
 
         private bool _closing;

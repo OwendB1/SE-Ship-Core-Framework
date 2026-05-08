@@ -44,11 +44,12 @@ namespace ShipCoreFramework
             RefreshUpgradeModules();
             RebuildConnectorPunishmentLinks();
             RecalculateAllLimits();
-            RefreshMinimumBlocksPunishmentState();
+            RefreshMinimumBlocksLimitedBlockGateState();
+            RefreshLimitedBlockPunishmentState();
             RefreshPunishmentState();
             ApplyModifiers(Modifiers);
             DefenseValuesChanged();
-            EnforceGroupPunishment(_minimumBlocksPunishmentActive);
+            EnforceGroupPunishment(ShouldForceLimitedBlocksOff());
         }
 
         private void RefreshUpgradeModules()

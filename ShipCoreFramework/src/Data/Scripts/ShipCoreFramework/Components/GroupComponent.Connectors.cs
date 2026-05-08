@@ -16,23 +16,16 @@ namespace ShipCoreFramework
 
         internal void OnConnectorsChanged()
         {
-            if (_closing) return;
-            if (!HasCrossConnectorPunishmentLimits()) return;
+            if (_closing || MainCoreComponent == null) return;
 
             RebuildConnectorPunishmentLinks();
             OnUpgradeModulesChanged();
         }
 
-        private bool HasCrossConnectorPunishmentLimits()
-        {
-            var bl = ShipCore?.BlockLimits;
-            if (bl == null || bl.Length == 0) return false;
-            return bl.Any(l => l != null && l.CrossConnectorPunishment);
-        }
-
         private void RebuildConnectorPunishmentLinks()
         {
             _connectedNoCoreGroups.Clear();
+            _connectedCoreGroups.Clear();
 
             foreach (var grid in GridDictionary.Keys)
             {
@@ -45,32 +38,84 @@ namespace ShipCoreFramework
                 {
                     if (connector == null) continue;
 
-                    IMyGridGroupData otherNoCoreGroup = null;
                     try
                     {
-                        if (connector.Status == MyShipConnectorStatus.Connected)
-                        {
-                            var otherGrid = connector.OtherConnector?.CubeGrid;
-                            var otherGroupData = otherGrid?.GetGridGroup(GridLinkTypeEnum.Mechanical);
-                            if (otherGroupData != null && !ReferenceEquals(otherGroupData, MyGroup))
-                            {
-                                GroupComponent otherComp;
-                                if (Session.GroupDict.TryGetValue(otherGroupData, out otherComp)
-                                    && otherComp != null
-                                    && otherComp.MainCoreComponent == null)
-                                    otherNoCoreGroup = otherGroupData;
-                            }
-                        }
+                        if (connector.Status != MyShipConnectorStatus.Connected) continue;
+
+                        var otherGrid = connector.OtherConnector?.CubeGrid;
+                        var otherGroupData = otherGrid?.GetGridGroup(GridLinkTypeEnum.Mechanical);
+                        if (otherGroupData == null || ReferenceEquals(otherGroupData, MyGroup)) continue;
+
+                        GroupComponent otherComp;
+                        if (!Session.GroupDict.TryGetValue(otherGroupData, out otherComp) || otherComp == null)
+                            continue;
+
+                        if (otherComp.MainCoreComponent == null)
+                            _connectedNoCoreGroups.Add(otherGroupData);
+                        else
+                            _connectedCoreGroups.Add(otherGroupData);
                     }
                     catch
                     {
-                        otherNoCoreGroup = null;
+                        continue;
                     }
-
-                    if (otherNoCoreGroup == null) continue;
-                    _connectedNoCoreGroups.Add(otherNoCoreGroup);
                 }
             }
+        }
+
+        private bool HasConnectedBlacklistedLargerGroup()
+        {
+            GroupComponent blacklistingGroup;
+            return TryGetConnectedBlacklistingGroup(out blacklistingGroup);
+        }
+
+        private bool TryGetConnectedBlacklistingGroup(out GroupComponent blacklistingGroup)
+        {
+            blacklistingGroup = null;
+
+            var selfCore = ShipCore;
+            if (MainCoreComponent == null || selfCore == null) return false;
+            if (_connectedCoreGroups.Count == 0) return false;
+
+            var selfSubtypeId = selfCore.SubtypeId;
+            if (string.IsNullOrWhiteSpace(selfSubtypeId)) return false;
+
+            var selfBlockCount = GroupBlocksCount;
+            var connectedCoreGroups = _connectedCoreGroups
+                .Where(otherGroupData => otherGroupData != null)
+                .Select(otherGroupData =>
+                {
+                    GroupComponent otherComp;
+                    return Session.GroupDict.TryGetValue(otherGroupData, out otherComp) ? otherComp : null;
+                })
+                .Where(otherComp => otherComp != null && otherComp.MainCoreComponent != null && !ReferenceEquals(otherComp, this))
+                .OrderByDescending(otherComp => otherComp.GroupBlocksCount)
+                .ThenBy(otherComp => otherComp.GetRepresentativeGridId())
+                .ToList();
+
+            foreach (var otherComp in connectedCoreGroups)
+            {
+                if (otherComp.GroupBlocksCount <= selfBlockCount)
+                    continue;
+
+                var otherCore = otherComp.ShipCore;
+                if (otherCore == null || !otherCore.IsConnectorBlacklistedCore(selfSubtypeId))
+                    continue;
+
+                blacklistingGroup = otherComp;
+                return true;
+            }
+
+            return false;
+        }
+
+        private string GetConnectedBlacklistLimitedBlockPunishmentReason(GroupComponent blacklistingGroup)
+        {
+            if (blacklistingGroup?.ShipCore == null)
+                return "Connected to larger blacklisting core group";
+
+            return
+                $"Connected to larger blacklisting core group ({blacklistingGroup.ShipCore.UniqueName} blocks {ShipCore.UniqueName})";
         }
 
         private void ApplyCrossConnectorPunishment()
