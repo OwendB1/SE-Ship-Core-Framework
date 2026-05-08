@@ -29,16 +29,50 @@ namespace ShipCoreFramework
 
         /// <summary>
         /// API Minor version.
-        /// Increment when you add functionality in a backwards compatible way,
-        /// but you still want consumers to update if you require exact matches.
+        /// Increment when you add functionality in a backwards compatible way.
+        /// Minor version changes remain compatible as long as the major version matches.
         /// </summary>
         public const int API_MINOR = 4;
 
         /// <summary>
         /// Encoded API version (Major.Minor) packed into a single int.
-        /// Consumers must match this exactly.
+        /// Consumers should use major-version compatibility for connection checks.
+        /// The full packed value is still useful for logging and optional feature gating.
         /// </summary>
         public const int API_VERSION = (API_MAJOR << 8) | API_MINOR;
+
+        /// <summary>
+        /// Extracts the major version from a packed API version.
+        /// </summary>
+        public static int GetApiMajor(int apiVersion)
+        {
+            return (apiVersion >> 8) & 0xFF;
+        }
+
+        /// <summary>
+        /// Extracts the minor version from a packed API version.
+        /// </summary>
+        public static int GetApiMinor(int apiVersion)
+        {
+            return apiVersion & 0xFF;
+        }
+
+        /// <summary>
+        /// Returns true when the supplied API version is compatible with this client/provider.
+        /// Compatibility only breaks on major version changes.
+        /// </summary>
+        public static bool IsApiCompatible(int apiVersion)
+        {
+            return GetApiMajor(apiVersion) == API_MAJOR;
+        }
+
+        /// <summary>
+        /// Formats a packed API version as Major.Minor.
+        /// </summary>
+        public static string FormatApiVersion(int apiVersion)
+        {
+            return GetApiMajor(apiVersion) + "." + GetApiMinor(apiVersion);
+        }
 
         // Event IDs - Other mods can register handlers for these to receive event notifications.
         // NOTE: If you want cross-assembly safe event payloads, send byte[] and deserialize on the client side.

@@ -57,7 +57,9 @@ namespace YourModNamespace
 
 ### 3) Version compatibility
 
-The client requires an **exact** API version match. If the provider updates, re-copy `ApiData.cs` and `SCF_ModAPIClient.cs` into your mod to stay compatible.
+The client requires a matching **major** API version. Minor version differences are treated as compatible, so backwards-compatible additions do not block connection.
+
+If you want to use API members added in a newer minor version, re-copy `ApiData.cs` and `SCF_ModAPIClient.cs` into your mod first.
 
 ## Using the API (through the client)
 

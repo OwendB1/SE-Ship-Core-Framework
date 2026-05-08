@@ -20,14 +20,14 @@ namespace ShipCoreFramework
     ///
     /// This wrapper:
     /// - Receives the API payload broadcast by ShipCoreFramework.
-    /// - Validates API version exact match.
+    /// - Validates API compatibility by major version.
     /// - Exposes strongly-typed helper methods that internally call the method factory.
     /// - Subscribes to framework events (byte[] payloads) and deserializes them.
     /// </summary>
     public class ShipCoreFrameworkClient
     {
         /// <summary>
-        /// True if the API payload has been received and the version matches.
+        /// True if the API payload has been received and the provider major version is compatible.
         /// </summary>
         public bool IsReady { get; private set; }
 
@@ -169,14 +169,13 @@ namespace ShipCoreFramework
 
                 ProviderApiVersion = payload.Item1;
 
-                if (ProviderApiVersion != ApiConstants.API_VERSION)
+                if (!ApiConstants.IsApiCompatible(ProviderApiVersion))
                 {
                     IsReady = false;
                     _factory = null;
 
-                    // Use your own logging method here.
                     MyLog.Default.WriteLine(
-                        $"[SCF] API version mismatch. Provider={ProviderApiVersion:X}, Consumer={ApiConstants.API_VERSION:X}"
+                        $"[SCF] API major version mismatch. Provider={ApiConstants.FormatApiVersion(ProviderApiVersion)}, Consumer={ApiConstants.FormatApiVersion(ApiConstants.API_VERSION)}"
                     );
                     return;
                 }
@@ -184,7 +183,16 @@ namespace ShipCoreFramework
                 _factory = payload.Item2;
                 IsReady = _factory != null;
 
-                MyLog.Default.WriteLine($"[SCF] API connected. Version={ProviderApiVersion:X}");
+                if (ProviderApiVersion == ApiConstants.API_VERSION)
+                {
+                    MyLog.Default.WriteLine($"[SCF] API connected. Version={ApiConstants.FormatApiVersion(ProviderApiVersion)}");
+                }
+                else
+                {
+                    MyLog.Default.WriteLine(
+                        $"[SCF] API connected with compatible minor version difference. Provider={ApiConstants.FormatApiVersion(ProviderApiVersion)}, Consumer={ApiConstants.FormatApiVersion(ApiConstants.API_VERSION)}"
+                    );
+                }
             }
             catch (Exception e)
             {
