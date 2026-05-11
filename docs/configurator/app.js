@@ -752,7 +752,7 @@ function resetEditor(seed = true) {
 function blockTypeEditor(groupIdx, blockType, blockTypeIdx) {
   return `<div class="row wrap">
     <label class="inline">TypeId <input data-action="bt-type" data-g="${groupIdx}" data-i="${blockTypeIdx}" class="small" placeholder="TypeId" value="${escapeXml(blockType.typeId)}" /></label>
-    <label class="inline">SubtypeId <input data-action="bt-subtype" data-g="${groupIdx}" data-i="${blockTypeIdx}" class="small" placeholder="SubtypeId (or any)" value="${escapeXml(blockType.subtypeId)}" /></label>
+    <label class="inline">SubtypeId <input data-action="bt-subtype" data-g="${groupIdx}" data-i="${blockTypeIdx}" class="small" placeholder="SubtypeId, blank = base subtype, any = wildcard" value="${escapeXml(blockType.subtypeId)}" /></label>
     <label class="inline">CountWeight <input data-action="bt-weight" data-g="${groupIdx}" data-i="${blockTypeIdx}" class="small" type="number" step="0.1" value="${blockType.countWeight}" /></label>
     <button data-action="remove-bt" data-g="${groupIdx}" data-i="${blockTypeIdx}">Remove BlockType</button>
   </div>`;
@@ -2149,6 +2149,8 @@ document.addEventListener("change", (event) => {
   if (!(target instanceof HTMLElement)) return;
   const action = target.dataset.action;
   if (!action) return;
+  const groupIndex = Number(target.dataset.g);
+  const blockTypeIndex = Number(target.dataset.i);
   const manifestGroupIndex = Number(target.dataset.gm);
   const coreIndex = Number(target.dataset.c);
   const limitIndex = Number(target.dataset.l);

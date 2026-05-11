@@ -493,11 +493,10 @@ namespace ShipCoreFramework
                 return false;
 
             var configuredSubtypeId = (SubtypeId ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(configuredSubtypeId))
+            if (string.Equals(configuredSubtypeId, "any", StringComparison.OrdinalIgnoreCase))
                 return true;
 
-            return string.Equals(configuredSubtypeId, "any", StringComparison.OrdinalIgnoreCase)
-                   || string.Equals(configuredSubtypeId, (subtypeId ?? string.Empty).Trim(), StringComparison.Ordinal);
+            return string.Equals(configuredSubtypeId, (subtypeId ?? string.Empty).Trim(), StringComparison.Ordinal);
         }
     }
 
