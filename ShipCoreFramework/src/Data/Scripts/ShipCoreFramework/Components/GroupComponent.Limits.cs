@@ -300,7 +300,8 @@ namespace ShipCoreFramework
                 allowedDirections.Count == 0)
                 return true;
 
-            if (myCore.CubeGrid != block.CubeGrid) return true;
+            if (myCore.CubeGrid != block.CubeGrid)
+                return Session.Config != null && !Session.Config.BlockDirectionalPlacementOnSubgrids;
 
             var coreFDir = myCore.Orientation.Forward;
             var coreUDir = myCore.Orientation.Up;

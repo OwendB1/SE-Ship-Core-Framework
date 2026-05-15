@@ -44,6 +44,7 @@ namespace ShipCoreFramework
         [XmlElement("MaxPossibleSpeedMetersPerSecond")] public float MaxPossibleSpeedMetersPerSecond = 300;
         [XmlElement("MassTypeMode")] public MassTypeMode MassTypeMode = MassTypeMode.Dry;
         [XmlElement("FrictionSpeedValueMode")] public FrictionSpeedValueMode FrictionSpeedValueMode = FrictionSpeedValueMode.Modifier;
+        [XmlElement("BlockDirectionalPlacementOnSubgrids")] public bool BlockDirectionalPlacementOnSubgrids = true;
         [XmlElement("NoFlyZones")] public List<Zones> NoFlyZones = new List<Zones>();
     }
 

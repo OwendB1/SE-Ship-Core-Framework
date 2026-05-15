@@ -993,6 +993,7 @@ namespace ShipCoreFramework
             {
                 return new ModConfigData
                 {
+                    BlockDirectionalPlacementOnSubgrids = true,
                     IgnoredFactionTags = Array.Empty<string>(),
                     NoFlyZones = Array.Empty<NoFlyZoneData>(),
                     NoCoreConfigs = Array.Empty<ShipCoreData>(),
@@ -1018,6 +1019,7 @@ namespace ShipCoreFramework
                 MaxPossibleSpeedMetersPerSecond = config.MaxPossibleSpeedMetersPerSecond,
                 MassTypeMode = (MassTypeModeData)(int)config.MassTypeMode,
                 FrictionSpeedValueMode = (FrictionSpeedValueModeData)(int)config.FrictionSpeedValueMode,
+                BlockDirectionalPlacementOnSubgrids = config.BlockDirectionalPlacementOnSubgrids,
                 NoFlyZones = config.NoFlyZones
                     .Where(zone => zone != null)
                     .Select(ConvertToNoFlyZoneData)

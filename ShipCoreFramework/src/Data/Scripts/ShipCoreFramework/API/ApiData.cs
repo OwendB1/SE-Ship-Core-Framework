@@ -32,7 +32,7 @@ namespace ShipCoreFramework
         /// Increment when you add functionality in a backwards compatible way.
         /// Minor version changes remain compatible as long as the major version matches.
         /// </summary>
-        public const int API_MINOR = 6;
+        public const int API_MINOR = 7;
 
         /// <summary>
         /// Encoded API version (Major.Minor) packed into a single int.
@@ -380,6 +380,7 @@ namespace ShipCoreFramework
         [ProtoMember(15)] public UpgradeModuleConfigData[] UpgradeModules = Array.Empty<UpgradeModuleConfigData>();
         [ProtoMember(16)] public ShipCoreData SelectedNoCore;
         [ProtoMember(17)] public BlockGroupData[] BlockGroups = Array.Empty<BlockGroupData>();
+        [ProtoMember(18)] public bool BlockDirectionalPlacementOnSubgrids = true;
     }
 
     [ProtoContract]

@@ -81,6 +81,7 @@ Root tag: `<ModConfig>`
 | `MaxPossibleSpeedMetersPerSecond` | `float` | World top-speed baseline in m/s. | Core `SpeedModifiers.MaxSpeed` and `MaxBoost` multiply against this value. |
 | `MassTypeMode` | `Dry` or `Wet` | Chooses which grid mass reading is used for `MaxMass`. | `Dry` ignores inventory/fuel mass; `Wet` includes it. |
 | `FrictionSpeedValueMode` | `Modifier` or `Absolute` | Chooses how friction min/max speed fields are interpreted. | In `Modifier` mode they scale against world max speed; in `Absolute` mode they are m/s values. |
+| `BlockDirectionalPlacementOnSubgrids` | `bool` | Controls whether directional block limits treat subgrid placement as invalid. | Default is `true`. When `true`, a limited block with `AllowedDirections` cannot be placed on a different grid than the main core. When `false`, subgrids bypass the directional lock. |
 | `NoFlyZones` | `List<Zones>` | World no-fly zones. | See nested fields below. |
 
 ### No-fly zone fields
@@ -267,7 +268,7 @@ Each entry uses `<BlockLimit>`.
 | `PunishByNoFlyZone` | `bool` | Applies this limit's punishment inside no-fly zones. | Only used when the zone itself is not forcing everything off. |
 | `IsCriticalLimit` | `bool` | Marks this limit as exempt from total limited-block shutoff gates. | Min-block and manifest-blacklist shutoff skip this limit. Normal limit overflow, directional checks, and no-fly-zone punishment still work normally. |
 | `PunishmentType` | `ShutOff`, `Damage`, `Delete`, `Explode` | Punishment for blocks in this limit when the limit is violated. | Limited-block gate punishment always uses `ShutOff`, regardless of this setting. |
-| `AllowedDirections` | `List<DirectionType>` | Directional lock for this limit. | If set, mismatched blocks are punished even if count is under cap. Directions are relative to the main core. |
+| `AllowedDirections` | `List<DirectionType>` | Directional lock for this limit. | If set, mismatched blocks are punished even if count is under cap. Directions are relative to the main core. Subgrid behavior is controlled by world setting `BlockDirectionalPlacementOnSubgrids`. |
 
 ### Direction values
 
