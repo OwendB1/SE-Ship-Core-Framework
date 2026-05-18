@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRageMath;
 
@@ -8,6 +9,18 @@ namespace ShipCoreFramework
 {
     internal partial class GroupComponent
     {
+        private sealed class PendingBlockPunishment
+        {
+            internal readonly IMySlimBlock Block;
+            internal readonly PunishmentType Harm;
+
+            internal PendingBlockPunishment(IMySlimBlock block, PunishmentType harm)
+            {
+                Block = block;
+                Harm = harm;
+            }
+        }
+
         private bool IsBelowMinimumBlocksRequirement()
         {
             var minBlocks = ShipCore?.MinBlocks ?? -1;
@@ -165,7 +178,7 @@ namespace ShipCoreFramework
 
             RefreshPunishmentFlags();
 
-            var totalBlocksPunished = 0;
+            var pendingPunishments = new List<PendingBlockPunishment>();
             foreach (var kv in Limits)
             {
                 var limit = kv.Key;
@@ -190,8 +203,7 @@ namespace ShipCoreFramework
                         if (block == null || block.IsMovedBySplit || block.CubeGrid == null) continue;
                         if (limit.GetWeight(GridComponent.KeyOf(block)) <= 0d) continue;
 
-                        block.WhackABlock(PunishmentType.ShutOff);
-                        totalBlocksPunished++;
+                        pendingPunishments.Add(new PendingBlockPunishment(block, PunishmentType.ShutOff));
                     }
 
                     continue;
@@ -210,8 +222,7 @@ namespace ShipCoreFramework
                     if (limit.AllowedDirections != null && MainCoreComponent?.CoreBlock != null)
                         if (!IsValidDirection(MainCoreComponent.CoreBlock, block, limit.AllowedDirections))
                         {
-                            block.WhackABlock(limit.PunishmentType);
-                            totalBlocksPunished++;
+                            pendingPunishments.Add(new PendingBlockPunishment(block, limit.PunishmentType));
                             continue;
                         }
 
@@ -226,14 +237,38 @@ namespace ShipCoreFramework
                     if (over <= 0d) break;
                     if (candidate.Key == null) continue;
 
-                    candidate.Key.WhackABlock(limit.PunishmentType);
-                    totalBlocksPunished++;
+                    pendingPunishments.Add(new PendingBlockPunishment(candidate.Key, limit.PunishmentType));
                     over -= candidate.Value;
                 }
             }
 
-            if (totalBlocksPunished > 0 && MyGroup != null)
-                ModAPI.BroadcastLimitsEnforced(GetRepresentativeGridId(), totalBlocksPunished);
+            ExecutePendingPunishments(pendingPunishments);
+        }
+
+        // Selection work can stay off-thread; block state mutation must run on game thread.
+        private void ExecutePendingPunishments(List<PendingBlockPunishment> punishments)
+        {
+            if (punishments == null || punishments.Count == 0) return;
+
+            var representativeGridId = GetRepresentativeGridId();
+            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+            {
+                if (_closing || Session.IsShuttingDown) return;
+
+                var appliedPunishments = 0;
+                foreach (var punishment in punishments)
+                {
+                    var block = punishment.Block;
+                    if (block == null || block.IsMovedBySplit || block.CubeGrid == null) continue;
+                    if (block.CubeGrid.MarkedForClose || block.CubeGrid.Closed) continue;
+
+                    block.WhackABlock(punishment.Harm);
+                    appliedPunishments++;
+                }
+
+                if (appliedPunishments > 0 && MyGroup != null)
+                    ModAPI.BroadcastLimitsEnforced(representativeGridId, appliedPunishments);
+            });
         }
 
         internal float GetEffectiveMaxCount(BlockLimit limit)
