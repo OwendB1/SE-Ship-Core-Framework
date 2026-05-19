@@ -82,7 +82,6 @@ namespace ShipCoreFramework
         public override ScriptUpdate NeedsUpdate => ScriptUpdate.Update10; // frequency that Run() is called.
 
         private GroupComponent GroupComponent => _terminalBlock?.GetGroupComponent();
-        private MyCubeGrid Grid => _terminalBlock?.CubeGrid as MyCubeGrid;
         private ShipCore ShipCore => GroupComponent?.ShipCore;
 
         public override void Dispose()
@@ -238,13 +237,14 @@ namespace ShipCoreFramework
             
             if (ShipCore.MaxBlocks > 1 )
             {
-                var passed = Grid.BlocksCount <= ShipCore.MaxBlocks;
+                var blockCount = GroupComponent.GroupBlocksCount;
+                var passed = blockCount <= ShipCore.MaxBlocks;
                 var target = ShipCore.MaxBlocks.ToString();
 
                 _gridResultsTable.Rows.Add(new Row
                 {
                     new Cell("Blocks: "),
-                    new Cell(Grid.BlocksCount.ToString()),
+                    new Cell(blockCount.ToString()),
                     new Cell("/"),
                     new Cell(target, passed ? successColor : failColor),
                     passed ? new Cell() : new Cell("X", failColor)
@@ -268,13 +268,14 @@ namespace ShipCoreFramework
 
             if (ShipCore.MaxMass > 1)
             {
-                var passed = Grid.Mass <= ShipCore.MaxMass;
+                var groupMass = GroupComponent.GroupMass;
+                var passed = groupMass <= ShipCore.MaxMass;
                 var target = ShipCore.MaxMass.ToString(CultureInfo.InvariantCulture);
                 
                 _gridResultsTable.Rows.Add(new Row
                 {
                     new Cell("Mass: "),
-                    new Cell(Grid.Mass.ToString(CultureInfo.InvariantCulture)),
+                    new Cell(groupMass.ToString(CultureInfo.InvariantCulture)),
                     new Cell("/"),
                     new Cell(target, passed ? successColor : failColor),
                     passed ? new Cell() : new Cell("X", failColor)
@@ -282,15 +283,18 @@ namespace ShipCoreFramework
             }
 
             if (ShipCore.MaxPCU > 1)
+            {
+                var groupPcu = GroupComponent.GroupPCU;
                 _gridResultsTable.Rows.Add(new Row
                 {
                     new Cell("PCU: "),
-                    new Cell(Grid.BlocksPCU.ToString()),
+                    new Cell(groupPcu.ToString()),
                     new Cell("/"),
                     new Cell(ShipCore.MaxPCU.ToString(),
-                        Grid.BlocksPCU <= ShipCore.MaxPCU ? successColor : failColor),
-                    Grid.BlocksPCU <= ShipCore.MaxPCU ? new Cell() : new Cell("X", failColor)
+                        groupPcu <= ShipCore.MaxPCU ? successColor : failColor),
+                    groupPcu <= ShipCore.MaxPCU ? new Cell() : new Cell("X", failColor)
                 });
+            }
             
             var gridResultsTableTopLeft = currentPosition + new Vector2(0, 5) * _fontScale;
 

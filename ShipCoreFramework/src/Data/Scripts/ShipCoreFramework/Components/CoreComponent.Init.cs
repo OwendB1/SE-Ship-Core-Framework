@@ -12,7 +12,7 @@ namespace ShipCoreFramework
             CoreBlock = coreBlock;
             CoreBlock.AddUpgradeValue("ShipCoreLink", 0f);
             var isIgnoredNpcGrid = Session.Config.IgnoreAiFactions && CoreBlock.CubeGrid.IsNpcSpawnedGrid;
-            var builder = CoreBlock.SlimBlock.BuiltBy;
+            var builder = ResolvePlacementOwnerIdentityId();
             if (builder == 0 && !isIgnoredNpcGrid)
             {
                 var name = CoreBlock.CustomName;
@@ -138,6 +138,18 @@ namespace ShipCoreFramework
                 var subtype = terminal.BlockDefinition.SubtypeId;
                 return coreSubtypeId.Any(sub => sub == subtype);
             });
+        }
+
+        private long ResolvePlacementOwnerIdentityId()
+        {
+            var builtBy = CoreBlock?.SlimBlock?.BuiltBy ?? 0;
+            if (builtBy != 0) return builtBy;
+
+            var ownerId = CoreBlock?.OwnerId ?? 0;
+            if (ownerId != 0) return ownerId;
+
+            var bigOwners = CoreBlock?.CubeGrid?.BigOwners;
+            return bigOwners == null ? 0 : bigOwners.FirstOrDefault();
         }
 
         private void SaveCoreState()

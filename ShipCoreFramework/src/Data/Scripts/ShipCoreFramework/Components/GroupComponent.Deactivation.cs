@@ -54,6 +54,7 @@ namespace ShipCoreFramework
                 return;
             }
 
+            UnregisterNoCoreLimitTracking();
             SyncBeaconComponents();
 
             if (_closing || !Session.HasStarted || Session.IsShuttingDown) return;

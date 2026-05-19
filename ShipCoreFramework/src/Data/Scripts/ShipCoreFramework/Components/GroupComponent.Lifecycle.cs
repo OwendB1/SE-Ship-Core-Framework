@@ -35,6 +35,7 @@ namespace ShipCoreFramework
                 EndGridInitialization();
             }
 
+            SyncNoCoreLimitTracking();
             OnUpgradeModulesChanged();
         }
 
@@ -87,6 +88,7 @@ namespace ShipCoreFramework
 
             if (wasInactive)
             {
+                UnregisterNoCoreLimitTracking();
                 PerFactionManager.AddGridGroup(OwningFaction, ShipCore.SubtypeId);
                 PerPlayerManager.AddGridGroup(OwnerId, ShipCore.SubtypeId);
                 PerManifestGroupManager.AddGridGroup(ShipCore.SubtypeId);
@@ -119,6 +121,7 @@ namespace ShipCoreFramework
             ModAPI.BroadcastCoreDeactivated(GetRepresentativeGridId(), type, old.CoreBlock.CustomName);
 
             MainCoreComponent = null;
+            SyncNoCoreLimitTracking();
             SyncBeaconComponents();
 
             if (_closing || !Session.HasStarted || Session.IsShuttingDown) return;
@@ -210,6 +213,7 @@ namespace ShipCoreFramework
                 PerPlayerManager.RemoveGridGroup(oldOwnerId, oldType);
                 PerManifestGroupManager.RemoveGridGroup(oldType);
                 ModAPI.BroadcastCoreDeactivated(GetRepresentativeGridId(), oldType, oldName);
+                SyncNoCoreLimitTracking();
                 SyncBeaconComponents();
             }
             else
@@ -262,9 +266,14 @@ namespace ShipCoreFramework
             _closing = true;
             try
             {
-                PerFactionManager.RemoveGridGroup(OwningFaction, ShipCore.SubtypeId);
-                PerPlayerManager.RemoveGridGroup(OwnerId, ShipCore.SubtypeId);
-                PerManifestGroupManager.RemoveGridGroup(ShipCore.SubtypeId);
+                if (MainCoreComponent != null)
+                {
+                    PerFactionManager.RemoveGridGroup(OwningFaction, ShipCore.SubtypeId);
+                    PerPlayerManager.RemoveGridGroup(OwnerId, ShipCore.SubtypeId);
+                    PerManifestGroupManager.RemoveGridGroup(ShipCore.SubtypeId);
+                }
+
+                UnregisterNoCoreLimitTracking();
             }
             catch (Exception e)
             {
@@ -275,6 +284,49 @@ namespace ShipCoreFramework
             foreach (var kvp in GridDictionary) kvp.Value.Clean();
             ClearGridDictionary();
             Limits.Clear();
+        }
+
+        private void SyncNoCoreLimitTracking()
+        {
+            if (Deactivated || MainCoreComponent != null)
+            {
+                UnregisterNoCoreLimitTracking();
+                return;
+            }
+
+            RegisterNoCoreLimitTracking();
+        }
+
+        private void RegisterNoCoreLimitTracking()
+        {
+            if (_noCoreLimitsRegistered) return;
+
+            var shipCore = ShipCore;
+            var subtypeId = shipCore?.SubtypeId ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(subtypeId)) return;
+
+            PerFactionManager.AddGridGroup(OwningFaction, subtypeId);
+            PerPlayerManager.AddGridGroup(OwnerId, subtypeId);
+            PerManifestGroupManager.AddGridGroup(subtypeId);
+
+            _registeredNoCoreLimitSubtypeId = subtypeId;
+            _noCoreLimitsRegistered = true;
+        }
+
+        private void UnregisterNoCoreLimitTracking()
+        {
+            if (!_noCoreLimitsRegistered) return;
+
+            var subtypeId = _registeredNoCoreLimitSubtypeId;
+            if (!string.IsNullOrWhiteSpace(subtypeId))
+            {
+                PerFactionManager.RemoveGridGroup(OwningFaction, subtypeId);
+                PerPlayerManager.RemoveGridGroup(OwnerId, subtypeId);
+                PerManifestGroupManager.RemoveGridGroup(subtypeId);
+            }
+
+            _registeredNoCoreLimitSubtypeId = string.Empty;
+            _noCoreLimitsRegistered = false;
         }
     }
 }

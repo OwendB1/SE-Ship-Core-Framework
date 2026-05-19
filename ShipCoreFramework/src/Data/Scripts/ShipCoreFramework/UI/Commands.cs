@@ -667,15 +667,7 @@ namespace ShipCoreFramework
             if (currentMaxPerPlayer > 0)
             {
                 var ownerId = groupComponent.OwnerId;
-                if (PerPlayerManager.PerPlayer.ContainsKey(ownerId) && PerPlayerManager.PerPlayer[ownerId].ContainsKey(shipCoreSubtypeId))
-                {
-                    body += $"Per Player Limit:{PerPlayerManager.PerPlayer[ownerId][shipCoreSubtypeId]}/{currentMaxPerPlayer}\n";
-                }
-                else
-                {
-                    body+=$"Per Player Limit: Data is not available, WTF?\n";
-                }
-                
+                body += $"Per Player Limit:{PerPlayerManager.GetCurrentCount(ownerId, shipCoreSubtypeId)}/{currentMaxPerPlayer}\n";
             }
             
             if(PerFactionManager.HasFactionCoreLimit(groupComponent.ShipCore))
@@ -683,14 +675,7 @@ namespace ShipCoreFramework
                 if (groupComponent.OwningFaction != null)
                 {
                     var owningFactionId = groupComponent.OwningFaction.FactionId;
-                    if (PerFactionManager.PerFaction.ContainsKey(owningFactionId) && PerFactionManager.PerFaction[owningFactionId].ContainsKey(shipCoreSubtypeId))
-                    {
-                        body += $"Per Faction Limit:{FormatFactionLimit(groupComponent.ShipCore, groupComponent.OwningFaction, groupComponent.OwnerId, PerFactionManager.PerFaction[owningFactionId][shipCoreSubtypeId])}\n";
-                    }
-                    else
-                    {
-                        body+=$"Per Faction Limit: Data is not available, WTF?\n";
-                    }
+                    body += $"Per Faction Limit:{FormatFactionLimit(groupComponent.ShipCore, groupComponent.OwningFaction, groupComponent.OwnerId, PerFactionManager.GetCurrentCount(owningFactionId, shipCoreSubtypeId))}\n";
                 }
                 else
                 {

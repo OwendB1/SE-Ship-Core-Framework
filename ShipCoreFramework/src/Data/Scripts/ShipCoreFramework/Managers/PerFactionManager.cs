@@ -136,6 +136,26 @@ namespace ShipCoreFramework
             return false;
         }
 
+        internal static int GetCurrentCount(long factionId, string coreType)
+        {
+            if (factionId <= 0 || string.IsNullOrWhiteSpace(coreType))
+                return 0;
+
+            Dictionary<string, int> perGroup;
+            if (!PerFaction.TryGetValue(factionId, out perGroup))
+            {
+                perGroup = GetDefaultFactionGridsSet();
+                PerFaction[factionId] = perGroup;
+            }
+
+            int count;
+            if (perGroup.TryGetValue(coreType, out count))
+                return count;
+
+            perGroup[coreType] = 0;
+            return 0;
+        }
+
         internal static void AddGridGroup(IMyFaction owningFaction, string coreType)
         {
             Utils.Log($"PerFactionManager::AddCubeGrid: Adding grid for faction {owningFaction?.FactionId} with core type {coreType}", 1);
@@ -215,6 +235,8 @@ namespace ShipCoreFramework
         {
             var set = new Dictionary<string, int>();
             foreach (var core in Config.ShipCores) set[core.SubtypeId] = 0;
+            if (Config.SelectedNoCore != null && !string.IsNullOrWhiteSpace(Config.SelectedNoCore.SubtypeId))
+                set[Config.SelectedNoCore.SubtypeId] = 0;
             return set;
         }
     }

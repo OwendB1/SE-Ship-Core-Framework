@@ -115,6 +115,8 @@ namespace ShipCoreFramework
         private int _gridInitializationDepth;
         private bool _ignoredStateInitialized;
         private bool _wasIgnoredGroup;
+        private bool _noCoreLimitsRegistered;
+        private string _registeredNoCoreLimitSubtypeId = string.Empty;
 
         internal float ActiveDefenseDuration => ShipCore.ActiveDefenseModifiers.Duration;
         internal float ActiveDefenseCoolDown => ShipCore.ActiveDefenseModifiers.Cooldown;

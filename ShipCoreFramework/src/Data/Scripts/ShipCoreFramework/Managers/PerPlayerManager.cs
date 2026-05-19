@@ -39,6 +39,26 @@ namespace ShipCoreFramework
             return true;
         }
 
+        internal static int GetCurrentCount(long ownerId, string coreType)
+        {
+            if (ownerId <= 0 || string.IsNullOrWhiteSpace(coreType))
+                return 0;
+
+            Dictionary<string, int> perGridClass;
+            if (!PerPlayer.TryGetValue(ownerId, out perGridClass))
+            {
+                perGridClass = GetDefaultPlayerGridsSet();
+                PerPlayer[ownerId] = perGridClass;
+            }
+
+            int count;
+            if (perGridClass.TryGetValue(coreType, out count))
+                return count;
+
+            perGridClass[coreType] = 0;
+            return 0;
+        }
+
         internal static void AddGridGroup(long ownerId, string coreType)
         {
             Utils.Log($"PerPlayerManager::AddCubeGrid: Adding grid for player {ownerId} with core type {coreType}", 1);
@@ -95,6 +115,8 @@ namespace ShipCoreFramework
         {
             var set = new Dictionary<string, int>();
             foreach (var core in Config.ShipCores) set[core.SubtypeId] = 0;
+            if (Config.SelectedNoCore != null && !string.IsNullOrWhiteSpace(Config.SelectedNoCore.SubtypeId))
+                set[Config.SelectedNoCore.SubtypeId] = 0;
             return set;
         }
     }
