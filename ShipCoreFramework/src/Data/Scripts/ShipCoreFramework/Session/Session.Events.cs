@@ -10,7 +10,15 @@ namespace ShipCoreFramework
     {
         private static void GridGroupsOnOnGridGroupCreated(IMyGridGroupData group)
         {
-            if (group == null || group.LinkType != GridLinkTypeEnum.Mechanical) return;
+            if (group == null) return;
+
+            if (group.LinkType == GridLinkTypeEnum.Physical)
+            {
+                TrackPhysicalGridGroup(group);
+                return;
+            }
+
+            if (group.LinkType != GridLinkTypeEnum.Mechanical) return;
             
             var tempGridList = new List<IMyCubeGrid>();
             group.GetGrids(tempGridList);
@@ -25,17 +33,33 @@ namespace ShipCoreFramework
 
             group.OnGridAdded += gComp.OnGridAdded;
             group.OnGridRemoved += gComp.OnGridRemoved;
+
+            RefreshPhysicalGroupLinkagesForGrids(tempGridList);
         }
         
         private static void GridGroupsOnOnGridGroupDestroyed(IMyGridGroupData group)
         {
+            if (group == null) return;
+
+            if (group.LinkType == GridLinkTypeEnum.Physical)
+            {
+                UntrackPhysicalGridGroup(group);
+                return;
+            }
+
             if (group.LinkType != GridLinkTypeEnum.Mechanical) return;
+
+            var tempGridList = new List<IMyCubeGrid>();
+            group.GetGrids(tempGridList);
+
             GroupComponent gComp;
             if (!GroupDict.TryGetValue(group, out gComp)) return;
             group.OnGridAdded -= gComp.OnGridAdded;
             group.OnGridRemoved -= gComp.OnGridRemoved;
             gComp.Clean();
             GroupDict.Remove(group);
+
+            RefreshPhysicalGroupLinkagesForGrids(tempGridList);
         }
         
         private static void FactionStateChanged(MyFactionStateChange action, long fromFactionId, long toFactionId,

@@ -86,10 +86,18 @@ namespace ShipCoreFramework
         internal bool Deactivated;
 
         internal bool FrictionEnforcementEnabled = true;
+        internal float BaseSpeedLimitMetersPerSecond = 100f;
+        internal float EffectiveSpeedLimitMetersPerSecond = 100f;
+        internal bool EffectiveBoostEnabled;
+        internal long SpeedSourceGroupGridId;
 
         internal bool PostBoostRampActive;
         internal float PostBoostRampCap = -1f;
 
+        private readonly object _connectedGroupsLock = new object();
+        internal readonly object SpeedStateLock = new object();
+        private IMyGridGroupData _trackedPhysicalGroup;
+        private readonly HashSet<IMyGridGroupData> _connectedPhysicalGroups = new HashSet<IMyGridGroupData>();
         private readonly HashSet<IMyGridGroupData> _connectedNoCoreGroups = new HashSet<IMyGridGroupData>();
         private readonly HashSet<IMyGridGroupData> _connectedCoreGroups = new HashSet<IMyGridGroupData>();
 
@@ -117,6 +125,7 @@ namespace ShipCoreFramework
         private bool _wasIgnoredGroup;
         private bool _noCoreLimitsRegistered;
         private string _registeredNoCoreLimitSubtypeId = string.Empty;
+        internal int LastSpeedStateUpdateTick = -1;
 
         internal float ActiveDefenseDuration => ShipCore.ActiveDefenseModifiers.Duration;
         internal float ActiveDefenseCoolDown => ShipCore.ActiveDefenseModifiers.Cooldown;

@@ -207,10 +207,8 @@ namespace ShipCoreFramework
                 return;
             }
             
-            var speed = Session.Config.MaxPossibleSpeedMetersPerSecond * (GroupComponent.BoostEnabled
-                ? GroupComponent.SpeedModifiers.MaxBoost
-                : GroupComponent.SpeedModifiers.MaxSpeed);
-            if (GroupComponent.PunishSpeed) speed /= 4;
+            SpeedEnforcement.RefreshSpeedState(GroupComponent);
+            var speed = GroupComponent.EffectiveSpeedLimitMetersPerSecond;
             _gridResultsTable.Rows.Add(new Row
             {
                 new Cell("Max Speed: "),

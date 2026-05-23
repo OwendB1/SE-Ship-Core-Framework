@@ -152,6 +152,7 @@ namespace ShipCoreFramework
                 if (grid.MarkedForClose || grid.Closed) return;
 
                 OnUpgradeModulesChanged();
+                Session.RefreshPhysicalGroupLinkagesForGrid(grid);
                 ModAPI.BroadcastGridAddedToGroup(grid.EntityId);
             });
         }
@@ -179,12 +180,15 @@ namespace ShipCoreFramework
             if (GridCount == 0)
             {
                 _closing = true;
+                Session.RefreshPhysicalGroupLinkagesForGrid(grid);
                 return;
             }
 
             RebuildConnectorPunishmentLinks();
             RecalculateAllLimits();
             RefreshPunishmentState();
+            Session.RefreshPhysicalGroupLinkagesForGrid(grid);
+            Session.RefreshPhysicalGroupLinkagesForGrids(GridDictionary.Keys.Cast<IMyCubeGrid>());
             ModAPI.BroadcastGridRemovedFromGroup(grid.EntityId, GetRepresentativeGridId());
         }
 
@@ -281,6 +285,7 @@ namespace ShipCoreFramework
             }
 
             ClearDefenseModifierCache();
+            ClearPhysicalLinkedGroups();
             foreach (var kvp in GridDictionary) kvp.Value.Clean();
             ClearGridDictionary();
             Limits.Clear();

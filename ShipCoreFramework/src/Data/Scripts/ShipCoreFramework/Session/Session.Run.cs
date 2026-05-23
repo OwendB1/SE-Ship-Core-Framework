@@ -27,12 +27,19 @@ namespace ShipCoreFramework
             MyAPIGateway.GridGroups.OnGridGroupCreated += GridGroupsOnOnGridGroupCreated;
             MyAPIGateway.GridGroups.OnGridGroupDestroyed += GridGroupsOnOnGridGroupDestroyed;
             
-            var groupStartList = new List<IMyGridGroupData>();
-            MyAPIGateway.GridGroups.GetGridGroups(GridLinkTypeEnum.Mechanical, groupStartList);
+            var mechanicalGroups = new List<IMyGridGroupData>();
+            var physicalGroups = new List<IMyGridGroupData>();
+            MyAPIGateway.GridGroups.GetGridGroups(GridLinkTypeEnum.Mechanical, mechanicalGroups);
+            MyAPIGateway.GridGroups.GetGridGroups(GridLinkTypeEnum.Physical, physicalGroups);
 
             MyAPIGateway.Parallel.StartBackground(() =>
             {
-                foreach(var group in groupStartList)
+                foreach (var group in mechanicalGroups)
+                {
+                    GridGroupsOnOnGridGroupCreated(group);
+                }
+
+                foreach (var group in physicalGroups)
                 {
                     GridGroupsOnOnGridGroupCreated(group);
                 }
@@ -88,6 +95,8 @@ namespace ShipCoreFramework
                 MyAPIGateway.GridGroups.OnGridGroupDestroyed -= GridGroupsOnOnGridGroupDestroyed;
             }
             catch { /**/ }
+
+            UntrackAllPhysicalGridGroups();
 
             RevertAmmoSpeedAdjustments();
             CoreTerminalControls.Unregister();

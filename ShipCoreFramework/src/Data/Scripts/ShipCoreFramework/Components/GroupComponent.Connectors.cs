@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using Sandbox.ModAPI.Ingame;
 using VRage.Game.ModAPI;
@@ -16,16 +17,20 @@ namespace ShipCoreFramework
 
         internal void OnConnectorsChanged()
         {
-            if (_closing || MainCoreComponent == null) return;
+            if (_closing) return;
 
             RebuildConnectorPunishmentLinks();
+            if (MainCoreComponent == null) return;
             OnUpgradeModulesChanged();
         }
 
         private void RebuildConnectorPunishmentLinks()
         {
-            _connectedNoCoreGroups.Clear();
-            _connectedCoreGroups.Clear();
+            lock (_connectedGroupsLock)
+            {
+                _connectedNoCoreGroups.Clear();
+                _connectedCoreGroups.Clear();
+            }
 
             foreach (var grid in GridDictionary.Keys)
             {
@@ -50,10 +55,13 @@ namespace ShipCoreFramework
                         if (!Session.GroupDict.TryGetValue(otherGroupData, out otherComp) || otherComp == null)
                             continue;
 
-                        if (otherComp.MainCoreComponent == null)
-                            _connectedNoCoreGroups.Add(otherGroupData);
-                        else
-                            _connectedCoreGroups.Add(otherGroupData);
+                        lock (_connectedGroupsLock)
+                        {
+                            if (otherComp.MainCoreComponent == null)
+                                _connectedNoCoreGroups.Add(otherGroupData);
+                            else
+                                _connectedCoreGroups.Add(otherGroupData);
+                        }
                     }
                     catch
                     {
@@ -75,14 +83,15 @@ namespace ShipCoreFramework
 
             var selfCore = ShipCore;
             if (MainCoreComponent == null || selfCore == null) return false;
-            if (_connectedCoreGroups.Count == 0) return false;
+
+            var connectedCoreGroupData = GetConnectedCoreGroupDataSnapshot();
+            if (connectedCoreGroupData.Count == 0) return false;
 
             var selfSubtypeId = selfCore.SubtypeId;
             if (string.IsNullOrWhiteSpace(selfSubtypeId)) return false;
 
             var selfBlockCount = GroupBlocksCount;
-            var connectedCoreGroups = _connectedCoreGroups
-                .Where(otherGroupData => otherGroupData != null)
+            var connectedCoreGroups = connectedCoreGroupData
                 .Select(otherGroupData =>
                 {
                     GroupComponent otherComp;
@@ -120,7 +129,8 @@ namespace ShipCoreFramework
 
         private void ApplyCrossConnectorPunishment()
         {
-            if (_connectedNoCoreGroups.Count == 0) return;
+            var connectedGroups = GetConnectedNoCoreGroupDataSnapshot();
+            if (connectedGroups.Count == 0) return;
 
             var blockLimits = ShipCore?.BlockLimits;
             if (blockLimits == null || blockLimits.Length == 0) return;
@@ -128,7 +138,6 @@ namespace ShipCoreFramework
             var punishedLimits = blockLimits.Where(limit => limit != null && limit.CrossConnectorPunishment).ToArray();
             if (punishedLimits.Length == 0) return;
 
-            var connectedGroups = _connectedNoCoreGroups.ToList();
             foreach (var otherGroupData in connectedGroups.Where(otherGroupData => otherGroupData != null))
             {
                 GroupComponent otherComp;
@@ -164,6 +173,18 @@ namespace ShipCoreFramework
                     }
                 }
             }
+        }
+
+        private List<IMyGridGroupData> GetConnectedCoreGroupDataSnapshot()
+        {
+            lock (_connectedGroupsLock)
+                return _connectedCoreGroups.Where(otherGroupData => otherGroupData != null).ToList();
+        }
+
+        private List<IMyGridGroupData> GetConnectedNoCoreGroupDataSnapshot()
+        {
+            lock (_connectedGroupsLock)
+                return _connectedNoCoreGroups.Where(otherGroupData => otherGroupData != null).ToList();
         }
     }
 }
