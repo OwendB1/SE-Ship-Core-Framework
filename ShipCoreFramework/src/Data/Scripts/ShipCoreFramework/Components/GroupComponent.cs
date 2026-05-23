@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
+using ModEntity = VRage.ModAPI.IMyEntity;
 using MyCubeGrid = Sandbox.Game.Entities.MyCubeGrid;
 
 namespace ShipCoreFramework
@@ -26,7 +27,7 @@ namespace ShipCoreFramework
                     grid != null &&
                     !grid.MarkedForClose &&
                     !grid.Closed &&
-                    grid.Physics != null);
+                    (grid as ModEntity)?.Physics != null);
                 if (referenceGrid == null) return 0f;
 
                 float dryMass;

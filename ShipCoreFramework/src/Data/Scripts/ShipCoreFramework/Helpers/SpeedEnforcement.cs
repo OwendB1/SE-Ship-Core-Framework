@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.Components;
+using ModEntity = VRage.ModAPI.IMyEntity;
 using VRageMath;
 
 namespace ShipCoreFramework
@@ -14,20 +15,20 @@ namespace ShipCoreFramework
 
         internal sealed class EnforcementBatch
         {
-            private readonly ConcurrentQueue<SpeedOperation> _operations = new ConcurrentQueue<SpeedOperation>();
+            private readonly ConcurrentQueue<SpeedLimitContext> _contexts = new ConcurrentQueue<SpeedLimitContext>();
 
-            internal void Enqueue(SpeedOperation operation)
+            internal void Enqueue(SpeedLimitContext context)
             {
-                _operations.Enqueue(operation);
+                _contexts.Enqueue(context);
             }
 
-            internal bool TryDequeue(out SpeedOperation operation)
+            internal bool TryDequeue(out SpeedLimitContext context)
             {
-                return _operations.TryDequeue(out operation);
+                return _contexts.TryDequeue(out context);
             }
         }
 
-        private struct SpeedLimitContext
+        internal struct SpeedLimitContext
         {
             internal GroupComponent EvaluatedGroup;
             internal GroupComponent SourceGroup;
@@ -41,15 +42,6 @@ namespace ShipCoreFramework
             internal float MinimumFrictionSpeed;
             internal float MaximumFrictionSpeed;
             internal float MaximumFrictionDeceleration;
-        }
-
-        internal struct SpeedOperation
-        {
-            internal MyCubeGrid Grid;
-            internal bool ApplyForce;
-            internal Vector3 Force;
-            internal bool ApplyClamp;
-            internal Vector3 ClampedVelocity;
         }
 
         internal static EnforcementBatch CreateBatch()
@@ -68,27 +60,20 @@ namespace ShipCoreFramework
         {
             if (batch == null) return;
 
-            var operations = new List<SpeedOperation>();
-            SpeedOperation operation;
-            while (batch.TryDequeue(out operation))
-                operations.Add(operation);
+            var contexts = new List<SpeedLimitContext>();
+            SpeedLimitContext context;
+            while (batch.TryDequeue(out context))
+                contexts.Add(context);
 
-            if (operations.Count == 0) return;
+            if (contexts.Count == 0) return;
 
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
-                foreach (var speedOperation in operations)
+                foreach (var speedContext in contexts)
                 {
                     try
                     {
-                        var physics = speedOperation.Grid?.Physics;
-                        if (physics == null) continue;
-
-                        if (speedOperation.ApplyForce)
-                            physics.AddForce(MyPhysicsForceType.APPLY_WORLD_FORCE, speedOperation.Force, null, null);
-
-                        if (speedOperation.ApplyClamp)
-                            physics.SetSpeeds(speedOperation.ClampedVelocity, physics.AngularVelocity);
+                        EnforceContextOnGameThread(speedContext);
                     }
                     catch
                     {
@@ -119,61 +104,7 @@ namespace ShipCoreFramework
 
             var targetGrids = context.TargetGrids;
             if (targetGrids == null || targetGrids.Length == 0) return;
-
-            var enforceFriction = context.ActiveCore.SpeedLimitType == SpeedLimitType.Friction
-                                  && context.FrictionEnforcementEnabled;
-            var minFrictionSpeed = context.MinimumFrictionSpeed;
-            var maxFrictionSpeed = context.MaximumFrictionSpeed;
-            var effectiveMaxSpeed = context.EffectiveMaxSpeed;
-
-            for (var i = 0; i < targetGrids.Length; i++)
-            {
-                var grid = targetGrids[i];
-                var physics = grid?.Physics;
-                if (physics == null) continue;
-
-                var velocity = physics.LinearVelocity;
-                var speedSq = velocity.LengthSquared();
-                if (speedSq < 0.0001f) continue;
-
-                var speed = Convert.ToSingle(Math.Sqrt(speedSq));
-                var direction = velocity / speed;
-                var applyClamp = speed > effectiveMaxSpeed + HardCapToleranceMetersPerSecond;
-                var applyForce = false;
-                Vector3 force = Vector3.Zero;
-
-                if (!applyClamp && enforceFriction && maxFrictionSpeed > 0f && speed > minFrictionSpeed)
-                {
-                    var denom = maxFrictionSpeed - minFrictionSpeed;
-                    var t = denom > 0.0001f ? (speed - minFrictionSpeed) / denom : 1f;
-                    t = MathHelper.Clamp(t, 0f, 1f);
-
-                    var maxDecel = context.MaximumFrictionDeceleration;
-                    if (context.BoostActive && context.BoostMaxSpeed > 0.001f)
-                    {
-                        var mult = MathHelper.Clamp(context.BaseMaxSpeed / context.BoostMaxSpeed, 0f, 1f);
-                        maxDecel *= mult;
-                    }
-
-                    var decel = maxDecel * t;
-                    if (decel > 0.0001f)
-                    {
-                        applyForce = true;
-                        force = -direction * (physics.Mass * decel);
-                    }
-                }
-
-                if (!applyForce && !applyClamp) continue;
-
-                batch.Enqueue(new SpeedOperation
-                {
-                    Grid = grid,
-                    ApplyForce = applyForce,
-                    Force = force,
-                    ApplyClamp = applyClamp,
-                    ClampedVelocity = applyClamp ? direction * effectiveMaxSpeed : Vector3.Zero
-                });
-            }
+            batch.Enqueue(context);
         }
 
         private static SpeedLimitContext ResolveSpeedLimitContext(GroupComponent groupComponent)
@@ -397,6 +328,66 @@ namespace ShipCoreFramework
             }
 
             return null;
+        }
+
+        private static void EnforceContextOnGameThread(SpeedLimitContext context)
+        {
+            var targetGrids = context.TargetGrids;
+            if (targetGrids == null || targetGrids.Length == 0) return;
+
+            var enforceFriction = context.ActiveCore.SpeedLimitType == SpeedLimitType.Friction
+                                  && context.FrictionEnforcementEnabled;
+            var minFrictionSpeed = context.MinimumFrictionSpeed;
+            var maxFrictionSpeed = context.MaximumFrictionSpeed;
+            var effectiveMaxSpeed = context.EffectiveMaxSpeed;
+
+            for (var i = 0; i < targetGrids.Length; i++)
+            {
+                MyPhysicsComponentBase physics;
+                if (!TryGetPhysics(targetGrids[i], out physics)) continue;
+
+                var velocity = physics.LinearVelocity;
+                var speedSq = velocity.LengthSquared();
+                if (speedSq < 0.0001f) continue;
+
+                var speed = Convert.ToSingle(Math.Sqrt(speedSq));
+                var direction = velocity / speed;
+                if (speed > effectiveMaxSpeed + HardCapToleranceMetersPerSecond)
+                {
+                    physics.SetSpeeds(direction * effectiveMaxSpeed, physics.AngularVelocity);
+                    continue;
+                }
+
+                if (!enforceFriction || maxFrictionSpeed <= 0f || speed <= minFrictionSpeed)
+                    continue;
+
+                var denom = maxFrictionSpeed - minFrictionSpeed;
+                var t = denom > 0.0001f ? (speed - minFrictionSpeed) / denom : 1f;
+                t = MathHelper.Clamp(t, 0f, 1f);
+
+                var maxDecel = context.MaximumFrictionDeceleration;
+                if (context.BoostActive && context.BoostMaxSpeed > 0.001f)
+                {
+                    var mult = MathHelper.Clamp(context.BaseMaxSpeed / context.BoostMaxSpeed, 0f, 1f);
+                    maxDecel *= mult;
+                }
+
+                var decel = maxDecel * t;
+                if (decel <= 0.0001f) continue;
+
+                physics.AddForce(MyPhysicsForceType.APPLY_WORLD_FORCE, -direction * (physics.Mass * decel), null, null);
+            }
+        }
+
+        private static bool TryGetPhysics(MyCubeGrid grid, out MyPhysicsComponentBase physics)
+        {
+            physics = null;
+
+            var entity = grid as ModEntity;
+            if (entity == null) return false;
+
+            physics = entity.Physics;
+            return physics != null;
         }
     }
 }
