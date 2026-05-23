@@ -17,7 +17,7 @@ namespace ShipCoreFramework
         internal SpeedModifiers SpeedModifiers => CubeGridModifiers.GetActiveSpeedModifiers(this);
 
         internal IMyFaction OwningFaction => MyAPIGateway.Session.Factions.TryGetPlayerFaction(OwnerId);
-        internal int GroupBlocksCount => GridDictionary.Sum(g => g.Key.BlocksCount);
+        internal int GroupBlocksCount => _groupBlocksCount;
         internal int GroupPCU => GridDictionary.Sum(g => g.Key.BlocksPCU);
         internal float GroupMass {
             get
@@ -90,6 +90,8 @@ namespace ShipCoreFramework
         internal float EffectiveSpeedLimitMetersPerSecond = 100f;
         internal bool EffectiveBoostEnabled;
         internal long SpeedSourceGroupGridId;
+        internal IMyGridGroupData SpeedClusterPhysicalGroup;
+        internal bool IsSpeedClusterRepresentative;
 
         internal bool PostBoostRampActive;
         internal float PostBoostRampCap = -1f;
@@ -114,6 +116,7 @@ namespace ShipCoreFramework
         private bool _activeDefenseEnabled;
         private float _activeDefenseCooldownTimer;
         private float _activeDefenseDurationTimer;
+        private int _groupBlocksCount;
         private bool _minimumBlocksLimitedBlockGateActive;
         private int _nextMinimumBlocksGateCheckTick;
         private int _pendingExternalLimitValidationTick;

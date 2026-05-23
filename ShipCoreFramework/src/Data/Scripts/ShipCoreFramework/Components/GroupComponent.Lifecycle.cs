@@ -82,6 +82,8 @@ namespace ShipCoreFramework
 
             MainCoreComponent = coreComponent;
             SyncBeaconComponents();
+            InvalidateSpeedStateCache();
+            Session.MarkPhysicalSpeedClusterSourceDirty(this);
 
             var grid = MainCoreComponent.GridComponent.Grid;
             Utils.Log($"Activate: Activating logic for {((IMyCubeGrid)grid).CustomName}!", 1);
@@ -121,6 +123,8 @@ namespace ShipCoreFramework
             ModAPI.BroadcastCoreDeactivated(GetRepresentativeGridId(), type, old.CoreBlock.CustomName);
 
             MainCoreComponent = null;
+            InvalidateSpeedStateCache();
+            Session.MarkPhysicalSpeedClusterSourceDirty(this);
             SyncNoCoreLimitTracking();
             SyncBeaconComponents();
 
@@ -169,6 +173,8 @@ namespace ShipCoreFramework
                 if (MainCoreComponent?.GridComponent.Grid.EntityId == g.EntityId)
                     removedMain = MainCoreComponent;
 
+                _groupBlocksCount -= comp.BlockCount;
+                if (_groupBlocksCount < 0) _groupBlocksCount = 0;
                 comp.Clean();
                 GridDictionary.Remove(g);
             }
@@ -217,6 +223,8 @@ namespace ShipCoreFramework
                 PerPlayerManager.RemoveGridGroup(oldOwnerId, oldType);
                 PerManifestGroupManager.RemoveGridGroup(oldType);
                 ModAPI.BroadcastCoreDeactivated(GetRepresentativeGridId(), oldType, oldName);
+                InvalidateSpeedStateCache();
+                Session.MarkPhysicalSpeedClusterSourceDirty(this);
                 SyncNoCoreLimitTracking();
                 SyncBeaconComponents();
             }
@@ -224,6 +232,8 @@ namespace ShipCoreFramework
             {
                 MainCoreComponent = newMain;
                 MainCoreComponent.IsMainCore = true;
+                InvalidateSpeedStateCache();
+                Session.MarkPhysicalSpeedClusterSourceDirty(this);
                 SyncBeaconComponents();
             }
 
@@ -239,6 +249,8 @@ namespace ShipCoreFramework
             if (Deactivated)
             {
                 MainCoreComponent = null;
+                InvalidateSpeedStateCache();
+                Session.MarkPhysicalSpeedClusterSourceDirty(this);
                 SyncBeaconComponents();
                 OnUpgradeModulesChanged();
                 return;
@@ -253,6 +265,8 @@ namespace ShipCoreFramework
             {
                 MainCoreComponent = newMain;
                 MainCoreComponent.IsMainCore = true;
+                InvalidateSpeedStateCache();
+                Session.MarkPhysicalSpeedClusterSourceDirty(this);
                 SyncBeaconComponents();
             }
 
@@ -288,6 +302,7 @@ namespace ShipCoreFramework
             ClearPhysicalLinkedGroups();
             foreach (var kvp in GridDictionary) kvp.Value.Clean();
             ClearGridDictionary();
+            _groupBlocksCount = 0;
             Limits.Clear();
         }
 

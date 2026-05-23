@@ -231,13 +231,19 @@ namespace ShipCoreFramework
             currentMain.IsMainCore = false;
             MainCoreComponent = newMain;
             MainCoreComponent.IsMainCore = true;
+            InvalidateSpeedStateCache();
+            Session.MarkPhysicalSpeedClusterSourceDirty(this);
             SyncBeaconComponents();
             return true;
         }
 
         private void ApplyPunishmentFlags(GroupPunishmentFlags punishments)
         {
-            PunishSpeed = (punishments & GroupPunishmentFlags.Speed) != 0;
+            var punishSpeed = (punishments & GroupPunishmentFlags.Speed) != 0;
+            if (PunishSpeed != punishSpeed)
+                InvalidateSpeedStateCache();
+
+            PunishSpeed = punishSpeed;
             PunishModifiers = (punishments & GroupPunishmentFlags.Modifiers) != 0;
         }
 
@@ -313,6 +319,7 @@ namespace ShipCoreFramework
                 _boostDurationTimer -= 1f;
                 if (!(_boostDurationTimer <= 0f)) return;
                 BoostEnabled = false;
+                InvalidateSpeedStateCache();
                 _boostCooldownTimer = BoostCoolDown * 60f;
                 Utils.ShowNotification("Boost Disengaged! Cooldown started.");
 
@@ -405,6 +412,7 @@ namespace ShipCoreFramework
             }
 
             BoostEnabled = true;
+            InvalidateSpeedStateCache();
             PostBoostRampActive = false;
             PostBoostRampCap = -1f;
 

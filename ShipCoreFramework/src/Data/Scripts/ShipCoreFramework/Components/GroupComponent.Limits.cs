@@ -99,12 +99,25 @@ namespace ShipCoreFramework
 
         internal void OnBlockAddedToGroup()
         {
+            _groupBlocksCount++;
+            InvalidateSpeedStateCache();
+            Session.MarkPhysicalSpeedClusterSourceDirty(this);
+
             if (!_minimumBlocksLimitedBlockGateActive) return;
             if (IsBelowMinimumBlocksRequirement()) return;
 
             _minimumBlocksLimitedBlockGateActive = false;
             ScheduleMinimumBlocksGateRecheck();
             RefreshLimitedBlockPunishmentState();
+        }
+
+        internal void OnBlockRemovedFromGroup()
+        {
+            if (_groupBlocksCount > 0)
+                _groupBlocksCount--;
+
+            InvalidateSpeedStateCache();
+            Session.MarkPhysicalSpeedClusterSourceDirty(this);
         }
 
         internal void RunLimitedBlockPunishmentTick()

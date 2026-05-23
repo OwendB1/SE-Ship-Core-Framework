@@ -13,6 +13,14 @@ namespace ShipCoreFramework
         private readonly object _blocksLock = new object();
         private readonly List<IMySlimBlock> _blocks = new List<IMySlimBlock>();
         internal readonly Dictionary<BlockLimit, LimitBucket> Limits = new Dictionary<BlockLimit, LimitBucket>();
+        internal int BlockCount
+        {
+            get
+            {
+                lock (_blocksLock)
+                    return _blocks.Count;
+            }
+        }
 
         internal readonly Dictionary<IMyCubeBlock, CoreComponent> CoreDictionary =
             new Dictionary<IMyCubeBlock, CoreComponent>();

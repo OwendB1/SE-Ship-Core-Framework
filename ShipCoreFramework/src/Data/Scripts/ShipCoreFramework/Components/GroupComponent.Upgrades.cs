@@ -28,6 +28,7 @@ namespace ShipCoreFramework
         {
             if (_closing || _refreshingUpgradeModules || IsInitializingGrids) return;
 
+            InvalidateSpeedStateCache();
             _refreshingUpgradeModules = true;
             try
             {

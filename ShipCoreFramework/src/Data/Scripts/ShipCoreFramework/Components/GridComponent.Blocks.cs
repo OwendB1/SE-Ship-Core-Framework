@@ -83,7 +83,7 @@ namespace ShipCoreFramework
                     var maxMass = groupComponent.ShipCore.MaxMass;
                     var localizedBlockName = Utils.GetLocalizedBlockName(block);
 
-                    if (groupComponent.GroupBlocksCount > maxBlocks && maxBlocks > 0)
+                    if (groupComponent.GroupBlocksCount + 1 > maxBlocks && maxBlocks > 0)
                     {
                         Utils.ShowNotification(localizedBlockName + " violates MaxBlocks!", firstBigOwner);
                         block.RemoveAndRefund();
@@ -186,6 +186,8 @@ namespace ShipCoreFramework
             {
                 _blocks.Remove(block);
             }
+
+            groupComponent.OnBlockRemovedFromGroup();
 
             var funcBlock = block.FatBlock as IMyFunctionalBlock;
             if (funcBlock != null && value == null) funcBlock.EnabledChanged -= FuncBlockOnEnabledChanged;

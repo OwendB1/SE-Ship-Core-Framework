@@ -6,11 +6,14 @@ namespace ShipCoreFramework
 {
     internal partial class GroupComponent
     {
-        internal void SetPhysicalLinkedGroups(IMyGridGroupData physicalGroup, IEnumerable<IMyGridGroupData> linkedGroups)
+        internal void SetPhysicalLinkedGroups(IMyGridGroupData physicalGroup, IEnumerable<IMyGridGroupData> linkedGroups,
+            bool isSpeedClusterRepresentative)
         {
             lock (_connectedGroupsLock)
             {
                 _trackedPhysicalGroup = physicalGroup;
+                SpeedClusterPhysicalGroup = physicalGroup;
+                IsSpeedClusterRepresentative = isSpeedClusterRepresentative;
                 _connectedPhysicalGroups.Clear();
 
                 if (linkedGroups == null) return;
@@ -28,6 +31,8 @@ namespace ShipCoreFramework
                     return;
 
                 _trackedPhysicalGroup = null;
+                SpeedClusterPhysicalGroup = null;
+                IsSpeedClusterRepresentative = false;
                 _connectedPhysicalGroups.Clear();
             }
         }

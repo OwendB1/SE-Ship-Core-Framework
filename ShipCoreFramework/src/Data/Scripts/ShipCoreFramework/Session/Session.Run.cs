@@ -177,6 +177,7 @@ namespace ShipCoreFramework
 
             MyAPIGateway.Parallel.StartBackground(() =>
             {
+                var speedBatch = SpeedEnforcement.CreateBatch();
                 MyAPIGateway.Parallel.ForEach(GroupDict, kvp =>
                 {
                     kvp.Value.UpdateDeactivationState();
@@ -184,9 +185,11 @@ namespace ShipCoreFramework
                     kvp.Value.RunActiveDefenseTimerTick();
                     kvp.Value.RunLimitedBlockPunishmentTick();
                     kvp.Value.RunExternalLimitValidationTick();
-                    SpeedEnforcement.EnforceSpeedLimit(kvp.Value);
+                    SpeedEnforcement.EnforceSpeedLimit(kvp.Value, speedBatch);
                     if (runNfz) NoFlyZoneEnforcement.EnforceNoFlyZones(kvp.Value, doPunish);
                 });
+
+                SpeedEnforcement.DispatchBatch(speedBatch);
             });
         }
 

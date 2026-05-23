@@ -109,7 +109,7 @@ namespace ShipCoreFramework
                    Session.Config.IgnoredFactionTags.Contains(faction.Tag);
         }
 
-        private long GetRepresentativeGridId()
+        internal long GetRepresentativeGridId()
         {
             var main = MainCoreComponent?.GridComponent?.Grid;
             var grid = main ?? GridDictionary.Keys.FirstOrDefault();

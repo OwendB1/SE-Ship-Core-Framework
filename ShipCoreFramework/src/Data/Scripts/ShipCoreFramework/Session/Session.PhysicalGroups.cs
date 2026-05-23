@@ -1,18 +1,34 @@
 using System.Collections.Generic;
 using System.Linq;
+using Sandbox.Game.Entities;
 using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
 {
     public partial class Session
     {
-        private static readonly IMyGridGroupData[] EmptyPhysicalMemberSet = new IMyGridGroupData[0];
+        internal sealed class PhysicalSpeedCluster
+        {
+            internal readonly object SyncRoot = new object();
+            internal readonly IMyGridGroupData PhysicalGroup;
+            internal bool IsTracked;
+            internal GroupComponent RepresentativeGroup;
+            internal GroupComponent SourceGroup;
+            internal GroupComponent[] MemberGroups = new GroupComponent[0];
+            internal MyCubeGrid[] MovableGrids = new MyCubeGrid[0];
+            internal bool SourceDirty = true;
+
+            internal PhysicalSpeedCluster(IMyGridGroupData physicalGroup)
+            {
+                PhysicalGroup = physicalGroup;
+            }
+        }
 
         private static void TrackPhysicalGridGroup(IMyGridGroupData group)
         {
             if (group == null || group.LinkType != GridLinkTypeEnum.Physical) return;
 
-            PhysicalGroupMemberDict[group] = EmptyPhysicalMemberSet;
+            PhysicalSpeedClusterDict.GetOrAdd(group, physicalGroup => new PhysicalSpeedCluster(physicalGroup));
             group.OnGridAdded += PhysicalGridGroupOnGridAdded;
             group.OnGridRemoved += PhysicalGridGroupOnGridRemoved;
             RefreshPhysicalGroupLinkages(group);
@@ -25,19 +41,17 @@ namespace ShipCoreFramework
             group.OnGridAdded -= PhysicalGridGroupOnGridAdded;
             group.OnGridRemoved -= PhysicalGridGroupOnGridRemoved;
 
-            IMyGridGroupData[] previousMembers;
-            if (!PhysicalGroupMemberDict.TryRemove(group, out previousMembers))
-                previousMembers = EmptyPhysicalMemberSet;
-
-            ClearPhysicalGroupLinkages(group, previousMembers);
+            PhysicalSpeedCluster cluster;
+            if (PhysicalSpeedClusterDict.TryRemove(group, out cluster) && cluster != null)
+                ClearPhysicalGroupLinkages(cluster);
         }
 
         private static void UntrackAllPhysicalGridGroups()
         {
-            foreach (var group in PhysicalGroupMemberDict.Keys.ToList())
+            foreach (var group in PhysicalSpeedClusterDict.Keys.ToList())
                 UntrackPhysicalGridGroup(group);
 
-            PhysicalGroupMemberDict.Clear();
+            PhysicalSpeedClusterDict.Clear();
         }
 
         private static void PhysicalGridGroupOnGridAdded(IMyGridGroupData addedTo, IMyCubeGrid grid, IMyGridGroupData removedFrom)
@@ -72,11 +86,33 @@ namespace ShipCoreFramework
             if (grids == null) return;
 
             var seenPhysicalGroups = new HashSet<IMyGridGroupData>();
-            foreach (var grid in grids.Where(grid => grid != null && !grid.MarkedForClose && !grid.Closed))
+            foreach (var grid in grids)
             {
+                if (grid == null || grid.MarkedForClose || grid.Closed) continue;
+
                 var physicalGroup = grid.GetGridGroup(GridLinkTypeEnum.Physical);
                 if (physicalGroup == null || !seenPhysicalGroups.Add(physicalGroup)) continue;
                 RefreshPhysicalGroupLinkages(physicalGroup);
+            }
+        }
+
+        internal static bool TryGetPhysicalSpeedCluster(GroupComponent groupComponent, out PhysicalSpeedCluster cluster)
+        {
+            cluster = null;
+            if (groupComponent == null || groupComponent.SpeedClusterPhysicalGroup == null) return false;
+            if (!PhysicalSpeedClusterDict.TryGetValue(groupComponent.SpeedClusterPhysicalGroup, out cluster) || cluster == null)
+                return false;
+            return cluster.IsTracked;
+        }
+
+        internal static void MarkPhysicalSpeedClusterSourceDirty(GroupComponent groupComponent)
+        {
+            PhysicalSpeedCluster cluster;
+            if (!TryGetPhysicalSpeedCluster(groupComponent, out cluster)) return;
+
+            lock (cluster.SyncRoot)
+            {
+                cluster.SourceDirty = true;
             }
         }
 
@@ -91,8 +127,9 @@ namespace ShipCoreFramework
             var memberGroups = new List<GroupComponent>();
             var seenMechanicalGroups = new HashSet<IMyGridGroupData>();
 
-            foreach (var grid in physicalGrids.Where(grid => grid != null && !grid.MarkedForClose && !grid.Closed))
+            foreach (var grid in physicalGrids)
             {
+                if (grid == null || grid.MarkedForClose || grid.Closed) continue;
                 physicalGridIds.Add(grid.EntityId);
 
                 var mechanicalGroup = grid.GetGridGroup(GridLinkTypeEnum.Mechanical);
@@ -103,71 +140,121 @@ namespace ShipCoreFramework
                     memberGroups.Add(groupComponent);
             }
 
-            IMyGridGroupData[] previousMembers;
-            if (!PhysicalGroupMemberDict.TryGetValue(physicalGroup, out previousMembers))
-                previousMembers = EmptyPhysicalMemberSet;
+            var cluster = PhysicalSpeedClusterDict.GetOrAdd(physicalGroup,
+                groupData => new PhysicalSpeedCluster(groupData));
 
+            var previousMembers = cluster.MemberGroups ?? new GroupComponent[0];
             var shouldTrack = memberGroups.Count > 1;
             if (!shouldTrack && memberGroups.Count == 1)
                 shouldTrack = !HasSameGridEntityIds(memberGroups[0], physicalGridIds);
 
-            var nextMembers = shouldTrack
-                ? memberGroups
-                    .Select(groupComponent => groupComponent.MyGroup)
-                    .Where(groupData => groupData != null)
-                    .Distinct()
-                    .ToArray()
-                : EmptyPhysicalMemberSet;
+            if (!shouldTrack)
+            {
+                lock (cluster.SyncRoot)
+                {
+                    cluster.IsTracked = false;
+                    cluster.RepresentativeGroup = null;
+                    cluster.SourceGroup = null;
+                    cluster.MemberGroups = new GroupComponent[0];
+                    cluster.MovableGrids = new MyCubeGrid[0];
+                    cluster.SourceDirty = true;
+                }
 
-            PhysicalGroupMemberDict[physicalGroup] = nextMembers;
+                ClearPhysicalGroupLinkages(previousMembers);
+                return;
+            }
 
-            var affectedGroups = new HashSet<IMyGridGroupData>(previousMembers.Where(groupData => groupData != null));
-            foreach (var nextMember in nextMembers.Where(nextMember => nextMember != null))
+            var nextMembers = memberGroups
+                .Distinct()
+                .OrderBy(group => group.GetRepresentativeGridId())
+                .ToArray();
+
+            var representativeGroup = nextMembers.FirstOrDefault();
+            var movableGrids = BuildMovableGridCache(nextMembers);
+
+            lock (cluster.SyncRoot)
+            {
+                cluster.IsTracked = true;
+                cluster.RepresentativeGroup = representativeGroup;
+                cluster.SourceGroup = null;
+                cluster.MemberGroups = nextMembers;
+                cluster.MovableGrids = movableGrids;
+                cluster.SourceDirty = true;
+            }
+
+            var affectedGroups = new HashSet<GroupComponent>(previousMembers);
+            foreach (var nextMember in nextMembers)
                 affectedGroups.Add(nextMember);
 
             foreach (var affectedGroup in affectedGroups)
             {
-                GroupComponent groupComponent;
-                if (!GroupDict.TryGetValue(affectedGroup, out groupComponent) || groupComponent == null)
-                    continue;
+                if (affectedGroup == null) continue;
 
-                if (!shouldTrack || !nextMembers.Any(groupData => ReferenceEquals(groupData, affectedGroup)))
+                if (!nextMembers.Contains(affectedGroup))
                 {
-                    groupComponent.ClearPhysicalLinkedGroups(physicalGroup);
+                    affectedGroup.ClearPhysicalLinkedGroups(physicalGroup);
                     continue;
                 }
 
-                groupComponent.SetPhysicalLinkedGroups(physicalGroup,
-                    nextMembers.Where(groupData => !ReferenceEquals(groupData, affectedGroup)));
+                affectedGroup.SetPhysicalLinkedGroups(physicalGroup,
+                    nextMembers
+                        .Where(group => !ReferenceEquals(group, affectedGroup))
+                        .Select(group => group.MyGroup),
+                    ReferenceEquals(affectedGroup, representativeGroup));
+                affectedGroup.InvalidateSpeedStateCache();
             }
         }
 
-        private static void ClearPhysicalGroupLinkages(IMyGridGroupData physicalGroup, IEnumerable<IMyGridGroupData> members)
+        private static void ClearPhysicalGroupLinkages(PhysicalSpeedCluster cluster)
         {
-            if (members == null) return;
+            if (cluster == null) return;
+            ClearPhysicalGroupLinkages(cluster.MemberGroups);
+        }
 
-            foreach (var member in members.Where(member => member != null))
+        private static void ClearPhysicalGroupLinkages(IEnumerable<GroupComponent> memberGroups)
+        {
+            if (memberGroups == null) return;
+
+            foreach (var groupComponent in memberGroups.Where(groupComponent => groupComponent != null))
             {
-                GroupComponent groupComponent;
-                if (!GroupDict.TryGetValue(member, out groupComponent) || groupComponent == null)
-                    continue;
-
-                groupComponent.ClearPhysicalLinkedGroups(physicalGroup);
+                groupComponent.ClearPhysicalLinkedGroups();
+                groupComponent.InvalidateSpeedStateCache();
             }
         }
 
         private static bool HasSameGridEntityIds(GroupComponent groupComponent, HashSet<long> physicalGridIds)
         {
-            if (groupComponent == null) return false;
-            if (physicalGridIds == null) return false;
+            if (groupComponent == null || physicalGridIds == null) return false;
 
-            var mechanicalGridIds = groupComponent.GridDictionary.Keys
-                .Where(grid => grid != null && !grid.MarkedForClose && !grid.Closed)
-                .Select(grid => grid.EntityId)
-                .ToList();
+            var mechanicalGridIds = new HashSet<long>();
+            foreach (var grid in groupComponent.GridDictionary.Keys)
+            {
+                if (grid == null || grid.MarkedForClose || grid.Closed) continue;
+                mechanicalGridIds.Add(grid.EntityId);
+            }
 
-            if (mechanicalGridIds.Count != physicalGridIds.Count) return false;
-            return mechanicalGridIds.All(physicalGridIds.Contains);
+            return mechanicalGridIds.SetEquals(physicalGridIds);
+        }
+
+        private static MyCubeGrid[] BuildMovableGridCache(IEnumerable<GroupComponent> memberGroups)
+        {
+            var grids = new List<MyCubeGrid>();
+            var seenGridIds = new HashSet<long>();
+
+            foreach (var groupComponent in memberGroups)
+            {
+                if (groupComponent == null) continue;
+
+                foreach (var grid in groupComponent.GridDictionary.Keys)
+                {
+                    if (grid == null || grid.MarkedForClose || grid.Closed) continue;
+                    if (grid.IsStatic) continue;
+                    if (!seenGridIds.Add(grid.EntityId)) continue;
+                    grids.Add(grid);
+                }
+            }
+
+            return grids.ToArray();
         }
     }
 }
