@@ -21,7 +21,7 @@ namespace ShipCoreFramework
         
         public static void OnChatCommand(ulong sender,string messageText, ref bool sendToOthers)
         {
-            if (!messageText.StartsWith("/core", StringComparison.OrdinalIgnoreCase)) return;
+            if (!IsCoreCommand(messageText)) return;
 
             sendToOthers = false;
             if(!Session.IsServer) ForwardToServer(messageText);
@@ -32,6 +32,15 @@ namespace ShipCoreFramework
         {
             var bytes = Encoding.UTF8.GetBytes(message);
             MyAPIGateway.Multiplayer.SendMessageToServer(Session.CommandsSyncId, bytes);
+        }
+
+        private static bool IsCoreCommand(string messageText)
+        {
+            const string commandPrefix = "/core";
+            if (!messageText.StartsWith(commandPrefix, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            return !messageText.StartsWith("/corehud", StringComparison.OrdinalIgnoreCase);
         }
         
         private static void CommandSwitch(long playerId, string messageText)
