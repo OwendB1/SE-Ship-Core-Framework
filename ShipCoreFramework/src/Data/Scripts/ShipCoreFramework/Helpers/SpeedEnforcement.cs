@@ -196,34 +196,38 @@ namespace ShipCoreFramework
                 if (!cluster.SourceDirty && cluster.SourceGroup != null)
                     return cluster.SourceGroup;
 
-                GroupComponent bestCoreGroup = null;
+                GroupComponent bestSpeedGroup = null;
                 var bestBlockCount = int.MinValue;
+                var bestHasExplicitCore = false;
                 var bestTieBreaker = long.MaxValue;
 
                 var memberGroups = cluster.MemberGroups;
                 for (var i = 0; i < memberGroups.Length; i++)
                 {
                     var linkedGroup = memberGroups[i];
-                    if (linkedGroup == null || linkedGroup.MainCoreComponent == null) continue;
+                    if (linkedGroup == null || linkedGroup.ShipCore == null) continue;
 
                     var linkedBlockCount = linkedGroup.GroupBlocksCount;
+                    var linkedHasExplicitCore = linkedGroup.MainCoreComponent != null;
                     var linkedTieBreaker = linkedGroup.GetRepresentativeGridId();
-                    if (bestCoreGroup == null
+                    if (bestSpeedGroup == null
                         || linkedBlockCount > bestBlockCount
-                        || linkedBlockCount == bestBlockCount && linkedTieBreaker < bestTieBreaker)
+                        || linkedBlockCount == bestBlockCount && linkedHasExplicitCore && !bestHasExplicitCore
+                        || linkedBlockCount == bestBlockCount && linkedHasExplicitCore == bestHasExplicitCore && linkedTieBreaker < bestTieBreaker)
                     {
-                        bestCoreGroup = linkedGroup;
+                        bestSpeedGroup = linkedGroup;
                         bestBlockCount = linkedBlockCount;
+                        bestHasExplicitCore = linkedHasExplicitCore;
                         bestTieBreaker = linkedTieBreaker;
                     }
                 }
 
-                if (bestCoreGroup == null)
-                    bestCoreGroup = cluster.RepresentativeGroup ?? groupComponent;
+                if (bestSpeedGroup == null)
+                    bestSpeedGroup = cluster.RepresentativeGroup ?? groupComponent;
 
-                cluster.SourceGroup = bestCoreGroup;
+                cluster.SourceGroup = bestSpeedGroup;
                 cluster.SourceDirty = false;
-                return bestCoreGroup;
+                return bestSpeedGroup;
             }
         }
 
