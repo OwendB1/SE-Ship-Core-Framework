@@ -382,7 +382,7 @@ namespace ShipCoreFramework
                     }
                 }
                 
-                var prodValue = baseSpeed * modifiers.RefineSpeed + prodSum * modifiers.RefineSpeed - baseSpeed;
+                var prodValue = baseSpeed * modifiers.AssemblerSpeed + prodSum * modifiers.AssemblerSpeed - baseSpeed;
                 assembler.UpgradeValues["Productivity"] = prodValue;
             }
 
