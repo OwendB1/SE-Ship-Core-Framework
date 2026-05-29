@@ -78,9 +78,9 @@ namespace ShipCoreFramework
                 if (!limitBasedPunish)
                 {
                     var firstBigOwner = Grid.BigOwners.FirstOrDefault();
-                    var maxBlocks = groupComponent.ShipCore.MaxBlocks;
-                    var maxPCU = groupComponent.ShipCore.MaxPCU;
-                    var maxMass = groupComponent.ShipCore.MaxMass;
+                    var maxBlocks = groupComponent.GetEffectiveMaxBlocks();
+                    var maxPCU = groupComponent.GetEffectiveMaxPCU();
+                    var maxMass = groupComponent.GetEffectiveMaxMass();
                     var localizedBlockName = Utils.GetLocalizedBlockName(block);
 
                     if (groupComponent.GroupBlocksCount + 1 > maxBlocks && maxBlocks > 0)

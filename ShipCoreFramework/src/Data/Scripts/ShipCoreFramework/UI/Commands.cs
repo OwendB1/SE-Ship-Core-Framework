@@ -113,6 +113,10 @@ namespace ShipCoreFramework
                     if(!CheckIfAdmin(playerId)) return;
                     modMessage+=IgnoreAi();
                     break;
+                case "unattachedmodules":
+                    if(!CheckIfAdmin(playerId)) return;
+                    modMessage+=UnattachedModules(args);
+                    break;
                 case "info":
                     if(Session.LocalPlayer!=null) CoreInfo(playerId);
                     return;
@@ -526,6 +530,24 @@ namespace ShipCoreFramework
             Session.Config.IgnoreAiFactions = !Session.Config.IgnoreAiFactions;
             Session.Config.SaveConfig(true);
             return $"Set AI factions ignore to {Session.Config.IgnoreAiFactions}.";
+        }
+
+        private static string UnattachedModules(string[] args)
+        {
+            if (args.Length < 2)
+            {
+                return $"Unattached upgrade modules mode is {(Session.Config.AllowUnattachedUpgradeModules ? "ON" : "OFF")}";
+            }
+
+            var val = args[1].ToLowerInvariant();
+            if (val != "on" && val != "off")
+            {
+                return "Usage: /core unattachedmodules on|off";
+            }
+
+            Session.Config.AllowUnattachedUpgradeModules = (val == "on");
+            Session.Config.SaveConfig(true);
+            return $"Unattached upgrade modules mode set to {(Session.Config.AllowUnattachedUpgradeModules ? "ON" : "OFF")}";
         }
 
         private static string ListIgnoredTags()
@@ -959,8 +981,14 @@ Adds a tag to the ignored faction tags. (Admin Required)
 /core ignoretags remove <tag>
 Removes a tag from the ignored faction tags. (Admin Required)
 
-/core ignoreai 
+/core ignoreai
 Toggles ignore of ai on or off. (Admin Required)
+
+/core unattachedmodules
+Shows current unattached upgrade modules mode. (Admin Required)
+
+/core unattachedmodules on|off
+Enables or disables unattached upgrade module mode. When ON, upgrade modules do not need to be physically adjacent to a core. (Admin Required)
 
 /core info
 Raycasts from crosshairs to find a grid and displays all its core information.";

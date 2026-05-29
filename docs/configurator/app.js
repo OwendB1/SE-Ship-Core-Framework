@@ -61,7 +61,8 @@ const DEFAULT_UPGRADE_MODULE = {
   subtypeId: "",
   uniqueName: "",
   modifiers: [],
-  blockLimitModifiers: []
+  blockLimitModifiers: [],
+  capacityModifiers: []
 };
 
 const DEFAULT_UPGRADE_STAT_MODIFIER = {
@@ -72,6 +73,12 @@ const DEFAULT_UPGRADE_STAT_MODIFIER = {
 
 const DEFAULT_BLOCK_LIMIT_MODIFIER = {
   blockLimitName: "",
+  value: 0,
+  modifierType: "Additive"
+};
+
+const DEFAULT_CAPACITY_MODIFIER = {
+  stat: "MaxBlocks",
   value: 0,
   modifierType: "Additive"
 };
@@ -643,6 +650,15 @@ function cloneUpgradeModule(module = DEFAULT_UPGRADE_MODULE) {
           value: Number(modifier?.value ?? 0),
           modifierType: modifier?.modifierType === "Multiplicative" ? "Multiplicative" : "Additive"
         }))
+      : [],
+    capacityModifiers: Array.isArray(module?.capacityModifiers)
+      ? module.capacityModifiers.map((modifier) => ({
+          ...DEFAULT_CAPACITY_MODIFIER,
+          ...modifier,
+          stat: ["MaxBlocks", "MaxMass", "MaxPCU"].includes(modifier?.stat) ? modifier.stat : "MaxBlocks",
+          value: Number(modifier?.value ?? 0),
+          modifierType: modifier?.modifierType === "Multiplicative" ? "Multiplicative" : "Additive"
+        }))
       : []
   };
 }
@@ -1161,6 +1177,7 @@ function renderUpgradeModules() {
         <label class="inline">Module Name <input data-action="upgrade-unique" data-u="${moduleIndex}" class="small" placeholder="UniqueName" value="${escapeXml(module.uniqueName)}" /></label>
         <button data-action="add-upgrade-modifier" data-u="${moduleIndex}">Add Modifier</button>
         <button data-action="add-upgrade-limit-modifier" data-u="${moduleIndex}">Add Block Limit Modifier</button>
+        <button data-action="add-capacity-modifier" data-u="${moduleIndex}">Add Capacity Modifier</button>
         <button data-action="remove-upgrade-module" data-u="${moduleIndex}">Delete Upgrade Module</button>
       </div>
 
@@ -1189,6 +1206,24 @@ function renderUpgradeModules() {
             </select>
           </label>
           <button data-action="remove-upgrade-limit-modifier" data-u="${moduleIndex}" data-bm="${modifierIndex}">Remove</button>
+        </div>
+      `).join("")}
+
+      <h4>Capacity Modifiers (MaxBlocks / MaxMass / MaxPCU)</h4>
+      ${(module.capacityModifiers || []).map((modifier, modifierIndex) => `
+        <div class="row wrap">
+          <label class="inline">Stat
+            <select data-action="upgrade-cap-stat" data-u="${moduleIndex}" data-cm="${modifierIndex}" class="small">
+              ${["MaxBlocks", "MaxMass", "MaxPCU"].map((value) => `<option ${modifier.stat === value ? "selected" : ""}>${value}</option>`).join("")}
+            </select>
+          </label>
+          <label class="inline">Value <input data-action="upgrade-cap-value" data-u="${moduleIndex}" data-cm="${modifierIndex}" class="small" type="number" step="1" value="${Number(modifier.value)}" /></label>
+          <label class="inline">Type
+            <select data-action="upgrade-cap-type" data-u="${moduleIndex}" data-cm="${modifierIndex}" class="small">
+              ${["Additive", "Multiplicative"].map((value) => `<option ${modifier.modifierType === value ? "selected" : ""}>${value}</option>`).join("")}
+            </select>
+          </label>
+          <button data-action="remove-capacity-modifier" data-u="${moduleIndex}" data-cm="${modifierIndex}">Remove</button>
         </div>
       `).join("")}
     </div>
@@ -1338,6 +1373,14 @@ function parseUpgradeModuleXml(text) {
       modifierType:   (n.getElementsByTagName("ModifierType")[0]?.textContent  || "Additive").trim()
     })).filter((m) => m.blockLimitName);
 
+  const capacityModifiers = Array.from(moduleNode.getElementsByTagName("CapacityModifiers"))
+    .filter((n) => n.localName === "CapacityModifiers")
+    .map((n) => ({
+      stat:         (n.getElementsByTagName("Stat")[0]?.textContent         || "MaxBlocks").trim(),
+      value:        Number((n.getElementsByTagName("Value")[0]?.textContent || "0").trim()),
+      modifierType: (n.getElementsByTagName("ModifierType")[0]?.textContent || "Additive").trim()
+    })).filter((m) => ["MaxBlocks", "MaxMass", "MaxPCU"].includes(m.stat));
+
   // Resolve SubtypeId and UniqueName as direct children of <UpgradeModule>
   // using a parentNode check so deeper descendants are never accidentally matched.
   const subtypeIdNode  = Array.from(moduleNode.getElementsByTagName("SubtypeId")).find((n) => n.localName === "SubtypeId"  && n.parentNode === moduleNode);
@@ -1347,7 +1390,8 @@ function parseUpgradeModuleXml(text) {
     subtypeId:  (subtypeIdNode?.textContent  || "").trim(),
     uniqueName: (uniqueNameNode?.textContent || "").trim(),
     modifiers,
-    blockLimitModifiers
+    blockLimitModifiers,
+    capacityModifiers
   });
 }
 
@@ -1371,6 +1415,13 @@ function writeUpgradeModuleXml(module, indent = "  ") {
       `${indent}  <Value>${Number(modifier.value ?? 0)}</Value>`,
       `${indent}  <ModifierType>${escapeXml(modifier.modifierType || "Additive")}</ModifierType>`,
       `${indent}</BlockLimitModifiers>`
+    ]),
+    ...(module.capacityModifiers || []).filter((modifier) => ["MaxBlocks", "MaxMass", "MaxPCU"].includes(modifier.stat)).flatMap((modifier) => [
+      `${indent}<CapacityModifiers>`,
+      `${indent}  <Stat>${escapeXml(modifier.stat)}</Stat>`,
+      `${indent}  <Value>${Number(modifier.value ?? 0)}</Value>`,
+      `${indent}  <ModifierType>${escapeXml(modifier.modifierType || "Additive")}</ModifierType>`,
+      `${indent}</CapacityModifiers>`
     ]),
     `</UpgradeModule>`
   ];
@@ -1982,6 +2033,10 @@ document.addEventListener("click", (event) => {
     selectedUpgrade.blockLimitModifiers.push({ ...DEFAULT_BLOCK_LIMIT_MODIFIER });
     didMutate = true;
   }
+  if (action === "add-capacity-modifier" && selectedUpgrade) {
+    selectedUpgrade.capacityModifiers.push({ ...DEFAULT_CAPACITY_MODIFIER });
+    didMutate = true;
+  }
   if (action === "remove-upgrade-module") {
     if (upgradeIndex < 0) return;
     state.upgradeModules.splice(upgradeIndex, 1);
@@ -1996,6 +2051,11 @@ document.addEventListener("click", (event) => {
   }
   if (action === "remove-upgrade-limit-modifier" && selectedUpgrade) {
     selectedUpgrade.blockLimitModifiers.splice(blockLimitModifierIndex, 1);
+    didMutate = true;
+  }
+  if (action === "remove-capacity-modifier" && selectedUpgrade) {
+    const capacityModifierIndex = Number(target.dataset.cm);
+    selectedUpgrade.capacityModifiers.splice(capacityModifierIndex, 1);
     didMutate = true;
   }
 
@@ -2021,6 +2081,7 @@ document.addEventListener("input", (event) => {
   const allowanceIndex = Number(target.dataset.au);
   const upgradeModifierIndex = Number(target.dataset.m);
   const blockLimitModifierIndex = Number(target.dataset.bm);
+  const capacityModifierIndex = Number(target.dataset.cm);
   const selectedCore = getCoreBySelectorIndex(coreIndex);
   const selectedUpgrade = state.upgradeModules[upgradeIndex] || null;
 
@@ -2072,6 +2133,7 @@ document.addEventListener("input", (event) => {
   if (action === "upgrade-mod-value") selectedUpgrade.modifiers[upgradeModifierIndex].value = Number(target.value || 0);
   if (action === "upgrade-limit-name") selectedUpgrade.blockLimitModifiers[blockLimitModifierIndex].blockLimitName = target.value;
   if (action === "upgrade-limit-value") selectedUpgrade.blockLimitModifiers[blockLimitModifierIndex].value = Number(target.value || 0);
+  if (action === "upgrade-cap-value") selectedUpgrade.capacityModifiers[capacityModifierIndex].value = Number(target.value || 0);
 
   generateXml();
 });
@@ -2157,6 +2219,7 @@ document.addEventListener("change", (event) => {
   const upgradeIndex = Number(target.dataset.u);
   const upgradeModifierIndex = Number(target.dataset.m);
   const blockLimitModifierIndex = Number(target.dataset.bm);
+  const capacityModifierIndex = Number(target.dataset.cm);
   const selectedCore = getCoreBySelectorIndex(coreIndex);
   const selectedUpgrade = state.upgradeModules[upgradeIndex] || null;
 
@@ -2248,6 +2311,8 @@ document.addEventListener("change", (event) => {
 
   if (action === "upgrade-mod-type" && selectElement) selectedUpgrade.modifiers[upgradeModifierIndex].modifierType = selectElement.value;
   if (action === "upgrade-limit-type" && selectElement) selectedUpgrade.blockLimitModifiers[blockLimitModifierIndex].modifierType = selectElement.value;
+  if (action === "upgrade-cap-stat" && selectElement) selectedUpgrade.capacityModifiers[capacityModifierIndex].stat = selectElement.value;
+  if (action === "upgrade-cap-type" && selectElement) selectedUpgrade.capacityModifiers[capacityModifierIndex].modifierType = selectElement.value;
 
   generateXml();
 });

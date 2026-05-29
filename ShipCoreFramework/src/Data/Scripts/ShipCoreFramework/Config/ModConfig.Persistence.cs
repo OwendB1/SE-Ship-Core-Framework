@@ -56,6 +56,7 @@ namespace ShipCoreFramework
             MassTypeMode = import.MassTypeMode;
             FrictionSpeedValueMode = import.FrictionSpeedValueMode;
             BlockDirectionalPlacementOnSubgrids = import.BlockDirectionalPlacementOnSubgrids;
+            AllowUnattachedUpgradeModules = import.AllowUnattachedUpgradeModules;
             NoFlyZones = import.NoFlyZones ?? new System.Collections.Generic.List<Zones>();
         }
 

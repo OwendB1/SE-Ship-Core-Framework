@@ -134,9 +134,9 @@ namespace ShipCoreFramework
 
         private bool IsOverCoreCapacity()
         {
-            return (ShipCore.MaxBlocks > 0 && GroupBlocksCount >= ShipCore.MaxBlocks) ||
-                   (ShipCore.MaxPCU > 0 && GroupPCU >= ShipCore.MaxPCU) ||
-                   (ShipCore.MaxMass > 0 && GroupMass >= ShipCore.MaxMass);
+            return (ShipCore.MaxBlocks > 0 && GroupBlocksCount >= GetEffectiveMaxBlocks()) ||
+                   (ShipCore.MaxPCU > 0 && GroupPCU >= GetEffectiveMaxPCU()) ||
+                   (ShipCore.MaxMass > 0 && GroupMass >= GetEffectiveMaxMass());
         }
 
         private bool IsAtOrOverMaxPlayers()
@@ -153,14 +153,14 @@ namespace ShipCoreFramework
         {
             var triggeredLimits = new List<string>();
 
-            if (ShipCore.MaxBlocks > 0 && GroupBlocksCount >= ShipCore.MaxBlocks)
-                triggeredLimits.Add($"blocks {GroupBlocksCount}/{ShipCore.MaxBlocks}");
+            if (ShipCore.MaxBlocks > 0 && GroupBlocksCount >= GetEffectiveMaxBlocks())
+                triggeredLimits.Add($"blocks {GroupBlocksCount}/{GetEffectiveMaxBlocks()}");
 
-            if (ShipCore.MaxPCU > 0 && GroupPCU >= ShipCore.MaxPCU)
-                triggeredLimits.Add($"PCU {GroupPCU}/{ShipCore.MaxPCU}");
+            if (ShipCore.MaxPCU > 0 && GroupPCU >= GetEffectiveMaxPCU())
+                triggeredLimits.Add($"PCU {GroupPCU}/{GetEffectiveMaxPCU()}");
 
-            if (ShipCore.MaxMass > 0 && GroupMass >= ShipCore.MaxMass)
-                triggeredLimits.Add($"mass {GroupMass:F0}/{ShipCore.MaxMass:F0} kg");
+            if (ShipCore.MaxMass > 0 && GroupMass >= GetEffectiveMaxMass())
+                triggeredLimits.Add($"mass {GroupMass:F0}/{GetEffectiveMaxMass():F0} kg");
 
             return triggeredLimits.Count == 0
                 ? "Core capacity exceeded"

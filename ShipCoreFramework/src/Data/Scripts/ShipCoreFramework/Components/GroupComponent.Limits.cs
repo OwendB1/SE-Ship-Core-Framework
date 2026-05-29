@@ -306,6 +306,57 @@ namespace ShipCoreFramework
             return maxCount;
         }
 
+        internal int GetEffectiveMaxBlocks()
+        {
+            var max = ShipCore.MaxBlocks;
+            if (max <= 0) return max;
+            foreach (var module in GetMainCoreUpgradeModules(true))
+            {
+                var config = module.GetConfig();
+                if (config?.CapacityModifiers == null) continue;
+                foreach (var cm in config.CapacityModifiers)
+                {
+                    if (cm != null && cm.Stat.Equals("MaxBlocks", StringComparison.OrdinalIgnoreCase))
+                        max = (int)CubeGridModifiers.ApplyUpgradeModifier(max, cm.Value, cm.ModifierType);
+                }
+            }
+            return max;
+        }
+
+        internal float GetEffectiveMaxMass()
+        {
+            var max = ShipCore.MaxMass;
+            if (max <= 0) return max;
+            foreach (var module in GetMainCoreUpgradeModules(true))
+            {
+                var config = module.GetConfig();
+                if (config?.CapacityModifiers == null) continue;
+                foreach (var cm in config.CapacityModifiers)
+                {
+                    if (cm != null && cm.Stat.Equals("MaxMass", StringComparison.OrdinalIgnoreCase))
+                        max = CubeGridModifiers.ApplyUpgradeModifier(max, cm.Value, cm.ModifierType);
+                }
+            }
+            return max;
+        }
+
+        internal int GetEffectiveMaxPCU()
+        {
+            var max = ShipCore.MaxPCU;
+            if (max <= 0) return max;
+            foreach (var module in GetMainCoreUpgradeModules(true))
+            {
+                var config = module.GetConfig();
+                if (config?.CapacityModifiers == null) continue;
+                foreach (var cm in config.CapacityModifiers)
+                {
+                    if (cm != null && cm.Stat.Equals("MaxPCU", StringComparison.OrdinalIgnoreCase))
+                        max = (int)CubeGridModifiers.ApplyUpgradeModifier(max, cm.Value, cm.ModifierType);
+                }
+            }
+            return max;
+        }
+
         private void RecalculateAllLimits()
         {
             Limits.Clear();

@@ -45,6 +45,7 @@ namespace ShipCoreFramework
         [XmlElement("MassTypeMode")] public MassTypeMode MassTypeMode = MassTypeMode.Dry;
         [XmlElement("FrictionSpeedValueMode")] public FrictionSpeedValueMode FrictionSpeedValueMode = FrictionSpeedValueMode.Modifier;
         [XmlElement("BlockDirectionalPlacementOnSubgrids")] public bool BlockDirectionalPlacementOnSubgrids = true;
+        [XmlElement("AllowUnattachedUpgradeModules")] public bool AllowUnattachedUpgradeModules;
         [XmlElement("NoFlyZones")] public List<Zones> NoFlyZones = new List<Zones>();
     }
 
@@ -280,6 +281,9 @@ namespace ShipCoreFramework
         [XmlElement("BlockLimitModifiers")]
         public BlockLimitModifier[] BlockLimitModifiers = Array.Empty<BlockLimitModifier>();
 
+        [XmlElement("CapacityModifiers")]
+        public CapacityModifier[] CapacityModifiers = Array.Empty<CapacityModifier>();
+
         [XmlIgnore]
         internal string ConfigSource = string.Empty;
 
@@ -305,6 +309,19 @@ namespace ShipCoreFramework
     {
         [XmlElement("BlockLimitName")]
         public string BlockLimitName = string.Empty;
+
+        [XmlElement("Value")]
+        public float Value;
+
+        [XmlElement("ModifierType")]
+        public UpgradeModifierOperation ModifierType = UpgradeModifierOperation.Additive;
+    }
+
+    [XmlRoot("CapacityModifiers")]
+    public class CapacityModifier
+    {
+        [XmlElement("Stat")]
+        public string Stat = string.Empty;
 
         [XmlElement("Value")]
         public float Value;

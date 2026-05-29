@@ -93,6 +93,17 @@ namespace ShipCoreFramework
                     if (attachedModule.EntityId == myModule.EntityId) return core;
             }
 
+            if (Session.Config != null && Session.Config.AllowUnattachedUpgradeModules)
+            {
+                foreach (var core in _groupComponent.CoreDictionary.Values
+                             .OrderBy(c => c.CoreBlock.EntityId))
+                {
+                    var shipCore = Session.Config.GetShipCoreByTypeId(core.SubtypeId);
+                    if (shipCore != null && shipCore.IsUpgradeModuleAllowed(SubtypeId))
+                        return core;
+                }
+            }
+
             return null;
         }
     }

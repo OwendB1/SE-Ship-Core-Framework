@@ -236,15 +236,15 @@ namespace ShipCoreFramework
             if (ShipCore.MaxBlocks > 1 )
             {
                 var blockCount = GroupComponent.GroupBlocksCount;
-                var passed = blockCount <= ShipCore.MaxBlocks;
-                var target = ShipCore.MaxBlocks.ToString();
+                var effectiveMaxBlocks = GroupComponent.GetEffectiveMaxBlocks();
+                var passed = blockCount <= effectiveMaxBlocks;
 
                 _gridResultsTable.Rows.Add(new Row
                 {
                     new Cell("Blocks: "),
                     new Cell(blockCount.ToString()),
                     new Cell("/"),
-                    new Cell(target, passed ? successColor : failColor),
+                    new Cell(effectiveMaxBlocks.ToString(), passed ? successColor : failColor),
                     passed ? new Cell() : new Cell("X", failColor)
                 });
             }
@@ -267,15 +267,15 @@ namespace ShipCoreFramework
             if (ShipCore.MaxMass > 1)
             {
                 var groupMass = GroupComponent.GroupMass;
-                var passed = groupMass <= ShipCore.MaxMass;
-                var target = ShipCore.MaxMass.ToString(CultureInfo.InvariantCulture);
-                
+                var effectiveMaxMass = GroupComponent.GetEffectiveMaxMass();
+                var passed = groupMass <= effectiveMaxMass;
+
                 _gridResultsTable.Rows.Add(new Row
                 {
                     new Cell("Mass: "),
                     new Cell(groupMass.ToString(CultureInfo.InvariantCulture)),
                     new Cell("/"),
-                    new Cell(target, passed ? successColor : failColor),
+                    new Cell(effectiveMaxMass.ToString(CultureInfo.InvariantCulture), passed ? successColor : failColor),
                     passed ? new Cell() : new Cell("X", failColor)
                 });
             }
@@ -283,14 +283,15 @@ namespace ShipCoreFramework
             if (ShipCore.MaxPCU > 1)
             {
                 var groupPcu = GroupComponent.GroupPCU;
+                var effectiveMaxPcu = GroupComponent.GetEffectiveMaxPCU();
                 _gridResultsTable.Rows.Add(new Row
                 {
                     new Cell("PCU: "),
                     new Cell(groupPcu.ToString()),
                     new Cell("/"),
-                    new Cell(ShipCore.MaxPCU.ToString(),
-                        groupPcu <= ShipCore.MaxPCU ? successColor : failColor),
-                    groupPcu <= ShipCore.MaxPCU ? new Cell() : new Cell("X", failColor)
+                    new Cell(effectiveMaxPcu.ToString(),
+                        groupPcu <= effectiveMaxPcu ? successColor : failColor),
+                    groupPcu <= effectiveMaxPcu ? new Cell() : new Cell("X", failColor)
                 });
             }
             
