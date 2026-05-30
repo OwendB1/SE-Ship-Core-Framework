@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using Sandbox.Game.Entities;
 using Sandbox.Game.GameSystems.TextSurfaceScripts;
 using Sandbox.ModAPI;
@@ -209,9 +210,13 @@ namespace ShipCoreFramework
             
             SpeedEnforcement.RefreshSpeedState(GroupComponent);
             var speed = GroupComponent.EffectiveSpeedLimitMetersPerSecond;
+            var speedSourceGridId = GroupComponent.SpeedSourceGroupGridId;
+            var speedLabel = speedSourceGridId != 0 && !GroupComponent.GridDictionary.Keys.Any(g => g != null && g.EntityId == speedSourceGridId)
+                ? "Max Speed*: "
+                : "Max Speed: ";
             _gridResultsTable.Rows.Add(new Row
             {
-                new Cell("Max Speed: "),
+                new Cell(speedLabel),
                 new Cell(""),
                 new Cell(""),
                 new Cell($"{speed} m/s"),

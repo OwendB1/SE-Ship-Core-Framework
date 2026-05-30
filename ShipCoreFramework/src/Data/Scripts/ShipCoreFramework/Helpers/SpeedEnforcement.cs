@@ -99,6 +99,22 @@ namespace ShipCoreFramework
             var context = ResolveSpeedLimitContext(groupComponent);
             ApplySpeedState(groupComponent, context);
 
+            Session.PhysicalSpeedCluster clusterForState;
+            if (Session.TryGetPhysicalSpeedCluster(groupComponent, out clusterForState))
+            {
+                GroupComponent[] members;
+                lock (clusterForState.SyncRoot)
+                {
+                    members = clusterForState.MemberGroups;
+                }
+                for (var mi = 0; mi < members.Length; mi++)
+                {
+                    var member = members[mi];
+                    if (member == null || ReferenceEquals(member, groupComponent)) continue;
+                    ApplySpeedState(member, context);
+                }
+            }
+
             if (context.SourceGroup == null || context.SourceGroup.IsIgnoredGroup()) return;
             if (context.ActiveCore == null) return;
 

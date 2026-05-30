@@ -767,6 +767,7 @@ namespace ShipCoreFramework
                     body += $"  {m.Name}: x{m.Value:F2}\n";
             }
             //Speed Info
+            SpeedEnforcement.RefreshSpeedState(groupComponent);
             body += "Speed Modifiers:\n";
             var speedmods = groupComponent.SpeedModifiers;
             if (speedmods != null)
@@ -803,6 +804,16 @@ namespace ShipCoreFramework
                 body += $"    Boost Duration:  {speedmods.BoostDuration:F2}\n";
                 body += $"    Boost Cooldown:  {speedmods.BoostCoolDown:F2}\n";
             }
+            body += $"    Base Limit:      {groupComponent.BaseSpeedLimitMetersPerSecond:F1} m/s\n";
+            var effectiveSpeedLine = $"    Effective Limit: {groupComponent.EffectiveSpeedLimitMetersPerSecond:F1} m/s";
+            var sourceGridId = groupComponent.SpeedSourceGroupGridId;
+            if (sourceGridId != 0 && !groupComponent.GridDictionary.Keys.Any(g => g != null && g.EntityId == sourceGridId))
+            {
+                var sourceGrid = MyAPIGateway.Entities.GetEntityById(sourceGridId) as IMyCubeGrid;
+                var sourceName = sourceGrid != null ? sourceGrid.CustomName : sourceGridId.ToString();
+                effectiveSpeedLine += $" (cluster: {sourceName})";
+            }
+            body += effectiveSpeedLine + "\n";
             var passive = groupComponent.GetPassiveDefenseModifiers();
             var active = groupComponent.GetActiveDefenseModifiers();
 
