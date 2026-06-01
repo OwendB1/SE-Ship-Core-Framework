@@ -190,28 +190,39 @@ namespace ShipCoreFramework
 
         internal override void Received()
         {
-            // Apply on game thread because we may touch definitions.
-            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
-            {
-                try
-                {
-                    var import = MyAPIGateway.Utilities.SerializeFromXML<ModConfig>(ConfigXml);
-                    if (import != null)
-                    {
-                        // Only world-level settings are serialized here, so copy them onto the already-loaded config instance.
-                        Session.Config.ApplyWorldSettingsFrom(import);
-                    }
+            if (Session.IsShuttingDown)
+                return;
 
-                    Session.Config.EnsurePersistedWorldSettings();
-                    Session.Config.ResolveSelectedNoCore();
-                    Session.ApplyConfigToDefinitions();
-                    ModAPI.BroadcastConfigReceived();
-                }
-                catch (Exception e)
+            try
+            {
+                if (string.IsNullOrWhiteSpace(ConfigXml))
                 {
-                    Utils.Log($"Config sync failed: {e}", 2, "Config Sync");
+                    Utils.Log("Config sync skipped: received empty config payload.", 2, "Config Sync");
+                    return;
                 }
-            });
+
+                if (Session.Config == null)
+                {
+                    Session.Config = new ModConfig();
+                    Session.Config.LoadConfig(false);
+                }
+
+                ModConfig import = MyAPIGateway.Utilities.SerializeFromXML<ModConfig>(ConfigXml);
+                if (import != null)
+                {
+                    // Only world-level settings are serialized here, so copy them onto the already-loaded config instance.
+                    Session.Config.ApplyWorldSettingsFrom(import);
+                }
+
+                Session.Config.EnsurePersistedWorldSettings();
+                Session.Config.ResolveSelectedNoCore();
+                Session.ApplyConfigToDefinitions();
+                ModAPI.BroadcastConfigReceived();
+            }
+            catch (Exception e)
+            {
+                Utils.Log($"Config sync failed: {e}", 2, "Config Sync");
+            }
         }
     }
     
