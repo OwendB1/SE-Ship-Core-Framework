@@ -44,6 +44,29 @@ namespace ShipCoreFramework
                 return Session.Config.MassTypeMode == MassTypeMode.Dry ? dryMass : wetMass;
             }
         }
+        internal float GroupDryMass {
+            get
+            {
+                var referenceGrid = GridDictionary.Keys.FirstOrDefault(grid =>
+                    grid != null &&
+                    !grid.MarkedForClose &&
+                    !grid.Closed &&
+                    (grid as ModEntity)?.Physics != null);
+                if (referenceGrid == null) return 0f;
+
+                float dryMass;
+                float wetMass;
+                try
+                {
+                    referenceGrid.GetCurrentMass(out dryMass, out wetMass, GridLinkTypeEnum.Mechanical);
+                }
+                catch (NullReferenceException)
+                {
+                    return 0f;
+                }
+                return dryMass;
+            }
+        }
         private float BoostDuration => SpeedModifiers.BoostDuration;
         private float BoostCoolDown => SpeedModifiers.BoostCoolDown;
 

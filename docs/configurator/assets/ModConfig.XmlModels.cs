@@ -182,6 +182,12 @@ namespace ShipCoreFramework
         [XmlElement("SpeedLimitType")]
         public SpeedLimitType SpeedLimitType;
 
+        [XmlElement("SpeedOverrideMode")]
+        public SpeedOverrideMode SpeedOverrideMode = SpeedOverrideMode.OnlyIfHeavier;
+
+        [XmlElement("SpeedOverridePriority")]
+        public int SpeedOverridePriority = 0;
+
         [XmlElement("SpeedModifiers")]
         public SpeedModifiers SpeedModifiers = new SpeedModifiers();
 
@@ -545,6 +551,15 @@ namespace ShipCoreFramework
     {
         Normal = 0,
         Friction = 1
+    }
+
+    [XmlRoot("SpeedOverrideMode")]
+    public enum SpeedOverrideMode
+    {
+        None = 0,
+        OnlyIfHeavier = 1,
+        Priority = 2,
+        Any = 3
     }
 
     [XmlRoot("MassTypeMode")]

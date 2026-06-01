@@ -212,29 +212,70 @@ namespace ShipCoreFramework
                 if (!cluster.SourceDirty && cluster.SourceGroup != null)
                     return cluster.SourceGroup;
 
-                GroupComponent bestSpeedGroup = null;
-                var bestBlockCount = int.MinValue;
-                var bestHasExplicitCore = false;
-                var bestTieBreaker = long.MaxValue;
-
                 var memberGroups = cluster.MemberGroups;
+
+                var highestTier = -1;
                 for (var i = 0; i < memberGroups.Length; i++)
                 {
-                    var linkedGroup = memberGroups[i];
-                    if (linkedGroup == null || linkedGroup.ShipCore == null) continue;
+                    var member = memberGroups[i];
+                    if (member == null || member.ShipCore == null) continue;
+                    var tier = (int)member.ShipCore.SpeedOverrideMode;
+                    if (tier > highestTier) highestTier = tier;
+                }
 
-                    var linkedBlockCount = linkedGroup.GroupBlocksCount;
-                    var linkedHasExplicitCore = linkedGroup.MainCoreComponent != null;
-                    var linkedTieBreaker = linkedGroup.GetRepresentativeGridId();
-                    if (bestSpeedGroup == null
-                        || linkedBlockCount > bestBlockCount
-                        || linkedBlockCount == bestBlockCount && linkedHasExplicitCore && !bestHasExplicitCore
-                        || linkedBlockCount == bestBlockCount && linkedHasExplicitCore == bestHasExplicitCore && linkedTieBreaker < bestTieBreaker)
+                GroupComponent bestSpeedGroup = null;
+
+                if (highestTier >= 0)
+                {
+                    // All-None fallback: keep every candidate and rank by mass so physics still has a cap.
+                    var allNone = highestTier == (int)SpeedOverrideMode.None;
+                    var usePriority = highestTier == (int)SpeedOverrideMode.Priority;
+
+                    var bestPriority = int.MinValue;
+                    var bestDryMass = float.MinValue;
+                    var bestHasExplicitCore = false;
+                    var bestTieBreaker = long.MaxValue;
+
+                    for (var i = 0; i < memberGroups.Length; i++)
                     {
-                        bestSpeedGroup = linkedGroup;
-                        bestBlockCount = linkedBlockCount;
-                        bestHasExplicitCore = linkedHasExplicitCore;
-                        bestTieBreaker = linkedTieBreaker;
+                        var linkedGroup = memberGroups[i];
+                        if (linkedGroup == null || linkedGroup.ShipCore == null) continue;
+
+                        var memberTier = (int)linkedGroup.ShipCore.SpeedOverrideMode;
+                        if (!allNone && memberTier != highestTier) continue;
+
+                        var linkedPriority = usePriority ? linkedGroup.ShipCore.SpeedOverridePriority : 0;
+                        var linkedDryMass = linkedGroup.GroupDryMass;
+                        var linkedHasExplicitCore = linkedGroup.MainCoreComponent != null;
+                        var linkedTieBreaker = linkedGroup.GetRepresentativeGridId();
+
+                        var better = false;
+                        if (bestSpeedGroup == null)
+                        {
+                            better = true;
+                        }
+                        else if (linkedPriority > bestPriority)
+                        {
+                            better = true;
+                        }
+                        else if (linkedPriority == bestPriority)
+                        {
+                            if (linkedDryMass > bestDryMass)
+                                better = true;
+                            else if (linkedDryMass == bestDryMass && linkedHasExplicitCore && !bestHasExplicitCore)
+                                better = true;
+                            else if (linkedDryMass == bestDryMass && linkedHasExplicitCore == bestHasExplicitCore && linkedTieBreaker < bestTieBreaker)
+                                better = true;
+                        }
+
+                        if (better)
+                        {
+                            bestSpeedGroup = linkedGroup;
+                            bestPriority = linkedPriority;
+                            bestDryMass = linkedDryMass;
+                            bestHasExplicitCore = linkedHasExplicitCore;
+                            bestTieBreaker = linkedTieBreaker;
+                        }
                     }
                 }
 
