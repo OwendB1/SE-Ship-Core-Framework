@@ -30,7 +30,8 @@ namespace ShipCoreFramework
                 return 0;
 
             int count;
-            return PerManifestGroup.TryGetValue(groupName, out count) ? count : 0;
+            return (PerManifestGroup.TryGetValue(groupName, out count) ? count : 0) +
+                   LimitsNexusSync.GetRemoteManifestGroupCount(groupName);
         }
 
         internal static bool IsGroupWithinManifestLimits(string coreType, long ownerId)

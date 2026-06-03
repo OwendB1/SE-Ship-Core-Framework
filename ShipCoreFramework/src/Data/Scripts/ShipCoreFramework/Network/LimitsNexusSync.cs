@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using NexusModAPI;
 using ProtoBuf;
 using Sandbox.ModAPI;
@@ -17,6 +18,8 @@ namespace ShipCoreFramework
         private static byte _thisServerId;
         private static int _syncSettledAfterTick;
         private static int _nextPeriodicSnapshotTick;
+        private static readonly Dictionary<byte, LimitsState> RemoteStates = new Dictionary<byte, LimitsState>();
+        private static readonly object RemoteStatesLock = new object();
 
         internal static void Start(NexusAPI nexus)
         {
@@ -38,6 +41,7 @@ namespace ShipCoreFramework
         {
             if (!_started) return;
             _started = false;
+            lock (RemoteStatesLock) RemoteStates.Clear();
             try { MyAPIGateway.Utilities.UnregisterMessageHandler(ChannelId, OnMessage); } catch { /**/ }
         }
 
@@ -47,6 +51,63 @@ namespace ShipCoreFramework
         {
             if (!Ready) return;
             MarkSyncActivity();
+        }
+
+        internal static int GetRemoteFactionCount(long factionId, string coreType)
+        {
+            if (!Ready || factionId <= 0 || string.IsNullOrWhiteSpace(coreType)) return 0;
+
+            lock (RemoteStatesLock)
+            {
+                var total = 0;
+                foreach (var state in RemoteStates.Values)
+                {
+                    var faction = state.Factions.FirstOrDefault(f => f.FactionId == factionId);
+                    if (faction == null) continue;
+
+                    var core = faction.Cores.FirstOrDefault(c => c.CoreType == coreType);
+                    if (core != null) total += core.Count;
+                }
+
+                return total;
+            }
+        }
+
+        internal static int GetRemotePlayerCount(long playerId, string coreType)
+        {
+            if (!Ready || playerId <= 0 || string.IsNullOrWhiteSpace(coreType)) return 0;
+
+            lock (RemoteStatesLock)
+            {
+                var total = 0;
+                foreach (var state in RemoteStates.Values)
+                {
+                    var player = state.Players.FirstOrDefault(p => p.PlayerId == playerId);
+                    if (player == null) continue;
+
+                    var core = player.Cores.FirstOrDefault(c => c.CoreType == coreType);
+                    if (core != null) total += core.Count;
+                }
+
+                return total;
+            }
+        }
+
+        internal static int GetRemoteManifestGroupCount(string groupName)
+        {
+            if (!Ready || string.IsNullOrWhiteSpace(groupName)) return 0;
+
+            lock (RemoteStatesLock)
+            {
+                var total = 0;
+                foreach (var state in RemoteStates.Values)
+                {
+                    var group = state.ManifestGroups.FirstOrDefault(g => g.GroupName == groupName);
+                    if (group != null) total += group.Count;
+                }
+
+                return total;
+            }
         }
 
         internal static void BroadcastFactionChange(PerFactionManager.FactionChange c)
@@ -121,6 +182,7 @@ namespace ShipCoreFramework
                 var apiMsg = MyAPIGateway.Utilities.SerializeFromBinary<ModAPIMsg>((byte[])obj);
                 if (apiMsg.targetModMessageID != ChannelId) return;
                 if (apiMsg.toServerID != 0 && apiMsg.toServerID != _thisServerId) return;
+                if (apiMsg.fromServerID == _thisServerId) return;
 
                 MarkSyncActivity();
                 var env = Deserialize<Envelope>(apiMsg.msgData);
@@ -137,13 +199,13 @@ namespace ShipCoreFramework
                     case EnvelopeKind.Snapshot:
                         var state = Deserialize<LimitsState>(env.Payload);
                         if (state == null) return;
-                        ApplySnapshot(state);
+                        ApplySnapshot(apiMsg.fromServerID, state);
                         break;
 
                     case EnvelopeKind.Diff:
                         var diff = Deserialize<LimitsDiff>(env.Payload);
                         if (diff == null) return;
-                        ApplyDiff(diff);
+                        ApplyDiff(apiMsg.fromServerID, diff);
                         break;
                 }
             }
@@ -181,70 +243,84 @@ namespace ShipCoreFramework
             return s;
         }
 
-        private static void ApplySnapshot(LimitsState state)
+        private static void ApplySnapshot(byte sourceServerId, LimitsState state)
         {
-            PerFactionManager.BeginExternalUpdate();
-            PerPlayerManager.BeginExternalUpdate();
-            PerManifestGroupManager.BeginExternalUpdate();
-            try
+            if (sourceServerId == 0 || sourceServerId == _thisServerId) return;
+
+            lock (RemoteStatesLock)
             {
-                PerFactionManager.Reset();
-                PerPlayerManager.Reset();
-                PerManifestGroupManager.Reset();
-
-                foreach (var f in state.Factions)
-                {
-                    if (!PerFactionManager.PerFaction.ContainsKey(f.FactionId))
-                        PerFactionManager.PerFaction.Add(f.FactionId, new Dictionary<string, int>());
-
-                    var dict = PerFactionManager.PerFaction[f.FactionId];
-                    foreach (var c in f.Cores)
-                        dict[c.CoreType] = c.Count;
-                }
-
-                foreach (var p in state.Players)
-                {
-                    if (!PerPlayerManager.PerPlayer.ContainsKey(p.PlayerId))
-                        PerPlayerManager.PerPlayer.Add(p.PlayerId, new Dictionary<string, int>());
-
-                    var dict = PerPlayerManager.PerPlayer[p.PlayerId];
-                    foreach (var c in p.Cores)
-                        dict[c.CoreType] = c.Count;
-                }
-
-                foreach (var g in state.ManifestGroups)
-                    PerManifestGroupManager.PerManifestGroup[g.GroupName] = g.Count;
-            }
-            finally
-            {
-                PerManifestGroupManager.EndExternalUpdate();
-                PerPlayerManager.EndExternalUpdate();
-                PerFactionManager.EndExternalUpdate();
+                RemoteStates[sourceServerId] = state;
             }
         }
 
-        private static void ApplyDiff(LimitsDiff diff)
+        private static void ApplyDiff(byte sourceServerId, LimitsDiff diff)
+        {
+            if (sourceServerId == 0 || sourceServerId == _thisServerId) return;
+
+            lock (RemoteStatesLock)
+            {
+                LimitsState state;
+                if (!RemoteStates.TryGetValue(sourceServerId, out state))
+                {
+                    state = new LimitsState();
+                    RemoteStates[sourceServerId] = state;
+                }
+
+                ApplyDiffToState(state, diff);
+            }
+        }
+
+        private static void ApplyDiffToState(LimitsState state, LimitsDiff diff)
         {
             if (diff.Faction != null)
             {
-                if (!PerFactionManager.PerFaction.ContainsKey(diff.Faction.Id))
-                    PerFactionManager.PerFaction.Add(diff.Faction.Id, new Dictionary<string, int>());
+                var faction = state.Factions.FirstOrDefault(f => f.FactionId == diff.Faction.Id);
+                if (faction == null)
+                {
+                    faction = new FactionEntry { FactionId = diff.Faction.Id };
+                    state.Factions.Add(faction);
+                }
 
-                var dict = PerFactionManager.PerFaction[diff.Faction.Id];
-                dict[diff.CoreType] = diff.Count < 0 ? 0 : diff.Count;
+                SetCoreCount(faction.Cores, diff.CoreType, diff.Count);
             }
 
             if (diff.Player != null)
             {
-                if (!PerPlayerManager.PerPlayer.ContainsKey(diff.Player.Id))
-                    PerPlayerManager.PerPlayer.Add(diff.Player.Id, new Dictionary<string, int>());
+                var player = state.Players.FirstOrDefault(p => p.PlayerId == diff.Player.Id);
+                if (player == null)
+                {
+                    player = new PlayerEntry { PlayerId = diff.Player.Id };
+                    state.Players.Add(player);
+                }
 
-                var dict = PerPlayerManager.PerPlayer[diff.Player.Id];
-                dict[diff.CoreType] = diff.Count < 0 ? 0 : diff.Count;
+                SetCoreCount(player.Cores, diff.CoreType, diff.Count);
             }
 
             if (!string.IsNullOrEmpty(diff.ManifestGroupName))
-                PerManifestGroupManager.PerManifestGroup[diff.ManifestGroupName] = diff.Count < 0 ? 0 : diff.Count;
+            {
+                var group = state.ManifestGroups.FirstOrDefault(g => g.GroupName == diff.ManifestGroupName);
+                if (group == null)
+                {
+                    group = new ManifestGroupEntry { GroupName = diff.ManifestGroupName };
+                    state.ManifestGroups.Add(group);
+                }
+
+                group.Count = diff.Count < 0 ? 0 : diff.Count;
+            }
+        }
+
+        private static void SetCoreCount(List<CoreEntry> cores, string coreType, int count)
+        {
+            if (string.IsNullOrEmpty(coreType)) return;
+
+            var core = cores.FirstOrDefault(c => c.CoreType == coreType);
+            if (core == null)
+            {
+                core = new CoreEntry { CoreType = coreType };
+                cores.Add(core);
+            }
+
+            core.Count = count < 0 ? 0 : count;
         }
 
         private static byte[] Serialize<T>(T obj) => MyAPIGateway.Utilities.SerializeToBinary(obj);

@@ -119,8 +119,8 @@ namespace ShipCoreFramework
             }
 
             if (maxAllowedGrids < 0) return true;
-            if (!PerFaction.ContainsKey(factionId) || !PerFaction[factionId].ContainsKey(coreType)) return true;
-            var currentCount = PerFaction[factionId][coreType];
+
+            var currentCount = GetCurrentCount(factionId, coreType);
             if (currentCount <= maxAllowedGrids) return true;
             if (playerScaledLimit == 0)
             {
@@ -150,10 +150,10 @@ namespace ShipCoreFramework
 
             int count;
             if (perGroup.TryGetValue(coreType, out count))
-                return count;
+                return count + LimitsNexusSync.GetRemoteFactionCount(factionId, coreType);
 
             perGroup[coreType] = 0;
-            return 0;
+            return LimitsNexusSync.GetRemoteFactionCount(factionId, coreType);
         }
 
         internal static void AddGridGroup(IMyFaction owningFaction, string coreType)

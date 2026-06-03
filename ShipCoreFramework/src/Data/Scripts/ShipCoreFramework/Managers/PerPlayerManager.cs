@@ -25,18 +25,14 @@ namespace ShipCoreFramework
                 return false;
             }
 
-            if (PerPlayer.ContainsKey(ownerId) && PerPlayer[ownerId].ContainsKey(coreType))
-            {
-                var maxAllowedGrids = Config.GetShipCoreByTypeId(coreType).MaxPerPlayer;
-                if (maxAllowedGrids < 0) return true;
-                var currentCount = PerPlayer[ownerId][coreType];
-                if (currentCount <= maxAllowedGrids) return true;
-                Utils.ShowChatMessage($"Player limit reached, you already have {currentCount - 1}/{maxAllowedGrids} {coreType} built!", playerEntityId: ownerId);
-                return false;
-            }
+            var maxAllowedGrids = Config.GetShipCoreByTypeId(coreType).MaxPerPlayer;
+            if (maxAllowedGrids < 0) return true;
 
-            Utils.Log("PerPlayerManager::IsGridWithinPlayerLimits: Player or class not found in player limits data", 2);
-            return true;
+            var currentCount = GetCurrentCount(ownerId, coreType);
+            if (currentCount <= maxAllowedGrids) return true;
+
+            Utils.ShowChatMessage($"Player limit reached, you already have {currentCount - 1}/{maxAllowedGrids} {coreType} built!", playerEntityId: ownerId);
+            return false;
         }
 
         internal static int GetCurrentCount(long ownerId, string coreType)
@@ -53,10 +49,10 @@ namespace ShipCoreFramework
 
             int count;
             if (perGridClass.TryGetValue(coreType, out count))
-                return count;
+                return count + LimitsNexusSync.GetRemotePlayerCount(ownerId, coreType);
 
             perGridClass[coreType] = 0;
-            return 0;
+            return LimitsNexusSync.GetRemotePlayerCount(ownerId, coreType);
         }
 
         internal static void AddGridGroup(long ownerId, string coreType)
