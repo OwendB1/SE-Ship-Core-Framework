@@ -97,6 +97,23 @@ namespace ShipCoreFramework
             _pendingExternalLimitValidationTick = Session.CurrentTick + ExternalLimitValidationDelayTicks;
         }
 
+        internal bool IsLimitPunishmentDeferred()
+        {
+            return IsInitializingGrids || Session.CurrentTick < _deferLimitPunishmentUntilTick;
+        }
+
+        private void ScheduleLimitPunishmentValidation(int delayTicks)
+        {
+            if (_closing) return;
+
+            var targetTick = Session.CurrentTick + delayTicks;
+            if (targetTick > _deferLimitPunishmentUntilTick)
+                _deferLimitPunishmentUntilTick = targetTick;
+
+            if (_pendingLimitPunishmentValidationTick == 0 || targetTick > _pendingLimitPunishmentValidationTick)
+                _pendingLimitPunishmentValidationTick = targetTick;
+        }
+
         internal void OnBlockAddedToGroup()
         {
             _groupBlocksCount++;
@@ -129,6 +146,8 @@ namespace ShipCoreFramework
                 return;
             }
 
+            RunPendingLimitPunishmentValidationTick();
+
             var minBlocks = ShipCore?.MinBlocks ?? -1;
             if (minBlocks <= 0)
             {
@@ -147,6 +166,17 @@ namespace ShipCoreFramework
             RefreshLimitedBlockPunishmentState();
             if (!wasPunishingLimitedBlocks && PunishLimitedBlocks)
                 EnforceGroupPunishment(true);
+        }
+
+        private void RunPendingLimitPunishmentValidationTick()
+        {
+            if (_pendingLimitPunishmentValidationTick == 0 ||
+                Session.CurrentTick < _pendingLimitPunishmentValidationTick ||
+                IsLimitPunishmentDeferred())
+                return;
+
+            _pendingLimitPunishmentValidationTick = 0;
+            RefreshGroupStateAndEnforce();
         }
 
         internal void RunExternalLimitValidationTick()

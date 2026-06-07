@@ -9,10 +9,10 @@ namespace ShipCoreFramework
 {
     internal partial class GroupComponent
     {
-        internal void InitGrids()
+        internal bool InitGrids()
         {
             var tempGridList = new List<IMyCubeGrid>();
-            MyGroup.GetGrids(tempGridList);
+            if (!Session.TryGetGroupGrids(MyGroup, tempGridList, "group component initialization")) return false;
 
             tempGridList = tempGridList
                 .OrderByDescending(HasPotentialCore)
@@ -37,6 +37,7 @@ namespace ShipCoreFramework
 
             SyncNoCoreLimitTracking();
             OnUpgradeModulesChanged();
+            return true;
         }
 
         private void BeginGridInitialization()
@@ -48,6 +49,9 @@ namespace ShipCoreFramework
         {
             if (_gridInitializationDepth > 0)
                 _gridInitializationDepth--;
+
+            if (_gridInitializationDepth == 0)
+                ScheduleLimitPunishmentValidation(PostInitializationLimitValidationDelayTicks);
         }
 
         private void InitializeGridComponent(MyCubeGrid grid, IMyGridGroupData groupData)

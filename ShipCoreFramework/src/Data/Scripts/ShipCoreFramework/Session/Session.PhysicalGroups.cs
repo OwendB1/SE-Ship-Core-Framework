@@ -31,7 +31,8 @@ namespace ShipCoreFramework
             PhysicalSpeedClusterDict.GetOrAdd(group, physicalGroup => new PhysicalSpeedCluster(physicalGroup));
             group.OnGridAdded += PhysicalGridGroupOnGridAdded;
             group.OnGridRemoved += PhysicalGridGroupOnGridRemoved;
-            RefreshPhysicalGroupLinkages(group);
+            if (!RefreshPhysicalGroupLinkages(group))
+                UntrackPhysicalGridGroup(group);
         }
 
         private static void UntrackPhysicalGridGroup(IMyGridGroupData group)
@@ -116,12 +117,12 @@ namespace ShipCoreFramework
             }
         }
 
-        private static void RefreshPhysicalGroupLinkages(IMyGridGroupData physicalGroup)
+        private static bool RefreshPhysicalGroupLinkages(IMyGridGroupData physicalGroup)
         {
-            if (physicalGroup == null || physicalGroup.LinkType != GridLinkTypeEnum.Physical) return;
+            if (physicalGroup == null || physicalGroup.LinkType != GridLinkTypeEnum.Physical) return false;
 
             var physicalGrids = new List<IMyCubeGrid>();
-            physicalGroup.GetGrids(physicalGrids);
+            if (!TryGetGroupGrids(physicalGroup, physicalGrids, "physical group linkage refresh")) return false;
 
             var physicalGridIds = new HashSet<long>();
             var memberGroups = new List<GroupComponent>();
@@ -161,7 +162,7 @@ namespace ShipCoreFramework
                 }
 
                 ClearPhysicalGroupLinkages(previousMembers);
-                return;
+                return true;
             }
 
             var nextMembers = memberGroups
@@ -203,6 +204,8 @@ namespace ShipCoreFramework
                     ReferenceEquals(affectedGroup, representativeGroup));
                 affectedGroup.InvalidateSpeedStateCache();
             }
+
+            return true;
         }
 
         private static void ClearPhysicalGroupLinkages(PhysicalSpeedCluster cluster)

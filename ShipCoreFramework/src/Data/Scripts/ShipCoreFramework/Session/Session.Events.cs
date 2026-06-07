@@ -21,15 +21,20 @@ namespace ShipCoreFramework
             if (group.LinkType != GridLinkTypeEnum.Mechanical) return;
             
             var tempGridList = new List<IMyCubeGrid>();
-            group.GetGrids(tempGridList);
+            if (!TryGetGroupGrids(group, tempGridList, "mechanical group creation")) return;
             
             var gComp = new GroupComponent
             {
                 MyGroup = group
             };
-            GroupDict.TryAdd(group, gComp);
+            if (!GroupDict.TryAdd(group, gComp)) return;
             gComp.InitializeDeactivationState();
-            gComp.InitGrids();
+            if (!gComp.InitGrids())
+            {
+                GroupComponent discard;
+                GroupDict.TryRemove(group, out discard);
+                return;
+            }
 
             group.OnGridAdded += gComp.OnGridAdded;
             group.OnGridRemoved += gComp.OnGridRemoved;
@@ -50,14 +55,13 @@ namespace ShipCoreFramework
             if (group.LinkType != GridLinkTypeEnum.Mechanical) return;
 
             var tempGridList = new List<IMyCubeGrid>();
-            group.GetGrids(tempGridList);
+            TryGetGroupGrids(group, tempGridList, "mechanical group destruction");
 
             GroupComponent gComp;
-            if (!GroupDict.TryGetValue(group, out gComp)) return;
+            if (!GroupDict.TryRemove(group, out gComp)) return;
             group.OnGridAdded -= gComp.OnGridAdded;
             group.OnGridRemoved -= gComp.OnGridRemoved;
             gComp.Clean();
-            GroupDict.Remove(group);
 
             RefreshPhysicalGroupLinkagesForGrids(tempGridList);
         }

@@ -50,6 +50,13 @@ namespace ShipCoreFramework
             RefreshPunishmentState();
             ApplyModifiers(Modifiers);
             DefenseValuesChanged();
+
+            if (IsLimitPunishmentDeferred())
+            {
+                ScheduleLimitPunishmentValidation(PostInitializationLimitValidationDelayTicks);
+                return;
+            }
+
             EnforceGroupPunishment(ShouldForceLimitedBlocksOff());
         }
 

@@ -204,6 +204,7 @@ namespace ShipCoreFramework
         {
             var func = obj as IMyFunctionalBlock;
             if (func == null || !func.Enabled) return;
+            if (GroupComponent.IsLimitPunishmentDeferred()) return;
 
             if (GroupComponent.ShouldForceLimitedBlocksOff())
             {

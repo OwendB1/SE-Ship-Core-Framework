@@ -9,7 +9,7 @@ namespace ShipCoreFramework
         private bool TryApplyLimitsOnAdd(IMySlimBlock block, bool limitBasedPunish)
         {
             var firstOwner = Grid?.BigOwners.FirstOrDefault() ?? 0;
-            var deferPunishment = GroupComponent.IsInitializingGrids;
+            var deferPunishment = GroupComponent.IsLimitPunishmentDeferred();
 
             var limits = GroupComponent.ShipCore.BlockLimits;
             if (limits == null || limits.Length == 0) return true;
