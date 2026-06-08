@@ -46,8 +46,13 @@ namespace ShipCoreFramework
 
         internal bool IsFunctionalForEffects()
         {
+            return IsFunctionalForEffects(true);
+        }
+
+        internal bool IsFunctionalForEffects(bool requireParentCore)
+        {
             return ModuleBlock != null
-                   && ParentCoreComponent != null
+                   && (!requireParentCore || ParentCoreComponent != null)
                    && ModuleBlock.IsFunctional
                    && ModuleBlock.Enabled;
         }

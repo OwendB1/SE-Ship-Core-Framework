@@ -319,7 +319,7 @@ namespace ShipCoreFramework
             if (limit == null) return 0f;
 
             var maxCount = limit.MaxCount;
-            foreach (var module in GetMainCoreUpgradeModules(true))
+            foreach (var module in GetEffectiveUpgradeModules(true))
             {
                 var config = module.GetConfig();
                 if (config?.BlockLimitModifiers == null) continue;
@@ -340,7 +340,7 @@ namespace ShipCoreFramework
         {
             var max = ShipCore.MaxBlocks;
             if (max <= 0) return max;
-            foreach (var module in GetMainCoreUpgradeModules(true))
+            foreach (var module in GetEffectiveUpgradeModules(true))
             {
                 var config = module.GetConfig();
                 if (config?.CapacityModifiers == null) continue;
@@ -357,7 +357,7 @@ namespace ShipCoreFramework
         {
             var max = ShipCore.MaxMass;
             if (max <= 0) return max;
-            foreach (var module in GetMainCoreUpgradeModules(true))
+            foreach (var module in GetEffectiveUpgradeModules(true))
             {
                 var config = module.GetConfig();
                 if (config?.CapacityModifiers == null) continue;
@@ -374,7 +374,7 @@ namespace ShipCoreFramework
         {
             var max = ShipCore.MaxPCU;
             if (max <= 0) return max;
-            foreach (var module in GetMainCoreUpgradeModules(true))
+            foreach (var module in GetEffectiveUpgradeModules(true))
             {
                 var config = module.GetConfig();
                 if (config?.CapacityModifiers == null) continue;

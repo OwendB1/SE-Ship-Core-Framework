@@ -426,7 +426,7 @@ namespace ShipCoreFramework
         internal GridDefenseModifiers GetActiveDefenseModifiers()
         {
             var modifiers = CubeGridModifiers.GetEffectiveDefenseModifiers(ShipCore.ActiveDefenseModifiers,
-                GetMainCoreUpgradeModules(true).Select(module => module.GetConfig()),
+                GetEffectiveUpgradeModules(true).Select(module => module.GetConfig()),
                 DefenseModifierTarget.Active);
 
             return PunishModifiers ? CubeGridModifiers.ScaleDefenseModifiers(modifiers, 2f) : modifiers;
@@ -435,7 +435,7 @@ namespace ShipCoreFramework
         internal GridDefenseModifiers GetPassiveDefenseModifiers()
         {
             var modifiers = CubeGridModifiers.GetEffectiveDefenseModifiers(ShipCore.PassiveDefenseModifiers,
-                GetMainCoreUpgradeModules(true).Select(module => module.GetConfig()),
+                GetEffectiveUpgradeModules(true).Select(module => module.GetConfig()),
                 DefenseModifierTarget.Passive);
 
             return PunishModifiers ? CubeGridModifiers.ScaleDefenseModifiers(modifiers, 2f) : modifiers;

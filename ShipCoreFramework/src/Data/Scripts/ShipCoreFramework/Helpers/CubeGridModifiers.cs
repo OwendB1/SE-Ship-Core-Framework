@@ -64,7 +64,7 @@ namespace ShipCoreFramework
             var shipCore = groupComponent.ShipCore;
 
             var modifiers = Clone(shipCore.Modifiers);
-            foreach (var module in groupComponent.GetMainCoreUpgradeModules(true))
+            foreach (var module in groupComponent.GetEffectiveUpgradeModules(true))
             {
                 var config = module.GetConfig();
                 if (config?.Modifiers == null) continue;
@@ -111,7 +111,7 @@ namespace ShipCoreFramework
         {
             var shipCore = groupComponent.ShipCore;
             var modifiers = Clone(shipCore.SpeedModifiers);
-            foreach (var module in groupComponent.GetMainCoreUpgradeModules(true))
+            foreach (var module in groupComponent.GetEffectiveUpgradeModules(true))
             {
                 var config = module.GetConfig();
                 if (config?.Modifiers == null) continue;
