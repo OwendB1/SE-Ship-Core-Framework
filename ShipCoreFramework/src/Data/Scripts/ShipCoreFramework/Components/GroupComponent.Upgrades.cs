@@ -36,6 +36,7 @@ namespace ShipCoreFramework
             }
 
             if (Deactivated) yield break;
+            if (Session.Config == null || !Session.Config.AllowUnattachedUpgradeModules) yield break;
 
             foreach (var module in GetAllowedUpgradeModulesForCore(ShipCore, GetUpgradeModules()
                          .Where(module => module != null && module.ParentCoreComponent == null)))
@@ -134,7 +135,8 @@ namespace ShipCoreFramework
                 }
             }
 
-            if (!Deactivated && MainCoreComponent == null)
+            if (!Deactivated && MainCoreComponent == null &&
+                Session.Config != null && Session.Config.AllowUnattachedUpgradeModules)
             {
                 var noCoreConfig = ShipCore;
                 foreach (var subtypeGroup in modules
