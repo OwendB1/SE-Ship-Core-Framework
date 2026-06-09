@@ -40,7 +40,7 @@ namespace ShipCoreFramework
 
             _trackedConnectorIds.Clear();
 
-            Limits.Clear();
+            PublishLimitsSnapshot(null);
             foreach (var beaconComponent in BeaconDictionary.Values) beaconComponent.Clean();
             BeaconDictionary.Clear();
             foreach (var moduleComponent in _upgradeModuleDictionary.Values) moduleComponent.Clean();

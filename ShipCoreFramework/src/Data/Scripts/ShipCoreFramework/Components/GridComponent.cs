@@ -13,7 +13,8 @@ namespace ShipCoreFramework
         private IMyGridGroupData _groupData;
         private readonly object _blocksLock = new object();
         private readonly List<IMySlimBlock> _blocks = new List<IMySlimBlock>();
-        internal readonly ConcurrentDictionary<BlockLimit, LimitBucket> Limits = new ConcurrentDictionary<BlockLimit, LimitBucket>();
+        private ConcurrentDictionary<BlockLimit, LimitBucket> _limits = new ConcurrentDictionary<BlockLimit, LimitBucket>();
+        internal ConcurrentDictionary<BlockLimit, LimitBucket> Limits { get { return _limits; } }
         internal int BlockCount
         {
             get
@@ -61,6 +62,12 @@ namespace ShipCoreFramework
 
             var otherBlocks = blocks.Where(block => !Utils.IsCoreBlock(block)).ToList();
             foreach (var otherBlock in otherBlocks) BlockAddedInternal(otherBlock);
+        }
+
+        internal void PublishLimitsSnapshot(ConcurrentDictionary<BlockLimit, LimitBucket> limits)
+        {
+            System.Threading.Interlocked.Exchange(ref _limits,
+                limits ?? new ConcurrentDictionary<BlockLimit, LimitBucket>());
         }
 
         private void GridMarkedForClose(IngameIMyEntity entity)

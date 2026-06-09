@@ -67,7 +67,8 @@ namespace ShipCoreFramework
             internal long FirstOwnerId;
         }
 
-        internal readonly ConcurrentDictionary<BlockLimit, LimitBucket> Limits = new ConcurrentDictionary<BlockLimit, LimitBucket>();
+        private ConcurrentDictionary<BlockLimit, LimitBucket> _limits = new ConcurrentDictionary<BlockLimit, LimitBucket>();
+        internal ConcurrentDictionary<BlockLimit, LimitBucket> Limits { get { return _limits; } }
         internal readonly ConcurrentDictionary<MyCubeGrid, GridComponent> GridDictionary = new ConcurrentDictionary<MyCubeGrid, GridComponent>();
 
         internal Dictionary<IMyCubeBlock, CoreComponent> CoreDictionary =>
@@ -134,6 +135,7 @@ namespace ShipCoreFramework
 
         private readonly object _connectedGroupsLock = new object();
         private readonly object _abilityStateLock = new object();
+        private readonly object _limitSnapshotLock = new object();
         internal readonly object SpeedStateLock = new object();
         private IMyGridGroupData _trackedPhysicalGroup;
         private readonly HashSet<IMyGridGroupData> _connectedPhysicalGroups = new HashSet<IMyGridGroupData>();
@@ -172,6 +174,10 @@ namespace ShipCoreFramework
         private SpeedModifiers _cachedActiveSpeedModifiers = new SpeedModifiers();
         private GridDefenseModifiers _cachedPassiveDefenseModifiers = new GridDefenseModifiers();
         private GridDefenseModifiers _cachedActiveDefenseModifiers = new GridDefenseModifiers();
+        private int _cachedEffectiveMaxBlocks = -1;
+        private int _cachedEffectiveMaxPCU = -1;
+        private float _cachedEffectiveMaxMass = -1f;
+        private Dictionary<BlockLimit, float> _cachedEffectiveMaxCounts = new Dictionary<BlockLimit, float>();
 
         private bool _closing;
         private bool _refreshingUpgradeModules;
@@ -180,6 +186,7 @@ namespace ShipCoreFramework
         private bool _wasIgnoredGroup;
         private bool _noCoreLimitsRegistered;
         private string _registeredNoCoreLimitSubtypeId = string.Empty;
+        private int _limitGeneration;
         internal int LastSpeedStateUpdateTick = -1;
 
         internal float ActiveDefenseDuration => ShipCore.ActiveDefenseModifiers.Duration;
@@ -248,6 +255,7 @@ namespace ShipCoreFramework
             _cachedActiveSpeedModifiers = CubeGridModifiers.GetActiveSpeedModifiers(this);
             _cachedPassiveDefenseModifiers = ComputePassiveDefenseModifiers();
             _cachedActiveDefenseModifiers = ComputeActiveDefenseModifiers();
+            RefreshEffectiveLimitCache();
         }
 
         private void RefreshGridStateCache()
@@ -298,6 +306,24 @@ namespace ShipCoreFramework
             _cachedMovableGrids = movableGrids.ToArray();
             _cachedMechanicalGridIds = mechanicalGridIds.ToArray();
             _cachedGridStates = gridStates.ToArray();
+        }
+
+        private int GetLimitGeneration()
+        {
+            return Interlocked.CompareExchange(ref _limitGeneration, 0, 0);
+        }
+
+        private void IncrementLimitGeneration()
+        {
+            lock (_limitSnapshotLock)
+            {
+                Interlocked.Increment(ref _limitGeneration);
+            }
+        }
+
+        private void PublishLimitsSnapshot(ConcurrentDictionary<BlockLimit, LimitBucket> limits)
+        {
+            Interlocked.Exchange(ref _limits, limits ?? new ConcurrentDictionary<BlockLimit, LimitBucket>());
         }
 
         private void RefreshMassCache()

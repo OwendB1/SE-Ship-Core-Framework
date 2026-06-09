@@ -87,6 +87,7 @@ namespace ShipCoreFramework
             }
 
             MainCoreComponent = coreComponent;
+            IncrementLimitGeneration();
             SyncBeaconComponents();
             InvalidateSpeedStateCache();
             Session.MarkPhysicalSpeedClusterSourceDirty(this);
@@ -139,6 +140,7 @@ namespace ShipCoreFramework
             ModAPI.BroadcastCoreDeactivated(GetRepresentativeGridId(), type, old.CoreBlock.CustomName);
 
             MainCoreComponent = null;
+            IncrementLimitGeneration();
             InvalidateSpeedStateCache();
             Session.MarkPhysicalSpeedClusterSourceDirty(this);
             SyncNoCoreLimitTracking();
@@ -190,6 +192,7 @@ namespace ShipCoreFramework
                     removedMain = MainCoreComponent;
 
                 AddGroupBlocksCount(-comp.BlockCount);
+                IncrementLimitGeneration();
                 comp.Clean();
                 GridComponent discarded;
                 GridDictionary.TryRemove(g, out discarded);
@@ -207,8 +210,8 @@ namespace ShipCoreFramework
             }
 
             RebuildConnectorPunishmentLinks();
-            RecalculateAllLimits();
             RefreshPunishmentState();
+            QueueRecalculateAllLimits(true, ShouldForceLimitedBlocksOff());
             Session.RefreshPhysicalGroupLinkagesForGrid(grid);
             Session.RefreshPhysicalGroupLinkagesForGrids(GridDictionary.Keys.Cast<IMyCubeGrid>());
             ModAPI.BroadcastGridRemovedFromGroup(grid.EntityId, GetRepresentativeGridId());
@@ -319,7 +322,8 @@ namespace ShipCoreFramework
             foreach (var kvp in GridDictionary) kvp.Value.Clean();
             ClearGridDictionary();
             System.Threading.Interlocked.Exchange(ref _groupBlocksCount, 0);
-            Limits.Clear();
+            PublishLimitsSnapshot(null);
+            IncrementLimitGeneration();
         }
 
         private void SyncNoCoreLimitTracking()

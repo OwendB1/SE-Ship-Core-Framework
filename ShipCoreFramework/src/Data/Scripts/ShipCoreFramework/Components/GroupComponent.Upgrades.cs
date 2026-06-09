@@ -67,6 +67,7 @@ namespace ShipCoreFramework
         internal void OnUpgradeModulesChanged()
         {
             if (_closing || _refreshingUpgradeModules || IsInitializingGrids) return;
+            IncrementLimitGeneration();
 
             if (!Session.IsGameThread)
             {
@@ -94,7 +95,6 @@ namespace ShipCoreFramework
         {
             RefreshUpgradeModules();
             RebuildConnectorPunishmentLinks();
-            RecalculateAllLimits();
             RefreshMinimumBlocksLimitedBlockGateState();
             RefreshLimitedBlockPunishmentState();
             RefreshPunishmentState();
@@ -104,11 +104,12 @@ namespace ShipCoreFramework
 
             if (IsLimitPunishmentDeferred())
             {
+                QueueRecalculateAllLimits(false, false);
                 ScheduleLimitPunishmentValidation(PostInitializationLimitValidationDelayTicks);
                 return;
             }
 
-            EnforceGroupPunishment(ShouldForceLimitedBlocksOff());
+            QueueRecalculateAllLimits(true, ShouldForceLimitedBlocksOff());
         }
 
         private void RefreshUpgradeModules()

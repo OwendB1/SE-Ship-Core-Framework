@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.ModAPI.Ingame;
@@ -18,6 +19,7 @@ namespace ShipCoreFramework
         internal void OnConnectorsChanged()
         {
             if (_closing) return;
+            IncrementLimitGeneration();
 
             RebuildConnectorPunishmentLinks();
             if (MainCoreComponent == null) return;
@@ -129,8 +131,14 @@ namespace ShipCoreFramework
 
         private void ApplyCrossConnectorPunishment()
         {
+            ApplyCrossConnectorPunishment(Limits);
+        }
+
+        private void ApplyCrossConnectorPunishment(ConcurrentDictionary<BlockLimit, LimitBucket> targetLimits)
+        {
             var connectedGroups = GetConnectedNoCoreGroupDataSnapshot();
             if (connectedGroups.Count == 0) return;
+            if (targetLimits == null) return;
 
             var blockLimits = ShipCore?.BlockLimits;
             if (blockLimits == null || blockLimits.Length == 0) return;
@@ -157,7 +165,7 @@ namespace ShipCoreFramework
                             var weight = limit.GetWeight(key);
                             if (weight <= 0d) continue;
 
-                            var groupBucket = Limits.GetOrAdd(limit, _ => new LimitBucket(0d));
+                            var groupBucket = targetLimits.GetOrAdd(limit, _ => new LimitBucket(0d));
 
                             lock (groupBucket.BucketLock)
                             {
