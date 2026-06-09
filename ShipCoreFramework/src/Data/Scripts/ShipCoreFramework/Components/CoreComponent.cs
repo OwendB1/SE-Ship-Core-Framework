@@ -19,8 +19,28 @@ namespace ShipCoreFramework
                 if (_isMainCore == value) return;
                 _isMainCore = value;
 
-                SaveCoreState();
-                CoreBlock?.RefreshCustomInfo();
+                if (Session.IsGameThread)
+                {
+                    SaveCoreState();
+                    CoreBlock?.RefreshCustomInfo();
+                    return;
+                }
+
+                var blockId = CoreBlock == null ? 0 : CoreBlock.EntityId;
+                ThreadWork.Enqueue(ThreadWork.StateCategory, "core-state:" + blockId,
+                    "Persist core main state " + blockId,
+                    delegate
+                    {
+                        return CoreBlock != null &&
+                               !CoreBlock.MarkedForClose &&
+                               !CoreBlock.Closed &&
+                               !Session.IsShuttingDown;
+                    },
+                    delegate
+                    {
+                        SaveCoreState();
+                        CoreBlock.RefreshCustomInfo();
+                    });
             }
         }
     }

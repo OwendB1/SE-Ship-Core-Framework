@@ -32,22 +32,29 @@ namespace ShipCoreFramework
             MyAPIGateway.GridGroups.GetGridGroups(GridLinkTypeEnum.Mechanical, mechanicalGroups);
             MyAPIGateway.GridGroups.GetGridGroups(GridLinkTypeEnum.Physical, physicalGroups);
 
-            MyAPIGateway.Parallel.StartBackground(() =>
+            IsInitialGroupScan = true;
+            try
             {
-                foreach (var group in mechanicalGroups)
+                MyAPIGateway.Parallel.ForEach(mechanicalGroups, mechanicalGroup =>
                 {
-                    GridGroupsOnOnGridGroupCreated(group);
-                }
+                    GridGroupsOnOnGridGroupCreated(mechanicalGroup);
+                });
 
-                foreach (var group in physicalGroups)
+                MyAPIGateway.Parallel.ForEach(physicalGroups, physicalGroup =>
                 {
-                    GridGroupsOnOnGridGroupCreated(group);
-                }
-            });
+                    GridGroupsOnOnGridGroupCreated(physicalGroup);
+                });
+            }
+            finally
+            {
+                IsInitialGroupScan = false;
+            }
         }
         
         public override void LoadData()
         {
+            GameThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
+            IsShuttingDown = false;
             MpActive = MyAPIGateway.Multiplayer.MultiplayerActive;
             IsServer = (MpActive && MyAPIGateway.Multiplayer.IsServer) || !MpActive;
             IsClient = (MpActive && !MyAPIGateway.Utilities.IsDedicated) || !MpActive;
@@ -83,6 +90,7 @@ namespace ShipCoreFramework
         protected override void UnloadData()
         {
             IsShuttingDown = true;
+            ThreadWork.CancelAll("Session unload");
             MyAPIGateway.Session.OnSessionReady -= SessionReady;
             MyAPIGateway.Session.Factions.FactionStateChanged -= FactionStateChanged;
             MyAPIGateway.Utilities.MessageEnteredSender -= Commands.OnChatCommand;
@@ -113,12 +121,14 @@ namespace ShipCoreFramework
             if (IsServer) Config.SaveConfig();
             Networking?.Unregister();
             Networking = null;
+            ThreadWork.Clear();
             
             foreach (var kvp in GroupDict)
             {
                 kvp.Value.Clean();
             }
             GroupDict.Clear();
+            GameThreadId = 0;
         }
         
         private void OnNexusEnabled()
@@ -165,6 +175,10 @@ namespace ShipCoreFramework
 
             _tick++;
             CurrentTick = _tick;
+            ThreadWork.FlushPendingWrites(ThreadWork.CountsCategory);
+            ThreadWork.FlushPendingWrites(null, MaxQueuedStateWorkPerTick);
+            foreach (var group in GroupDict.Values)
+                group.RefreshGameThreadStateCache();
             if (IsServer) LimitsNexusSync.RunPeriodicSnapshotTick();
             var runNfz = _tick % 10 == 0;
             var doPunish = _tick % 60 == 0;

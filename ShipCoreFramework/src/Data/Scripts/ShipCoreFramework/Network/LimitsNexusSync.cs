@@ -128,6 +128,7 @@ namespace ShipCoreFramework
         internal static void BroadcastSnapshot()
         {
             if (!Ready) return;
+            if (Session.IsGameThread) ThreadWork.FlushPendingWrites(ThreadWork.CountsCategory);
             var env = new Envelope { Kind = EnvelopeKind.Snapshot, Payload = Serialize(BuildSnapshot()) };
             _nexus.SendModMsgToAllServers(Serialize(env), ChannelId);
         }
@@ -221,24 +222,36 @@ namespace ShipCoreFramework
         {
             var s = new LimitsState();
 
-            foreach (var f in PerFactionManager.PerFaction)
+            var factions = new Dictionary<long, FactionEntry>();
+            foreach (var count in PerFactionManager.GetLocalCountsSnapshot())
             {
-                var fe = new FactionEntry { FactionId = f.Key };
-                foreach (var kv in f.Value)
-                    fe.Cores.Add(new CoreEntry { CoreType = kv.Key, Count = kv.Value });
-                s.Factions.Add(fe);
+                FactionEntry entry;
+                if (!factions.TryGetValue(count.OwnerId, out entry))
+                {
+                    entry = new FactionEntry { FactionId = count.OwnerId };
+                    factions[count.OwnerId] = entry;
+                    s.Factions.Add(entry);
+                }
+
+                entry.Cores.Add(new CoreEntry { CoreType = count.CoreType, Count = count.Count });
             }
 
-            foreach (var p in PerPlayerManager.PerPlayer)
+            var players = new Dictionary<long, PlayerEntry>();
+            foreach (var count in PerPlayerManager.GetLocalCountsSnapshot())
             {
-                var pe = new PlayerEntry { PlayerId = p.Key };
-                foreach (var kv in p.Value)
-                    pe.Cores.Add(new CoreEntry { CoreType = kv.Key, Count = kv.Value });
-                s.Players.Add(pe);
+                PlayerEntry entry;
+                if (!players.TryGetValue(count.OwnerId, out entry))
+                {
+                    entry = new PlayerEntry { PlayerId = count.OwnerId };
+                    players[count.OwnerId] = entry;
+                    s.Players.Add(entry);
+                }
+
+                entry.Cores.Add(new CoreEntry { CoreType = count.CoreType, Count = count.Count });
             }
 
-            foreach (var g in PerManifestGroupManager.PerManifestGroup)
-                s.ManifestGroups.Add(new ManifestGroupEntry { GroupName = g.Key, Count = g.Value });
+            foreach (var count in PerManifestGroupManager.GetLocalCountsSnapshot())
+                s.ManifestGroups.Add(new ManifestGroupEntry { GroupName = count.GroupName, Count = count.Count });
 
             return s;
         }

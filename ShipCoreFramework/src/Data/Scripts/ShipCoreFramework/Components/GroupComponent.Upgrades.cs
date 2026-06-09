@@ -68,6 +68,16 @@ namespace ShipCoreFramework
         {
             if (_closing || _refreshingUpgradeModules || IsInitializingGrids) return;
 
+            if (!Session.IsGameThread)
+            {
+                var groupKey = GetThreadWorkKey();
+                ThreadWork.Enqueue(ThreadWork.StateCategory, "upgrade-refresh:" + groupKey,
+                    "Upgrade/module refresh for group " + GetRepresentativeGridId(),
+                    delegate { return !_closing && !Session.IsShuttingDown; },
+                    delegate { OnUpgradeModulesChanged(); });
+                return;
+            }
+
             InvalidateSpeedStateCache();
             _refreshingUpgradeModules = true;
             try

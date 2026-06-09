@@ -12,8 +12,14 @@ namespace ShipCoreFramework
             internal int Count;
         }
 
-        internal static readonly Dictionary<string, int> PerManifestGroup =
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        internal struct ManifestGroupCountEntry
+        {
+            internal string GroupName;
+            internal int Count;
+        }
+
+        private static readonly GameThreadWriteDictionary<string, int> PerManifestGroupCounts =
+            new GameThreadWriteDictionary<string, int>(StringComparer.OrdinalIgnoreCase, ThreadWork.CountsCategory, "manifest-group-counts");
 
         private static bool _suppressEvents;
 
@@ -29,8 +35,7 @@ namespace ShipCoreFramework
             if (string.IsNullOrWhiteSpace(groupName))
                 return 0;
 
-            int count;
-            return (PerManifestGroup.TryGetValue(groupName, out count) ? count : 0) +
+            return PerManifestGroupCounts.GetOrDefault(groupName, 0) +
                    LimitsNexusSync.GetRemoteManifestGroupCount(groupName);
         }
 
@@ -63,59 +68,92 @@ namespace ShipCoreFramework
 
         internal static void AddGridGroup(string coreType)
         {
+            if (!Session.IsGameThread)
+            {
+                ThreadWork.Enqueue(ThreadWork.CountsCategory, string.Empty,
+                    "Add manifest group counts", delegate { AddGridGroup(coreType); });
+                return;
+            }
+
             var core = Config.GetShipCoreByTypeId(coreType);
             if (!HasManifestGroupLimit(core))
                 return;
 
             foreach (var group in GetManifestGroups(core))
             {
-                if (!PerManifestGroup.ContainsKey(group.Name))
-                    PerManifestGroup[group.Name] = 0;
-
-                PerManifestGroup[group.Name]++;
+                var count = PerManifestGroupCounts.AddOrUpdate(group.Name, 1,
+                    delegate(string key, int value) { return value + 1; });
                 if (_suppressEvents)
                     continue;
 
                 LimitsNexusSync.BroadcastManifestGroupChange(new ManifestGroupChange
                 {
                     GroupName = group.Name,
-                    Count = PerManifestGroup[group.Name]
+                    Count = count
                 });
             }
         }
 
         internal static void RemoveGridGroup(string coreType)
         {
+            if (!Session.IsGameThread)
+            {
+                ThreadWork.Enqueue(ThreadWork.CountsCategory, string.Empty,
+                    "Remove manifest group counts", delegate { RemoveGridGroup(coreType); });
+                return;
+            }
+
             var core = Config.GetShipCoreByTypeId(coreType);
             if (!HasManifestGroupLimit(core))
                 return;
 
             foreach (var group in GetManifestGroups(core))
             {
-                int value;
-                if (!PerManifestGroup.TryGetValue(group.Name, out value) || value <= 0)
+                var previous = PerManifestGroupCounts.GetOrDefault(group.Name, 0);
+                if (previous <= 0)
                     continue;
 
-                PerManifestGroup[group.Name]--;
+                var count = PerManifestGroupCounts.AddOrUpdate(group.Name, 0,
+                    delegate(string key, int value) { return value <= 0 ? 0 : value - 1; });
                 if (_suppressEvents)
                     continue;
 
                 LimitsNexusSync.BroadcastManifestGroupChange(new ManifestGroupChange
                 {
                     GroupName = group.Name,
-                    Count = PerManifestGroup[group.Name]
+                    Count = count
                 });
             }
         }
 
         internal static void Reset()
         {
-            foreach (var key in PerManifestGroup.Keys.ToList())
-                PerManifestGroup[key] = 0;
+            if (!Session.IsGameThread)
+            {
+                ThreadWork.Enqueue(ThreadWork.CountsCategory, "manifest-reset", "Reset manifest group counts", Reset);
+                return;
+            }
+
+            PerManifestGroupCounts.Clear();
 
             foreach (var group in Config.ManifestCoreGroups.Where(group => group != null && !string.IsNullOrWhiteSpace(group.Name)))
-                if (!PerManifestGroup.ContainsKey(group.Name))
-                    PerManifestGroup[group.Name] = 0;
+                PerManifestGroupCounts.Set(group.Name, 0);
+        }
+
+        internal static ManifestGroupCountEntry[] GetLocalCountsSnapshot()
+        {
+            var snapshot = PerManifestGroupCounts.ToArraySnapshot();
+            var result = new ManifestGroupCountEntry[snapshot.Length];
+            for (var i = 0; i < snapshot.Length; i++)
+            {
+                result[i] = new ManifestGroupCountEntry
+                {
+                    GroupName = snapshot[i].Key,
+                    Count = snapshot[i].Value
+                };
+            }
+
+            return result;
         }
 
         internal static void BeginExternalUpdate()

@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System;
+using System.Collections.Generic;
 
 namespace ShipCoreFramework
 {
@@ -12,7 +12,9 @@ namespace ShipCoreFramework
             internal int Count;
         }
 
-        internal static readonly Dictionary<long, Dictionary<string, int>> PerPlayer = new Dictionary<long, Dictionary<string, int>>();
+        private static readonly GameThreadWriteDictionary<CoreCountKey, int> PerPlayerCounts =
+            new GameThreadWriteDictionary<CoreCountKey, int>(null, ThreadWork.CountsCategory, "player-counts");
+
         private static bool _suppressEvents;
 
         private static ModConfig Config => Session.Config;
@@ -40,80 +42,89 @@ namespace ShipCoreFramework
             if (ownerId <= 0 || string.IsNullOrWhiteSpace(coreType))
                 return 0;
 
-            Dictionary<string, int> perGridClass;
-            if (!PerPlayer.TryGetValue(ownerId, out perGridClass))
-            {
-                perGridClass = GetDefaultPlayerGridsSet();
-                PerPlayer[ownerId] = perGridClass;
-            }
-
-            int count;
-            if (perGridClass.TryGetValue(coreType, out count))
-                return count + LimitsNexusSync.GetRemotePlayerCount(ownerId, coreType);
-
-            perGridClass[coreType] = 0;
-            return LimitsNexusSync.GetRemotePlayerCount(ownerId, coreType);
+            var localCount = PerPlayerCounts.GetOrDefault(new CoreCountKey(ownerId, coreType), 0);
+            return localCount + LimitsNexusSync.GetRemotePlayerCount(ownerId, coreType);
         }
 
         internal static void AddGridGroup(long ownerId, string coreType)
         {
+            if (!Session.IsGameThread)
+            {
+                ThreadWork.Enqueue(ThreadWork.CountsCategory, string.Empty,
+                    "Add player core count", delegate { AddGridGroup(ownerId, coreType); });
+                return;
+            }
+
             Utils.Log($"PerPlayerManager::AddCubeGrid: Adding grid for player {ownerId} with core type {coreType}", 1);
-            if (ownerId <= 0) return;
+            if (ownerId <= 0 || string.IsNullOrWhiteSpace(coreType)) return;
 
-            Dictionary<string, int> perGridClass;
-            if (!PerPlayer.TryGetValue(ownerId, out perGridClass))
-            {
-                perGridClass = GetDefaultPlayerGridsSet();
-                PerPlayer[ownerId] = perGridClass;
-            }
-
-            if (!perGridClass.ContainsKey(coreType))
-            {
-                Utils.Log($"PerPlayerManager::AddCubeGrid: Missing entry for core type {coreType} for player {ownerId}", 1);
-                perGridClass[coreType] = 0;
-            }
-
-            perGridClass[coreType]++;
-            Utils.Log($"PerPlayerManager::AddCubeGrid: Player {ownerId} now has {perGridClass[coreType]} grids with {coreType}", 1);
-            if (!_suppressEvents) LimitsNexusSync.BroadcastPlayerChange(new PlayerChange { PlayerId = ownerId, CoreType = coreType, Count = perGridClass[coreType] });
+            var key = new CoreCountKey(ownerId, coreType);
+            var count = PerPlayerCounts.AddOrUpdate(key, 1, delegate(CoreCountKey k, int value) { return value + 1; });
+            Utils.Log($"PerPlayerManager::AddCubeGrid: Player {ownerId} now has {count} grids with {coreType}", 1);
+            if (!_suppressEvents) LimitsNexusSync.BroadcastPlayerChange(new PlayerChange { PlayerId = ownerId, CoreType = coreType, Count = count });
         }
 
         internal static void RemoveGridGroup(long ownerId, string coreType)
         {
-            if (ownerId <= 0) return;
-            
-            Dictionary<string, int> perGridClass;
-            if (!PerPlayer.TryGetValue(ownerId, out perGridClass)) return;
-            
-            int value;
-            if (!perGridClass.TryGetValue(coreType, out value)) return;
-            if (value <= 0) return;
+            if (!Session.IsGameThread)
+            {
+                ThreadWork.Enqueue(ThreadWork.CountsCategory, string.Empty,
+                    "Remove player core count", delegate { RemoveGridGroup(ownerId, coreType); });
+                return;
+            }
 
-            perGridClass[coreType]--;
-            if (!_suppressEvents) LimitsNexusSync.BroadcastPlayerChange(new PlayerChange { PlayerId = ownerId, CoreType = coreType, Count = perGridClass[coreType] });
+            if (ownerId <= 0 || string.IsNullOrWhiteSpace(coreType)) return;
+
+            var key = new CoreCountKey(ownerId, coreType);
+            var previous = PerPlayerCounts.GetOrDefault(key, 0);
+            if (previous <= 0) return;
+
+            var count = PerPlayerCounts.AddOrUpdate(key, 0,
+                delegate(CoreCountKey k, int value) { return value <= 0 ? 0 : value - 1; });
+            if (!_suppressEvents) LimitsNexusSync.BroadcastPlayerChange(new PlayerChange { PlayerId = ownerId, CoreType = coreType, Count = count });
         }
 
         internal static void Reset()
         {
-            foreach (var classesEntry in PerPlayer.Values)
+            if (!Session.IsGameThread)
             {
-                foreach (var key in classesEntry.Keys.ToList())
-                {
-                    classesEntry[key] = 0;
-                }
+                ThreadWork.Enqueue(ThreadWork.CountsCategory, "player-reset", "Reset player core counts", Reset);
+                return;
             }
+
+            PerPlayerCounts.Clear();
+        }
+
+        internal static CoreCountEntry[] GetLocalCountsSnapshot()
+        {
+            var snapshot = PerPlayerCounts.ToArraySnapshot();
+            var result = new CoreCountEntry[snapshot.Length];
+            for (var i = 0; i < snapshot.Length; i++)
+            {
+                result[i] = new CoreCountEntry
+                {
+                    OwnerId = snapshot[i].Key.OwnerId,
+                    CoreType = snapshot[i].Key.CoreType,
+                    Count = snapshot[i].Value
+                };
+            }
+
+            return result;
+        }
+
+        internal static Dictionary<string, int> GetPlayerCountsSnapshot(long ownerId)
+        {
+            var result = new Dictionary<string, int>();
+            foreach (var entry in GetLocalCountsSnapshot())
+            {
+                if (entry.OwnerId != ownerId) continue;
+                result[entry.CoreType] = entry.Count;
+            }
+
+            return result;
         }
 
         internal static void BeginExternalUpdate() { _suppressEvents = true; }
         internal static void EndExternalUpdate() { _suppressEvents = false; }
-
-        private static Dictionary<string, int> GetDefaultPlayerGridsSet()
-        {
-            var set = new Dictionary<string, int>();
-            foreach (var core in Config.ShipCores) set[core.SubtypeId] = 0;
-            if (Config.SelectedNoCore != null && !string.IsNullOrWhiteSpace(Config.SelectedNoCore.SubtypeId))
-                set[Config.SelectedNoCore.SubtypeId] = 0;
-            return set;
-        }
     }
 }

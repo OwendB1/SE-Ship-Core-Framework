@@ -24,48 +24,21 @@ namespace ShipCoreFramework
         internal float GroupMass {
             get
             {
-                var referenceGrid = GridDictionary.Keys.FirstOrDefault(grid =>
-                    grid != null &&
-                    !grid.MarkedForClose &&
-                    !grid.Closed &&
-                    (grid as ModEntity)?.Physics != null);
-                if (referenceGrid == null) return 0f;
+                if (!Session.IsGameThread)
+                    return _cachedConfiguredMass;
 
-                float dryMass;
-                float wetMass;
-                try
-                {
-                    referenceGrid.GetCurrentMass(out dryMass, out wetMass, GridLinkTypeEnum.Mechanical);
-                }
-                catch (NullReferenceException)
-                {
-                    return 0f;
-                }
-
-                return Session.Config.MassTypeMode == MassTypeMode.Dry ? dryMass : wetMass;
+                RefreshMassCache();
+                return _cachedConfiguredMass;
             }
         }
         internal float GroupDryMass {
             get
             {
-                var referenceGrid = GridDictionary.Keys.FirstOrDefault(grid =>
-                    grid != null &&
-                    !grid.MarkedForClose &&
-                    !grid.Closed &&
-                    (grid as ModEntity)?.Physics != null);
-                if (referenceGrid == null) return 0f;
+                if (!Session.IsGameThread)
+                    return _cachedDryMass;
 
-                float dryMass;
-                float wetMass;
-                try
-                {
-                    referenceGrid.GetCurrentMass(out dryMass, out wetMass, GridLinkTypeEnum.Mechanical);
-                }
-                catch (NullReferenceException)
-                {
-                    return 0f;
-                }
-                return dryMass;
+                RefreshMassCache();
+                return _cachedDryMass;
             }
         }
         private float BoostDuration => SpeedModifiers.BoostDuration;
@@ -102,6 +75,11 @@ namespace ShipCoreFramework
                 .OrderByDescending(grid => grid.BlocksCount)
                 .ThenBy(grid => grid.EntityId)
                 .FirstOrDefault();
+        }
+
+        internal string GetThreadWorkKey()
+        {
+            return MyGroup != null ? MyGroup.GetHashCode().ToString() : GetRepresentativeGridId().ToString();
         }
 
         internal bool PunishModifiers;
@@ -147,6 +125,9 @@ namespace ShipCoreFramework
         private int _pendingExternalLimitValidationTick;
         private int _deferLimitPunishmentUntilTick;
         private int _pendingLimitPunishmentValidationTick;
+        private float _cachedDryMass;
+        private float _cachedWetMass;
+        private float _cachedConfiguredMass;
 
         private bool _closing;
         private bool _refreshingUpgradeModules;
@@ -160,5 +141,43 @@ namespace ShipCoreFramework
         internal float ActiveDefenseDuration => ShipCore.ActiveDefenseModifiers.Duration;
         internal float ActiveDefenseCoolDown => ShipCore.ActiveDefenseModifiers.Cooldown;
         internal bool IsInitializingGrids => _gridInitializationDepth > 0;
+
+        internal void RefreshGameThreadStateCache()
+        {
+            if (_closing || Session.IsShuttingDown) return;
+            RefreshMassCache();
+        }
+
+        private void RefreshMassCache()
+        {
+            var referenceGrid = GridDictionary.Keys.FirstOrDefault(grid =>
+                grid != null &&
+                !grid.MarkedForClose &&
+                !grid.Closed &&
+                (grid as ModEntity)?.Physics != null);
+            if (referenceGrid == null)
+            {
+                _cachedDryMass = 0f;
+                _cachedWetMass = 0f;
+                _cachedConfiguredMass = 0f;
+                return;
+            }
+
+            float dryMass;
+            float wetMass;
+            try
+            {
+                referenceGrid.GetCurrentMass(out dryMass, out wetMass, GridLinkTypeEnum.Mechanical);
+            }
+            catch (NullReferenceException)
+            {
+                dryMass = 0f;
+                wetMass = 0f;
+            }
+
+            _cachedDryMass = dryMass;
+            _cachedWetMass = wetMass;
+            _cachedConfiguredMass = Session.Config.MassTypeMode == MassTypeMode.Dry ? dryMass : wetMass;
+        }
     }
 }

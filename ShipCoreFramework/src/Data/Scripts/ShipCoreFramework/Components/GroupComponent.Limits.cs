@@ -177,7 +177,18 @@ namespace ShipCoreFramework
                 return;
 
             _pendingLimitPunishmentValidationTick = 0;
-            RefreshGroupStateAndEnforce();
+            if (Session.IsGameThread)
+            {
+                RefreshGroupStateAndEnforce();
+                return;
+            }
+
+            var representativeGridId = GetRepresentativeGridId();
+            var groupKey = GetThreadWorkKey();
+            ThreadWork.Enqueue(ThreadWork.ValidationCategory, "limit-validation:" + groupKey,
+                "Delayed limit validation for group " + representativeGridId,
+                delegate { return !_closing && !Session.IsShuttingDown; },
+                delegate { RefreshGroupStateAndEnforce(); });
         }
 
         internal void RunExternalLimitValidationTick()
@@ -198,6 +209,24 @@ namespace ShipCoreFramework
             }
 
             _pendingExternalLimitValidationTick = 0;
+
+            if (Session.IsGameThread)
+            {
+                ExecuteExternalLimitValidation();
+                return;
+            }
+
+            var representativeGridId = GetRepresentativeGridId();
+            var groupKey = GetThreadWorkKey();
+            ThreadWork.Enqueue(ThreadWork.ValidationCategory, "external-limit-validation:" + groupKey,
+                "External limit validation for group " + representativeGridId,
+                delegate { return !_closing && !Session.IsShuttingDown; },
+                ExecuteExternalLimitValidation);
+        }
+
+        private void ExecuteExternalLimitValidation()
+        {
+            if (_closing || Session.IsShuttingDown) return;
 
             var mainCore = MainCoreComponent;
             if (mainCore?.CoreBlock?.SlimBlock == null) return;

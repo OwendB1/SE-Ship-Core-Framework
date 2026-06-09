@@ -15,7 +15,9 @@ namespace ShipCoreFramework
             internal int Count;
         }
 
-        internal static readonly Dictionary<long, Dictionary<string, int>> PerFaction = new Dictionary<long, Dictionary<string, int>>();
+        private static readonly GameThreadWriteDictionary<CoreCountKey, int> PerFactionCounts =
+            new GameThreadWriteDictionary<CoreCountKey, int>(null, ThreadWork.CountsCategory, "faction-counts");
+
         private static bool _suppressEvents;
 
         private static ModConfig Config => Session.Config;
@@ -141,103 +143,119 @@ namespace ShipCoreFramework
             if (factionId <= 0 || string.IsNullOrWhiteSpace(coreType))
                 return 0;
 
-            Dictionary<string, int> perGroup;
-            if (!PerFaction.TryGetValue(factionId, out perGroup))
-            {
-                perGroup = GetDefaultFactionGridsSet();
-                PerFaction[factionId] = perGroup;
-            }
-
-            int count;
-            if (perGroup.TryGetValue(coreType, out count))
-                return count + LimitsNexusSync.GetRemoteFactionCount(factionId, coreType);
-
-            perGroup[coreType] = 0;
-            return LimitsNexusSync.GetRemoteFactionCount(factionId, coreType);
+            var localCount = PerFactionCounts.GetOrDefault(new CoreCountKey(factionId, coreType), 0);
+            return localCount + LimitsNexusSync.GetRemoteFactionCount(factionId, coreType);
         }
 
         internal static void AddGridGroup(IMyFaction owningFaction, string coreType)
         {
-            Utils.Log($"PerFactionManager::AddCubeGrid: Adding grid for faction {owningFaction?.FactionId} with core type {coreType}", 1);
             if (owningFaction == null) return;
+            AddGridGroup(owningFaction.FactionId, coreType);
+        }
 
-            Dictionary<string, int> perGroup;
-            if (!PerFaction.TryGetValue(owningFaction.FactionId, out perGroup))
+        internal static void AddGridGroup(long factionId, string coreType)
+        {
+            if (!Session.IsGameThread)
             {
-                perGroup = GetDefaultFactionGridsSet();
-                PerFaction[owningFaction.FactionId] = perGroup;
+                ThreadWork.Enqueue(ThreadWork.CountsCategory, string.Empty,
+                    "Add faction core count", delegate { AddGridGroup(factionId, coreType); });
+                return;
             }
 
-            if (!perGroup.ContainsKey(coreType))
-            {
-                Utils.Log($"PerFactionManager::AddCubeGrid: Missing entry for core type {coreType} in faction {owningFaction.FactionId}", 1);
-                perGroup[coreType] = 0;
-            }
+            Utils.Log($"PerFactionManager::AddCubeGrid: Adding grid for faction {factionId} with core type {coreType}", 1);
+            if (factionId <= 0 || string.IsNullOrWhiteSpace(coreType)) return;
 
-            perGroup[coreType]++;
-            if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = owningFaction.FactionId, CoreType = coreType, Count = perGroup[coreType] });
+            var key = new CoreCountKey(factionId, coreType);
+            var count = PerFactionCounts.AddOrUpdate(key, 1, delegate(CoreCountKey k, int value) { return value + 1; });
+            if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = factionId, CoreType = coreType, Count = count });
         }
 
         internal static void RemoveGridGroup(IMyFaction owningFaction, string coreType)
         {
             if (owningFaction == null) return;
-
             RemoveGridGroup(owningFaction.FactionId, coreType);
         }
 
         internal static void RemoveGridGroup(long factionId, string coreType)
         {
-            if (factionId <= 0) return;
+            if (!Session.IsGameThread)
+            {
+                ThreadWork.Enqueue(ThreadWork.CountsCategory, string.Empty,
+                    "Remove faction core count", delegate { RemoveGridGroup(factionId, coreType); });
+                return;
+            }
 
-            Dictionary<string, int> perGroup;
-            if (!PerFaction.TryGetValue(factionId, out perGroup)) return;
+            if (factionId <= 0 || string.IsNullOrWhiteSpace(coreType)) return;
 
-            int value;
-            if (!perGroup.TryGetValue(coreType, out value)) return;
-            if (value <= 0) return;
+            var key = new CoreCountKey(factionId, coreType);
+            var previous = PerFactionCounts.GetOrDefault(key, 0);
+            if (previous <= 0) return;
 
-            perGroup[coreType]--;
-            if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = factionId, CoreType = coreType, Count = perGroup[coreType] });
+            var count = PerFactionCounts.AddOrUpdate(key, 0,
+                delegate(CoreCountKey k, int value) { return value <= 0 ? 0 : value - 1; });
+            if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = factionId, CoreType = coreType, Count = count });
         }
 
         internal static void RemoveFaction(long factionId)
         {
+            if (!Session.IsGameThread)
+            {
+                ThreadWork.Enqueue(ThreadWork.CountsCategory, "faction-remove:" + factionId,
+                    "Remove faction counts", delegate { RemoveFaction(factionId); });
+                return;
+            }
+
             if (factionId <= 0) return;
 
-            Dictionary<string, int> perGroup;
-            if (!PerFaction.TryGetValue(factionId, out perGroup)) return;
-
-            foreach (var coreType in perGroup.Keys.ToList())
+            foreach (var entry in GetFactionCountsSnapshot(factionId).ToList())
             {
-                var value = perGroup[coreType];
-                if (value <= 0) continue;
-
-                perGroup[coreType] = 0;
-                if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = factionId, CoreType = coreType, Count = 0 });
+                if (entry.Value <= 0) continue;
+                PerFactionCounts.Set(new CoreCountKey(factionId, entry.Key), 0);
+                if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = factionId, CoreType = entry.Key, Count = 0 });
             }
         }
 
         internal static void Reset()
         {
-            foreach (var factionEntry in PerFaction.Values)
+            if (!Session.IsGameThread)
             {
-                foreach (var key in factionEntry.Keys.ToList())
-                {
-                    factionEntry[key] = 0;
-                }
+                ThreadWork.Enqueue(ThreadWork.CountsCategory, "faction-reset", "Reset faction core counts", Reset);
+                return;
             }
+
+            PerFactionCounts.Clear();
+        }
+
+        internal static CoreCountEntry[] GetLocalCountsSnapshot()
+        {
+            var snapshot = PerFactionCounts.ToArraySnapshot();
+            var result = new CoreCountEntry[snapshot.Length];
+            for (var i = 0; i < snapshot.Length; i++)
+            {
+                result[i] = new CoreCountEntry
+                {
+                    OwnerId = snapshot[i].Key.OwnerId,
+                    CoreType = snapshot[i].Key.CoreType,
+                    Count = snapshot[i].Value
+                };
+            }
+
+            return result;
+        }
+
+        internal static Dictionary<string, int> GetFactionCountsSnapshot(long factionId)
+        {
+            var result = new Dictionary<string, int>();
+            foreach (var entry in GetLocalCountsSnapshot())
+            {
+                if (entry.OwnerId != factionId) continue;
+                result[entry.CoreType] = entry.Count;
+            }
+
+            return result;
         }
 
         internal static void BeginExternalUpdate() { _suppressEvents = true; }
         internal static void EndExternalUpdate() { _suppressEvents = false; }
-
-        private static Dictionary<string, int> GetDefaultFactionGridsSet()
-        {
-            var set = new Dictionary<string, int>();
-            foreach (var core in Config.ShipCores) set[core.SubtypeId] = 0;
-            if (Config.SelectedNoCore != null && !string.IsNullOrWhiteSpace(Config.SelectedNoCore.SubtypeId))
-                set[Config.SelectedNoCore.SubtypeId] = 0;
-            return set;
-        }
     }
 }

@@ -122,7 +122,7 @@ namespace ShipCoreFramework
 
             if (Utils.IsCoreBlock(functionalBlock) || isTrackedUpgradeModule)
                 groupComponent.OnUpgradeModulesChanged();
-            else
+            else if (!groupComponent.IsInitializingGrids)
                 groupComponent.ApplyModifiers(groupComponent.Modifiers);
         }
 

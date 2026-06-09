@@ -140,8 +140,8 @@ namespace ShipCoreFramework
             var bodySort = new Dictionary<string, string>();
             if (args.Length < 3 || !CheckIfAdmin(playerId))
             {
-                Dictionary<string, int> playerVal;
-                if(PerPlayerManager.PerPlayer.TryGetValue(playerId, out playerVal))
+                Dictionary<string, int> playerVal = PerPlayerManager.GetPlayerCountsSnapshot(playerId);
+                if(playerVal.Count > 0)
                 {
                     foreach (var classCount in playerVal)
                     {
@@ -156,8 +156,10 @@ namespace ShipCoreFramework
                 
                 var faction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(playerId);
                 var factionId = faction?.FactionId ?? -1;
-                Dictionary<string, int> factionVal;
-                if(factionId != -1 && PerFactionManager.PerFaction.TryGetValue(factionId, out factionVal))
+                Dictionary<string, int> factionVal = factionId != -1
+                    ? PerFactionManager.GetFactionCountsSnapshot(factionId)
+                    : new Dictionary<string, int>();
+                if(factionVal.Count > 0)
                 {
                     foreach (var classCount in factionVal)
                     {
@@ -179,19 +181,16 @@ namespace ShipCoreFramework
                 var sub = args[1].ToLower();
                 switch (sub)
                 {
-                    /*
-                    case "update":
-                        PerPlayerManager.PerPlayer=PerPlayerManager.GetDefaultPlayerGridsSet();
-                        PerFactionManager.PerFaction=PerFactionManager.GetDefaultFactionGridsSet();
-                        break;*/
                     case "faction":
                         goto case "f";
                     case "f":
                         if (!long.TryParse(args[2], out playerId)) return;
                         var faction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(playerId);
                         var factionId = faction?.FactionId ?? -1;
-                        Dictionary<string, int> factionVal;
-                        if(factionId != -1 && PerFactionManager.PerFaction.TryGetValue(factionId, out factionVal))
+                        Dictionary<string, int> factionVal = factionId != -1
+                            ? PerFactionManager.GetFactionCountsSnapshot(factionId)
+                            : new Dictionary<string, int>();
+                        if(factionVal.Count > 0)
                         {
                             foreach (var classCount in factionVal)
                             {
@@ -208,8 +207,8 @@ namespace ShipCoreFramework
                         goto case "p";
                     case "p":
                         if (!long.TryParse(args[2], out playerId)) return;
-                        Dictionary<string, int> playerVal;
-                        if(PerPlayerManager.PerPlayer.TryGetValue(playerId, out playerVal))
+                        Dictionary<string, int> playerVal = PerPlayerManager.GetPlayerCountsSnapshot(playerId);
+                        if(playerVal.Count > 0)
                         {
                             foreach (var classCount in playerVal)
                             {

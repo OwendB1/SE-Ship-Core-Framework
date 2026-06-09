@@ -39,7 +39,8 @@ namespace ShipCoreFramework
             group.OnGridAdded += gComp.OnGridAdded;
             group.OnGridRemoved += gComp.OnGridRemoved;
 
-            RefreshPhysicalGroupLinkagesForGrids(tempGridList);
+            if (!IsInitialGroupScan)
+                RefreshPhysicalGroupLinkagesForGrids(tempGridList);
         }
         
         private static void GridGroupsOnOnGridGroupDestroyed(IMyGridGroupData group)
