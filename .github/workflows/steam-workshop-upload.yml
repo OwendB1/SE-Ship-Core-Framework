@@ -5,6 +5,8 @@ permissions:
 
 on:
   push:
+    branches:
+      - v3-framework
     paths:
       - ArcaneShipCores/src/**
       - ShipCoreFramework/src/**
