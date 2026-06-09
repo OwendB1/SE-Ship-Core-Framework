@@ -10,7 +10,6 @@ namespace ShipCoreFramework
         internal bool Init(IMyFunctionalBlock coreBlock, GridComponent gridComponent, GroupComponent groupComponent)
         {
             CoreBlock = coreBlock;
-            CoreBlock.AddUpgradeValue("ShipCoreLink", 0f);
             var isIgnoredNpcGrid = Session.Config.IgnoreAiFactions && CoreBlock.CubeGrid.IsNpcSpawnedGrid;
             var builder = ResolvePlacementOwnerIdentityId();
             if (builder == 0 && !isIgnoredNpcGrid)
@@ -108,9 +107,7 @@ namespace ShipCoreFramework
                 {
                     _groupComponent.ScheduleExternalLimitValidation();
                     Utils.Log($"Deferring core limit validation for {SubtypeId} on {CoreBlock.CubeGrid.CustomName} while Nexus sync is settling.", 1);
-                    CoreBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged;
-                    CoreBlock.AppendingCustomInfo += AppendingCustomInfo;
-                    CoreBlock.IsWorkingChanged += OnIsWorkingChanged;
+                    AttachBlockEvents();
                     _groupComponent.DefenseValuesChanged();
                     return true;
                 }
@@ -120,9 +117,7 @@ namespace ShipCoreFramework
                 return false;
             }
 
-            CoreBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged;
-            CoreBlock.AppendingCustomInfo += AppendingCustomInfo;
-            CoreBlock.IsWorkingChanged += OnIsWorkingChanged;
+            AttachBlockEvents();
             _groupComponent.DefenseValuesChanged();
             return true;
         }

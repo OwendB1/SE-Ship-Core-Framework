@@ -20,12 +20,22 @@ namespace ShipCoreFramework
         internal void RefreshPunishmentState()
         {
             if (_closing || Session.IsShuttingDown || IsInitializingGrids) return;
+            if (!Session.IsGameThread)
+            {
+                var groupKey = GetThreadWorkKey();
+                ThreadWork.Enqueue(ThreadWork.StateCategory, "punishment-refresh:" + groupKey,
+                    "Punishment state refresh for group " + groupKey,
+                    delegate { return !_closing && !Session.IsShuttingDown; },
+                    RefreshPunishmentState);
+                return;
+            }
 
             var mainCoreChanged = EnsureWorkingMainCore();
             var previousPunishModifiers = PunishModifiers;
 
             RefreshLimitedBlockPunishmentState();
             RefreshPunishmentFlags();
+            RefreshModifierStateCache();
             if (mainCoreChanged || previousPunishModifiers != PunishModifiers) ApplyModifiers(Modifiers);
             RefreshDefenseModifierCache();
         }
@@ -249,7 +259,13 @@ namespace ShipCoreFramework
 
         private GridDefenseModifiers GetCurrentDefenseModifiers()
         {
-            return _activeDefenseEnabled ? GetActiveDefenseModifiers() : GetPassiveDefenseModifiers();
+            bool activeDefenseEnabled;
+            lock (_abilityStateLock)
+            {
+                activeDefenseEnabled = _activeDefenseEnabled;
+            }
+
+            return activeDefenseEnabled ? GetActiveDefenseModifiers() : GetPassiveDefenseModifiers();
         }
 
         internal void RefreshDefenseModifierCache()
@@ -263,7 +279,7 @@ namespace ShipCoreFramework
             }
 
             var modifiers = GetCurrentDefenseModifiers();
-            foreach (var kvp in GridDictionary) CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
+            foreach (var kvp in GridDictionary) CubeGridModifiers.DefenseModifiers.Set(kvp.Key.EntityId, modifiers);
         }
 
         internal void RemoveDefenseModifierCache(long gridEntityId)
@@ -296,6 +312,16 @@ namespace ShipCoreFramework
 
         internal void ApplyModifiers(GridModifiers modifiers)
         {
+            if (!Session.IsGameThread)
+            {
+                var groupKey = GetThreadWorkKey();
+                ThreadWork.Enqueue(ThreadWork.StateCategory, "apply-modifiers:" + groupKey,
+                    "Apply modifiers for group " + groupKey,
+                    delegate { return !_closing && !Session.IsShuttingDown; },
+                    delegate { ApplyModifiers(modifiers); });
+                return;
+            }
+
             foreach (var kvp in GridDictionary)
             {
                 var blocksCopy = kvp.Value.GetBlocksCopy();
@@ -314,49 +340,106 @@ namespace ShipCoreFramework
 
         internal void RunBoostTimerTick()
         {
-            if (BoostEnabled)
+            var expired = false;
+            lock (SpeedStateLock)
             {
-                _boostDurationTimer -= 1f;
-                if (!(_boostDurationTimer <= 0f)) return;
-                BoostEnabled = false;
-                InvalidateSpeedStateCache();
-                _boostCooldownTimer = BoostCoolDown * 60f;
-                Utils.ShowNotification("Boost Disengaged! Cooldown started.");
+                if (BoostEnabled)
+                {
+                    _boostDurationTimer -= 1f;
+                    if (!(_boostDurationTimer <= 0f)) return;
 
-                PostBoostRampActive = true;
-                PostBoostRampCap = -1f;
+                    BoostEnabled = false;
+                    InvalidateSpeedStateCache();
+                    _boostCooldownTimer = BoostCoolDown * 60f;
 
-                if (MainCoreComponent?.GridComponent?.Grid != null)
-                    ModAPI.BroadcastBoostDeactivated(GetRepresentativeGridId());
+                    PostBoostRampActive = true;
+                    PostBoostRampCap = -1f;
+                    expired = true;
+                }
+                else if (_boostCooldownTimer > 0f)
+                {
+                    _boostCooldownTimer -= 1f;
+                    if (_boostCooldownTimer < 0f) _boostCooldownTimer = 0f;
+                }
             }
-            else if (_boostCooldownTimer > 0f)
-            {
-                _boostCooldownTimer -= 1f;
-                if (_boostCooldownTimer < 0f) _boostCooldownTimer = 0f;
-            }
+
+            if (expired)
+                QueueBoostDeactivatedSideEffects();
         }
 
         internal void RunActiveDefenseTimerTick()
         {
-            if (_activeDefenseEnabled)
+            var expired = false;
+            lock (_abilityStateLock)
             {
-                _activeDefenseDurationTimer -= 1f;
-                if (!(_activeDefenseDurationTimer <= 0f)) return;
-                _activeDefenseEnabled = false;
+                if (_activeDefenseEnabled)
+                {
+                    _activeDefenseDurationTimer -= 1f;
+                    if (!(_activeDefenseDurationTimer <= 0f)) return;
 
-                RefreshDefenseModifierCache();
+                    _activeDefenseEnabled = false;
 
-                _activeDefenseCooldownTimer = ActiveDefenseCoolDown * 60f;
-                Utils.ShowNotification("Active Defense Disengaged! Cooldown started.");
-
-                if (MainCoreComponent?.GridComponent?.Grid != null)
-                    ModAPI.BroadcastActiveDefenseDeactivated(GetRepresentativeGridId());
+                    _activeDefenseCooldownTimer = ActiveDefenseCoolDown * 60f;
+                    expired = true;
+                }
+                else if (_activeDefenseCooldownTimer > 0f)
+                {
+                    _activeDefenseCooldownTimer -= 1f;
+                    if (_activeDefenseCooldownTimer < 0f) _activeDefenseCooldownTimer = 0f;
+                }
             }
-            else if (_activeDefenseCooldownTimer > 0f)
+
+            if (!expired) return;
+            RefreshDefenseModifierCache();
+            QueueActiveDefenseDeactivatedSideEffects();
+        }
+
+        private void QueueBoostDeactivatedSideEffects()
+        {
+            if (Session.IsGameThread)
             {
-                _activeDefenseCooldownTimer -= 1f;
-                if (_activeDefenseCooldownTimer < 0f) _activeDefenseCooldownTimer = 0f;
+                RunBoostDeactivatedSideEffects();
+                return;
             }
+
+            var groupKey = GetThreadWorkKey();
+            ThreadWork.Enqueue(ThreadWork.StateCategory, "boost-deactivated:" + groupKey,
+                "Boost deactivated side effects for group " + groupKey,
+                delegate { return !_closing && !Session.IsShuttingDown; },
+                RunBoostDeactivatedSideEffects);
+        }
+
+        private void RunBoostDeactivatedSideEffects()
+        {
+            Utils.ShowNotification("Boost Disengaged! Cooldown started.");
+
+            var representativeGridId = GetRepresentativeGridId();
+            if (representativeGridId != 0)
+                ModAPI.BroadcastBoostDeactivated(representativeGridId);
+        }
+
+        private void QueueActiveDefenseDeactivatedSideEffects()
+        {
+            if (Session.IsGameThread)
+            {
+                RunActiveDefenseDeactivatedSideEffects();
+                return;
+            }
+
+            var groupKey = GetThreadWorkKey();
+            ThreadWork.Enqueue(ThreadWork.StateCategory, "active-defense-deactivated:" + groupKey,
+                "Active defense deactivated side effects for group " + groupKey,
+                delegate { return !_closing && !Session.IsShuttingDown; },
+                RunActiveDefenseDeactivatedSideEffects);
+        }
+
+        private void RunActiveDefenseDeactivatedSideEffects()
+        {
+            Utils.ShowNotification("Active Defense Disengaged! Cooldown started.");
+
+            var representativeGridId = GetRepresentativeGridId();
+            if (representativeGridId != 0)
+                ModAPI.BroadcastActiveDefenseDeactivated(representativeGridId);
         }
 
         internal void ActivateDefense()
@@ -367,20 +450,30 @@ namespace ShipCoreFramework
                 return;
             }
 
-            if (_activeDefenseEnabled)
+            string rejectedMessage = null;
+            lock (_abilityStateLock)
             {
-                Utils.ShowNotification("Active Defense Time Remaining:" + (_activeDefenseDurationTimer / 60f).ToString("0.0"));
-                return;
+                if (_activeDefenseEnabled)
+                {
+                    rejectedMessage = "Active Defense Time Remaining:" + (_activeDefenseDurationTimer / 60f).ToString("0.0");
+                }
+                else if (_activeDefenseCooldownTimer > 0f)
+                {
+                    rejectedMessage = "Active Defense is cooling down! Cooldown Time:" +
+                                      (_activeDefenseCooldownTimer / 60f).ToString("0.0");
+                }
+                else
+                {
+                    _activeDefenseDurationTimer = ActiveDefenseDuration * 60f;
+                    _activeDefenseEnabled = true;
+                }
             }
 
-            if (_activeDefenseCooldownTimer > 0f)
+            if (rejectedMessage != null)
             {
-                Utils.ShowNotification("Active Defense is cooling down! Cooldown Time:" + (_activeDefenseCooldownTimer / 60f).ToString("0.0"));
+                Utils.ShowNotification(rejectedMessage);
                 return;
             }
-
-            _activeDefenseDurationTimer = ActiveDefenseDuration * 60f;
-            _activeDefenseEnabled = true;
 
             RefreshDefenseModifierCache();
 
@@ -398,25 +491,35 @@ namespace ShipCoreFramework
                 return;
             }
 
-            if (BoostEnabled)
+            string rejectedMessage = null;
+            lock (SpeedStateLock)
             {
-                Utils.ShowNotification("Boost Time Remaining:" + (_boostDurationTimer / 60f).ToString("0.0"));
+                if (BoostEnabled)
+                {
+                    rejectedMessage = "Boost Time Remaining:" + (_boostDurationTimer / 60f).ToString("0.0");
+                }
+                else if (_boostCooldownTimer > 0f)
+                {
+                    rejectedMessage = "Boost is cooling down! Cooldown Time:" +
+                                      (_boostCooldownTimer / 60f).ToString("0.0");
+                }
+                else
+                {
+                    BoostEnabled = true;
+                    InvalidateSpeedStateCache();
+                    PostBoostRampActive = false;
+                    PostBoostRampCap = -1f;
+
+                    _boostDurationTimer = BoostDuration * 60f;
+                }
+            }
+
+            if (rejectedMessage != null)
+            {
+                Utils.ShowNotification(rejectedMessage);
                 return;
             }
 
-            if (_boostCooldownTimer > 0f)
-            {
-                Utils.ShowNotification(
-                    "Boost is cooling down! Cooldown Time:" + (_boostCooldownTimer / 60f).ToString("0.0"));
-                return;
-            }
-
-            BoostEnabled = true;
-            InvalidateSpeedStateCache();
-            PostBoostRampActive = false;
-            PostBoostRampCap = -1f;
-
-            _boostDurationTimer = BoostDuration * 60f;
             Utils.ShowNotification("Boost Engaged!");
 
             if (MainCoreComponent?.GridComponent?.Grid != null)
@@ -424,6 +527,11 @@ namespace ShipCoreFramework
         }
 
         internal GridDefenseModifiers GetActiveDefenseModifiers()
+        {
+            return Session.IsGameThread ? ComputeActiveDefenseModifiers() : GetCachedActiveDefenseModifiers();
+        }
+
+        private GridDefenseModifiers ComputeActiveDefenseModifiers()
         {
             var modifiers = CubeGridModifiers.GetEffectiveDefenseModifiers(ShipCore.ActiveDefenseModifiers,
                 GetEffectiveUpgradeModules(true).Select(module => module.GetConfig()),
@@ -433,6 +541,11 @@ namespace ShipCoreFramework
         }
 
         internal GridDefenseModifiers GetPassiveDefenseModifiers()
+        {
+            return Session.IsGameThread ? ComputePassiveDefenseModifiers() : GetCachedPassiveDefenseModifiers();
+        }
+
+        private GridDefenseModifiers ComputePassiveDefenseModifiers()
         {
             var modifiers = CubeGridModifiers.GetEffectiveDefenseModifiers(ShipCore.PassiveDefenseModifiers,
                 GetEffectiveUpgradeModules(true).Select(module => module.GetConfig()),

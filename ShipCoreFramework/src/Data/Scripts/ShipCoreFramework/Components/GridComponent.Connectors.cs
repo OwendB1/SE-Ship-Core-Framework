@@ -7,7 +7,7 @@ namespace ShipCoreFramework
         private void TrackConnector(IMyShipConnector connector)
         {
             if (connector == null) return;
-            if (!_trackedConnectorIds.Add(connector.EntityId)) return;
+            if (!_trackedConnectorIds.TryAdd(connector.EntityId, 0)) return;
 
             connector.IsConnectedChanged += ConnectorOnConnectionChanged;
             connector.AttachFinished += ConnectorOnConnectionChanged;
@@ -17,7 +17,8 @@ namespace ShipCoreFramework
         private void UntrackConnector(IMyShipConnector connector)
         {
             if (connector == null) return;
-            if (!_trackedConnectorIds.Remove(connector.EntityId)) return;
+            byte discarded;
+            if (!_trackedConnectorIds.TryRemove(connector.EntityId, out discarded)) return;
 
             connector.IsConnectedChanged -= ConnectorOnConnectionChanged;
             connector.AttachFinished -= ConnectorOnConnectionChanged;

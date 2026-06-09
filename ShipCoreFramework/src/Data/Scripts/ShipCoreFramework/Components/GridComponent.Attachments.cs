@@ -18,7 +18,8 @@ namespace ShipCoreFramework
 
             var beaconComponent = new BeaconComponent(groupComponent);
             if (!beaconComponent.Init(beaconBlock)) return;
-            BeaconDictionary.Add(beaconBlock, beaconComponent);
+            if (!BeaconDictionary.TryAdd(beaconBlock, beaconComponent))
+                beaconComponent.Clean();
         }
 
         private void UntrackBeacon(IMyFunctionalBlock coreBlock)
@@ -27,9 +28,7 @@ namespace ShipCoreFramework
             if (beaconBlock == null) return;
 
             BeaconComponent beaconComponent;
-            if (!BeaconDictionary.TryGetValue(beaconBlock, out beaconComponent)) return;
-
-            BeaconDictionary.Remove(beaconBlock);
+            if (!BeaconDictionary.TryRemove(beaconBlock, out beaconComponent)) return;
             beaconComponent.Clean();
         }
 
@@ -40,7 +39,8 @@ namespace ShipCoreFramework
 
             var upgradeModuleComponent = new UpgradeModuleComponent(groupComponent);
             if (!upgradeModuleComponent.Init(block)) return;
-            _upgradeModuleDictionary.Add(block, upgradeModuleComponent);
+            if (!_upgradeModuleDictionary.TryAdd(block, upgradeModuleComponent))
+                upgradeModuleComponent.Clean();
         }
 
         private bool UntrackUpgradeModule(IMyFunctionalBlock block)
@@ -48,9 +48,7 @@ namespace ShipCoreFramework
             if (block == null) return false;
 
             UpgradeModuleComponent moduleComponent;
-            if (!_upgradeModuleDictionary.TryGetValue(block, out moduleComponent)) return false;
-
-            _upgradeModuleDictionary.Remove(block);
+            if (!_upgradeModuleDictionary.TryRemove(block, out moduleComponent)) return false;
             moduleComponent.Clean();
             return true;
         }

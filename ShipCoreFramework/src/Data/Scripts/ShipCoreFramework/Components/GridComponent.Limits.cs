@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 using VRage.Game.ModAPI;
 
@@ -43,12 +44,7 @@ namespace ShipCoreFramework
                     }
                 }
 
-                LimitBucket groupBucket;
-                if (!GroupComponent.Limits.TryGetValue(limit, out groupBucket))
-                {
-                    groupBucket = new LimitBucket(0d);
-                    GroupComponent.Limits[limit] = groupBucket;
-                }
+                var groupBucket = GroupComponent.Limits.GetOrAdd(limit, _ => new LimitBucket(0d));
 
                 double currentWeight;
                 lock (groupBucket.BucketLock)
@@ -75,12 +71,7 @@ namespace ShipCoreFramework
                     }
                 }
 
-                LimitBucket gridBucket;
-                if (!Limits.TryGetValue(limit, out gridBucket))
-                {
-                    gridBucket = new LimitBucket(0d);
-                    Limits[limit] = gridBucket;
-                }
+                var gridBucket = Limits.GetOrAdd(limit, _ => new LimitBucket(0d));
 
                 lock (gridBucket.BucketLock)
                 {
@@ -98,12 +89,12 @@ namespace ShipCoreFramework
             return true;
         }
 
-        internal void RecalculateLimits(GroupComponent group)
+        internal ConcurrentDictionary<BlockLimit, LimitBucket> BuildLimitsSnapshot(GroupComponent group)
         {
-            Limits.Clear();
+            var result = new ConcurrentDictionary<BlockLimit, LimitBucket>();
 
             var blockLimits = group.ShipCore.BlockLimits;
-            if (blockLimits == null || blockLimits.Length == 0) return;
+            if (blockLimits == null || blockLimits.Length == 0) return result;
 
             List<IMySlimBlock> blocksCopy;
             lock (_blocksLock)
@@ -115,8 +106,7 @@ namespace ShipCoreFramework
             {
                 if (limit == null) continue;
 
-                var bucket = new LimitBucket(0d);
-                Limits[limit] = bucket;
+                var bucket = result.GetOrAdd(limit, _ => new LimitBucket(0d));
 
                 foreach (var block in blocksCopy)
                 {
@@ -128,6 +118,8 @@ namespace ShipCoreFramework
                     bucket.Members.Add(block);
                 }
             }
+
+            return result;
         }
     }
 }

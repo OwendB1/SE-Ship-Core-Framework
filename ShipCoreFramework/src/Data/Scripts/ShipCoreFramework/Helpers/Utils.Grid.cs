@@ -111,9 +111,21 @@ namespace ShipCoreFramework
 
         internal static bool TryFindByGridId(long gridEntityId, out GroupComponent group)
         {
-            foreach (var gc in Session.GroupDict.Select(kv => kv.Value)
-                         .Where(gc => gc.GridDictionary.Keys.Any(g => g != null && g.EntityId == gridEntityId)))
+            foreach (var gc in Session.GroupDict.Select(kv => kv.Value))
             {
+                var gridIds = gc.GetCachedMechanicalGridIds();
+                for (var i = 0; i < gridIds.Length; i++)
+                {
+                    if (gridIds[i] != gridEntityId) continue;
+                    group = gc;
+                    return true;
+                }
+            }
+
+            foreach (var gc in Session.GroupDict.Select(kv => kv.Value))
+            {
+                if (!Session.IsGameThread) continue;
+                if (!gc.GridDictionary.Keys.Any(g => g != null && g.EntityId == gridEntityId)) continue;
                 group = gc;
                 return true;
             }

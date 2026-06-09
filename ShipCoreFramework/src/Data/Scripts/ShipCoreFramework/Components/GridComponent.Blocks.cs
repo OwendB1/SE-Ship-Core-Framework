@@ -60,7 +60,11 @@ namespace ShipCoreFramework
                 var success = newCore.Init(functionalBlock, this, groupComponent);
                 if (!success) return;
 
-                CoreDictionary.Add(block.FatBlock, newCore);
+                if (!CoreDictionary.TryAdd(block.FatBlock, newCore))
+                {
+                    newCore.Clean();
+                    return;
+                }
 
                 if (!TryApplyLimitsOnAdd(block, limitBasedPunish)) return;
 
@@ -122,7 +126,7 @@ namespace ShipCoreFramework
 
             if (Utils.IsCoreBlock(functionalBlock) || isTrackedUpgradeModule)
                 groupComponent.OnUpgradeModulesChanged();
-            else
+            else if (!groupComponent.IsInitializingGrids)
                 groupComponent.ApplyModifiers(groupComponent.Modifiers);
         }
 
@@ -134,9 +138,8 @@ namespace ShipCoreFramework
             var functionalBlock = block.FatBlock as IMyFunctionalBlock;
             CoreComponent value = null;
             var removedUpgradeModule = false;
-            if (functionalBlock != null && CoreDictionary.TryGetValue(functionalBlock, out value))
+            if (functionalBlock != null && CoreDictionary.TryRemove(functionalBlock, out value))
             {
-                CoreDictionary.Remove(functionalBlock);
                 value.CoreDestroyed();
             }
             else

@@ -10,6 +10,7 @@ namespace ShipCoreFramework
     public partial class Session
     {
         private static NexusAPI _myNexusApi;
+        private const int MaxQueuedStateWorkPerTick = 64;
         private bool _startedNexus;
         private int _tick;
         internal static int CurrentTick;
@@ -22,6 +23,8 @@ namespace ShipCoreFramework
         internal static bool MpActive;
         internal static bool HasStarted;
         internal static bool IsShuttingDown;
+        internal static volatile bool IsInitialGroupScan;
+        internal static int GameThreadId;
         internal static ModConfig Config = new ModConfig();
         internal static Networking Networking = new Networking(32124);
         internal static float AppliedSpeedDifferential;
@@ -31,5 +34,6 @@ namespace ShipCoreFramework
         internal static readonly Guid CoreLastOwnerStorageGUID = new Guid("3521026e-9025-4c62-9de7-98379fd2439d");
         
         internal static IMyPlayer LocalPlayer => MyAPIGateway.Session.LocalHumanPlayer;
+        internal static bool IsGameThread => GameThreadId != 0 && Environment.CurrentManagedThreadId == GameThreadId;
     }
 }

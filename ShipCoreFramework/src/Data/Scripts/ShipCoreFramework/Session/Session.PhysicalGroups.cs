@@ -138,7 +138,11 @@ namespace ShipCoreFramework
 
                 GroupComponent groupComponent;
                 if (GroupDict.TryGetValue(mechanicalGroup, out groupComponent) && groupComponent != null)
+                {
+                    if (IsGameThread)
+                        groupComponent.RefreshGameThreadStateCache();
                     memberGroups.Add(groupComponent);
+                }
             }
 
             var cluster = PhysicalSpeedClusterDict.GetOrAdd(physicalGroup,
@@ -167,7 +171,7 @@ namespace ShipCoreFramework
 
             var nextMembers = memberGroups
                 .Distinct()
-                .OrderBy(group => group.GetRepresentativeGridId())
+                .OrderBy(group => group.GetCachedRepresentativeGridId())
                 .ToArray();
 
             var representativeGroup = nextMembers.FirstOrDefault();
@@ -229,6 +233,10 @@ namespace ShipCoreFramework
         {
             if (groupComponent == null || physicalGridIds == null) return false;
 
+            var cachedGridIds = groupComponent.GetCachedMechanicalGridIds();
+            if (cachedGridIds.Length > 0)
+                return new HashSet<long>(cachedGridIds).SetEquals(physicalGridIds);
+
             var mechanicalGridIds = new HashSet<long>();
             foreach (var grid in groupComponent.GridDictionary.Keys)
             {
@@ -247,6 +255,19 @@ namespace ShipCoreFramework
             foreach (var groupComponent in memberGroups)
             {
                 if (groupComponent == null) continue;
+
+                var cachedMovableGrids = groupComponent.GetCachedMovableGrids();
+                if (cachedMovableGrids.Length > 0)
+                {
+                    foreach (var grid in cachedMovableGrids)
+                    {
+                        if (grid == null) continue;
+                        if (!seenGridIds.Add(grid.EntityId)) continue;
+                        grids.Add(grid);
+                    }
+
+                    continue;
+                }
 
                 foreach (var grid in groupComponent.GridDictionary.Keys)
                 {

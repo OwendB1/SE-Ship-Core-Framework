@@ -6,13 +6,39 @@ namespace ShipCoreFramework
 {
     internal partial class CoreComponent
     {
+        private void AttachBlockEvents()
+        {
+            if (CoreBlock == null || _eventsAttached) return;
+            if (!Session.IsGameThread)
+            {
+                var blockId = CoreBlock.EntityId;
+                ThreadWork.Enqueue(ThreadWork.StateCategory, "core-events:" + blockId,
+                    "Attach core events " + blockId,
+                    delegate
+                    {
+                        return CoreBlock != null &&
+                               !CoreBlock.MarkedForClose &&
+                               !CoreBlock.Closed &&
+                               !Session.IsShuttingDown;
+                    },
+                    AttachBlockEvents);
+                return;
+            }
+
+            CoreBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged;
+            CoreBlock.AppendingCustomInfo += AppendingCustomInfo;
+            CoreBlock.IsWorkingChanged += OnIsWorkingChanged;
+            _eventsAttached = true;
+        }
+
         private void DetachBlockEvents()
         {
-            if (CoreBlock == null) return;
+            if (CoreBlock == null || !_eventsAttached) return;
 
             CoreBlock.OnUpgradeValuesChanged -= OnUpgradeValuesChanged;
             CoreBlock.AppendingCustomInfo -= AppendingCustomInfo;
             CoreBlock.IsWorkingChanged -= OnIsWorkingChanged;
+            _eventsAttached = false;
         }
 
         internal void Clean()

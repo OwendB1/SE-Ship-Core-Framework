@@ -24,7 +24,10 @@ namespace ShipCoreFramework
             if (ModuleBlock == null) return false;
 
             SubtypeId = ModuleBlock.BlockDefinition.SubtypeId;
-            RefreshParentCore();
+            if (Session.IsGameThread)
+                RefreshParentCore();
+            else
+                ParentCoreComponent = null;
 
             ModuleBlock.EnabledChanged += OnModuleStateChanged;
             ModuleBlock.IsWorkingChanged += OnModuleWorkingChanged;

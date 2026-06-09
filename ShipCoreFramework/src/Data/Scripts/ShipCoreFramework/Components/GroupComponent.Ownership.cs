@@ -96,6 +96,11 @@ namespace ShipCoreFramework
 
         internal bool IsIgnoredGroup()
         {
+            return Session.IsGameThread ? ComputeIsIgnoredGroup() : GetCachedIsIgnoredGroup();
+        }
+
+        private bool ComputeIsIgnoredGroup()
+        {
             if (IsIgnoredByAiOrFactionTag()) return true;
             if (OwnerId == 0) return true;
             var player = MyAPIGateway.Players.TryGetIdentityId(OwnerId);
@@ -118,6 +123,13 @@ namespace ShipCoreFramework
 
         internal long GetRepresentativeGridId()
         {
+            if (!Session.IsGameThread)
+                return GetCachedRepresentativeGridId();
+
+            RefreshGridStateCache();
+            var cachedRepresentativeGridId = GetCachedRepresentativeGridId();
+            if (cachedRepresentativeGridId != 0) return cachedRepresentativeGridId;
+
             var main = MainCoreComponent?.GridComponent?.Grid;
             var grid = main ?? GridDictionary.Keys.FirstOrDefault();
             return grid?.EntityId ?? 0;

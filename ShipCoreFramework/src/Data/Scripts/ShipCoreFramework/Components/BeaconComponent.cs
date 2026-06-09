@@ -29,8 +29,23 @@ namespace ShipCoreFramework
             CaptureDefaults();
             BeaconBlock.IsWorkingChanged += OnModuleWorkingChanged;
             BeaconBlock.PropertiesChanged += OnPropertiesChanged;
-            SyncForceBroadcast();
-            _groupComponent.RefreshPunishmentState();
+            if (Session.IsGameThread)
+            {
+                SyncForceBroadcast();
+                _groupComponent.RefreshPunishmentState();
+            }
+            else
+            {
+                var beaconId = BeaconBlock.EntityId;
+                ThreadWork.Enqueue(ThreadWork.StateCategory, "beacon-sync:" + beaconId,
+                    "Initial beacon sync " + beaconId,
+                    delegate { return IsBeaconAvailable() && !Session.IsShuttingDown; },
+                    delegate
+                    {
+                        SyncForceBroadcast();
+                        _groupComponent.RefreshPunishmentState();
+                    });
+            }
             return true;
         }
 

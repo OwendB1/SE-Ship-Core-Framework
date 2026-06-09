@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.ModAPI;
@@ -18,6 +19,19 @@ namespace ShipCoreFramework
             {
                 Block = block;
                 Harm = harm;
+            }
+        }
+
+        private sealed class GridLimitSnapshot
+        {
+            internal readonly GridComponent GridComponent;
+            internal readonly ConcurrentDictionary<BlockLimit, LimitBucket> Limits;
+
+            internal GridLimitSnapshot(GridComponent gridComponent,
+                ConcurrentDictionary<BlockLimit, LimitBucket> limits)
+            {
+                GridComponent = gridComponent;
+                Limits = limits;
             }
         }
 
@@ -117,7 +131,8 @@ namespace ShipCoreFramework
 
         internal void OnBlockAddedToGroup()
         {
-            _groupBlocksCount++;
+            IncrementLimitGeneration();
+            AddGroupBlocksCount(1);
             InvalidateSpeedStateCache();
             Session.MarkPhysicalSpeedClusterSourceDirty(this);
 
@@ -131,8 +146,8 @@ namespace ShipCoreFramework
 
         internal void OnBlockRemovedFromGroup()
         {
-            if (_groupBlocksCount > 0)
-                _groupBlocksCount--;
+            IncrementLimitGeneration();
+            AddGroupBlocksCount(-1);
 
             InvalidateSpeedStateCache();
             Session.MarkPhysicalSpeedClusterSourceDirty(this);
@@ -166,7 +181,7 @@ namespace ShipCoreFramework
             var wasPunishingLimitedBlocks = PunishLimitedBlocks;
             RefreshLimitedBlockPunishmentState();
             if (!wasPunishingLimitedBlocks && PunishLimitedBlocks)
-                EnforceGroupPunishment(true);
+                QueueEnforceGroupPunishment(true);
         }
 
         private void RunPendingLimitPunishmentValidationTick()
@@ -177,7 +192,18 @@ namespace ShipCoreFramework
                 return;
 
             _pendingLimitPunishmentValidationTick = 0;
-            RefreshGroupStateAndEnforce();
+            if (Session.IsGameThread)
+            {
+                RefreshGroupStateAndEnforce();
+                return;
+            }
+
+            var representativeGridId = GetRepresentativeGridId();
+            var groupKey = GetThreadWorkKey();
+            ThreadWork.Enqueue(ThreadWork.ValidationCategory, "limit-validation:" + groupKey,
+                "Delayed limit validation for group " + representativeGridId,
+                delegate { return !_closing && !Session.IsShuttingDown; },
+                delegate { RefreshGroupStateAndEnforce(); });
         }
 
         internal void RunExternalLimitValidationTick()
@@ -199,6 +225,24 @@ namespace ShipCoreFramework
 
             _pendingExternalLimitValidationTick = 0;
 
+            if (Session.IsGameThread)
+            {
+                ExecuteExternalLimitValidation();
+                return;
+            }
+
+            var representativeGridId = GetRepresentativeGridId();
+            var groupKey = GetThreadWorkKey();
+            ThreadWork.Enqueue(ThreadWork.ValidationCategory, "external-limit-validation:" + groupKey,
+                "External limit validation for group " + representativeGridId,
+                delegate { return !_closing && !Session.IsShuttingDown; },
+                ExecuteExternalLimitValidation);
+        }
+
+        private void ExecuteExternalLimitValidation()
+        {
+            if (_closing || Session.IsShuttingDown) return;
+
             var mainCore = MainCoreComponent;
             if (mainCore?.CoreBlock?.SlimBlock == null) return;
             if (mainCore.CoreBlock.MarkedForClose || mainCore.CoreBlock.Closed) return;
@@ -216,11 +260,22 @@ namespace ShipCoreFramework
             ResetCore();
         }
 
+        private void QueueEnforceGroupPunishment(bool forceShutOffPunishment = false)
+        {
+            if (Session.IsGameThread)
+            {
+                EnforceGroupPunishment(forceShutOffPunishment);
+                return;
+            }
+
+            EnforceGroupPunishment(forceShutOffPunishment);
+        }
+
         private void EnforceGroupPunishment(bool forceShutOffPunishment = false)
         {
             if (IsIgnoredGroup()) return;
 
-            RefreshPunishmentFlags();
+            if (Session.IsGameThread) RefreshPunishmentFlags();
 
             var pendingPunishments = new List<PendingBlockPunishment>();
             foreach (var kv in Limits)
@@ -318,6 +373,16 @@ namespace ShipCoreFramework
         internal float GetEffectiveMaxCount(BlockLimit limit)
         {
             if (limit == null) return 0f;
+            if (Session.IsGameThread) return ComputeEffectiveMaxCount(limit);
+
+            var cached = _cachedEffectiveMaxCounts;
+            float maxCount;
+            return cached != null && cached.TryGetValue(limit, out maxCount) ? maxCount : limit.MaxCount;
+        }
+
+        private float ComputeEffectiveMaxCount(BlockLimit limit)
+        {
+            if (limit == null) return 0f;
 
             var maxCount = limit.MaxCount;
             foreach (var module in GetEffectiveUpgradeModules(true))
@@ -339,6 +404,11 @@ namespace ShipCoreFramework
 
         internal int GetEffectiveMaxBlocks()
         {
+            return Session.IsGameThread ? ComputeEffectiveMaxBlocks() : _cachedEffectiveMaxBlocks;
+        }
+
+        private int ComputeEffectiveMaxBlocks()
+        {
             var max = ShipCore.MaxBlocks;
             if (max <= 0) return max;
             foreach (var module in GetEffectiveUpgradeModules(true))
@@ -355,6 +425,11 @@ namespace ShipCoreFramework
         }
 
         internal float GetEffectiveMaxMass()
+        {
+            return Session.IsGameThread ? ComputeEffectiveMaxMass() : _cachedEffectiveMaxMass;
+        }
+
+        private float ComputeEffectiveMaxMass()
         {
             var max = ShipCore.MaxMass;
             if (max <= 0) return max;
@@ -373,6 +448,11 @@ namespace ShipCoreFramework
 
         internal int GetEffectiveMaxPCU()
         {
+            return Session.IsGameThread ? ComputeEffectiveMaxPCU() : _cachedEffectiveMaxPCU;
+        }
+
+        private int ComputeEffectiveMaxPCU()
+        {
             var max = ShipCore.MaxPCU;
             if (max <= 0) return max;
             foreach (var module in GetEffectiveUpgradeModules(true))
@@ -388,24 +468,53 @@ namespace ShipCoreFramework
             return max;
         }
 
-        private void RecalculateAllLimits()
+        private void RefreshEffectiveLimitCache()
         {
-            Limits.Clear();
+            _cachedEffectiveMaxBlocks = ComputeEffectiveMaxBlocks();
+            _cachedEffectiveMaxPCU = ComputeEffectiveMaxPCU();
+            _cachedEffectiveMaxMass = ComputeEffectiveMaxMass();
+
+            var effectiveMaxCounts = new Dictionary<BlockLimit, float>();
+            var blockLimits = ShipCore.BlockLimits;
+            if (blockLimits != null)
+            {
+                foreach (var limit in blockLimits)
+                    if (limit != null)
+                        effectiveMaxCounts[limit] = ComputeEffectiveMaxCount(limit);
+            }
+
+            _cachedEffectiveMaxCounts = effectiveMaxCounts;
+        }
+
+        private void QueueRecalculateAllLimits(bool enforceAfterPublish, bool forceShutOffPunishment)
+        {
+            var generation = GetLimitGeneration();
+            MyAPIGateway.Parallel.StartBackground(() =>
+            {
+                if (!BuildAndPublishLimitSnapshots(generation)) return;
+                if (enforceAfterPublish)
+                    EnforceGroupPunishment(forceShutOffPunishment);
+            });
+        }
+
+        private bool BuildAndPublishLimitSnapshots(int generation)
+        {
+            if (_closing || Session.IsShuttingDown) return false;
+
+            var groupLimits = new ConcurrentDictionary<BlockLimit, LimitBucket>();
+            var gridSnapshots = new List<GridLimitSnapshot>();
 
             foreach (var comp in GridDictionary.Values)
             {
-                comp.RecalculateLimits(this);
-                foreach (var gridLimitKv in comp.Limits)
+                var gridLimits = comp.BuildLimitsSnapshot(this);
+                gridSnapshots.Add(new GridLimitSnapshot(comp, gridLimits));
+
+                foreach (var gridLimitKv in gridLimits)
                 {
                     var limit = gridLimitKv.Key;
                     var gridBucket = gridLimitKv.Value;
 
-                    LimitBucket groupBucket;
-                    if (!Limits.TryGetValue(limit, out groupBucket))
-                    {
-                        groupBucket = new LimitBucket(0d);
-                        Limits[limit] = groupBucket;
-                    }
+                    var groupBucket = Limits.GetOrAdd(limit, _ => new LimitBucket(0d));
 
                     lock (gridBucket.BucketLock)
                     {
@@ -418,9 +527,34 @@ namespace ShipCoreFramework
                 }
             }
 
-            ApplyCrossConnectorPunishment();
+            ApplyCrossConnectorPunishment(groupLimits);
 
-            if (MyGroup != null) ModAPI.BroadcastLimitsRecalculated(GetRepresentativeGridId());
+            lock (_limitSnapshotLock)
+            {
+                if (_closing || Session.IsShuttingDown || generation != GetLimitGeneration())
+                    return false;
+
+                foreach (var snapshot in gridSnapshots)
+                    if (snapshot.GridComponent != null)
+                        snapshot.GridComponent.PublishLimitsSnapshot(snapshot.Limits);
+
+                PublishLimitsSnapshot(groupLimits);
+            }
+
+            if (MyGroup != null)
+            {
+                var representativeGridId = GetRepresentativeGridId();
+                if (Session.IsGameThread)
+                    ModAPI.BroadcastLimitsRecalculated(representativeGridId);
+                else
+                    MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+                    {
+                        if (!_closing && !Session.IsShuttingDown)
+                            ModAPI.BroadcastLimitsRecalculated(representativeGridId);
+                    });
+            }
+
+            return true;
         }
 
         internal static bool IsValidDirection(IMyCubeBlock myCore, IMySlimBlock block,

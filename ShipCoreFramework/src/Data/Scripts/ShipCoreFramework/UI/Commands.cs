@@ -140,8 +140,8 @@ namespace ShipCoreFramework
             var bodySort = new Dictionary<string, string>();
             if (args.Length < 3 || !CheckIfAdmin(playerId))
             {
-                Dictionary<string, int> playerVal;
-                if(PerPlayerManager.PerPlayer.TryGetValue(playerId, out playerVal))
+                Dictionary<string, int> playerVal = PerPlayerManager.GetPlayerCountsSnapshot(playerId);
+                if(playerVal.Count > 0)
                 {
                     foreach (var classCount in playerVal)
                     {
@@ -156,8 +156,10 @@ namespace ShipCoreFramework
                 
                 var faction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(playerId);
                 var factionId = faction?.FactionId ?? -1;
-                Dictionary<string, int> factionVal;
-                if(factionId != -1 && PerFactionManager.PerFaction.TryGetValue(factionId, out factionVal))
+                Dictionary<string, int> factionVal = factionId != -1
+                    ? PerFactionManager.GetFactionCountsSnapshot(factionId)
+                    : new Dictionary<string, int>();
+                if(factionVal.Count > 0)
                 {
                     foreach (var classCount in factionVal)
                     {
@@ -179,19 +181,16 @@ namespace ShipCoreFramework
                 var sub = args[1].ToLower();
                 switch (sub)
                 {
-                    /*
-                    case "update":
-                        PerPlayerManager.PerPlayer=PerPlayerManager.GetDefaultPlayerGridsSet();
-                        PerFactionManager.PerFaction=PerFactionManager.GetDefaultFactionGridsSet();
-                        break;*/
                     case "faction":
                         goto case "f";
                     case "f":
                         if (!long.TryParse(args[2], out playerId)) return;
                         var faction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(playerId);
                         var factionId = faction?.FactionId ?? -1;
-                        Dictionary<string, int> factionVal;
-                        if(factionId != -1 && PerFactionManager.PerFaction.TryGetValue(factionId, out factionVal))
+                        Dictionary<string, int> factionVal = factionId != -1
+                            ? PerFactionManager.GetFactionCountsSnapshot(factionId)
+                            : new Dictionary<string, int>();
+                        if(factionVal.Count > 0)
                         {
                             foreach (var classCount in factionVal)
                             {
@@ -208,8 +207,8 @@ namespace ShipCoreFramework
                         goto case "p";
                     case "p":
                         if (!long.TryParse(args[2], out playerId)) return;
-                        Dictionary<string, int> playerVal;
-                        if(PerPlayerManager.PerPlayer.TryGetValue(playerId, out playerVal))
+                        Dictionary<string, int> playerVal = PerPlayerManager.GetPlayerCountsSnapshot(playerId);
+                        if(playerVal.Count > 0)
                         {
                             foreach (var classCount in playerVal)
                             {
@@ -776,11 +775,13 @@ namespace ShipCoreFramework
                 body += $"    Max Boost Speed: {speedmods.MaxBoost:F2}\n";
                 if (Session.Config.FrictionSpeedValueMode == FrictionSpeedValueMode.Modifier)
                 {
-                    var minMod = groupComponent.MinimumFrictionSpeedModifierOverride >= 0f
-                        ? groupComponent.MinimumFrictionSpeedModifierOverride
+                    var minModOverride = groupComponent.GetMinimumFrictionSpeedModifierOverride();
+                    var maxModOverride = groupComponent.GetMaximumFrictionSpeedModifierOverride();
+                    var minMod = minModOverride >= 0f
+                        ? minModOverride
                         : speedmods.MinimumFrictionSpeedModifier;
-                    var maxMod = groupComponent.MaximumFrictionSpeedModifierOverride >= 0f
-                        ? groupComponent.MaximumFrictionSpeedModifierOverride
+                    var maxMod = maxModOverride >= 0f
+                        ? maxModOverride
                         : speedmods.MaximumFrictionSpeedModifier;
 
                     var minReal = Session.Config.MaxPossibleSpeedMetersPerSecond * minMod;
@@ -790,11 +791,13 @@ namespace ShipCoreFramework
                 }
                 else
                 {
-                    var minAbs = groupComponent.MinimumFrictionSpeedAbsoluteOverride >= 0f
-                        ? groupComponent.MinimumFrictionSpeedAbsoluteOverride
+                    var minAbsOverride = groupComponent.GetMinimumFrictionSpeedAbsoluteOverride();
+                    var maxAbsOverride = groupComponent.GetMaximumFrictionSpeedAbsoluteOverride();
+                    var minAbs = minAbsOverride >= 0f
+                        ? minAbsOverride
                         : speedmods.MinimumFrictionSpeedAbsolute;
-                    var maxAbs = groupComponent.MaximumFrictionSpeedAbsoluteOverride >= 0f
-                        ? groupComponent.MaximumFrictionSpeedAbsoluteOverride
+                    var maxAbs = maxAbsOverride >= 0f
+                        ? maxAbsOverride
                         : speedmods.MaximumFrictionSpeedAbsolute;
 
                     body += $"    Min Friction:    {minAbs:F1} m/s\n";
@@ -804,9 +807,18 @@ namespace ShipCoreFramework
                 body += $"    Boost Duration:  {speedmods.BoostDuration:F2}\n";
                 body += $"    Boost Cooldown:  {speedmods.BoostCoolDown:F2}\n";
             }
-            body += $"    Base Limit:      {groupComponent.BaseSpeedLimitMetersPerSecond:F1} m/s\n";
-            var effectiveSpeedLine = $"    Effective Limit: {groupComponent.EffectiveSpeedLimitMetersPerSecond:F1} m/s";
-            var sourceGridId = groupComponent.SpeedSourceGroupGridId;
+            float baseSpeedLimit;
+            float effectiveSpeedLimit;
+            long sourceGridId;
+            lock (groupComponent.SpeedStateLock)
+            {
+                baseSpeedLimit = groupComponent.BaseSpeedLimitMetersPerSecond;
+                effectiveSpeedLimit = groupComponent.EffectiveSpeedLimitMetersPerSecond;
+                sourceGridId = groupComponent.SpeedSourceGroupGridId;
+            }
+
+            body += $"    Base Limit:      {baseSpeedLimit:F1} m/s\n";
+            var effectiveSpeedLine = $"    Effective Limit: {effectiveSpeedLimit:F1} m/s";
             if (sourceGridId != 0 && !groupComponent.GridDictionary.Keys.Any(g => g != null && g.EntityId == sourceGridId))
             {
                 var sourceGrid = MyAPIGateway.Entities.GetEntityById(sourceGridId) as IMyCubeGrid;

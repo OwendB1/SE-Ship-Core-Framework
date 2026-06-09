@@ -14,6 +14,24 @@ namespace ShipCoreFramework
     {
         internal static void RemoveAndRefund(this IMySlimBlock block)
         {
+            if (!Session.IsGameThread)
+            {
+                var capturedBlock = block;
+                var blockId = capturedBlock?.FatBlock == null ? 0 : capturedBlock.FatBlock.EntityId;
+                var coalesceKey = blockId == 0 ? string.Empty : "remove-refund:" + blockId;
+                ThreadWork.Enqueue(ThreadWork.StateCategory, coalesceKey,
+                    "Remove and refund block " + blockId,
+                    delegate
+                    {
+                        return capturedBlock?.CubeGrid != null &&
+                               !capturedBlock.CubeGrid.MarkedForClose &&
+                               !capturedBlock.CubeGrid.Closed &&
+                               !Session.IsShuttingDown;
+                    },
+                    delegate { RemoveAndRefund(capturedBlock); });
+                return;
+            }
+
             var grid = block?.CubeGrid;
             if (grid == null) return;
 
