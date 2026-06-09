@@ -1,12 +1,10 @@
-using System.Threading;
-
 namespace ShipCoreFramework
 {
     internal partial class GroupComponent
     {
         internal void InvalidateSpeedStateCache()
         {
-            Volatile.Write(ref LastSpeedStateUpdateTick, -1);
+            LastSpeedStateUpdateTick = -1;
         }
 
         internal void SetFrictionEnforcementEnabled(bool enabled)

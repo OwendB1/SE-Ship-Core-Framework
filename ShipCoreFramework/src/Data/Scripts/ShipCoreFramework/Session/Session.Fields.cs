@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Concurrent;
-using System.Threading;
 using NexusModAPI;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
@@ -35,6 +34,6 @@ namespace ShipCoreFramework
         internal static readonly Guid CoreLastOwnerStorageGUID = new Guid("3521026e-9025-4c62-9de7-98379fd2439d");
         
         internal static IMyPlayer LocalPlayer => MyAPIGateway.Session.LocalHumanPlayer;
-        internal static bool IsGameThread => GameThreadId != 0 && Thread.CurrentThread.ManagedThreadId == GameThreadId;
+        internal static bool IsGameThread => GameThreadId != 0 && Environment.CurrentManagedThreadId == GameThreadId;
     }
 }

@@ -22,15 +22,15 @@ namespace ShipCoreFramework
         internal SpeedModifiers SpeedModifiers => CubeGridModifiers.GetActiveSpeedModifiers(this);
 
         internal IMyFaction OwningFaction => MyAPIGateway.Session.Factions.TryGetPlayerFaction(OwnerId);
-        internal int GroupBlocksCount => Volatile.Read(ref _groupBlocksCount);
+        internal int GroupBlocksCount => Interlocked.CompareExchange(ref _groupBlocksCount, 0, 0);
         internal int GroupPCU {
             get
             {
                 if (!Session.IsGameThread)
-                    return Volatile.Read(ref _cachedGroupPCU);
+                    return Interlocked.CompareExchange(ref _cachedGroupPCU, 0, 0);
 
                 RefreshGridStateCache();
-                return Volatile.Read(ref _cachedGroupPCU);
+                return Interlocked.CompareExchange(ref _cachedGroupPCU, 0, 0);
             }
         }
         internal float GroupMass {
@@ -91,7 +91,7 @@ namespace ShipCoreFramework
             int updated;
             do
             {
-                current = Volatile.Read(ref _groupBlocksCount);
+                current = Interlocked.CompareExchange(ref _groupBlocksCount, 0, 0);
                 updated = current + delta;
                 if (updated < 0) updated = 0;
             }
@@ -187,32 +187,32 @@ namespace ShipCoreFramework
             if (_closing || Session.IsShuttingDown) return;
             RefreshGridStateCache();
             RefreshMassCache();
-            Volatile.Write(ref _cachedIsIgnoredGroup, ComputeIsIgnoredGroup());
+            _cachedIsIgnoredGroup = ComputeIsIgnoredGroup();
         }
 
         internal long GetCachedRepresentativeGridId()
         {
-            return Volatile.Read(ref _cachedRepresentativeGridId);
+            return Interlocked.CompareExchange(ref _cachedRepresentativeGridId, 0L, 0L);
         }
 
         internal long[] GetCachedMechanicalGridIds()
         {
-            return Volatile.Read(ref _cachedMechanicalGridIds) ?? new long[0];
+            return _cachedMechanicalGridIds ?? new long[0];
         }
 
         internal MyCubeGrid[] GetCachedMovableGrids()
         {
-            return Volatile.Read(ref _cachedMovableGrids) ?? new MyCubeGrid[0];
+            return _cachedMovableGrids ?? new MyCubeGrid[0];
         }
 
         internal CachedGridState[] GetCachedGridStates()
         {
-            return Volatile.Read(ref _cachedGridStates) ?? new CachedGridState[0];
+            return _cachedGridStates ?? new CachedGridState[0];
         }
 
         internal bool GetCachedIsIgnoredGroup()
         {
-            return Volatile.Read(ref _cachedIsIgnoredGroup);
+            return _cachedIsIgnoredGroup;
         }
 
         private void RefreshGridStateCache()
@@ -258,11 +258,11 @@ namespace ShipCoreFramework
                 }
             }
 
-            Volatile.Write(ref _cachedGroupPCU, groupPcu);
-            Volatile.Write(ref _cachedRepresentativeGridId, representativeGridId);
-            Volatile.Write(ref _cachedMovableGrids, movableGrids.ToArray());
-            Volatile.Write(ref _cachedMechanicalGridIds, mechanicalGridIds.ToArray());
-            Volatile.Write(ref _cachedGridStates, gridStates.ToArray());
+            Interlocked.Exchange(ref _cachedGroupPCU, groupPcu);
+            Interlocked.Exchange(ref _cachedRepresentativeGridId, representativeGridId);
+            _cachedMovableGrids = movableGrids.ToArray();
+            _cachedMechanicalGridIds = mechanicalGridIds.ToArray();
+            _cachedGridStates = gridStates.ToArray();
         }
 
         private void RefreshMassCache()

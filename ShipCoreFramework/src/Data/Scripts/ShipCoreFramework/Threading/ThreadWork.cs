@@ -31,7 +31,7 @@ namespace ShipCoreFramework
             {
                 Id = id,
                 CreatedTick = Session.CurrentTick,
-                CreatedThreadId = Thread.CurrentThread.ManagedThreadId,
+                CreatedThreadId = Environment.CurrentManagedThreadId,
                 Category = category ?? string.Empty,
                 CoalesceKey = coalesceKey ?? string.Empty,
                 DebugDescription = debugDescription ?? string.Empty,

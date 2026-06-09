@@ -53,7 +53,7 @@ namespace ShipCoreFramework
         
         public override void LoadData()
         {
-            GameThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
+            GameThreadId = Environment.CurrentManagedThreadId;
             IsShuttingDown = false;
             MpActive = MyAPIGateway.Multiplayer.MultiplayerActive;
             IsServer = (MpActive && MyAPIGateway.Multiplayer.IsServer) || !MpActive;

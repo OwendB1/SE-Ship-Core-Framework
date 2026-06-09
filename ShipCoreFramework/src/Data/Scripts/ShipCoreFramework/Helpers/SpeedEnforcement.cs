@@ -334,11 +334,11 @@ namespace ShipCoreFramework
         private static void EnsureSpeedStateUpdated(GroupComponent sourceGroup)
         {
             if (sourceGroup == null) return;
-            if (Volatile.Read(ref sourceGroup.LastSpeedStateUpdateTick) == Session.CurrentTick) return;
+            if (Interlocked.CompareExchange(ref sourceGroup.LastSpeedStateUpdateTick, 0, 0) == Session.CurrentTick) return;
 
             lock (sourceGroup.SpeedStateLock)
             {
-                if (Volatile.Read(ref sourceGroup.LastSpeedStateUpdateTick) == Session.CurrentTick) return;
+                if (Interlocked.CompareExchange(ref sourceGroup.LastSpeedStateUpdateTick, 0, 0) == Session.CurrentTick) return;
 
                 var activeCore = sourceGroup.ShipCore;
                 var speedModifiers = CubeGridModifiers.GetActiveSpeedModifiers(sourceGroup);
@@ -383,7 +383,7 @@ namespace ShipCoreFramework
                 sourceGroup.EffectiveSpeedLimitMetersPerSecond = effectiveMaxSpeed;
                 sourceGroup.EffectiveBoostEnabled = boostActive;
                 sourceGroup.SpeedSourceGroupGridId = GetSpeedSourceGridId(sourceGroup, sourceGroup);
-                Volatile.Write(ref sourceGroup.LastSpeedStateUpdateTick, Session.CurrentTick);
+                Interlocked.Exchange(ref sourceGroup.LastSpeedStateUpdateTick, Session.CurrentTick);
             }
         }
 
