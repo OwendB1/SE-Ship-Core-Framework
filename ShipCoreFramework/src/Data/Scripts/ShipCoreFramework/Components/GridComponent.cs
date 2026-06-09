@@ -14,7 +14,8 @@ namespace ShipCoreFramework
         private readonly object _blocksLock = new object();
         private readonly List<IMySlimBlock> _blocks = new List<IMySlimBlock>();
         private ConcurrentDictionary<BlockLimit, LimitBucket> _limits = new ConcurrentDictionary<BlockLimit, LimitBucket>();
-        internal ConcurrentDictionary<BlockLimit, LimitBucket> Limits { get { return _limits; } }
+        internal ConcurrentDictionary<BlockLimit, LimitBucket> Limits => _limits;
+
         internal int BlockCount
         {
             get
@@ -44,13 +45,8 @@ namespace ShipCoreFramework
                 return Session.GroupDict.TryGetValue(_groupData, out groupComponent) ? groupComponent : null;
             }
         }
-        
-        internal void Init(IMyCubeGrid grid, IMyGridGroupData groupData)
-        {
-            Init(grid, groupData, true);
-        }
 
-        internal void Init(IMyCubeGrid grid, IMyGridGroupData groupData, bool processBlocks)
+        internal void Init(IMyCubeGrid grid, IMyGridGroupData groupData, bool processBlocks = true)
         {
             Grid = (MyCubeGrid)grid;
             _groupData = groupData;

@@ -144,7 +144,7 @@ namespace ShipCoreFramework
             if (ownerId != 0) return ownerId;
 
             var bigOwners = CoreBlock?.CubeGrid?.BigOwners;
-            return bigOwners == null ? 0 : bigOwners.FirstOrDefault();
+            return bigOwners?.FirstOrDefault() ?? 0;
         }
 
         private void SaveCoreState()

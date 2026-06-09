@@ -14,13 +14,10 @@ namespace ShipCoreFramework
                 var blockId = CoreBlock.EntityId;
                 ThreadWork.Enqueue(ThreadWork.StateCategory, "core-events:" + blockId,
                     "Attach core events " + blockId,
-                    delegate
-                    {
-                        return CoreBlock != null &&
-                               !CoreBlock.MarkedForClose &&
-                               !CoreBlock.Closed &&
-                               !Session.IsShuttingDown;
-                    },
+                    () => CoreBlock != null &&
+                          !CoreBlock.MarkedForClose &&
+                          !CoreBlock.Closed &&
+                          !Session.IsShuttingDown,
                     AttachBlockEvents);
                 return;
             }

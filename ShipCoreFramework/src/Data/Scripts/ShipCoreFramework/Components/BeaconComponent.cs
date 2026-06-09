@@ -39,7 +39,7 @@ namespace ShipCoreFramework
                 var beaconId = BeaconBlock.EntityId;
                 ThreadWork.Enqueue(ThreadWork.StateCategory, "beacon-sync:" + beaconId,
                     "Initial beacon sync " + beaconId,
-                    delegate { return IsBeaconAvailable() && !Session.IsShuttingDown; },
+                    () => IsBeaconAvailable() && !Session.IsShuttingDown,
                     delegate
                     {
                         SyncForceBroadcast();
@@ -108,13 +108,7 @@ namespace ShipCoreFramework
             if (!IsBeaconAvailable()) return;
 
             var shipCore = _groupComponent.ShipCore;
-            if (shipCore == null || !shipCore.ForceBroadCast || _groupComponent.IsIgnoredByAiOrFactionTag())
-            {
-                RestoreDefaultsIfApplied();
-                return;
-            }
-
-            if (!ShouldForceBroadcast())
+            if (shipCore == null || !shipCore.ForceBroadCast || _groupComponent.IsIgnoredByAiOrFactionTag() || !ShouldForceBroadcast())
             {
                 RestoreDefaultsIfApplied();
                 return;

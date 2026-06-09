@@ -113,20 +113,7 @@ namespace ShipCoreFramework
 
         internal bool IsLimitPunishmentDeferred()
         {
-            return IsInitializingGrids || Session.CurrentTick < _deferLimitPunishmentUntilTick;
-        }
-
-        private void ScheduleLimitPunishmentValidation(int delayTicks)
-        {
-            if (_closing) return;
-            if (delayTicks <= 0) return;
-
-            var targetTick = Session.CurrentTick + delayTicks;
-            if (targetTick > _deferLimitPunishmentUntilTick)
-                _deferLimitPunishmentUntilTick = targetTick;
-
-            if (_pendingLimitPunishmentValidationTick == 0 || targetTick > _pendingLimitPunishmentValidationTick)
-                _pendingLimitPunishmentValidationTick = targetTick;
+            return IsInitializingGrids;
         }
 
         internal void OnBlockAddedToGroup()
@@ -162,8 +149,6 @@ namespace ShipCoreFramework
                 return;
             }
 
-            RunPendingLimitPunishmentValidationTick();
-
             var minBlocks = ShipCore?.MinBlocks ?? -1;
             if (minBlocks <= 0)
             {
@@ -182,28 +167,6 @@ namespace ShipCoreFramework
             RefreshLimitedBlockPunishmentState();
             if (!wasPunishingLimitedBlocks && PunishLimitedBlocks)
                 QueueEnforceGroupPunishment(true);
-        }
-
-        private void RunPendingLimitPunishmentValidationTick()
-        {
-            if (_pendingLimitPunishmentValidationTick == 0 ||
-                Session.CurrentTick < _pendingLimitPunishmentValidationTick ||
-                IsLimitPunishmentDeferred())
-                return;
-
-            _pendingLimitPunishmentValidationTick = 0;
-            if (Session.IsGameThread)
-            {
-                RefreshGroupStateAndEnforce();
-                return;
-            }
-
-            var representativeGridId = GetRepresentativeGridId();
-            var groupKey = GetThreadWorkKey();
-            ThreadWork.Enqueue(ThreadWork.ValidationCategory, "limit-validation:" + groupKey,
-                "Delayed limit validation for group " + representativeGridId,
-                delegate { return !_closing && !Session.IsShuttingDown; },
-                delegate { RefreshGroupStateAndEnforce(); });
         }
 
         internal void RunExternalLimitValidationTick()

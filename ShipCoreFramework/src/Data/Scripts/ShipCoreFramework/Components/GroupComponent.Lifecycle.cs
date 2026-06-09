@@ -65,9 +65,6 @@ namespace ShipCoreFramework
         {
             if (_gridInitializationDepth > 0)
                 _gridInitializationDepth--;
-
-            if (_gridInitializationDepth == 0)
-                ScheduleLimitPunishmentValidation(PostInitializationLimitValidationDelayTicks);
         }
 
         private void InitializeGridComponent(MyCubeGrid grid, IMyGridGroupData groupData)
@@ -113,8 +110,11 @@ namespace ShipCoreFramework
             InvalidateSpeedStateCache();
             Session.MarkPhysicalSpeedClusterSourceDirty(this);
 
-            var grid = MainCoreComponent.GridComponent.Grid;
-            Utils.Log($"Activate: Activating logic for {((IMyCubeGrid)grid).CustomName}!", 1);
+            if (MainCoreComponent != null)
+            {
+                var grid = MainCoreComponent.GridComponent.Grid;
+                Utils.Log($"Activate: Activating logic for {((IMyCubeGrid)grid).CustomName}!", 1);
+            }
 
             if (wasInactive)
             {
@@ -143,7 +143,7 @@ namespace ShipCoreFramework
                 var groupKey = GetThreadWorkKey();
                 ThreadWork.Enqueue(ThreadWork.StateCategory, "reset-core:" + groupKey,
                     "Reset core for group " + groupKey,
-                    delegate { return !_closing && !Session.IsShuttingDown; },
+                    () => !_closing && !Session.IsShuttingDown,
                     ResetCore);
                 return;
             }
@@ -234,7 +234,7 @@ namespace ShipCoreFramework
             RefreshPunishmentState();
             QueueRecalculateAllLimits(true, ShouldForceLimitedBlocksOff());
             Session.RefreshPhysicalGroupLinkagesForGrid(grid);
-            Session.RefreshPhysicalGroupLinkagesForGrids(GridDictionary.Keys.Cast<IMyCubeGrid>());
+            Session.RefreshPhysicalGroupLinkagesForGrids(GridDictionary.Keys);
             ModAPI.BroadcastGridRemovedFromGroup(grid.EntityId, GetRepresentativeGridId());
         }
 

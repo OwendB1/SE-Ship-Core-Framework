@@ -17,7 +17,7 @@ namespace ShipCoreFramework
             if (!Session.IsGameThread)
             {
                 var capturedBlock = block;
-                var blockId = capturedBlock?.FatBlock == null ? 0 : capturedBlock.FatBlock.EntityId;
+                var blockId = capturedBlock?.FatBlock?.EntityId ?? 0;
                 var coalesceKey = blockId == 0 ? string.Empty : "remove-refund:" + blockId;
                 ThreadWork.Enqueue(ThreadWork.StateCategory, coalesceKey,
                     "Remove and refund block " + blockId,

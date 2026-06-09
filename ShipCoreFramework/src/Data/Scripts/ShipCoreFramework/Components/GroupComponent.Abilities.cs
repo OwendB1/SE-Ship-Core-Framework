@@ -25,7 +25,7 @@ namespace ShipCoreFramework
                 var groupKey = GetThreadWorkKey();
                 ThreadWork.Enqueue(ThreadWork.StateCategory, "punishment-refresh:" + groupKey,
                     "Punishment state refresh for group " + groupKey,
-                    delegate { return !_closing && !Session.IsShuttingDown; },
+                    () => !_closing && !Session.IsShuttingDown,
                     RefreshPunishmentState);
                 return;
             }

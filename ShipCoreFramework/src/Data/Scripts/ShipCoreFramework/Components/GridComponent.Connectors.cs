@@ -36,8 +36,7 @@ namespace ShipCoreFramework
         private void NotifyGroupConnectorChanged(IMyShipConnector connector)
         {
             var group = GroupComponent;
-            if (group == null) return;
-            group.OnConnectorConnectionChanged(connector);
+            group?.OnConnectorConnectionChanged(connector);
         }
     }
 }

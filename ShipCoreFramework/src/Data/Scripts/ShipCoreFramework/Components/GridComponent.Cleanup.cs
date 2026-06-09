@@ -30,12 +30,11 @@ namespace ShipCoreFramework
                 if (func != null) func.EnabledChanged -= FuncBlockOnEnabledChanged;
 
                 var connector = fatBlock as IMyShipConnector;
-                if (connector != null)
-                {
-                    connector.IsConnectedChanged -= ConnectorOnConnectionChanged;
-                    connector.AttachFinished -= ConnectorOnConnectionChanged;
-                    connector.DetachFinished -= ConnectorOnConnectionChanged;
-                }
+                if (connector == null) continue;
+                
+                connector.IsConnectedChanged -= ConnectorOnConnectionChanged;
+                connector.AttachFinished -= ConnectorOnConnectionChanged;
+                connector.DetachFinished -= ConnectorOnConnectionChanged;
             }
 
             _trackedConnectorIds.Clear();

@@ -27,16 +27,13 @@ namespace ShipCoreFramework
                     return;
                 }
 
-                var blockId = CoreBlock == null ? 0 : CoreBlock.EntityId;
+                var blockId = CoreBlock?.EntityId ?? 0;
                 ThreadWork.Enqueue(ThreadWork.StateCategory, "core-state:" + blockId,
                     "Persist core main state " + blockId,
-                    delegate
-                    {
-                        return CoreBlock != null &&
-                               !CoreBlock.MarkedForClose &&
-                               !CoreBlock.Closed &&
-                               !Session.IsShuttingDown;
-                    },
+                    () => CoreBlock != null &&
+                          !CoreBlock.MarkedForClose &&
+                          !CoreBlock.Closed &&
+                          !Session.IsShuttingDown,
                     delegate
                     {
                         SaveCoreState();

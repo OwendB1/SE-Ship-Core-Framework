@@ -15,7 +15,6 @@ namespace ShipCoreFramework
     {
         private const int LimitedBlockMinimumBlocksRecheckIntervalTicks = 10 * 60 * 60;
         private const int ExternalLimitValidationDelayTicks = 2 * 60;
-        private const int PostInitializationLimitValidationDelayTicks = 0;
 
         internal ShipCore ShipCore => Session.Config.GetShipCoreByTypeId(MainCoreComponent?.SubtypeId ?? string.Empty);
         internal GridModifiers Modifiers => GetCachedActiveGridModifiers();
@@ -159,16 +158,13 @@ namespace ShipCoreFramework
         private bool _minimumBlocksLimitedBlockGateActive;
         private int _nextMinimumBlocksGateCheckTick;
         private int _pendingExternalLimitValidationTick;
-        private int _deferLimitPunishmentUntilTick;
-        private int _pendingLimitPunishmentValidationTick;
         private float _cachedDryMass;
-        private float _cachedWetMass;
         private float _cachedConfiguredMass;
         private int _cachedGroupPCU;
         private long _cachedRepresentativeGridId;
-        private MyCubeGrid[] _cachedMovableGrids = new MyCubeGrid[0];
-        private long[] _cachedMechanicalGridIds = new long[0];
-        private CachedGridState[] _cachedGridStates = new CachedGridState[0];
+        private MyCubeGrid[] _cachedMovableGrids = Array.Empty<MyCubeGrid>();
+        private long[] _cachedMechanicalGridIds = Array.Empty<long>();
+        private CachedGridState[] _cachedGridStates = Array.Empty<CachedGridState>();
         private bool _cachedIsIgnoredGroup;
         private GridModifiers _cachedActiveGridModifiers = new GridModifiers();
         private SpeedModifiers _cachedActiveSpeedModifiers = new SpeedModifiers();
@@ -209,17 +205,17 @@ namespace ShipCoreFramework
 
         internal long[] GetCachedMechanicalGridIds()
         {
-            return _cachedMechanicalGridIds ?? new long[0];
+            return _cachedMechanicalGridIds ?? Array.Empty<long>();
         }
 
         internal MyCubeGrid[] GetCachedMovableGrids()
         {
-            return _cachedMovableGrids ?? new MyCubeGrid[0];
+            return _cachedMovableGrids ?? Array.Empty<MyCubeGrid>();
         }
 
         internal CachedGridState[] GetCachedGridStates()
         {
-            return _cachedGridStates ?? new CachedGridState[0];
+            return _cachedGridStates ?? Array.Empty<CachedGridState>();
         }
 
         internal bool GetCachedIsIgnoredGroup()
@@ -277,8 +273,8 @@ namespace ShipCoreFramework
 
                 groupPcu += grid.BlocksPCU;
                 mechanicalGridIds.Add(grid.EntityId);
-                var apiGrid = (IMyCubeGrid)grid;
-                var entity = (ModEntity)grid;
+                IMyCubeGrid apiGrid = grid;
+                ModEntity entity = grid;
                 gridStates.Add(new CachedGridState
                 {
                     EntityId = grid.EntityId,
@@ -290,14 +286,12 @@ namespace ShipCoreFramework
                 if (!grid.IsStatic)
                     movableGrids.Add(grid);
 
-                if (representativeGridId == 0)
+                if (representativeGridId != 0) continue;
+                var blocks = grid.BlocksCount;
+                if (blocks > representativeBlocks || blocks == representativeBlocks && grid.EntityId < representativeGridId)
                 {
-                    var blocks = grid.BlocksCount;
-                    if (blocks > representativeBlocks || blocks == representativeBlocks && grid.EntityId < representativeGridId)
-                    {
-                        representativeBlocks = blocks;
-                        representativeGridId = grid.EntityId;
-                    }
+                    representativeBlocks = blocks;
+                    representativeGridId = grid.EntityId;
                 }
             }
 
@@ -332,11 +326,10 @@ namespace ShipCoreFramework
                 grid != null &&
                 !grid.MarkedForClose &&
                 !grid.Closed &&
-                (grid as ModEntity)?.Physics != null);
+                grid.Physics != null);
             if (referenceGrid == null)
             {
                 _cachedDryMass = 0f;
-                _cachedWetMass = 0f;
                 _cachedConfiguredMass = 0f;
                 return;
             }
@@ -354,7 +347,6 @@ namespace ShipCoreFramework
             }
 
             _cachedDryMass = dryMass;
-            _cachedWetMass = wetMass;
             _cachedConfiguredMass = Session.Config.MassTypeMode == MassTypeMode.Dry ? dryMass : wetMass;
         }
     }

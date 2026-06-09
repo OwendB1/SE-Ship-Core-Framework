@@ -102,10 +102,9 @@ namespace ShipCoreFramework
             ApplyModifiers(Modifiers);
             DefenseValuesChanged();
 
-            if (IsLimitPunishmentDeferred())
+            if (IsInitializingGrids)
             {
                 QueueRecalculateAllLimits(false, false);
-                ScheduleLimitPunishmentValidation(PostInitializationLimitValidationDelayTicks);
                 return;
             }
 
