@@ -26,7 +26,7 @@ namespace ShipCoreFramework
                 if (inner == null) continue;
 
                 foreach (var kvp in inner)
-                    result.Add(kvp.Key, kvp.Value);
+                    result[kvp.Key] = kvp.Value;
             }
 
             return result;

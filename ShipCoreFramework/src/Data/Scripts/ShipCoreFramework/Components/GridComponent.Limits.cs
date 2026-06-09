@@ -43,12 +43,7 @@ namespace ShipCoreFramework
                     }
                 }
 
-                LimitBucket groupBucket;
-                if (!GroupComponent.Limits.TryGetValue(limit, out groupBucket))
-                {
-                    groupBucket = new LimitBucket(0d);
-                    GroupComponent.Limits[limit] = groupBucket;
-                }
+                var groupBucket = GroupComponent.Limits.GetOrAdd(limit, _ => new LimitBucket(0d));
 
                 double currentWeight;
                 lock (groupBucket.BucketLock)
@@ -75,12 +70,7 @@ namespace ShipCoreFramework
                     }
                 }
 
-                LimitBucket gridBucket;
-                if (!Limits.TryGetValue(limit, out gridBucket))
-                {
-                    gridBucket = new LimitBucket(0d);
-                    Limits[limit] = gridBucket;
-                }
+                var gridBucket = Limits.GetOrAdd(limit, _ => new LimitBucket(0d));
 
                 lock (gridBucket.BucketLock)
                 {
@@ -115,8 +105,7 @@ namespace ShipCoreFramework
             {
                 if (limit == null) continue;
 
-                var bucket = new LimitBucket(0d);
-                Limits[limit] = bucket;
+                var bucket = Limits.GetOrAdd(limit, _ => new LimitBucket(0d));
 
                 foreach (var block in blocksCopy)
                 {

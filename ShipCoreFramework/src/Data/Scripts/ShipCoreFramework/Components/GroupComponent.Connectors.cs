@@ -157,12 +157,7 @@ namespace ShipCoreFramework
                             var weight = limit.GetWeight(key);
                             if (weight <= 0d) continue;
 
-                            LimitBucket groupBucket;
-                            if (!Limits.TryGetValue(limit, out groupBucket))
-                            {
-                                groupBucket = new LimitBucket(0d);
-                                Limits[limit] = groupBucket;
-                            }
+                            var groupBucket = Limits.GetOrAdd(limit, _ => new LimitBucket(0d));
 
                             lock (groupBucket.BucketLock)
                             {

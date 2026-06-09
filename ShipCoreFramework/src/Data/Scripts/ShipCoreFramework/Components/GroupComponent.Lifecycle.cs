@@ -57,7 +57,9 @@ namespace ShipCoreFramework
         private void InitializeGridComponent(MyCubeGrid grid, IMyGridGroupData groupData)
         {
             var gridComp = new GridComponent();
-            GridDictionary.Add(grid, gridComp);
+            if (!GridDictionary.TryAdd(grid, gridComp))
+                return;
+
             gridComp.Init(grid, groupData);
         }
 
@@ -177,10 +179,10 @@ namespace ShipCoreFramework
                 if (MainCoreComponent?.GridComponent.Grid.EntityId == g.EntityId)
                     removedMain = MainCoreComponent;
 
-                _groupBlocksCount -= comp.BlockCount;
-                if (_groupBlocksCount < 0) _groupBlocksCount = 0;
+                AddGroupBlocksCount(-comp.BlockCount);
                 comp.Clean();
-                GridDictionary.Remove(g);
+                GridComponent discarded;
+                GridDictionary.TryRemove(g, out discarded);
             }
 
             if (removedMain != null) MainCoreLeftGroup(removedMain);
@@ -306,7 +308,7 @@ namespace ShipCoreFramework
             ClearPhysicalLinkedGroups();
             foreach (var kvp in GridDictionary) kvp.Value.Clean();
             ClearGridDictionary();
-            _groupBlocksCount = 0;
+            System.Threading.Interlocked.Exchange(ref _groupBlocksCount, 0);
             Limits.Clear();
         }
 

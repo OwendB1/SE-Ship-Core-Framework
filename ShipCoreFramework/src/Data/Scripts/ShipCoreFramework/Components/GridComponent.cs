@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.Entities;
@@ -12,7 +13,7 @@ namespace ShipCoreFramework
         private IMyGridGroupData _groupData;
         private readonly object _blocksLock = new object();
         private readonly List<IMySlimBlock> _blocks = new List<IMySlimBlock>();
-        internal readonly Dictionary<BlockLimit, LimitBucket> Limits = new Dictionary<BlockLimit, LimitBucket>();
+        internal readonly ConcurrentDictionary<BlockLimit, LimitBucket> Limits = new ConcurrentDictionary<BlockLimit, LimitBucket>();
         internal int BlockCount
         {
             get
@@ -22,16 +23,16 @@ namespace ShipCoreFramework
             }
         }
 
-        internal readonly Dictionary<IMyCubeBlock, CoreComponent> CoreDictionary =
-            new Dictionary<IMyCubeBlock, CoreComponent>();
+        internal readonly ConcurrentDictionary<IMyCubeBlock, CoreComponent> CoreDictionary =
+            new ConcurrentDictionary<IMyCubeBlock, CoreComponent>();
 
-        internal readonly Dictionary<IMyCubeBlock, BeaconComponent> BeaconDictionary =
-            new Dictionary<IMyCubeBlock, BeaconComponent>();
+        internal readonly ConcurrentDictionary<IMyCubeBlock, BeaconComponent> BeaconDictionary =
+            new ConcurrentDictionary<IMyCubeBlock, BeaconComponent>();
 
-        private readonly Dictionary<IMyCubeBlock, UpgradeModuleComponent> _upgradeModuleDictionary =
-            new Dictionary<IMyCubeBlock, UpgradeModuleComponent>();
+        private readonly ConcurrentDictionary<IMyCubeBlock, UpgradeModuleComponent> _upgradeModuleDictionary =
+            new ConcurrentDictionary<IMyCubeBlock, UpgradeModuleComponent>();
 
-        private readonly HashSet<long> _trackedConnectorIds = new HashSet<long>();
+        private readonly ConcurrentDictionary<long, byte> _trackedConnectorIds = new ConcurrentDictionary<long, byte>();
 
         private GroupComponent GroupComponent
         {

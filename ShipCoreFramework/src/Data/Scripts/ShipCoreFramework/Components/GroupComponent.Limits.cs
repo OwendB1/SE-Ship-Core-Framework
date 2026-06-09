@@ -117,7 +117,7 @@ namespace ShipCoreFramework
 
         internal void OnBlockAddedToGroup()
         {
-            _groupBlocksCount++;
+            AddGroupBlocksCount(1);
             InvalidateSpeedStateCache();
             Session.MarkPhysicalSpeedClusterSourceDirty(this);
 
@@ -131,8 +131,7 @@ namespace ShipCoreFramework
 
         internal void OnBlockRemovedFromGroup()
         {
-            if (_groupBlocksCount > 0)
-                _groupBlocksCount--;
+            AddGroupBlocksCount(-1);
 
             InvalidateSpeedStateCache();
             Session.MarkPhysicalSpeedClusterSourceDirty(this);
@@ -429,12 +428,7 @@ namespace ShipCoreFramework
                     var limit = gridLimitKv.Key;
                     var gridBucket = gridLimitKv.Value;
 
-                    LimitBucket groupBucket;
-                    if (!Limits.TryGetValue(limit, out groupBucket))
-                    {
-                        groupBucket = new LimitBucket(0d);
-                        Limits[limit] = groupBucket;
-                    }
+                    var groupBucket = Limits.GetOrAdd(limit, _ => new LimitBucket(0d));
 
                     lock (gridBucket.BucketLock)
                     {

@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using ModEntity = VRage.ModAPI.IMyEntity;
@@ -19,7 +21,7 @@ namespace ShipCoreFramework
         internal SpeedModifiers SpeedModifiers => CubeGridModifiers.GetActiveSpeedModifiers(this);
 
         internal IMyFaction OwningFaction => MyAPIGateway.Session.Factions.TryGetPlayerFaction(OwnerId);
-        internal int GroupBlocksCount => _groupBlocksCount;
+        internal int GroupBlocksCount => Volatile.Read(ref _groupBlocksCount);
         internal int GroupPCU => GridDictionary.Sum(g => g.Key.BlocksPCU);
         internal float GroupMass {
             get
@@ -47,8 +49,8 @@ namespace ShipCoreFramework
         internal IMyGridGroupData MyGroup;
         internal CoreComponent MainCoreComponent;
 
-        internal readonly Dictionary<BlockLimit, LimitBucket> Limits = new Dictionary<BlockLimit, LimitBucket>();
-        internal readonly Dictionary<MyCubeGrid, GridComponent> GridDictionary = new Dictionary<MyCubeGrid, GridComponent>();
+        internal readonly ConcurrentDictionary<BlockLimit, LimitBucket> Limits = new ConcurrentDictionary<BlockLimit, LimitBucket>();
+        internal readonly ConcurrentDictionary<MyCubeGrid, GridComponent> GridDictionary = new ConcurrentDictionary<MyCubeGrid, GridComponent>();
 
         internal Dictionary<IMyCubeBlock, CoreComponent> CoreDictionary =>
             Utils.Flatten(GridDictionary.Values, component => component.CoreDictionary);
@@ -63,6 +65,19 @@ namespace ShipCoreFramework
         private void ClearGridDictionary()
         {
             GridDictionary.Clear();
+        }
+
+        private void AddGroupBlocksCount(int delta)
+        {
+            int current;
+            int updated;
+            do
+            {
+                current = Volatile.Read(ref _groupBlocksCount);
+                updated = current + delta;
+                if (updated < 0) updated = 0;
+            }
+            while (Interlocked.CompareExchange(ref _groupBlocksCount, updated, current) != current);
         }
 
         private MyCubeGrid GetMobilityReferenceGrid()

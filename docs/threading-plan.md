@@ -243,6 +243,13 @@ Debug behavior:
 - Add cancellation and coalescing by group id.
 - Ensure unload cancels all pending work.
 
+### Phase 3.5: Live Collection Safety
+
+- Use concurrent containers for SCF-owned state that can be enumerated by background work while grid, block, or group callbacks mutate it.
+- Keep explicit locks on aggregate buckets and connected-group sets where the protected data is more than a single dictionary entry.
+- Prefer non-throwing mutations (`TryAdd`, `TryRemove`, `GetOrAdd`) for callback-driven state so duplicate or out-of-order game events become no-ops instead of hard crashes.
+- Treat this as crash hardening, not a consistency barrier. Rebuild/apply phases such as limit recalculation may still need a group-level write barrier if exact snapshots are required.
+
 ### Phase 4: SE API Audit
 
 Audit background paths for calls that touch:
