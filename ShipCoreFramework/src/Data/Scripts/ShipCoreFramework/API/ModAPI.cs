@@ -551,16 +551,10 @@ namespace ShipCoreFramework
         /// </summary>
         public static SpeedModifiersData GetSpeedModifiers(long gridId)
         {
-            var grid = MyAPIGateway.Entities.GetEntityById(gridId) as MyCubeGrid;
-            if (grid == null) return ConvertToSpeedModifiersData(null);
-
             try
             {
-                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Mechanical, grid);
-                if (groupData == null) return ConvertToSpeedModifiersData(null);
-
                 GroupComponent groupComponent;
-                if (!Session.GroupDict.TryGetValue(groupData, out groupComponent)) return ConvertToSpeedModifiersData(null);
+                if (!TryGetGroupComponent(gridId, out groupComponent)) return ConvertToSpeedModifiersData(null);
 
                 var core = groupComponent.ShipCore;
                 return ConvertToSpeedModifiersData(core?.SpeedModifiers);
@@ -592,7 +586,7 @@ namespace ShipCoreFramework
                 GroupComponent groupComponent;
                 if (!TryGetGroupComponent(gridId, out groupComponent)) return false;
 
-                groupComponent.FrictionEnforcementEnabled = enabled;
+                groupComponent.SetFrictionEnforcementEnabled(enabled);
                 return true;
             }
             catch (Exception ex)
@@ -610,7 +604,7 @@ namespace ShipCoreFramework
             try
             {
                 GroupComponent groupComponent;
-                return TryGetGroupComponent(gridId, out groupComponent) && groupComponent.FrictionEnforcementEnabled;
+                return TryGetGroupComponent(gridId, out groupComponent) && groupComponent.GetFrictionEnforcementEnabled();
             }
             catch (Exception ex)
             {
@@ -631,7 +625,7 @@ namespace ShipCoreFramework
                 GroupComponent groupComponent;
                 if (!TryGetGroupComponent(gridId, out groupComponent)) return false;
 
-                groupComponent.FrictionMaximumDecelerationOverride = deceleration;
+                groupComponent.SetFrictionMaximumDecelerationOverride(deceleration);
                 return true;
             }
             catch (Exception ex)
@@ -651,7 +645,7 @@ namespace ShipCoreFramework
                 GroupComponent groupComponent;
                 if (!TryGetGroupComponent(gridId, out groupComponent)) return false;
 
-                groupComponent.FrictionMaximumDecelerationOverride = -1f;
+                groupComponent.SetFrictionMaximumDecelerationOverride(-1f);
                 return true;
             }
             catch (Exception ex)
@@ -669,7 +663,7 @@ namespace ShipCoreFramework
             try
             {
                 GroupComponent groupComponent;
-                return TryGetGroupComponent(gridId, out groupComponent) ? groupComponent.FrictionMaximumDecelerationOverride : -1f;
+                return TryGetGroupComponent(gridId, out groupComponent) ? groupComponent.GetFrictionMaximumDecelerationOverride() : -1f;
             }
             catch (Exception ex)
             {
@@ -689,11 +683,11 @@ namespace ShipCoreFramework
 
             if (speedMetersPerSecond < 0f)
             {
-                groupComponent.MinimumFrictionSpeedAbsoluteOverride = -1f;
+                groupComponent.SetMinimumFrictionSpeedAbsoluteOverride(-1f);
                 return MyTuple.Create(true, string.Empty);
             }
 
-            groupComponent.MinimumFrictionSpeedAbsoluteOverride = speedMetersPerSecond;
+            groupComponent.SetMinimumFrictionSpeedAbsoluteOverride(speedMetersPerSecond);
             return MyTuple.Create(true, string.Empty);
         }
 
@@ -708,11 +702,11 @@ namespace ShipCoreFramework
 
             if (speedMetersPerSecond < 0f)
             {
-                groupComponent.MaximumFrictionSpeedAbsoluteOverride = -1f;
+                groupComponent.SetMaximumFrictionSpeedAbsoluteOverride(-1f);
                 return MyTuple.Create(true, string.Empty);
             }
 
-            groupComponent.MaximumFrictionSpeedAbsoluteOverride = speedMetersPerSecond;
+            groupComponent.SetMaximumFrictionSpeedAbsoluteOverride(speedMetersPerSecond);
             return MyTuple.Create(true, string.Empty);
         }
 
@@ -722,7 +716,7 @@ namespace ShipCoreFramework
                 return MyTuple.Create(-1f, "World config uses modifier-based friction speeds; use GetFrictionMinimumSpeedModifierForGroup.");
 
             GroupComponent groupComponent;
-            return !TryGetGroupComponent(gridId, out groupComponent) ? MyTuple.Create(-1f, "Could not resolve logical grid group for the provided grid.") : MyTuple.Create(groupComponent.MinimumFrictionSpeedAbsoluteOverride, string.Empty);
+            return !TryGetGroupComponent(gridId, out groupComponent) ? MyTuple.Create(-1f, "Could not resolve logical grid group for the provided grid.") : MyTuple.Create(groupComponent.GetMinimumFrictionSpeedAbsoluteOverride(), string.Empty);
         }
 
         public static MyTuple<float, string> GetFrictionMaximumSpeedAbsoluteForGroup(long gridId)
@@ -731,7 +725,7 @@ namespace ShipCoreFramework
                 return MyTuple.Create(-1f, "World config uses modifier-based friction speeds; use GetFrictionMaximumSpeedModifierForGroup.");
 
             GroupComponent groupComponent;
-            return !TryGetGroupComponent(gridId, out groupComponent) ? MyTuple.Create(-1f, "Could not resolve logical grid group for the provided grid.") : MyTuple.Create(groupComponent.MaximumFrictionSpeedAbsoluteOverride, string.Empty);
+            return !TryGetGroupComponent(gridId, out groupComponent) ? MyTuple.Create(-1f, "Could not resolve logical grid group for the provided grid.") : MyTuple.Create(groupComponent.GetMaximumFrictionSpeedAbsoluteOverride(), string.Empty);
         }
 
         public static MyTuple<bool, string> SetFrictionMinimumSpeedModifierForGroup(long gridId, float modifier)
@@ -745,11 +739,11 @@ namespace ShipCoreFramework
 
             if (modifier < 0f)
             {
-                groupComponent.MinimumFrictionSpeedModifierOverride = -1f;
+                groupComponent.SetMinimumFrictionSpeedModifierOverride(-1f);
                 return MyTuple.Create(true, string.Empty);
             }
 
-            groupComponent.MinimumFrictionSpeedModifierOverride = modifier;
+            groupComponent.SetMinimumFrictionSpeedModifierOverride(modifier);
             return MyTuple.Create(true, string.Empty);
         }
 
@@ -764,11 +758,11 @@ namespace ShipCoreFramework
 
             if (modifier < 0f)
             {
-                groupComponent.MaximumFrictionSpeedModifierOverride = -1f;
+                groupComponent.SetMaximumFrictionSpeedModifierOverride(-1f);
                 return MyTuple.Create(true, string.Empty);
             }
 
-            groupComponent.MaximumFrictionSpeedModifierOverride = modifier;
+            groupComponent.SetMaximumFrictionSpeedModifierOverride(modifier);
             return MyTuple.Create(true, string.Empty);
         }
 
@@ -778,7 +772,7 @@ namespace ShipCoreFramework
                 return MyTuple.Create(-1f, "World config uses absolute friction speeds; use GetFrictionMinimumSpeedAbsoluteForGroup.");
 
             GroupComponent groupComponent;
-            return !TryGetGroupComponent(gridId, out groupComponent) ? MyTuple.Create(-1f, "Could not resolve logical grid group for the provided grid.") : MyTuple.Create(groupComponent.MinimumFrictionSpeedModifierOverride, string.Empty);
+            return !TryGetGroupComponent(gridId, out groupComponent) ? MyTuple.Create(-1f, "Could not resolve logical grid group for the provided grid.") : MyTuple.Create(groupComponent.GetMinimumFrictionSpeedModifierOverride(), string.Empty);
         }
 
         public static MyTuple<float, string> GetFrictionMaximumSpeedModifierForGroup(long gridId)
@@ -787,7 +781,7 @@ namespace ShipCoreFramework
                 return MyTuple.Create(-1f, "World config uses absolute friction speeds; use GetFrictionMaximumSpeedAbsoluteForGroup.");
 
             GroupComponent groupComponent;
-            return !TryGetGroupComponent(gridId, out groupComponent) ? MyTuple.Create(-1f, "Could not resolve logical grid group for the provided grid.") : MyTuple.Create(groupComponent.MaximumFrictionSpeedModifierOverride, string.Empty);
+            return !TryGetGroupComponent(gridId, out groupComponent) ? MyTuple.Create(-1f, "Could not resolve logical grid group for the provided grid.") : MyTuple.Create(groupComponent.GetMaximumFrictionSpeedModifierOverride(), string.Empty);
         }
 
         public static bool IsGroupDeactivated(long gridId)
@@ -810,6 +804,12 @@ namespace ShipCoreFramework
 
             try
             {
+                if (Utils.TryFindByGridId(gridId, out groupComponent))
+                    return true;
+
+                if (!Session.IsGameThread)
+                    return false;
+
                 var grid = MyAPIGateway.Entities.GetEntityById(gridId) as MyCubeGrid;
                 var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Mechanical, grid);
                 return groupData != null && Session.GroupDict.TryGetValue(groupData, out groupComponent);
@@ -1532,19 +1532,16 @@ namespace ShipCoreFramework
 
         public static bool IsBoostActive(long gridId)
         {
-            var grid = MyAPIGateway.Entities.GetEntityById(gridId) as MyCubeGrid;
-            if (grid == null) return false;
-
             try
             {
-                var groupData = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Mechanical, grid);
-                if (groupData == null) return false;
-
                 GroupComponent groupComponent;
-                if (!Session.GroupDict.TryGetValue(groupData, out groupComponent)) return false;
+                if (!TryGetGroupComponent(gridId, out groupComponent)) return false;
 
                 SpeedEnforcement.RefreshSpeedState(groupComponent);
-                return groupComponent.EffectiveBoostEnabled;
+                lock (groupComponent.SpeedStateLock)
+                {
+                    return groupComponent.EffectiveBoostEnabled;
+                }
             }
             catch (Exception ex)
             {

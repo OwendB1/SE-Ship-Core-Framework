@@ -209,8 +209,13 @@ namespace ShipCoreFramework
             }
             
             SpeedEnforcement.RefreshSpeedState(GroupComponent);
-            var speed = GroupComponent.EffectiveSpeedLimitMetersPerSecond;
-            var speedSourceGridId = GroupComponent.SpeedSourceGroupGridId;
+            float speed;
+            long speedSourceGridId;
+            lock (GroupComponent.SpeedStateLock)
+            {
+                speed = GroupComponent.EffectiveSpeedLimitMetersPerSecond;
+                speedSourceGridId = GroupComponent.SpeedSourceGroupGridId;
+            }
             var speedLabel = speedSourceGridId != 0 && !GroupComponent.GridDictionary.Keys.Any(g => g != null && g.EntityId == speedSourceGridId)
                 ? "Max Speed*: "
                 : "Max Speed: ";

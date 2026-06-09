@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Definitions;
@@ -22,7 +21,8 @@ namespace ShipCoreFramework
 
     internal static class CubeGridModifiers
     {
-        internal static readonly ConcurrentDictionary<long, GridDefenseModifiers> DefenseModifiers = new ConcurrentDictionary<long, GridDefenseModifiers>();
+        internal static readonly GameThreadWriteDictionary<long, GridDefenseModifiers> DefenseModifiers =
+            new GameThreadWriteDictionary<long, GridDefenseModifiers>(null, ThreadWork.StateCategory, "defense-modifiers");
         private const string UpgradeModuleLinkType = "ShipCoreLink";
         private static readonly List<MyEntity> ExplosionEntities = new List<MyEntity>();
         private static readonly MyStringHash EnergyDamageType = MyStringHash.GetOrCompute("Energy");

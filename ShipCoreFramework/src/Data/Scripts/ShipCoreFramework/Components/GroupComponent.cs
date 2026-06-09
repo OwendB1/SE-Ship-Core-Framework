@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
+using VRageMath;
 using ModEntity = VRage.ModAPI.IMyEntity;
 using MyCubeGrid = Sandbox.Game.Entities.MyCubeGrid;
 
@@ -22,7 +23,16 @@ namespace ShipCoreFramework
 
         internal IMyFaction OwningFaction => MyAPIGateway.Session.Factions.TryGetPlayerFaction(OwnerId);
         internal int GroupBlocksCount => Volatile.Read(ref _groupBlocksCount);
-        internal int GroupPCU => GridDictionary.Sum(g => g.Key.BlocksPCU);
+        internal int GroupPCU {
+            get
+            {
+                if (!Session.IsGameThread)
+                    return Volatile.Read(ref _cachedGroupPCU);
+
+                RefreshGridStateCache();
+                return Volatile.Read(ref _cachedGroupPCU);
+            }
+        }
         internal float GroupMass {
             get
             {
@@ -48,6 +58,14 @@ namespace ShipCoreFramework
 
         internal IMyGridGroupData MyGroup;
         internal CoreComponent MainCoreComponent;
+
+        internal struct CachedGridState
+        {
+            internal long EntityId;
+            internal string CustomName;
+            internal Vector3D Position;
+            internal long FirstOwnerId;
+        }
 
         internal readonly ConcurrentDictionary<BlockLimit, LimitBucket> Limits = new ConcurrentDictionary<BlockLimit, LimitBucket>();
         internal readonly ConcurrentDictionary<MyCubeGrid, GridComponent> GridDictionary = new ConcurrentDictionary<MyCubeGrid, GridComponent>();
@@ -115,6 +133,7 @@ namespace ShipCoreFramework
         internal float PostBoostRampCap = -1f;
 
         private readonly object _connectedGroupsLock = new object();
+        private readonly object _abilityStateLock = new object();
         internal readonly object SpeedStateLock = new object();
         private IMyGridGroupData _trackedPhysicalGroup;
         private readonly HashSet<IMyGridGroupData> _connectedPhysicalGroups = new HashSet<IMyGridGroupData>();
@@ -143,6 +162,12 @@ namespace ShipCoreFramework
         private float _cachedDryMass;
         private float _cachedWetMass;
         private float _cachedConfiguredMass;
+        private int _cachedGroupPCU;
+        private long _cachedRepresentativeGridId;
+        private MyCubeGrid[] _cachedMovableGrids = new MyCubeGrid[0];
+        private long[] _cachedMechanicalGridIds = new long[0];
+        private CachedGridState[] _cachedGridStates = new CachedGridState[0];
+        private bool _cachedIsIgnoredGroup;
 
         private bool _closing;
         private bool _refreshingUpgradeModules;
@@ -160,7 +185,84 @@ namespace ShipCoreFramework
         internal void RefreshGameThreadStateCache()
         {
             if (_closing || Session.IsShuttingDown) return;
+            RefreshGridStateCache();
             RefreshMassCache();
+            Volatile.Write(ref _cachedIsIgnoredGroup, ComputeIsIgnoredGroup());
+        }
+
+        internal long GetCachedRepresentativeGridId()
+        {
+            return Volatile.Read(ref _cachedRepresentativeGridId);
+        }
+
+        internal long[] GetCachedMechanicalGridIds()
+        {
+            return Volatile.Read(ref _cachedMechanicalGridIds) ?? new long[0];
+        }
+
+        internal MyCubeGrid[] GetCachedMovableGrids()
+        {
+            return Volatile.Read(ref _cachedMovableGrids) ?? new MyCubeGrid[0];
+        }
+
+        internal CachedGridState[] GetCachedGridStates()
+        {
+            return Volatile.Read(ref _cachedGridStates) ?? new CachedGridState[0];
+        }
+
+        internal bool GetCachedIsIgnoredGroup()
+        {
+            return Volatile.Read(ref _cachedIsIgnoredGroup);
+        }
+
+        private void RefreshGridStateCache()
+        {
+            var groupPcu = 0;
+            var representativeGridId = 0L;
+            var representativeBlocks = -1;
+            var movableGrids = new List<MyCubeGrid>();
+            var mechanicalGridIds = new List<long>();
+            var gridStates = new List<CachedGridState>();
+
+            var mainGrid = MainCoreComponent?.GridComponent?.Grid;
+            if (mainGrid != null && !mainGrid.MarkedForClose && !mainGrid.Closed)
+                representativeGridId = mainGrid.EntityId;
+
+            foreach (var grid in GridDictionary.Keys)
+            {
+                if (grid == null || grid.MarkedForClose || grid.Closed) continue;
+
+                groupPcu += grid.BlocksPCU;
+                mechanicalGridIds.Add(grid.EntityId);
+                var apiGrid = (IMyCubeGrid)grid;
+                var entity = (ModEntity)grid;
+                gridStates.Add(new CachedGridState
+                {
+                    EntityId = grid.EntityId,
+                    CustomName = apiGrid.CustomName ?? string.Empty,
+                    Position = entity.GetPosition(),
+                    FirstOwnerId = grid.BigOwners == null || grid.BigOwners.Count == 0 ? 0 : grid.BigOwners[0]
+                });
+
+                if (!grid.IsStatic)
+                    movableGrids.Add(grid);
+
+                if (representativeGridId == 0)
+                {
+                    var blocks = grid.BlocksCount;
+                    if (blocks > representativeBlocks || blocks == representativeBlocks && grid.EntityId < representativeGridId)
+                    {
+                        representativeBlocks = blocks;
+                        representativeGridId = grid.EntityId;
+                    }
+                }
+            }
+
+            Volatile.Write(ref _cachedGroupPCU, groupPcu);
+            Volatile.Write(ref _cachedRepresentativeGridId, representativeGridId);
+            Volatile.Write(ref _cachedMovableGrids, movableGrids.ToArray());
+            Volatile.Write(ref _cachedMechanicalGridIds, mechanicalGridIds.ToArray());
+            Volatile.Write(ref _cachedGridStates, gridStates.ToArray());
         }
 
         private void RefreshMassCache()

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.Components;
@@ -133,23 +134,45 @@ namespace ShipCoreFramework
 
             var activeCore = sourceGroup.ShipCore;
             var speedModifiers = CubeGridModifiers.GetActiveSpeedModifiers(sourceGroup);
+            float baseSpeedLimit;
+            float effectiveSpeedLimit;
+            bool effectiveBoostEnabled;
+            bool frictionEnforcementEnabled;
+            float frictionMaximumDecelerationOverride;
+            float minimumFrictionSpeedAbsoluteOverride;
+            float maximumFrictionSpeedAbsoluteOverride;
+            float minimumFrictionSpeedModifierOverride;
+            float maximumFrictionSpeedModifierOverride;
+            lock (sourceGroup.SpeedStateLock)
+            {
+                baseSpeedLimit = sourceGroup.BaseSpeedLimitMetersPerSecond;
+                effectiveSpeedLimit = sourceGroup.EffectiveSpeedLimitMetersPerSecond;
+                effectiveBoostEnabled = sourceGroup.EffectiveBoostEnabled;
+                frictionEnforcementEnabled = sourceGroup.FrictionEnforcementEnabled;
+                frictionMaximumDecelerationOverride = sourceGroup.FrictionMaximumDecelerationOverride;
+                minimumFrictionSpeedAbsoluteOverride = sourceGroup.MinimumFrictionSpeedAbsoluteOverride;
+                maximumFrictionSpeedAbsoluteOverride = sourceGroup.MaximumFrictionSpeedAbsoluteOverride;
+                minimumFrictionSpeedModifierOverride = sourceGroup.MinimumFrictionSpeedModifierOverride;
+                maximumFrictionSpeedModifierOverride = sourceGroup.MaximumFrictionSpeedModifierOverride;
+            }
+
             var context = new SpeedLimitContext
             {
                 EvaluatedGroup = groupComponent,
                 SourceGroup = sourceGroup,
                 ActiveCore = activeCore,
                 TargetGrids = targetGrids,
-                BaseMaxSpeed = sourceGroup.BaseSpeedLimitMetersPerSecond,
+                BaseMaxSpeed = baseSpeedLimit,
                 BoostMaxSpeed = speedModifiers == null
-                    ? sourceGroup.BaseSpeedLimitMetersPerSecond
+                    ? baseSpeedLimit
                     : Session.Config.MaxPossibleSpeedMetersPerSecond * speedModifiers.MaxBoost,
-                EffectiveMaxSpeed = sourceGroup.EffectiveSpeedLimitMetersPerSecond,
-                BoostActive = sourceGroup.EffectiveBoostEnabled,
-                FrictionEnforcementEnabled = sourceGroup.FrictionEnforcementEnabled,
+                EffectiveMaxSpeed = effectiveSpeedLimit,
+                BoostActive = effectiveBoostEnabled,
+                FrictionEnforcementEnabled = frictionEnforcementEnabled,
                 MinimumFrictionSpeed = 0f,
-                MaximumFrictionSpeed = sourceGroup.EffectiveSpeedLimitMetersPerSecond,
-                MaximumFrictionDeceleration = sourceGroup.FrictionMaximumDecelerationOverride >= 0f
-                    ? sourceGroup.FrictionMaximumDecelerationOverride
+                MaximumFrictionSpeed = effectiveSpeedLimit,
+                MaximumFrictionDeceleration = frictionMaximumDecelerationOverride >= 0f
+                    ? frictionMaximumDecelerationOverride
                     : Math.Max(0f, speedModifiers?.MaximumFrictionDeceleration ?? 0f)
             };
 
@@ -161,22 +184,22 @@ namespace ShipCoreFramework
 
             if (Session.Config.FrictionSpeedValueMode == FrictionSpeedValueMode.Absolute)
             {
-                minFrictionSpeed = sourceGroup.MinimumFrictionSpeedAbsoluteOverride >= 0f
-                    ? sourceGroup.MinimumFrictionSpeedAbsoluteOverride
+                minFrictionSpeed = minimumFrictionSpeedAbsoluteOverride >= 0f
+                    ? minimumFrictionSpeedAbsoluteOverride
                     : speedModifiers.MinimumFrictionSpeedAbsolute;
 
-                configuredMaxFrictionSpeed = sourceGroup.MaximumFrictionSpeedAbsoluteOverride >= 0f
-                    ? sourceGroup.MaximumFrictionSpeedAbsoluteOverride
+                configuredMaxFrictionSpeed = maximumFrictionSpeedAbsoluteOverride >= 0f
+                    ? maximumFrictionSpeedAbsoluteOverride
                     : speedModifiers.MaximumFrictionSpeedAbsolute;
             }
             else
             {
-                var minMod = sourceGroup.MinimumFrictionSpeedModifierOverride >= 0f
-                    ? sourceGroup.MinimumFrictionSpeedModifierOverride
+                var minMod = minimumFrictionSpeedModifierOverride >= 0f
+                    ? minimumFrictionSpeedModifierOverride
                     : speedModifiers.MinimumFrictionSpeedModifier;
 
-                var maxMod = sourceGroup.MaximumFrictionSpeedModifierOverride >= 0f
-                    ? sourceGroup.MaximumFrictionSpeedModifierOverride
+                var maxMod = maximumFrictionSpeedModifierOverride >= 0f
+                    ? maximumFrictionSpeedModifierOverride
                     : speedModifiers.MaximumFrictionSpeedModifier;
 
                 minFrictionSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * minMod;
@@ -195,10 +218,13 @@ namespace ShipCoreFramework
 
         private static void ApplySpeedState(GroupComponent groupComponent, SpeedLimitContext context)
         {
-            groupComponent.BaseSpeedLimitMetersPerSecond = context.BaseMaxSpeed;
-            groupComponent.EffectiveSpeedLimitMetersPerSecond = context.EffectiveMaxSpeed;
-            groupComponent.EffectiveBoostEnabled = context.BoostActive;
-            groupComponent.SpeedSourceGroupGridId = GetSpeedSourceGridId(context.SourceGroup, groupComponent);
+            lock (groupComponent.SpeedStateLock)
+            {
+                groupComponent.BaseSpeedLimitMetersPerSecond = context.BaseMaxSpeed;
+                groupComponent.EffectiveSpeedLimitMetersPerSecond = context.EffectiveMaxSpeed;
+                groupComponent.EffectiveBoostEnabled = context.BoostActive;
+                groupComponent.SpeedSourceGroupGridId = GetSpeedSourceGridId(context.SourceGroup, groupComponent);
+            }
         }
 
         private static GroupComponent ResolveSpeedSourceGroup(GroupComponent groupComponent)
@@ -247,7 +273,7 @@ namespace ShipCoreFramework
                         var linkedPriority = usePriority ? linkedGroup.ShipCore.SpeedOverridePriority : 0;
                         var linkedDryMass = linkedGroup.GroupDryMass;
                         var linkedHasExplicitCore = linkedGroup.MainCoreComponent != null;
-                        var linkedTieBreaker = linkedGroup.GetRepresentativeGridId();
+                        var linkedTieBreaker = linkedGroup.GetCachedRepresentativeGridId();
 
                         var better = false;
                         if (bestSpeedGroup == null)
@@ -302,25 +328,17 @@ namespace ShipCoreFramework
             if (groupComponent == null || groupComponent.GridDictionary.Count == 0)
                 return new MyCubeGrid[0];
 
-            var grids = new List<MyCubeGrid>(groupComponent.GridDictionary.Count);
-            foreach (var grid in groupComponent.GridDictionary.Keys)
-            {
-                if (grid == null || grid.MarkedForClose || grid.Closed) continue;
-                if (grid.IsStatic) continue;
-                grids.Add(grid);
-            }
-
-            return grids.ToArray();
+            return groupComponent.GetCachedMovableGrids();
         }
 
         private static void EnsureSpeedStateUpdated(GroupComponent sourceGroup)
         {
             if (sourceGroup == null) return;
-            if (sourceGroup.LastSpeedStateUpdateTick == Session.CurrentTick) return;
+            if (Volatile.Read(ref sourceGroup.LastSpeedStateUpdateTick) == Session.CurrentTick) return;
 
             lock (sourceGroup.SpeedStateLock)
             {
-                if (sourceGroup.LastSpeedStateUpdateTick == Session.CurrentTick) return;
+                if (Volatile.Read(ref sourceGroup.LastSpeedStateUpdateTick) == Session.CurrentTick) return;
 
                 var activeCore = sourceGroup.ShipCore;
                 var speedModifiers = CubeGridModifiers.GetActiveSpeedModifiers(sourceGroup);
@@ -365,30 +383,15 @@ namespace ShipCoreFramework
                 sourceGroup.EffectiveSpeedLimitMetersPerSecond = effectiveMaxSpeed;
                 sourceGroup.EffectiveBoostEnabled = boostActive;
                 sourceGroup.SpeedSourceGroupGridId = GetSpeedSourceGridId(sourceGroup, sourceGroup);
-                sourceGroup.LastSpeedStateUpdateTick = Session.CurrentTick;
+                Volatile.Write(ref sourceGroup.LastSpeedStateUpdateTick, Session.CurrentTick);
             }
         }
 
         private static long GetSpeedSourceGridId(GroupComponent sourceGroup, GroupComponent fallbackGroup)
         {
-            var grid = sourceGroup?.MainCoreComponent?.GridComponent?.Grid
-                       ?? GetFirstGrid(sourceGroup)
-                       ?? fallbackGroup?.MainCoreComponent?.GridComponent?.Grid
-                       ?? GetFirstGrid(fallbackGroup);
-            return grid?.EntityId ?? 0;
-        }
-
-        private static MyCubeGrid GetFirstGrid(GroupComponent groupComponent)
-        {
-            if (groupComponent == null) return null;
-
-            foreach (var grid in groupComponent.GridDictionary.Keys)
-            {
-                if (grid == null || grid.MarkedForClose || grid.Closed) continue;
-                return grid;
-            }
-
-            return null;
+            var sourceGridId = sourceGroup?.GetCachedRepresentativeGridId() ?? 0;
+            if (sourceGridId != 0) return sourceGridId;
+            return fallbackGroup?.GetCachedRepresentativeGridId() ?? 0;
         }
 
         private static void EnforceContextOnGameThread(SpeedLimitContext context)

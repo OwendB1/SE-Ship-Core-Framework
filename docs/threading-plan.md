@@ -246,6 +246,8 @@ Debug behavior:
 ### Phase 3.5: Live Collection Safety
 
 - Use concurrent containers for SCF-owned state that can be enumerated by background work while grid, block, or group callbacks mutate it.
+- Use `GameThreadWriteDictionary` for authoritative cross-system state when delayed game-thread visibility is acceptable.
+- Use a raw concurrent container for construction-local indexes that must be written and read during the same background initialization pass.
 - Keep explicit locks on aggregate buckets and connected-group sets where the protected data is more than a single dictionary entry.
 - Prefer non-throwing mutations (`TryAdd`, `TryRemove`, `GetOrAdd`) for callback-driven state so duplicate or out-of-order game events become no-ops instead of hard crashes.
 - Treat this as crash hardening, not a consistency barrier. Rebuild/apply phases such as limit recalculation may still need a group-level write barrier if exact snapshots are required.
@@ -278,6 +280,12 @@ For background speed, limits, and Nexus work, maintain explicit game-thread cach
 - no-core/core state
 
 Background workers should consume these caches, not live SE objects.
+
+Related timer and speed fields should be updated through a lock or snapshot helper when multiple values represent one state transition, such as boost enabled, remaining duration, cooldown, and post-boost ramp state.
+
+No-fly zone checks should use cached grid positions, names, and owner ids for background distance tests. Any block punishment must be queued back to game-thread work and revalidated against the live grid before applying.
+
+API and UI reads of speed override/effective state should use the same lock or helper methods as the background speed worker. Group lookup by grid id should prefer cached group grid ids and use live grid-group APIs only as a game-thread fallback.
 
 ## Open Questions
 
