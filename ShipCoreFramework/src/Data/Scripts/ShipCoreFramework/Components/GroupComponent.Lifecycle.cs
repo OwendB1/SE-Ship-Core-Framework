@@ -116,6 +116,16 @@ namespace ShipCoreFramework
         {
             var old = MainCoreComponent;
             if (old == null) return;
+            if (!Session.IsGameThread)
+            {
+                var groupKey = GetThreadWorkKey();
+                ThreadWork.Enqueue(ThreadWork.StateCategory, "reset-core:" + groupKey,
+                    "Reset core for group " + groupKey,
+                    delegate { return !_closing && !Session.IsShuttingDown; },
+                    ResetCore);
+                return;
+            }
+
             old.IsMainCore = false;
 
             var type = ShipCore.SubtypeId;

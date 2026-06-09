@@ -18,8 +18,8 @@ namespace ShipCoreFramework
         private const int PostInitializationLimitValidationDelayTicks = 0;
 
         internal ShipCore ShipCore => Session.Config.GetShipCoreByTypeId(MainCoreComponent?.SubtypeId ?? string.Empty);
-        internal GridModifiers Modifiers => CubeGridModifiers.GetActiveModifiers(this);
-        internal SpeedModifiers SpeedModifiers => CubeGridModifiers.GetActiveSpeedModifiers(this);
+        internal GridModifiers Modifiers => GetCachedActiveGridModifiers();
+        internal SpeedModifiers SpeedModifiers => GetCachedActiveSpeedModifiers();
 
         internal IMyFaction OwningFaction => MyAPIGateway.Session.Factions.TryGetPlayerFaction(OwnerId);
         internal int GroupBlocksCount => Interlocked.CompareExchange(ref _groupBlocksCount, 0, 0);
@@ -168,6 +168,10 @@ namespace ShipCoreFramework
         private long[] _cachedMechanicalGridIds = new long[0];
         private CachedGridState[] _cachedGridStates = new CachedGridState[0];
         private bool _cachedIsIgnoredGroup;
+        private GridModifiers _cachedActiveGridModifiers = new GridModifiers();
+        private SpeedModifiers _cachedActiveSpeedModifiers = new SpeedModifiers();
+        private GridDefenseModifiers _cachedPassiveDefenseModifiers = new GridDefenseModifiers();
+        private GridDefenseModifiers _cachedActiveDefenseModifiers = new GridDefenseModifiers();
 
         private bool _closing;
         private bool _refreshingUpgradeModules;
@@ -187,6 +191,7 @@ namespace ShipCoreFramework
             if (_closing || Session.IsShuttingDown) return;
             RefreshGridStateCache();
             RefreshMassCache();
+            RefreshModifierStateCache();
             _cachedIsIgnoredGroup = ComputeIsIgnoredGroup();
         }
 
@@ -213,6 +218,36 @@ namespace ShipCoreFramework
         internal bool GetCachedIsIgnoredGroup()
         {
             return _cachedIsIgnoredGroup;
+        }
+
+        internal GridModifiers GetCachedActiveGridModifiers()
+        {
+            return _cachedActiveGridModifiers ?? new GridModifiers();
+        }
+
+        internal SpeedModifiers GetCachedActiveSpeedModifiers()
+        {
+            return _cachedActiveSpeedModifiers ?? new SpeedModifiers();
+        }
+
+        internal GridDefenseModifiers GetCachedPassiveDefenseModifiers()
+        {
+            return _cachedPassiveDefenseModifiers ?? new GridDefenseModifiers();
+        }
+
+        internal GridDefenseModifiers GetCachedActiveDefenseModifiers()
+        {
+            return _cachedActiveDefenseModifiers ?? new GridDefenseModifiers();
+        }
+
+        internal void RefreshModifierStateCache()
+        {
+            if (!Session.IsGameThread || _closing || Session.IsShuttingDown) return;
+
+            _cachedActiveGridModifiers = CubeGridModifiers.GetActiveModifiers(this);
+            _cachedActiveSpeedModifiers = CubeGridModifiers.GetActiveSpeedModifiers(this);
+            _cachedPassiveDefenseModifiers = ComputePassiveDefenseModifiers();
+            _cachedActiveDefenseModifiers = ComputeActiveDefenseModifiers();
         }
 
         private void RefreshGridStateCache()

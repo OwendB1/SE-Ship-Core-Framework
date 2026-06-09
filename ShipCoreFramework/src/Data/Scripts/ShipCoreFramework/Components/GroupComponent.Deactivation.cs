@@ -37,6 +37,15 @@ namespace ShipCoreFramework
         internal void Deactivate(string reason = null)
         {
             if (Deactivated) return;
+            if (!Session.IsGameThread)
+            {
+                var groupKey = GetThreadWorkKey();
+                ThreadWork.Enqueue(ThreadWork.StateCategory, "deactivate:" + groupKey,
+                    "Deactivate group " + groupKey,
+                    delegate { return !_closing && !Session.IsShuttingDown; },
+                    delegate { Deactivate(reason); });
+                return;
+            }
 
             Deactivated = true;
 

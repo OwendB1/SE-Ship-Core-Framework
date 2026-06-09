@@ -15,6 +15,7 @@ namespace ShipCoreFramework
             new ConcurrentDictionary<string, long>();
 
         private static long _nextWriteId;
+        private static int _nextBacklogLogTick;
 
         internal static long Enqueue(string category, string coalesceKey, string debugDescription, Action apply)
         {
@@ -98,6 +99,16 @@ namespace ShipCoreFramework
                 processed++;
                 if (maxOperations > 0 && processed >= maxOperations) break;
             }
+
+            if (maxOperations > 0 && PendingWrites.Count > 0 && processed >= maxOperations &&
+                Session.CurrentTick >= _nextBacklogLogTick)
+            {
+                _nextBacklogLogTick = Session.CurrentTick + 60 * 10;
+                Utils.Log("ThreadWork backlog: " + PendingWrites.Count + " queued writes remain after flushing " +
+                          processed + " operations" +
+                          (string.IsNullOrEmpty(category) ? string.Empty : " for category " + category) + ".",
+                    1, "Threading");
+            }
         }
 
         internal static QueuedWriteInfo[] SnapshotPendingWork()
@@ -172,6 +183,7 @@ namespace ShipCoreFramework
             }
 
             LatestCoalescedIds.Clear();
+            _nextBacklogLogTick = 0;
         }
 
         private static bool ShouldSkip(QueuedWrite work)

@@ -6,6 +6,7 @@ namespace ShipCoreFramework
     {
         private GroupComponent _groupComponent;
         private bool _isMainCore;
+        private bool _eventsAttached;
 
         internal string SubtypeId;
         internal IMyFunctionalBlock CoreBlock;

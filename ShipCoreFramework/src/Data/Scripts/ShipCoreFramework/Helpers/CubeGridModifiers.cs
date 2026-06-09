@@ -31,6 +31,22 @@ namespace ShipCoreFramework
         internal static void RegisterUpgradeModuleLink(IMyCubeBlock block)
         {
             if (block == null) return;
+            if (!Session.IsGameThread)
+            {
+                var blockId = block.EntityId;
+                ThreadWork.Enqueue(ThreadWork.StateCategory, "upgrade-link:" + blockId,
+                    "Register upgrade link " + blockId,
+                    delegate
+                    {
+                        return block != null &&
+                               !block.MarkedForClose &&
+                               !block.Closed &&
+                               !Session.IsShuttingDown;
+                    },
+                    delegate { RegisterUpgradeModuleLink(block); });
+                return;
+            }
+
             block.AddUpgradeValue(UpgradeModuleLinkType, 0f);
         }
 

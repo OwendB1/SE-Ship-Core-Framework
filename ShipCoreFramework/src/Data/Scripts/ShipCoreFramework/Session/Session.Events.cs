@@ -11,6 +11,11 @@ namespace ShipCoreFramework
         private static void GridGroupsOnOnGridGroupCreated(IMyGridGroupData group)
         {
             if (group == null) return;
+            if (!IsGameThread && !IsInitialGroupScan)
+            {
+                MyAPIGateway.Utilities.InvokeOnGameThread(() => GridGroupsOnOnGridGroupCreated(group));
+                return;
+            }
 
             if (group.LinkType == GridLinkTypeEnum.Physical)
             {
@@ -46,6 +51,11 @@ namespace ShipCoreFramework
         private static void GridGroupsOnOnGridGroupDestroyed(IMyGridGroupData group)
         {
             if (group == null) return;
+            if (!IsGameThread)
+            {
+                MyAPIGateway.Utilities.InvokeOnGameThread(() => GridGroupsOnOnGridGroupDestroyed(group));
+                return;
+            }
 
             if (group.LinkType == GridLinkTypeEnum.Physical)
             {

@@ -98,6 +98,7 @@ namespace ShipCoreFramework
             RefreshMinimumBlocksLimitedBlockGateState();
             RefreshLimitedBlockPunishmentState();
             RefreshPunishmentState();
+            RefreshModifierStateCache();
             ApplyModifiers(Modifiers);
             DefenseValuesChanged();
 

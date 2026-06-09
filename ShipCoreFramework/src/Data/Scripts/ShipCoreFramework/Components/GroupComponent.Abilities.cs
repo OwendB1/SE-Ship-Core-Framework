@@ -20,12 +20,22 @@ namespace ShipCoreFramework
         internal void RefreshPunishmentState()
         {
             if (_closing || Session.IsShuttingDown || IsInitializingGrids) return;
+            if (!Session.IsGameThread)
+            {
+                var groupKey = GetThreadWorkKey();
+                ThreadWork.Enqueue(ThreadWork.StateCategory, "punishment-refresh:" + groupKey,
+                    "Punishment state refresh for group " + groupKey,
+                    delegate { return !_closing && !Session.IsShuttingDown; },
+                    RefreshPunishmentState);
+                return;
+            }
 
             var mainCoreChanged = EnsureWorkingMainCore();
             var previousPunishModifiers = PunishModifiers;
 
             RefreshLimitedBlockPunishmentState();
             RefreshPunishmentFlags();
+            RefreshModifierStateCache();
             if (mainCoreChanged || previousPunishModifiers != PunishModifiers) ApplyModifiers(Modifiers);
             RefreshDefenseModifierCache();
         }
@@ -302,6 +312,16 @@ namespace ShipCoreFramework
 
         internal void ApplyModifiers(GridModifiers modifiers)
         {
+            if (!Session.IsGameThread)
+            {
+                var groupKey = GetThreadWorkKey();
+                ThreadWork.Enqueue(ThreadWork.StateCategory, "apply-modifiers:" + groupKey,
+                    "Apply modifiers for group " + groupKey,
+                    delegate { return !_closing && !Session.IsShuttingDown; },
+                    delegate { ApplyModifiers(modifiers); });
+                return;
+            }
+
             foreach (var kvp in GridDictionary)
             {
                 var blocksCopy = kvp.Value.GetBlocksCopy();
@@ -508,6 +528,11 @@ namespace ShipCoreFramework
 
         internal GridDefenseModifiers GetActiveDefenseModifiers()
         {
+            return Session.IsGameThread ? ComputeActiveDefenseModifiers() : GetCachedActiveDefenseModifiers();
+        }
+
+        private GridDefenseModifiers ComputeActiveDefenseModifiers()
+        {
             var modifiers = CubeGridModifiers.GetEffectiveDefenseModifiers(ShipCore.ActiveDefenseModifiers,
                 GetEffectiveUpgradeModules(true).Select(module => module.GetConfig()),
                 DefenseModifierTarget.Active);
@@ -516,6 +541,11 @@ namespace ShipCoreFramework
         }
 
         internal GridDefenseModifiers GetPassiveDefenseModifiers()
+        {
+            return Session.IsGameThread ? ComputePassiveDefenseModifiers() : GetCachedPassiveDefenseModifiers();
+        }
+
+        private GridDefenseModifiers ComputePassiveDefenseModifiers()
         {
             var modifiers = CubeGridModifiers.GetEffectiveDefenseModifiers(ShipCore.PassiveDefenseModifiers,
                 GetEffectiveUpgradeModules(true).Select(module => module.GetConfig()),

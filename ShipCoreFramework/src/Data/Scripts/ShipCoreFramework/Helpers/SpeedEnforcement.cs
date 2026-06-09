@@ -133,7 +133,7 @@ namespace ShipCoreFramework
             EnsureSpeedStateUpdated(sourceGroup);
 
             var activeCore = sourceGroup.ShipCore;
-            var speedModifiers = CubeGridModifiers.GetActiveSpeedModifiers(sourceGroup);
+            var speedModifiers = sourceGroup.SpeedModifiers;
             float baseSpeedLimit;
             float effectiveSpeedLimit;
             bool effectiveBoostEnabled;
@@ -341,7 +341,7 @@ namespace ShipCoreFramework
                 if (Interlocked.CompareExchange(ref sourceGroup.LastSpeedStateUpdateTick, 0, 0) == Session.CurrentTick) return;
 
                 var activeCore = sourceGroup.ShipCore;
-                var speedModifiers = CubeGridModifiers.GetActiveSpeedModifiers(sourceGroup);
+                var speedModifiers = sourceGroup.SpeedModifiers;
                 var baseMaxSpeed = 100f;
                 var effectiveMaxSpeed = 100f;
                 var boostActive = sourceGroup.BoostEnabled;
