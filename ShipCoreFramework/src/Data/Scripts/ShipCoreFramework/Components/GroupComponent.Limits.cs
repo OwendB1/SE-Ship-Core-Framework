@@ -514,7 +514,7 @@ namespace ShipCoreFramework
                     var limit = gridLimitKv.Key;
                     var gridBucket = gridLimitKv.Value;
 
-                    var groupBucket = Limits.GetOrAdd(limit, _ => new LimitBucket(0d));
+                    var groupBucket = groupLimits.GetOrAdd(limit, _ => new LimitBucket(0d));
 
                     lock (gridBucket.BucketLock)
                     {

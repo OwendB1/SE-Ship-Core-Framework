@@ -47,6 +47,11 @@ namespace ShipCoreFramework
         
         internal void Init(IMyCubeGrid grid, IMyGridGroupData groupData)
         {
+            Init(grid, groupData, true);
+        }
+
+        internal void Init(IMyCubeGrid grid, IMyGridGroupData groupData, bool processBlocks)
+        {
             Grid = (MyCubeGrid)grid;
             _groupData = groupData;
 
@@ -54,11 +59,25 @@ namespace ShipCoreFramework
             Grid.OnBlockAdded += BlockAddedEvent;
             Grid.OnBlockRemoved += BlockRemoved;
 
+            if (!processBlocks) return;
+
+            InitializeCoreBlocks();
+            InitializeNonCoreBlocks();
+        }
+
+        internal void InitializeCoreBlocks()
+        {
             var blocks = new List<IMySlimBlock>();
-            grid.GetBlocks(blocks);
+            ((IMyCubeGrid)Grid).GetBlocks(blocks);
 
             var coreBlocks = blocks.Where(Utils.IsCoreBlock).ToList();
             foreach (var coreBlock in coreBlocks) BlockAddedInternal(coreBlock);
+        }
+
+        internal void InitializeNonCoreBlocks()
+        {
+            var blocks = new List<IMySlimBlock>();
+            ((IMyCubeGrid)Grid).GetBlocks(blocks);
 
             var otherBlocks = blocks.Where(block => !Utils.IsCoreBlock(block)).ToList();
             foreach (var otherBlock in otherBlocks) BlockAddedInternal(otherBlock);

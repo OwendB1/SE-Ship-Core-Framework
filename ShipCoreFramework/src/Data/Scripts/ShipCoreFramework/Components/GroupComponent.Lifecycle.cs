@@ -22,12 +22,28 @@ namespace ShipCoreFramework
             BeginGridInitialization();
             try
             {
+                var initializedGrids = new List<MyCubeGrid>();
                 foreach (var myCubeGrid in tempGridList)
                 {
                     var startGrid = (MyCubeGrid)myCubeGrid;
                     if (startGrid.IsPreview) continue;
 
-                    InitializeGridComponent(startGrid, MyGroup);
+                    InitializeGridComponent(startGrid, MyGroup, false);
+                    initializedGrids.Add(startGrid);
+                }
+
+                foreach (var grid in initializedGrids)
+                {
+                    GridComponent gridComponent;
+                    if (TryGetGridComponent(grid, out gridComponent))
+                        gridComponent.InitializeCoreBlocks();
+                }
+
+                foreach (var grid in initializedGrids)
+                {
+                    GridComponent gridComponent;
+                    if (TryGetGridComponent(grid, out gridComponent))
+                        gridComponent.InitializeNonCoreBlocks();
                 }
             }
             finally
@@ -56,11 +72,16 @@ namespace ShipCoreFramework
 
         private void InitializeGridComponent(MyCubeGrid grid, IMyGridGroupData groupData)
         {
+            InitializeGridComponent(grid, groupData, true);
+        }
+
+        private void InitializeGridComponent(MyCubeGrid grid, IMyGridGroupData groupData, bool processBlocks)
+        {
             var gridComp = new GridComponent();
             if (!GridDictionary.TryAdd(grid, gridComp))
                 return;
 
-            gridComp.Init(grid, groupData);
+            gridComp.Init(grid, groupData, processBlocks);
         }
 
         private static bool HasPotentialCore(IMyCubeGrid grid)
