@@ -128,7 +128,10 @@ namespace ShipCoreFramework
         private static void EnforceOverCapacityForGroups(IEnumerable<GroupComponent> groups)
         {
             foreach (var comp in groups.Where(group => group?.MainCoreComponent != null).Distinct().ToList())
+            {
+                comp.SyncBeaconComponents();
                 comp.RefreshPunishmentState();
+            }
         }
     }
 }

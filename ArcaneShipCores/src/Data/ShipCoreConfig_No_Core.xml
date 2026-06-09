@@ -12,6 +12,7 @@
   <MaxPerPlayer>-1</MaxPerPlayer>
   <MinBlocks>-1</MinBlocks>
   <MinPlayers>-1</MinPlayers>
+  <AllowedUpgradeModules><SubtypeId>GridCore_Module_Harvester</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
   <Modifiers>
     <AssemblerSpeed>1</AssemblerSpeed>
     <DrillHarvestMultiplier>1</DrillHarvestMultiplier>

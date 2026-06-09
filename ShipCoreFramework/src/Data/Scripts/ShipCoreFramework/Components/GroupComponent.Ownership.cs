@@ -96,11 +96,18 @@ namespace ShipCoreFramework
 
         internal bool IsIgnoredGroup()
         {
-            if (IsIgnoredNpcGroup()) return true;
+            if (IsIgnoredByAiOrFactionTag()) return true;
             if (OwnerId == 0) return true;
             var player = MyAPIGateway.Players.TryGetIdentityId(OwnerId);
             if (player != null && player.PromoteLevel == MyPromoteLevel.Admin &&
                 MyAPIGateway.Session.IsUserIgnorePCULimit(player.SteamUserId)) return true;
+
+            return false;
+        }
+
+        internal bool IsIgnoredByAiOrFactionTag()
+        {
+            if (IsIgnoredNpcGroup()) return true;
 
             var faction = OwningFaction;
             if (faction == null) return false;

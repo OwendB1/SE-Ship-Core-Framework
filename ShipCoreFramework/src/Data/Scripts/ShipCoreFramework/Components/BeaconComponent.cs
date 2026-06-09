@@ -10,6 +10,7 @@ namespace ShipCoreFramework
         private readonly GroupComponent _groupComponent;
         private bool _isUpdatingProperties;
         private bool _hasCapturedDefaults;
+        private bool _hasAppliedForceBroadcast;
         private float _defaultRadius;
         private string _defaultHudText = string.Empty;
 
@@ -39,22 +40,37 @@ namespace ShipCoreFramework
 
             BeaconBlock.IsWorkingChanged -= OnModuleWorkingChanged;
             BeaconBlock.PropertiesChanged -= OnPropertiesChanged;
-            RestoreDefaults();
+            RestoreDefaultsIfApplied();
             BeaconBlock = null;
             _groupComponent.RefreshPunishmentState();
         }
         private void OnModuleWorkingChanged(IMyCubeBlock obj)
         {
-            if (BeaconBlock == null || !_groupComponent.ShipCore.ForceBroadCast) return;
+            var shipCore = _groupComponent.ShipCore;
+            if (BeaconBlock == null || shipCore == null || !shipCore.ForceBroadCast) return;
 
             SyncForceBroadcast();
-            if (ShouldForceBroadcast()) BeaconBlock.Enabled = true;
+            if (!_groupComponent.IsIgnoredByAiOrFactionTag() && ShouldForceBroadcast()) BeaconBlock.Enabled = true;
             _groupComponent.RefreshPunishmentState();
         }
 
         private void OnPropertiesChanged(IMyTerminalBlock obj)
         {
-            if (_isUpdatingProperties || BeaconBlock == null || !_groupComponent.ShipCore.ForceBroadCast) return;
+            if (_isUpdatingProperties || BeaconBlock == null) return;
+
+            var shipCore = _groupComponent.ShipCore;
+            if (shipCore == null || !shipCore.ForceBroadCast)
+            {
+                CaptureDefaults();
+                return;
+            }
+
+            if (_groupComponent.IsIgnoredByAiOrFactionTag())
+            {
+                if (_hasAppliedForceBroadcast) RestoreDefaults();
+                else CaptureDefaults();
+                return;
+            }
 
             if (ShouldForceBroadcast())
             {
@@ -74,23 +90,30 @@ namespace ShipCoreFramework
 
         internal void SyncForceBroadcast()
         {
-            if (!IsBeaconAvailable() || !_groupComponent.ShipCore.ForceBroadCast) return;
+            if (!IsBeaconAvailable()) return;
+
+            var shipCore = _groupComponent.ShipCore;
+            if (shipCore == null || !shipCore.ForceBroadCast || _groupComponent.IsIgnoredByAiOrFactionTag())
+            {
+                RestoreDefaultsIfApplied();
+                return;
+            }
 
             if (!ShouldForceBroadcast())
             {
-                RestoreDefaults();
+                RestoreDefaultsIfApplied();
                 return;
             }
 
             CaptureDefaults(false);
 
-            var shipCore = _groupComponent.ShipCore;
             _isUpdatingProperties = true;
             try
             {
                 BeaconBlock.SetValue("Radius", shipCore.ForceBroadCastRange);
                 if (!BeaconBlock.HudText.Contains(shipCore.UniqueName))
                     BeaconBlock.HudText = BeaconBlock.CubeGrid.DisplayName + " : " + shipCore.UniqueName;
+                _hasAppliedForceBroadcast = true;
             }
             finally
             {
@@ -108,6 +131,12 @@ namespace ShipCoreFramework
             _hasCapturedDefaults = true;
         }
 
+        private void RestoreDefaultsIfApplied()
+        {
+            if (!_hasAppliedForceBroadcast) return;
+            RestoreDefaults();
+        }
+
         private void RestoreDefaults()
         {
             if (!IsBeaconAvailable() || !_hasCapturedDefaults) return;
@@ -117,6 +146,7 @@ namespace ShipCoreFramework
             {
                 BeaconBlock.SetValue("Radius", _defaultRadius);
                 BeaconBlock.HudText = _defaultHudText;
+                _hasAppliedForceBroadcast = false;
             }
             finally
             {
