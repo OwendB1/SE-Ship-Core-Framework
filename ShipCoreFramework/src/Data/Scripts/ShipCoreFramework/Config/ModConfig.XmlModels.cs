@@ -24,6 +24,8 @@ namespace ShipCoreFramework
         [XmlIgnore] public readonly List<ShipCore> ShipCores = new List<ShipCore>();
         [XmlIgnore] public readonly List<ManifestCoreGroup> ManifestCoreGroups = new List<ManifestCoreGroup>();
         [XmlIgnore] public readonly List<UpgradeModuleConfig> UpgradeModules = new List<UpgradeModuleConfig>();
+        [XmlIgnore] private readonly HashSet<string> _trackedUpgradeModuleBlockIds =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         [XmlElement("IgnoreAiFactions")]
         public bool IgnoreAiFactions;
@@ -275,6 +277,9 @@ namespace ShipCoreFramework
     [XmlRoot("UpgradeModule")]
     public class UpgradeModuleConfig
     {
+        [XmlElement("TypeId")]
+        public string TypeId = "UpgradeModule";
+
         [XmlElement("SubtypeId")]
         public string SubtypeId = string.Empty;
 

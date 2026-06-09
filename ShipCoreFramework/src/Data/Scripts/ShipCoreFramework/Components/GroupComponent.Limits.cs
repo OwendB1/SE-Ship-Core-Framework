@@ -105,6 +105,7 @@ namespace ShipCoreFramework
         private void ScheduleLimitPunishmentValidation(int delayTicks)
         {
             if (_closing) return;
+            if (delayTicks <= 0) return;
 
             var targetTick = Session.CurrentTick + delayTicks;
             if (targetTick > _deferLimitPunishmentUntilTick)

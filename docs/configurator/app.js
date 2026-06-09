@@ -58,6 +58,7 @@ const DEFAULT_DEFENSE_MODIFIERS = {
 
 
 const DEFAULT_UPGRADE_MODULE = {
+  typeId: "UpgradeModule",
   subtypeId: "",
   uniqueName: "",
   modifiers: [],
@@ -633,6 +634,7 @@ function cloneUpgradeModule(module = DEFAULT_UPGRADE_MODULE) {
   return {
     ...DEFAULT_UPGRADE_MODULE,
     ...module,
+    typeId: String(module?.typeId ?? "UpgradeModule"),
     subtypeId: String(module?.subtypeId ?? ""),
     uniqueName: String(module?.uniqueName ?? ""),
     modifiers: Array.isArray(module?.modifiers)
@@ -1181,6 +1183,7 @@ function renderUpgradeModules() {
   host.innerHTML = `
     <div class="card">
       <div class="row wrap">
+        <label class="inline">Module Type <input data-action="upgrade-type" data-u="${moduleIndex}" class="small" placeholder="TypeId" value="${escapeXml(module.typeId || "UpgradeModule")}" /></label>
         <label class="inline">Module Subtype <input data-action="upgrade-subtype" data-u="${moduleIndex}" class="small" placeholder="SubtypeId" value="${escapeXml(module.subtypeId)}" /></label>
         <label class="inline">Module Name <input data-action="upgrade-unique" data-u="${moduleIndex}" class="small" placeholder="UniqueName" value="${escapeXml(module.uniqueName)}" /></label>
         <button data-action="add-upgrade-modifier" data-u="${moduleIndex}">Add Modifier</button>
@@ -1391,12 +1394,14 @@ function parseUpgradeModuleXml(text) {
       modifierType: (n.getElementsByTagName("ModifierType")[0]?.textContent || "Additive").trim()
     })).filter((m) => ["MaxBlocks", "MaxMass", "MaxPCU"].includes(m.stat));
 
-  // Resolve SubtypeId and UniqueName as direct children of <UpgradeModule>
+  // Resolve identity fields as direct children of <UpgradeModule>
   // using a parentNode check so deeper descendants are never accidentally matched.
+  const typeIdNode     = Array.from(moduleNode.getElementsByTagName("TypeId")).find((n) => n.localName === "TypeId"     && n.parentNode === moduleNode);
   const subtypeIdNode  = Array.from(moduleNode.getElementsByTagName("SubtypeId")).find((n) => n.localName === "SubtypeId"  && n.parentNode === moduleNode);
   const uniqueNameNode = Array.from(moduleNode.getElementsByTagName("UniqueName")).find((n) => n.localName === "UniqueName" && n.parentNode === moduleNode);
 
   return cloneUpgradeModule({
+    typeId:     (typeIdNode?.textContent     || "UpgradeModule").trim(),
     subtypeId:  (subtypeIdNode?.textContent  || "").trim(),
     uniqueName: (uniqueNameNode?.textContent || "").trim(),
     modifiers,
@@ -1410,6 +1415,7 @@ function writeUpgradeModuleXml(module, indent = "  ") {
   const lines = [
     header,
     `<UpgradeModule>`,
+    `${indent}<TypeId>${escapeXml(module.typeId || "UpgradeModule")}</TypeId>`,
     `${indent}<SubtypeId>${escapeXml(module.subtypeId)}</SubtypeId>`,
     `${indent}<UniqueName>${escapeXml(module.uniqueName)}</UniqueName>`,
     ...(module.modifiers || []).filter((modifier) => String(modifier.stat || "").trim()).flatMap((modifier) => [
@@ -2137,6 +2143,7 @@ document.addEventListener("input", (event) => {
     renderLimitGroupChecklist(coreIndex, limitIndex);
   }
 
+  if (action === "upgrade-type") selectedUpgrade.typeId = target.value;
   if (action === "upgrade-subtype") selectedUpgrade.subtypeId = target.value;
   if (action === "upgrade-unique") selectedUpgrade.uniqueName = target.value;
   if (action === "upgrade-mod-stat") selectedUpgrade.modifiers[upgradeModifierIndex].stat = target.value;
@@ -2493,7 +2500,8 @@ function parseSbcDefinitions(text) {
   const results = [];
   for (const def of Array.from(doc.getElementsByTagName("Definition"))) {
     const rawType  = (def.getAttribute("xsi:type") || "").toLowerCase();
-    const typeId   = (def.getElementsByTagName("TypeId")[0]?.textContent   || "").trim().toLowerCase();
+    const typeText = (def.getElementsByTagName("TypeId")[0]?.textContent   || "").trim();
+    const typeId   = typeText.toLowerCase();
     const subtype  = (def.getElementsByTagName("SubtypeId")[0]?.textContent || "").trim();
     const dispName = (def.getElementsByTagName("DisplayName")[0]?.textContent || subtype).trim();
     if (!subtype) continue;
@@ -2517,7 +2525,7 @@ function parseSbcDefinitions(text) {
       modifierType: (info.getElementsByTagName("ModifierType")[0]?.textContent  || "Multiplicative").trim()
     })).filter((m) => m.stat);
 
-    results.push({ subtypeId: subtype, displayName: dispName, blockType, modifiers });
+    results.push({ typeId: typeText || (blockType === "upgradeModule" ? "UpgradeModule" : ""), subtypeId: subtype, displayName: dispName, blockType, modifiers });
   }
   return results;
 }
@@ -2633,7 +2641,6 @@ async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, cor
         manifestCoreGroupsByFilename.set(fileName.toLowerCase(), dedupeStrings(entry.groups));
         manifestCoreBlacklistByFilename.set(fileName.toLowerCase(), normalizeManifestBlacklistSubtypeIds(entry.blacklistedCoreSubtypeIds));
       });
-
       state.outputCoreDirectory = getManifestDirectory(listed, "Data/Cores/", "core", status);
       state.outputUpgradeModuleDirectory = getManifestDirectory(listedModules, "Data/UpgradeModules/", "upgrade module", status);
       status.push(`Read manifest ${manifestFile.name} with ${listed.length} listed core files, ${listedModules.length} listed upgrade modules, and ${manifest.groups.length} manifest groups.`);
@@ -2719,6 +2726,7 @@ async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, cor
     if (sbcUpgradeDefs.length > 0) {
       for (const def of sbcUpgradeDefs) {
         const upgradeModule = cloneUpgradeModule({
+          typeId:     def.typeId || "UpgradeModule",
           subtypeId:  def.subtypeId,
           uniqueName: def.displayName,
           modifiers:  def.modifiers,

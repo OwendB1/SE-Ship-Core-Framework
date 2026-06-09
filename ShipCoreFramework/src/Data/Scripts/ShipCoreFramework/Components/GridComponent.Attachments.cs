@@ -35,24 +35,22 @@ namespace ShipCoreFramework
 
         private void TrackUpgradeModule(IMyFunctionalBlock block, GroupComponent groupComponent)
         {
-            var moduleBlock = block as IMyUpgradeModule;
-            if (moduleBlock == null) return;
-            if (_upgradeModuleDictionary.ContainsKey(moduleBlock)) return;
+            if (block == null) return;
+            if (_upgradeModuleDictionary.ContainsKey(block)) return;
 
             var upgradeModuleComponent = new UpgradeModuleComponent(groupComponent);
-            if (!upgradeModuleComponent.Init(moduleBlock)) return;
-            _upgradeModuleDictionary.Add(moduleBlock, upgradeModuleComponent);
+            if (!upgradeModuleComponent.Init(block)) return;
+            _upgradeModuleDictionary.Add(block, upgradeModuleComponent);
         }
 
         private bool UntrackUpgradeModule(IMyFunctionalBlock block)
         {
-            var moduleBlock = block as IMyUpgradeModule;
-            if (moduleBlock == null) return false;
+            if (block == null) return false;
 
             UpgradeModuleComponent moduleComponent;
-            if (!_upgradeModuleDictionary.TryGetValue(moduleBlock, out moduleComponent)) return false;
+            if (!_upgradeModuleDictionary.TryGetValue(block, out moduleComponent)) return false;
 
-            _upgradeModuleDictionary.Remove(moduleBlock);
+            _upgradeModuleDictionary.Remove(block);
             moduleComponent.Clean();
             return true;
         }

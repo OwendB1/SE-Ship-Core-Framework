@@ -289,6 +289,7 @@ Root tag: `<UpgradeModule>`
 
 | Tag | Type | Meaning | Notes |
 | --- | --- | --- | --- |
+| `TypeId` | `string` | Upgrade-module block type ID. | Optional; defaults to `UpgradeModule`. Used with `SubtypeId` for early runtime tracking. |
 | `SubtypeId` | `string` | Upgrade-module subtype ID. | Required. |
 | `UniqueName` | `string` | Friendly/config name. | Falls back to `SubtypeId` if omitted. |
 | `Modifiers` | `List<UpgradeStatModifier>` | Stat modifiers applied to the main core. | See recognized stats below. |

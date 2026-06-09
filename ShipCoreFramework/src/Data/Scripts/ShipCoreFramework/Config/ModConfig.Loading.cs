@@ -54,6 +54,7 @@ namespace ShipCoreFramework
                 group => FormatConfigOrigin(group.ConfigSource, group.ConfigFile));
             ThrowErrorIfDuplicates(UpgradeModules, module => module.SubtypeId, "UpgradeModule SubtypeId",
                 module => FormatConfigOrigin(module.ConfigSource, module.ConfigFile));
+            RebuildTrackedUpgradeModuleBlockIds();
             NormalizeBlockGroups(BlockGroups, "All Loaded Mods");
             ThrowErrorIfDuplicates(BlockGroups, groups => groups.Name, "BlockGroup Name",
                 group => FormatConfigOrigin(group.ConfigSource, group.ConfigFile));

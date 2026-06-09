@@ -216,8 +216,14 @@ namespace ShipCoreFramework
         {
             if (module == null) return;
 
+            module.TypeId = string.IsNullOrWhiteSpace(module.TypeId)
+                ? DefaultUpgradeModuleTypeId
+                : NormalizeBlockTypeId(module.TypeId);
+
             if (string.IsNullOrWhiteSpace(module.SubtypeId))
                 throw new Exception($"UpgradeModuleConfig from {source} ({moduleFile}) is missing <SubtypeId>.");
+
+            module.SubtypeId = module.SubtypeId.Trim();
 
             if (string.IsNullOrWhiteSpace(module.UniqueName))
                 module.UniqueName = module.SubtypeId;

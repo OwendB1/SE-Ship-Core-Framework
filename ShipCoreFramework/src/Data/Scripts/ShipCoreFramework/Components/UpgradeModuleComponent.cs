@@ -8,8 +8,8 @@ namespace ShipCoreFramework
     internal class UpgradeModuleComponent
     {
         private readonly GroupComponent _groupComponent;
-
-        internal IMyUpgradeModule ModuleBlock { get; private set; }
+        
+        internal IMyFunctionalBlock ModuleBlock { get; private set; }
         internal CoreComponent ParentCoreComponent { get; private set; }
         internal string SubtypeId { get; private set; }
 
@@ -18,7 +18,7 @@ namespace ShipCoreFramework
             _groupComponent = groupComponent;
         }
 
-        internal bool Init(IMyUpgradeModule moduleBlock)
+        internal bool Init(IMyFunctionalBlock moduleBlock)
         {
             ModuleBlock = moduleBlock;
             if (ModuleBlock == null) return false;

@@ -252,6 +252,9 @@ namespace ShipCoreFramework
     [XmlRoot("UpgradeModule")]
     public class UpgradeModuleConfig
     {
+        [XmlElement("TypeId")]
+        public string TypeId = "UpgradeModule";
+
         [XmlElement("SubtypeId")]
         public string SubtypeId = string.Empty;
 

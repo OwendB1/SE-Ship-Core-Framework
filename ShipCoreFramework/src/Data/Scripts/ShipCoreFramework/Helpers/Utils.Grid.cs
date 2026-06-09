@@ -40,9 +40,9 @@ namespace ShipCoreFramework
 
         internal static bool IsTrackedUpgradeModuleBlock(IMyFunctionalBlock block)
         {
-            return block is IMyUpgradeModule
+            return block != null
                    && Session.Config != null
-                   && Session.Config.IsTrackedUpgradeModuleType(block.BlockDefinition.SubtypeId);
+                   && Session.Config.IsTrackedUpgradeModuleDefinition(GetBlockTypeId(block), block.BlockDefinition.SubtypeId);
         }
 
         internal static bool IsTrackedUpgradeModuleBlock(IMySlimBlock block)
@@ -53,6 +53,11 @@ namespace ShipCoreFramework
         internal static string GetBlockTypeId(IMySlimBlock block)
         {
             return Convert.ToString(block.BlockDefinition.Id.TypeId).Replace("MyObjectBuilder_", "");
+        }
+
+        internal static string GetBlockTypeId(IMyCubeBlock block)
+        {
+            return Convert.ToString(block.BlockDefinition.TypeId).Replace("MyObjectBuilder_", "");
         }
 
         internal static string GetBlockSubtypeId(IMySlimBlock block)

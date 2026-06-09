@@ -12,8 +12,7 @@ namespace ShipCoreFramework
     {
         private const int LimitedBlockMinimumBlocksRecheckIntervalTicks = 10 * 60 * 60;
         private const int ExternalLimitValidationDelayTicks = 2 * 60;
-        // Upgrade-module attachment/working state can settle after the grid scan on world load.
-        private const int PostInitializationLimitValidationDelayTicks = 5 * 60;
+        private const int PostInitializationLimitValidationDelayTicks = 0;
 
         internal ShipCore ShipCore => Session.Config.GetShipCoreByTypeId(MainCoreComponent?.SubtypeId ?? string.Empty);
         internal GridModifiers Modifiers => CubeGridModifiers.GetActiveModifiers(this);

@@ -5,6 +5,8 @@ namespace ShipCoreFramework
 {
     public partial class ModConfig
     {
+        private const string DefaultUpgradeModuleTypeId = "UpgradeModule";
+
         internal ShipCore GetShipCoreByTypeId(string coreTypeId)
         {
             if (coreTypeId == string.Empty) return SelectedNoCore;
@@ -35,12 +37,41 @@ namespace ShipCoreFramework
 
         internal bool IsTrackedUpgradeModuleType(string moduleTypeId)
         {
-            if (string.IsNullOrWhiteSpace(moduleTypeId)) return false;
-            if (GetUpgradeModuleByTypeId(moduleTypeId) != null) return true;
+            return IsTrackedUpgradeModuleDefinition(DefaultUpgradeModuleTypeId, moduleTypeId);
+        }
 
-            return ShipCores.Any(core => core.IsUpgradeModuleAllowed(moduleTypeId))
-                   || NoCoreConfigs.Any(core => core.IsUpgradeModuleAllowed(moduleTypeId))
-                   || SelectedNoCore != null && SelectedNoCore.IsUpgradeModuleAllowed(moduleTypeId);
+        internal bool IsTrackedUpgradeModuleDefinition(string typeId, string subtypeId)
+        {
+            if (string.IsNullOrWhiteSpace(typeId) || string.IsNullOrWhiteSpace(subtypeId)) return false;
+
+            if (_trackedUpgradeModuleBlockIds.Count == 0 && UpgradeModules.Count > 0)
+                RebuildTrackedUpgradeModuleBlockIds();
+
+            return _trackedUpgradeModuleBlockIds.Contains(FormatBlockDefinitionId(typeId, subtypeId));
+        }
+
+        private void RebuildTrackedUpgradeModuleBlockIds()
+        {
+            _trackedUpgradeModuleBlockIds.Clear();
+            foreach (var module in UpgradeModules.Where(module => module != null))
+                _trackedUpgradeModuleBlockIds.Add(FormatBlockDefinitionId(module.TypeId, module.SubtypeId));
+        }
+
+        private static string FormatBlockDefinitionId(string typeId, string subtypeId)
+        {
+            return NormalizeBlockTypeId(typeId) + "/" + (subtypeId ?? string.Empty).Trim();
+        }
+
+        private static string NormalizeBlockTypeId(string typeId)
+        {
+            if (string.IsNullOrWhiteSpace(typeId)) return string.Empty;
+
+            var normalized = typeId.Trim();
+            const string objectBuilderPrefix = "MyObjectBuilder_";
+            if (normalized.StartsWith(objectBuilderPrefix, StringComparison.OrdinalIgnoreCase))
+                normalized = normalized.Substring(objectBuilderPrefix.Length);
+
+            return normalized;
         }
     }
 }
