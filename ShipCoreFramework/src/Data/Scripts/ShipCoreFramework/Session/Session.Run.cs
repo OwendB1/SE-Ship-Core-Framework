@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using NexusModAPI;
-using Sandbox.Game;
 using Sandbox.Definitions;
+using Sandbox.Game;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.Components;

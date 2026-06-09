@@ -9,14 +9,12 @@ namespace ShipCoreFramework
 {
     internal partial class GroupComponent
     {
-        internal bool IsIgnoredNpcGroup()
+        private bool IsIgnoredNpcGroup()
         {
             if (!Session.Config.IgnoreAiFactions) return false;
 
             var mainGrid = MainCoreComponent?.CoreBlock?.CubeGrid;
-            if (mainGrid != null) return mainGrid.IsNpcSpawnedGrid;
-
-            return GridDictionary.Keys.Any(grid => grid != null && grid.IsNpcSpawnedGrid);
+            return mainGrid?.IsNpcSpawnedGrid ?? GridDictionary.Keys.Any(grid => grid != null && grid.IsNpcSpawnedGrid);
         }
 
         internal long OwnerId
@@ -104,10 +102,8 @@ namespace ShipCoreFramework
             if (IsIgnoredByAiOrFactionTag()) return true;
             if (OwnerId == 0) return true;
             var player = MyAPIGateway.Players.TryGetIdentityId(OwnerId);
-            if (player != null && player.PromoteLevel == MyPromoteLevel.Admin &&
-                MyAPIGateway.Session.IsUserIgnorePCULimit(player.SteamUserId)) return true;
-
-            return false;
+            return player != null && player.PromoteLevel == MyPromoteLevel.Admin &&
+                   MyAPIGateway.Session.IsUserIgnorePCULimit(player.SteamUserId);
         }
 
         internal bool IsIgnoredByAiOrFactionTag()
@@ -121,7 +117,7 @@ namespace ShipCoreFramework
                    Session.Config.IgnoredFactionTags.Contains(faction.Tag);
         }
 
-        internal long GetRepresentativeGridId()
+        private long GetRepresentativeGridId()
         {
             if (!Session.IsGameThread)
                 return GetCachedRepresentativeGridId();

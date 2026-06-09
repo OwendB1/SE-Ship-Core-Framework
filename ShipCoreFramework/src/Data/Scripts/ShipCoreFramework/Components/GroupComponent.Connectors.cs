@@ -67,7 +67,7 @@ namespace ShipCoreFramework
                     }
                     catch
                     {
-                        continue;
+                        // ignored
                     }
                 }
             }

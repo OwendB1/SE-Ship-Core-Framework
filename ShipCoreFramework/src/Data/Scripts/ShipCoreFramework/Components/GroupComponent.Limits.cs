@@ -166,7 +166,7 @@ namespace ShipCoreFramework
             var wasPunishingLimitedBlocks = PunishLimitedBlocks;
             RefreshLimitedBlockPunishmentState();
             if (!wasPunishingLimitedBlocks && PunishLimitedBlocks)
-                QueueEnforceGroupPunishment(true);
+                EnforceGroupPunishment(true);
         }
 
         internal void RunExternalLimitValidationTick()
@@ -222,17 +222,7 @@ namespace ShipCoreFramework
             mainCore.CoreBlock.SlimBlock.RemoveAndRefund();
             ResetCore();
         }
-
-        private void QueueEnforceGroupPunishment(bool forceShutOffPunishment = false)
-        {
-            if (Session.IsGameThread)
-            {
-                EnforceGroupPunishment(forceShutOffPunishment);
-                return;
-            }
-
-            EnforceGroupPunishment(forceShutOffPunishment);
-        }
+        
 
         private void EnforceGroupPunishment(bool forceShutOffPunishment = false)
         {

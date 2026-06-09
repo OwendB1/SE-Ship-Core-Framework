@@ -5,8 +5,8 @@ using System.Threading;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.Components;
-using ModEntity = VRage.ModAPI.IMyEntity;
 using VRageMath;
+using ModEntity = VRage.ModAPI.IMyEntity;
 
 namespace ShipCoreFramework
 {

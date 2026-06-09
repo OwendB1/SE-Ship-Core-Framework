@@ -36,11 +36,5 @@ namespace ShipCoreFramework
                 _connectedPhysicalGroups.Clear();
             }
         }
-
-        internal List<IMyGridGroupData> GetConnectedPhysicalGroupDataSnapshot()
-        {
-            lock (_connectedGroupsLock)
-                return _connectedPhysicalGroups.Where(otherGroupData => otherGroupData != null).ToList();
-        }
     }
 }

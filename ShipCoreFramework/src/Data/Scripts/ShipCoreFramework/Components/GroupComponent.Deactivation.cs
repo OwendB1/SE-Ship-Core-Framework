@@ -1,5 +1,5 @@
-using Sandbox.ModAPI;
 using System.Linq;
+using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
@@ -34,7 +34,7 @@ namespace ShipCoreFramework
             _wasIgnoredGroup = isIgnored;
         }
 
-        internal void Deactivate(string reason = null)
+        private void Deactivate(string reason = null)
         {
             if (Deactivated) return;
             if (!Session.IsGameThread)
@@ -42,7 +42,7 @@ namespace ShipCoreFramework
                 var groupKey = GetThreadWorkKey();
                 ThreadWork.Enqueue(ThreadWork.StateCategory, "deactivate:" + groupKey,
                     "Deactivate group " + groupKey,
-                    delegate { return !_closing && !Session.IsShuttingDown; },
+                    () => !_closing && !Session.IsShuttingDown,
                     delegate { Deactivate(reason); });
                 return;
             }

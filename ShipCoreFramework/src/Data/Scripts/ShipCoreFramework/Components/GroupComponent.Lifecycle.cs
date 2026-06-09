@@ -67,12 +67,7 @@ namespace ShipCoreFramework
                 _gridInitializationDepth--;
         }
 
-        private void InitializeGridComponent(MyCubeGrid grid, IMyGridGroupData groupData)
-        {
-            InitializeGridComponent(grid, groupData, true);
-        }
-
-        private void InitializeGridComponent(MyCubeGrid grid, IMyGridGroupData groupData, bool processBlocks)
+        private void InitializeGridComponent(MyCubeGrid grid, IMyGridGroupData groupData, bool processBlocks = true)
         {
             var gridComp = new GridComponent();
             if (!GridDictionary.TryAdd(grid, gridComp))
@@ -266,7 +261,6 @@ namespace ShipCoreFramework
                 InvalidateSpeedStateCache();
                 Session.MarkPhysicalSpeedClusterSourceDirty(this);
                 SyncNoCoreLimitTracking();
-                SyncBeaconComponents();
             }
             else
             {
@@ -274,8 +268,9 @@ namespace ShipCoreFramework
                 MainCoreComponent.IsMainCore = true;
                 InvalidateSpeedStateCache();
                 Session.MarkPhysicalSpeedClusterSourceDirty(this);
-                SyncBeaconComponents();
             }
+
+            SyncBeaconComponents();
 
             if (_closing || !Session.HasStarted || Session.IsShuttingDown) return;
             OnUpgradeModulesChanged();
