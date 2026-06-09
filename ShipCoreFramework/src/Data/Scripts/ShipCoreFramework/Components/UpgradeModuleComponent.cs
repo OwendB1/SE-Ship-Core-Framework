@@ -47,12 +47,7 @@ namespace ShipCoreFramework
             ParentCoreComponent = FindAttachedCore();
         }
 
-        internal bool IsFunctionalForEffects()
-        {
-            return IsFunctionalForEffects(true);
-        }
-
-        internal bool IsFunctionalForEffects(bool requireParentCore)
+        internal bool IsFunctionalForEffects(bool requireParentCore = true)
         {
             return ModuleBlock != null
                    && (!requireParentCore || ParentCoreComponent != null)
@@ -103,8 +98,7 @@ namespace ShipCoreFramework
 
             if (Session.Config != null && Session.Config.AllowUnattachedUpgradeModules)
             {
-                foreach (var core in _groupComponent.CoreDictionary.Values
-                             .OrderBy(c => c.CoreBlock.EntityId))
+                foreach (var core in _groupComponent.CoreDictionary.Values.OrderBy(c => c.CoreBlock.EntityId))
                 {
                     var shipCore = Session.Config.GetShipCoreByTypeId(core.SubtypeId);
                     if (shipCore != null && shipCore.IsUpgradeModuleAllowed(SubtypeId))

@@ -11,7 +11,7 @@ namespace ShipCoreFramework
             return GridDictionary.Values.SelectMany(gridComponent => gridComponent.GetUpgradeModuleComponentsCopy());
         }
 
-        internal IEnumerable<UpgradeModuleComponent> GetMainCoreUpgradeModules(bool requireFunctionalForEffects)
+        private IEnumerable<UpgradeModuleComponent> GetMainCoreUpgradeModules(bool requireFunctionalForEffects)
         {
             var mainCore = MainCoreComponent;
             if (mainCore == null) yield break;
@@ -74,8 +74,8 @@ namespace ShipCoreFramework
                 var groupKey = GetThreadWorkKey();
                 ThreadWork.Enqueue(ThreadWork.StateCategory, "upgrade-refresh:" + groupKey,
                     "Upgrade/module refresh for group " + GetRepresentativeGridId(),
-                    delegate { return !_closing && !Session.IsShuttingDown; },
-                    delegate { OnUpgradeModulesChanged(); });
+                    () => !_closing && !Session.IsShuttingDown,
+                    OnUpgradeModulesChanged);
                 return;
             }
 

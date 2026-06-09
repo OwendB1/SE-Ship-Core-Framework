@@ -1,25 +1,16 @@
-using System.Collections.Generic;
-using System.Linq;
 using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
 {
     internal partial class GroupComponent
     {
-        internal void SetPhysicalLinkedGroups(IMyGridGroupData physicalGroup, IEnumerable<IMyGridGroupData> linkedGroups,
-            bool isSpeedClusterRepresentative)
+        internal void SetPhysicalLinkedGroups(IMyGridGroupData physicalGroup, bool isSpeedClusterRepresentative)
         {
             lock (_connectedGroupsLock)
             {
                 _trackedPhysicalGroup = physicalGroup;
                 SpeedClusterPhysicalGroup = physicalGroup;
                 IsSpeedClusterRepresentative = isSpeedClusterRepresentative;
-                _connectedPhysicalGroups.Clear();
-
-                if (linkedGroups == null) return;
-
-                foreach (var linkedGroup in linkedGroups.Where(linkedGroup => linkedGroup != null && !ReferenceEquals(linkedGroup, MyGroup)))
-                    _connectedPhysicalGroups.Add(linkedGroup);
             }
         }
 
@@ -33,7 +24,6 @@ namespace ShipCoreFramework
                 _trackedPhysicalGroup = null;
                 SpeedClusterPhysicalGroup = null;
                 IsSpeedClusterRepresentative = false;
-                _connectedPhysicalGroups.Clear();
             }
         }
     }

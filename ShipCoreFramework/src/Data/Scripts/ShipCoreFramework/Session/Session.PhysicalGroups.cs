@@ -201,11 +201,7 @@ namespace ShipCoreFramework
                     continue;
                 }
 
-                affectedGroup.SetPhysicalLinkedGroups(physicalGroup,
-                    nextMembers
-                        .Where(group => !ReferenceEquals(group, affectedGroup))
-                        .Select(group => group.MyGroup),
-                    ReferenceEquals(affectedGroup, representativeGroup));
+                affectedGroup.SetPhysicalLinkedGroups(physicalGroup, ReferenceEquals(affectedGroup, representativeGroup));
                 affectedGroup.InvalidateSpeedStateCache();
             }
 

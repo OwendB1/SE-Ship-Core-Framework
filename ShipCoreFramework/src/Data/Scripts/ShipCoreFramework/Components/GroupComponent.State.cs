@@ -44,7 +44,6 @@ namespace ShipCoreFramework
         private readonly object _abilityStateLock = new object();
         internal readonly object SpeedStateLock = new object();
         private IMyGridGroupData _trackedPhysicalGroup;
-        private readonly HashSet<IMyGridGroupData> _connectedPhysicalGroups = new HashSet<IMyGridGroupData>();
         private readonly HashSet<IMyGridGroupData> _connectedNoCoreGroups = new HashSet<IMyGridGroupData>();
         private readonly HashSet<IMyGridGroupData> _connectedCoreGroups = new HashSet<IMyGridGroupData>();
 
