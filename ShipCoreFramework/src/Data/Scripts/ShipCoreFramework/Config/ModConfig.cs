@@ -28,11 +28,23 @@ namespace ShipCoreFramework
             return ShipCores.Any(core => core.SubtypeId == coreTypeId) || SelectedNoCore.SubtypeId == coreTypeId;
         }
 
-        internal UpgradeModuleConfig GetUpgradeModuleByTypeId(string moduleTypeId)
+        internal UpgradeModuleConfig GetUpgradeModuleByTypeId(string moduleSubtypeId)
         {
-            if (string.IsNullOrWhiteSpace(moduleTypeId)) return null;
+            if (string.IsNullOrWhiteSpace(moduleSubtypeId)) return null;
             return UpgradeModules.FirstOrDefault(module =>
-                module != null && module.SubtypeId.Equals(moduleTypeId, StringComparison.OrdinalIgnoreCase));
+                module != null && module.SubtypeId.Equals(moduleSubtypeId, StringComparison.OrdinalIgnoreCase));
+        }
+
+        internal UpgradeModuleConfig GetUpgradeModuleByDefinition(string typeId, string subtypeId)
+        {
+            if (string.IsNullOrWhiteSpace(typeId) || string.IsNullOrWhiteSpace(subtypeId)) return null;
+
+            var definitionId = FormatBlockDefinitionId(typeId, subtypeId);
+            var exactMatch = UpgradeModules.FirstOrDefault(module =>
+                module != null &&
+                FormatBlockDefinitionId(module.TypeId, module.SubtypeId).Equals(definitionId, StringComparison.OrdinalIgnoreCase));
+
+            return exactMatch ?? GetUpgradeModuleByTypeId(subtypeId);
         }
 
         internal bool IsTrackedUpgradeModuleType(string moduleTypeId)
@@ -57,12 +69,12 @@ namespace ShipCoreFramework
                 _trackedUpgradeModuleBlockIds.Add(FormatBlockDefinitionId(module.TypeId, module.SubtypeId));
         }
 
-        private static string FormatBlockDefinitionId(string typeId, string subtypeId)
+        internal static string FormatBlockDefinitionId(string typeId, string subtypeId)
         {
             return NormalizeBlockTypeId(typeId) + "/" + (subtypeId ?? string.Empty).Trim();
         }
 
-        private static string NormalizeBlockTypeId(string typeId)
+        internal static string NormalizeBlockTypeId(string typeId)
         {
             if (string.IsNullOrWhiteSpace(typeId)) return string.Empty;
 

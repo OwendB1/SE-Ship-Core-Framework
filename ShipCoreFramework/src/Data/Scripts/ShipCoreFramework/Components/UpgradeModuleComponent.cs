@@ -11,7 +11,17 @@ namespace ShipCoreFramework
         
         internal IMyFunctionalBlock ModuleBlock { get; private set; }
         internal CoreComponent ParentCoreComponent { get; private set; }
+        internal string TypeId { get; private set; }
         internal string SubtypeId { get; private set; }
+        internal string DefinitionId => ModConfig.FormatBlockDefinitionId(TypeId, SubtypeId);
+        internal string UniqueName
+        {
+            get
+            {
+                var config = GetConfig();
+                return config?.UniqueName ?? string.Empty;
+            }
+        }
 
         internal UpgradeModuleComponent(GroupComponent groupComponent)
         {
@@ -23,6 +33,7 @@ namespace ShipCoreFramework
             ModuleBlock = moduleBlock;
             if (ModuleBlock == null) return false;
 
+            TypeId = Utils.GetBlockTypeId(ModuleBlock);
             SubtypeId = ModuleBlock.BlockDefinition.SubtypeId;
             if (Session.IsGameThread)
                 RefreshParentCore();
@@ -57,7 +68,7 @@ namespace ShipCoreFramework
 
         internal UpgradeModuleConfig GetConfig()
         {
-            return Session.Config?.GetUpgradeModuleByTypeId(SubtypeId);
+            return Session.Config?.GetUpgradeModuleByDefinition(TypeId, SubtypeId);
         }
 
         internal void RemoveInvalidModule(string reason)
@@ -101,7 +112,7 @@ namespace ShipCoreFramework
                 foreach (var core in _groupComponent.CoreDictionary.Values.OrderBy(c => c.CoreBlock.EntityId))
                 {
                     var shipCore = Session.Config.GetShipCoreByTypeId(core.SubtypeId);
-                    if (shipCore != null && shipCore.IsUpgradeModuleAllowed(SubtypeId))
+                    if (shipCore != null && shipCore.IsUpgradeModuleAllowed(UniqueName, SubtypeId))
                         return core;
                 }
             }

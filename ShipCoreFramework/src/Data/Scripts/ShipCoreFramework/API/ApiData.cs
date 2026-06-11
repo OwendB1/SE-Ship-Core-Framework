@@ -414,6 +414,7 @@ namespace ShipCoreFramework
     {
         [ProtoMember(1)] public string SubtypeId;
         [ProtoMember(2)] public int MaxCount;
+        [ProtoMember(3)] public string UniqueName;
     }
 
     [ProtoContract]
@@ -423,6 +424,7 @@ namespace ShipCoreFramework
         [ProtoMember(2)] public string UniqueName;
         [ProtoMember(3)] public UpgradeStatModifierData[] Modifiers = Array.Empty<UpgradeStatModifierData>();
         [ProtoMember(4)] public BlockLimitModifierData[] BlockLimitModifiers = Array.Empty<BlockLimitModifierData>();
+        [ProtoMember(5)] public string TypeId;
     }
 
     [ProtoContract]

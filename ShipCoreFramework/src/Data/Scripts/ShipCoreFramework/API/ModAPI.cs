@@ -1101,12 +1101,14 @@ namespace ShipCoreFramework
             {
                 return new UpgradeModuleAllowanceData
                 {
+                    UniqueName = string.Empty,
                     SubtypeId = string.Empty
                 };
             }
 
             return new UpgradeModuleAllowanceData
             {
+                UniqueName = allowance.UniqueName ?? string.Empty,
                 SubtypeId = allowance.SubtypeId ?? string.Empty,
                 MaxCount = allowance.MaxCount
             };
@@ -1118,6 +1120,7 @@ namespace ShipCoreFramework
             {
                 return new UpgradeModuleConfigData
                 {
+                    TypeId = string.Empty,
                     SubtypeId = string.Empty,
                     UniqueName = string.Empty,
                     Modifiers = Array.Empty<UpgradeStatModifierData>(),
@@ -1127,6 +1130,7 @@ namespace ShipCoreFramework
 
             return new UpgradeModuleConfigData
             {
+                TypeId = module.TypeId ?? string.Empty,
                 SubtypeId = module.SubtypeId ?? string.Empty,
                 UniqueName = module.UniqueName ?? string.Empty,
                 Modifiers = (module.Modifiers ?? Array.Empty<UpgradeStatModifier>())

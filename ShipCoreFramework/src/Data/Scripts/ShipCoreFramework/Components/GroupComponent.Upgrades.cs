@@ -51,15 +51,21 @@ namespace ShipCoreFramework
         {
             if (shipCore == null || modules == null) yield break;
 
-            foreach (var subtypeGroup in modules
+            foreach (var definitionGroup in modules
                          .Where(module => module != null)
-                         .GroupBy(module => module.SubtypeId, StringComparer.OrdinalIgnoreCase))
+                         .GroupBy(module => shipCore.GetUpgradeModuleAllowanceKey(module.UniqueName, module.SubtypeId),
+                             StringComparer.OrdinalIgnoreCase))
             {
+                var firstModule = definitionGroup.FirstOrDefault();
+                if (firstModule == null) continue;
+
                 int maxAllowed;
-                if (!shipCore.TryGetAllowedUpgradeModuleCount(subtypeGroup.Key, out maxAllowed) || maxAllowed <= 0)
+                if (!shipCore.TryGetAllowedUpgradeModuleCount(firstModule.UniqueName, firstModule.SubtypeId,
+                        out maxAllowed) ||
+                    maxAllowed <= 0)
                     continue;
 
-                foreach (var module in subtypeGroup.OrderBy(module => module.ModuleBlock.EntityId).Take(maxAllowed))
+                foreach (var module in definitionGroup.OrderBy(module => module.ModuleBlock.EntityId).Take(maxAllowed))
                     yield return module;
             }
         }
@@ -130,16 +136,23 @@ namespace ShipCoreFramework
                     continue;
                 }
 
-                foreach (var subtypeGroup in perCoreModules.GroupBy(module => module.SubtypeId, StringComparer.OrdinalIgnoreCase))
+                foreach (var definitionGroup in perCoreModules.GroupBy(
+                             module => shipCore.GetUpgradeModuleAllowanceKey(module.UniqueName, module.SubtypeId),
+                             StringComparer.OrdinalIgnoreCase))
                 {
+                    var firstModule = definitionGroup.FirstOrDefault();
+                    if (firstModule == null) continue;
+
                     int maxAllowed;
-                    if (!shipCore.TryGetAllowedUpgradeModuleCount(subtypeGroup.Key, out maxAllowed) || maxAllowed <= 0)
+                    if (!shipCore.TryGetAllowedUpgradeModuleCount(firstModule.UniqueName, firstModule.SubtypeId,
+                            out maxAllowed) ||
+                        maxAllowed <= 0)
                     {
-                        invalidModules.AddRange(subtypeGroup);
+                        invalidModules.AddRange(definitionGroup);
                         continue;
                     }
 
-                    var overflow = subtypeGroup
+                    var overflow = definitionGroup
                         .OrderBy(module => module.ModuleBlock.EntityId)
                         .Skip(maxAllowed);
                     invalidModules.AddRange(overflow);
@@ -150,20 +163,27 @@ namespace ShipCoreFramework
                 Session.Config != null && Session.Config.AllowUnattachedUpgradeModules)
             {
                 var noCoreConfig = ShipCore;
-                foreach (var subtypeGroup in modules
+                foreach (var definitionGroup in modules
                              .Where(module => module.ParentCoreComponent == null)
-                             .GroupBy(module => module.SubtypeId, StringComparer.OrdinalIgnoreCase))
+                             .GroupBy(module => noCoreConfig == null
+                                     ? module.DefinitionId
+                                     : noCoreConfig.GetUpgradeModuleAllowanceKey(module.UniqueName, module.SubtypeId),
+                                 StringComparer.OrdinalIgnoreCase))
                 {
+                    var firstModule = definitionGroup.FirstOrDefault();
+                    if (firstModule == null) continue;
+
                     int maxAllowed;
                     if (noCoreConfig == null ||
-                        !noCoreConfig.TryGetAllowedUpgradeModuleCount(subtypeGroup.Key, out maxAllowed) ||
+                        !noCoreConfig.TryGetAllowedUpgradeModuleCount(firstModule.UniqueName, firstModule.SubtypeId,
+                            out maxAllowed) ||
                         maxAllowed <= 0)
                     {
-                        invalidModules.AddRange(subtypeGroup);
+                        invalidModules.AddRange(definitionGroup);
                         continue;
                     }
 
-                    var overflow = subtypeGroup
+                    var overflow = definitionGroup
                         .OrderBy(module => module.ModuleBlock.EntityId)
                         .Skip(maxAllowed);
                     invalidModules.AddRange(overflow);
