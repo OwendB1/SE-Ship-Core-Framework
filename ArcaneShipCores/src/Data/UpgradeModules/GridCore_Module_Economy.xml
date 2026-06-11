@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <UpgradeModule xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <TypeId>Refinery</TypeId>
-  <SubtypeId>LargeRefinery</SubtypeId>
-<!--   <SubtypeId>GridCore_Module_Economy</SubtypeId> -->
+  <SubtypeId>GridCore_Module_Economy</SubtypeId>
   <UniqueName>Economy Upgrade Module</UniqueName>
   <Modifiers>
     <Stat>ThrusterForce</Stat>
