@@ -151,11 +151,13 @@ namespace ShipCoreFramework
 
         private bool IsAtOrOverMaxPlayers()
         {
+            if (OwnerId == 0) return false;
             return ShipCore.MaxPlayers > 0 && GetFactionPlayerCount() >= ShipCore.MaxPlayers;
         }
 
         private bool IsBelowMinPlayers()
         {
+            if (OwnerId == 0) return false;
             return ShipCore.MinPlayers > 0 && GetMinimumFactionPlayerCount() < ShipCore.MinPlayers;
         }
 

@@ -69,6 +69,12 @@ namespace ShipCoreFramework
         private bool _wasIgnoredGroup;
         private bool _noCoreLimitsRegistered;
         private string _registeredNoCoreLimitSubtypeId = string.Empty;
+        private long _registeredNoCoreLimitOwnerId;
+        private long _registeredNoCoreLimitFactionId = -1;
+        private bool _coreLimitsRegistered;
+        private string _registeredCoreLimitSubtypeId = string.Empty;
+        private long _registeredCoreLimitOwnerId;
+        private long _registeredCoreLimitFactionId = -1;
         internal int LastSpeedStateUpdateTick = -1;
 
         internal float ActiveDefenseDuration => ShipCore.ActiveDefenseModifiers.Duration;

@@ -39,33 +39,38 @@ namespace ShipCoreFramework
                     return 0;
                 }
 
-                if (_lastOwnerId != 0 && ownerId != 0 && _lastOwnerId != ownerId)
+                if (ownerId == 0 && _lastOwnerId != 0)
                 {
-                    Utils.Log($"OwnerId: Changed from {_lastOwnerId} to {ownerId}", 2);
+                    Utils.Log($"OwnerId: Changed from {_lastOwnerId} to 0", 2);
+                    RefreshRegisteredLimitOwnership(0);
+                }
+
+                if (ownerId != 0 && _lastOwnerId != ownerId)
+                {
+                    var previousOwnerId = _lastOwnerId;
+                    if (previousOwnerId != 0)
+                        Utils.Log($"OwnerId: Changed from {previousOwnerId} to {ownerId}", 2);
+
                     var newOwningFaction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(ownerId);
-                    var oldOwningFaction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(_lastOwnerId);
 
                     var coreType = ShipCore.SubtypeId;
-                    PerFactionManager.RemoveGridGroup(oldOwningFaction, coreType);
-                    PerPlayerManager.RemoveGridGroup(_lastOwnerId, coreType);
-
-                    PerFactionManager.AddGridGroup(newOwningFaction, coreType);
-                    PerPlayerManager.AddGridGroup(ownerId, coreType);
+                    RefreshRegisteredLimitOwnership(ownerId);
 
                     var isWithinFactionLimits = PerFactionManager.IsGroupWithinFactionLimits(newOwningFaction, ownerId, coreType);
                     var isWithinPlayerLimits = PerPlayerManager.IsGroupWithinPlayerLimits(ownerId, coreType);
                     if (!isWithinFactionLimits || !isWithinPlayerLimits)
                     {
-                        var cube = MainCoreComponent?.CoreBlock as MyCubeBlock;
-                        cube?.ChangeOwner(_lastOwnerId, MyOwnershipShareModeEnum.Faction);
-
-                        PerFactionManager.RemoveGridGroup(newOwningFaction, coreType);
-                        PerPlayerManager.RemoveGridGroup(ownerId, coreType);
-
-                        PerFactionManager.AddGridGroup(oldOwningFaction, coreType);
-                        PerPlayerManager.AddGridGroup(_lastOwnerId, coreType);
-
-                        ownerId = _lastOwnerId;
+                        if (previousOwnerId != 0)
+                        {
+                            var cube = MainCoreComponent?.CoreBlock as MyCubeBlock;
+                            cube?.ChangeOwner(previousOwnerId, MyOwnershipShareModeEnum.Faction);
+                            ownerId = previousOwnerId;
+                            RefreshRegisteredLimitOwnership(ownerId);
+                        }
+                        else
+                        {
+                            ScheduleExternalLimitValidation();
+                        }
                     }
                     SaveOwnerIdToMainCore(ownerId);
                 }
@@ -73,6 +78,25 @@ namespace ShipCoreFramework
                 _lastOwnerId = ownerId;
                 return ownerId;
             }
+        }
+
+        private long GetFactionId(long ownerId)
+        {
+            var faction = ownerId == 0 ? null : MyAPIGateway.Session.Factions.TryGetPlayerFaction(ownerId);
+            return faction?.FactionId ?? -1;
+        }
+
+        internal bool ShouldDeferOwnerLimitValidation(string coreType)
+        {
+            if (OwnerId != 0) return false;
+
+            var core = Session.Config.GetShipCoreByTypeId(coreType);
+            if (core == null) return false;
+
+            return core.MaxPerPlayer >= 0 ||
+                   core.FactionPlayersNeededPerCore > 0 ||
+                   core.MinPlayers > 0 ||
+                   core.MaxPlayers > 0;
         }
         
         private long GetSavedOwnerIdFromMainCore()

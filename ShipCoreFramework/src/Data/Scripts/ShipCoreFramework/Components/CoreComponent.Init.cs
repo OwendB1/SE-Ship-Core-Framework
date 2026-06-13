@@ -98,6 +98,15 @@ namespace ShipCoreFramework
                 IsMainCore = false;
             }
 
+            if (!isIgnoredNpcGrid && _groupComponent.ShouldDeferOwnerLimitValidation(SubtypeId))
+            {
+                _groupComponent.ScheduleExternalLimitValidation();
+                Utils.Log($"Deferring core limit validation for {SubtypeId} on {CoreBlock.CubeGrid.CustomName} until ownership is available.", 1);
+                AttachBlockEvents();
+                _groupComponent.DefenseValuesChanged();
+                return true;
+            }
+
             if (!isIgnoredNpcGrid &&
                 (!PerFactionManager.IsGroupWithinFactionLimits(_groupComponent.OwningFaction, _groupComponent.OwnerId, SubtypeId)
                  || !PerPlayerManager.IsGroupWithinPlayerLimits(_groupComponent.OwnerId, SubtypeId)

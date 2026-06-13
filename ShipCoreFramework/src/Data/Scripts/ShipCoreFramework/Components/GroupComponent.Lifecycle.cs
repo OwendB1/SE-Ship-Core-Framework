@@ -101,6 +101,8 @@ namespace ShipCoreFramework
 
             MainCoreComponent = coreComponent;
             IncrementLimitGeneration();
+            if (wasInactive || old.SubtypeId != coreComponent.SubtypeId)
+                ClearPublishedLimitSnapshots();
             SyncBeaconComponents();
             InvalidateSpeedStateCache();
             Session.MarkPhysicalSpeedClusterSourceDirty(this);
@@ -114,10 +116,9 @@ namespace ShipCoreFramework
             if (wasInactive)
             {
                 UnregisterNoCoreLimitTracking();
-                PerFactionManager.AddGridGroup(OwningFaction, ShipCore.SubtypeId);
-                PerPlayerManager.AddGridGroup(OwnerId, ShipCore.SubtypeId);
-                PerManifestGroupManager.AddGridGroup(ShipCore.SubtypeId);
             }
+
+            RegisterCoreLimitTracking();
 
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
@@ -149,9 +150,7 @@ namespace ShipCoreFramework
             var grid = old.CoreBlock.CubeGrid;
             Utils.Log($"Reset: Resetting logic for {grid.CustomName}!", 2);
 
-            PerFactionManager.RemoveGridGroup(OwningFaction, type);
-            PerPlayerManager.RemoveGridGroup(OwnerId, type);
-            PerManifestGroupManager.RemoveGridGroup(type);
+            UnregisterCoreLimitTracking();
 
             ModAPI.BroadcastCoreDeactivated(GetRepresentativeGridId(), type, old.CoreBlock.CustomName);
 
@@ -239,8 +238,6 @@ namespace ShipCoreFramework
 
             var oldType = lost.SubtypeId;
             var oldName = lost.CoreBlock?.CustomName ?? string.Empty;
-            var oldOwnerId = OwnerId;
-            var oldFaction = OwningFaction;
 
             MainCoreComponent = null;
 
@@ -254,9 +251,7 @@ namespace ShipCoreFramework
             var newMain = CoreDictionary.Values.FirstOrDefault();
             if (newMain == null)
             {
-                PerFactionManager.RemoveGridGroup(oldFaction, oldType);
-                PerPlayerManager.RemoveGridGroup(oldOwnerId, oldType);
-                PerManifestGroupManager.RemoveGridGroup(oldType);
+                UnregisterCoreLimitTracking();
                 ModAPI.BroadcastCoreDeactivated(GetRepresentativeGridId(), oldType, oldName);
                 InvalidateSpeedStateCache();
                 Session.MarkPhysicalSpeedClusterSourceDirty(this);
@@ -266,6 +261,7 @@ namespace ShipCoreFramework
             {
                 MainCoreComponent = newMain;
                 MainCoreComponent.IsMainCore = true;
+                RegisterCoreLimitTracking();
                 InvalidateSpeedStateCache();
                 Session.MarkPhysicalSpeedClusterSourceDirty(this);
             }
@@ -300,6 +296,7 @@ namespace ShipCoreFramework
             {
                 MainCoreComponent = newMain;
                 MainCoreComponent.IsMainCore = true;
+                RegisterCoreLimitTracking();
                 InvalidateSpeedStateCache();
                 Session.MarkPhysicalSpeedClusterSourceDirty(this);
                 SyncBeaconComponents();
@@ -321,9 +318,7 @@ namespace ShipCoreFramework
             {
                 if (MainCoreComponent != null)
                 {
-                    PerFactionManager.RemoveGridGroup(OwningFaction, ShipCore.SubtypeId);
-                    PerPlayerManager.RemoveGridGroup(OwnerId, ShipCore.SubtypeId);
-                    PerManifestGroupManager.RemoveGridGroup(ShipCore.SubtypeId);
+                    UnregisterCoreLimitTracking();
                 }
 
                 UnregisterNoCoreLimitTracking();
@@ -355,17 +350,25 @@ namespace ShipCoreFramework
 
         private void RegisterNoCoreLimitTracking()
         {
+            RegisterNoCoreLimitTracking(OwnerId);
+        }
+
+        private void RegisterNoCoreLimitTracking(long ownerId)
+        {
             if (_noCoreLimitsRegistered) return;
 
             var shipCore = ShipCore;
             var subtypeId = shipCore?.SubtypeId ?? string.Empty;
             if (string.IsNullOrWhiteSpace(subtypeId)) return;
 
-            PerFactionManager.AddGridGroup(OwningFaction, subtypeId);
-            PerPlayerManager.AddGridGroup(OwnerId, subtypeId);
+            var factionId = GetFactionId(ownerId);
+            PerFactionManager.AddGridGroup(factionId, subtypeId);
+            PerPlayerManager.AddGridGroup(ownerId, subtypeId);
             PerManifestGroupManager.AddGridGroup(subtypeId);
 
             _registeredNoCoreLimitSubtypeId = subtypeId;
+            _registeredNoCoreLimitOwnerId = ownerId;
+            _registeredNoCoreLimitFactionId = factionId;
             _noCoreLimitsRegistered = true;
         }
 
@@ -376,13 +379,81 @@ namespace ShipCoreFramework
             var subtypeId = _registeredNoCoreLimitSubtypeId;
             if (!string.IsNullOrWhiteSpace(subtypeId))
             {
-                PerFactionManager.RemoveGridGroup(OwningFaction, subtypeId);
-                PerPlayerManager.RemoveGridGroup(OwnerId, subtypeId);
+                PerFactionManager.RemoveGridGroup(_registeredNoCoreLimitFactionId, subtypeId);
+                PerPlayerManager.RemoveGridGroup(_registeredNoCoreLimitOwnerId, subtypeId);
                 PerManifestGroupManager.RemoveGridGroup(subtypeId);
             }
 
             _registeredNoCoreLimitSubtypeId = string.Empty;
+            _registeredNoCoreLimitOwnerId = 0;
+            _registeredNoCoreLimitFactionId = -1;
             _noCoreLimitsRegistered = false;
+        }
+
+        private void RegisterCoreLimitTracking()
+        {
+            RegisterCoreLimitTracking(OwnerId);
+        }
+
+        private void RegisterCoreLimitTracking(long ownerId)
+        {
+            var mainCore = MainCoreComponent;
+            var subtypeId = mainCore?.SubtypeId ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(subtypeId)) return;
+
+            var factionId = GetFactionId(ownerId);
+            if (_coreLimitsRegistered &&
+                _registeredCoreLimitSubtypeId == subtypeId &&
+                _registeredCoreLimitOwnerId == ownerId &&
+                _registeredCoreLimitFactionId == factionId)
+                return;
+
+            UnregisterCoreLimitTracking();
+
+            PerFactionManager.AddGridGroup(factionId, subtypeId);
+            PerPlayerManager.AddGridGroup(ownerId, subtypeId);
+            PerManifestGroupManager.AddGridGroup(subtypeId);
+
+            _registeredCoreLimitSubtypeId = subtypeId;
+            _registeredCoreLimitOwnerId = ownerId;
+            _registeredCoreLimitFactionId = factionId;
+            _coreLimitsRegistered = true;
+        }
+
+        private void UnregisterCoreLimitTracking()
+        {
+            if (!_coreLimitsRegistered) return;
+
+            var subtypeId = _registeredCoreLimitSubtypeId;
+            if (!string.IsNullOrWhiteSpace(subtypeId))
+            {
+                PerFactionManager.RemoveGridGroup(_registeredCoreLimitFactionId, subtypeId);
+                PerPlayerManager.RemoveGridGroup(_registeredCoreLimitOwnerId, subtypeId);
+                PerManifestGroupManager.RemoveGridGroup(subtypeId);
+            }
+
+            _registeredCoreLimitSubtypeId = string.Empty;
+            _registeredCoreLimitOwnerId = 0;
+            _registeredCoreLimitFactionId = -1;
+            _coreLimitsRegistered = false;
+        }
+
+        private void RefreshRegisteredLimitOwnership()
+        {
+            RefreshRegisteredLimitOwnership(OwnerId);
+        }
+
+        private void RefreshRegisteredLimitOwnership(long ownerId)
+        {
+            if (MainCoreComponent != null)
+            {
+                RegisterCoreLimitTracking(ownerId);
+                return;
+            }
+
+            if (!_noCoreLimitsRegistered) return;
+            UnregisterNoCoreLimitTracking();
+            RegisterNoCoreLimitTracking(ownerId);
         }
     }
 }

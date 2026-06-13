@@ -40,5 +40,14 @@ namespace ShipCoreFramework
         {
             Interlocked.Exchange(ref _limits, limits ?? new ConcurrentDictionary<BlockLimit, LimitBucket>());
         }
+
+        private void ClearPublishedLimitSnapshots()
+        {
+            foreach (var gridComponent in GridDictionary.Values)
+                if (gridComponent != null)
+                    gridComponent.PublishLimitsSnapshot(null);
+
+            PublishLimitsSnapshot(null);
+        }
     }
 }

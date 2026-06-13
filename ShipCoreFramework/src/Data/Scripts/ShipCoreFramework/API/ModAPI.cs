@@ -1418,11 +1418,27 @@ namespace ShipCoreFramework
                 if (!Session.GroupDict.TryGetValue(groupData, out groupComponent))
                     return result;
 
+                var shipCore = groupComponent.ShipCore ?? Session.Config.SelectedNoCore;
+                var configuredLimits = shipCore?.BlockLimits ?? Array.Empty<BlockLimit>();
+                foreach (var configuredLimit in configuredLimits)
+                {
+                    if (configuredLimit == null || string.IsNullOrWhiteSpace(configuredLimit.Name)) continue;
+
+                    var max = groupComponent.GetEffectiveMaxCount(configuredLimit);
+                    result[configuredLimit.Name] = new LimitStatusData
+                    {
+                        Name = configuredLimit.Name,
+                        Current = 0d,
+                        Max = max,
+                        IsOverLimit = false
+                    };
+                }
+
                 foreach (var kvp in groupComponent.Limits)
                 {
                     var limit = kvp.Key;
                     var bucket = kvp.Value;
-                    if (limit == null || bucket == null) continue;
+                    if (limit == null || bucket == null || string.IsNullOrWhiteSpace(limit.Name)) continue;
 
                     double totalWeight;
                     lock (bucket.BucketLock)
@@ -1430,12 +1446,13 @@ namespace ShipCoreFramework
                         totalWeight = bucket.TotalWeight;
                     }
 
+                    var max = groupComponent.GetEffectiveMaxCount(limit);
                     result[limit.Name] = new LimitStatusData
                     {
                         Name = limit.Name,
                         Current = totalWeight,
-                        Max = limit.MaxCount,
-                        IsOverLimit = totalWeight > limit.MaxCount
+                        Max = max,
+                        IsOverLimit = totalWeight > max
                     };
                 }
             }

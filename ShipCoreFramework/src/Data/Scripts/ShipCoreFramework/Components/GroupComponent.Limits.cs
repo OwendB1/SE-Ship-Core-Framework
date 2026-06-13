@@ -213,6 +213,11 @@ namespace ShipCoreFramework
             var subtypeId = mainCore.SubtypeId;
             if (string.IsNullOrEmpty(subtypeId)) return;
             if (IsIgnoredNpcGroup()) return;
+            if (ShouldDeferOwnerLimitValidation(subtypeId))
+            {
+                ScheduleExternalLimitValidation();
+                return;
+            }
 
             if (PerFactionManager.IsGroupWithinFactionLimits(OwningFaction, OwnerId, subtypeId) &&
                 PerPlayerManager.IsGroupWithinPlayerLimits(OwnerId, subtypeId) &&
