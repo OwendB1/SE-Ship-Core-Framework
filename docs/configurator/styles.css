@@ -27,6 +27,34 @@ header, main {
   padding: 1rem;
   margin-bottom: 1rem;
 }
+.panel-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+  list-style: none;
+}
+.panel-summary::-webkit-details-marker {
+  display: none;
+}
+.panel-summary::before {
+  content: "";
+  width: 0;
+  height: 0;
+  border-top: 0.32rem solid transparent;
+  border-bottom: 0.32rem solid transparent;
+  border-left: 0.45rem solid var(--muted);
+  transition: transform 0.15s ease;
+}
+.panel[open] > .panel-summary::before {
+  transform: rotate(90deg);
+}
+.panel-summary h2 {
+  margin: 0;
+}
+.panel-content {
+  margin-top: 0.75rem;
+}
 .row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
 .wrap { flex-wrap: wrap; }
 textarea, input, select {
