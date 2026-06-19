@@ -56,6 +56,7 @@ namespace ShipCoreFramework
             if (core == null) return;
 
             core.NormalizeAllowedUpgradeModules(source, coreFileOrKey);
+            NormalizeSpeedModifiers(core, source, coreFileOrKey);
 
             if (core.BlockLimits == null)
             {
@@ -76,6 +77,34 @@ namespace ShipCoreFramework
 
                 if (limit.BlockGroups == null) limit.BlockGroups = new List<BlockGroup>();
             }
+        }
+
+        private static void NormalizeSpeedModifiers(ShipCore core, string source, string coreFileOrKey)
+        {
+            if (core.SpeedModifiers == null)
+            {
+                core.SpeedModifiers = new SpeedModifiers();
+                Utils.Log($"Config warning: ShipCore '{core.UniqueName}' from {source} ({coreFileOrKey}) had no <SpeedModifiers>; using defaults.", 2, "Config Validation");
+                return;
+            }
+
+            NormalizeFrictionCurve(core.SpeedModifiers.FrictionCurve);
+
+            if (core.SpeedModifiers.AtmosphericFriction != null)
+                NormalizeFrictionCurve(core.SpeedModifiers.AtmosphericFriction.FrictionCurve);
+        }
+
+        private static void NormalizeFrictionCurve(FrictionCurve curve)
+        {
+            if (curve == null) return;
+
+            if (curve.Segments == null)
+            {
+                curve.Segments = Array.Empty<FrictionCurveSegment>();
+                return;
+            }
+
+            curve.Segments = curve.Segments.Where(segment => segment != null).ToArray();
         }
 
         private static void NormalizeCoreManifest(CoreManifest manifest, string source)

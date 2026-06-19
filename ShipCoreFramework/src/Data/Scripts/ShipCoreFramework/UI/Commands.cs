@@ -1037,7 +1037,7 @@ Raycasts from crosshairs to find a grid and displays all its core information.";
         }
         private static string RandomConsent()
         {
-            string[] options = {"Cool Beans","I Understand","I Understand","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","I Don't like reading","It's MoMo's fault"};
+            string[] options = {"Cool Beans","I Understand","I Understand","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","I Don't like reading","It's MoMo's fault","Sussy Baka"};
             var rng = new Random();
             return options[rng.Next(options.Length)];
         }

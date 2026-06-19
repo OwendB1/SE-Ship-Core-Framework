@@ -42,7 +42,23 @@ const DEFAULT_SPEED_MODIFIERS = {
   MaximumFrictionSpeedAbsolute: 290,
   MinimumFrictionSpeedModifier: 0.3,
   MaximumFrictionSpeedModifier: 0.8,
-  MaximumFrictionDeceleration: 1
+  MaximumFrictionDeceleration: 1,
+  CruiseFrictionMultiplier: 1,
+  CruiseAccelerationThreshold: 0.05
+};
+
+const DEFAULT_FRICTION_SEGMENT = {
+  StartSpeed: 100,
+  EndSpeed: 200,
+  StartDeceleration: 20,
+  EndDeceleration: 20
+};
+
+const DEFAULT_ATMOSPHERIC_FRICTION = {
+  FrictionCurve: [],
+  CruiseFrictionMultiplier: 1,
+  CruiseAccelerationThreshold: 0.05,
+  AirDensityThreshold: 0.05
 };
 
 const DEFAULT_DEFENSE_MODIFIERS = {
@@ -76,6 +92,11 @@ const UPGRADE_STAT_OPTIONS = [
   "MinimumFrictionSpeedModifier",
   "MaximumFrictionSpeedModifier",
   "MaximumFrictionDeceleration",
+  "CruiseFrictionMultiplier",
+  "CruiseAccelerationThreshold",
+  "AtmosphericCruiseFrictionMultiplier",
+  "AtmosphericCruiseAccelerationThreshold",
+  "AtmosphericAirDensityThreshold",
   "PassiveBulletDamage",
   "ActiveBulletDamage",
   "PassiveRocketDamage",
@@ -175,6 +196,21 @@ function qselAll(node, tag) {
   if (list.length) return Array.from(list);
   const listStar = node.getElementsByTagNameNS("*", local);
   return Array.from(listStar);
+}
+
+function childElement(node, tag) {
+  if (!node) return null;
+  const local = tag.split(":").pop();
+  return Array.from(node.children || []).find((child) => child.localName === local) || null;
+}
+
+function childTextOf(parent, tag) {
+  return childElement(parent, tag)?.textContent?.trim() ?? "";
+}
+
+function childNumberOf(parent, tag, fallback = 0) {
+  const value = Number(childTextOf(parent, tag));
+  return Number.isFinite(value) ? value : fallback;
 }
 
 function cloneBlockGroup(group = { name: "", blockTypes: [] }) {
@@ -458,6 +494,76 @@ function parseModifierNode(node, defaults) {
   return parsed;
 }
 
+function parseFrictionCurveNode(node) {
+  if (!node) return [];
+
+  return qselAll(node, "Segment").map((segmentNode) => ({
+    StartSpeed: childNumberOf(segmentNode, "StartSpeed", DEFAULT_FRICTION_SEGMENT.StartSpeed),
+    EndSpeed: childNumberOf(segmentNode, "EndSpeed", DEFAULT_FRICTION_SEGMENT.EndSpeed),
+    StartDeceleration: childNumberOf(segmentNode, "StartDeceleration", DEFAULT_FRICTION_SEGMENT.StartDeceleration),
+    EndDeceleration: childNumberOf(segmentNode, "EndDeceleration", DEFAULT_FRICTION_SEGMENT.EndDeceleration)
+  }));
+}
+
+function parseAtmosphericFrictionNode(node) {
+  if (!node) return null;
+
+  return {
+    FrictionCurve: parseFrictionCurveNode(childElement(node, "FrictionCurve")),
+    CruiseFrictionMultiplier: childNumberOf(node, "CruiseFrictionMultiplier", DEFAULT_ATMOSPHERIC_FRICTION.CruiseFrictionMultiplier),
+    CruiseAccelerationThreshold: childNumberOf(node, "CruiseAccelerationThreshold", DEFAULT_ATMOSPHERIC_FRICTION.CruiseAccelerationThreshold),
+    AirDensityThreshold: childNumberOf(node, "AirDensityThreshold", DEFAULT_ATMOSPHERIC_FRICTION.AirDensityThreshold)
+  };
+}
+
+function parseSpeedModifiersNode(node) {
+  const parsed = cloneSpeedModifiers();
+  if (!node) return parsed;
+
+  Object.keys(DEFAULT_SPEED_MODIFIERS).forEach((key) => {
+    parsed[key] = childNumberOf(node, key, DEFAULT_SPEED_MODIFIERS[key]);
+  });
+  parsed.FrictionCurve = parseFrictionCurveNode(childElement(node, "FrictionCurve"));
+  parsed.AtmosphericFriction = parseAtmosphericFrictionNode(childElement(node, "AtmosphericFriction"));
+
+  return parsed;
+}
+
+function cloneFrictionSegment(segment = DEFAULT_FRICTION_SEGMENT) {
+  return {
+    StartSpeed: Number(segment?.StartSpeed ?? DEFAULT_FRICTION_SEGMENT.StartSpeed),
+    EndSpeed: Number(segment?.EndSpeed ?? DEFAULT_FRICTION_SEGMENT.EndSpeed),
+    StartDeceleration: Number(segment?.StartDeceleration ?? DEFAULT_FRICTION_SEGMENT.StartDeceleration),
+    EndDeceleration: Number(segment?.EndDeceleration ?? DEFAULT_FRICTION_SEGMENT.EndDeceleration)
+  };
+}
+
+function cloneAtmosphericFriction(settings = null) {
+  if (!settings) return null;
+
+  return {
+    FrictionCurve: Array.isArray(settings.FrictionCurve)
+      ? settings.FrictionCurve.map((segment) => cloneFrictionSegment(segment))
+      : [],
+    CruiseFrictionMultiplier: Number(settings.CruiseFrictionMultiplier ?? DEFAULT_ATMOSPHERIC_FRICTION.CruiseFrictionMultiplier),
+    CruiseAccelerationThreshold: Number(settings.CruiseAccelerationThreshold ?? DEFAULT_ATMOSPHERIC_FRICTION.CruiseAccelerationThreshold),
+    AirDensityThreshold: Number(settings.AirDensityThreshold ?? DEFAULT_ATMOSPHERIC_FRICTION.AirDensityThreshold)
+  };
+}
+
+function cloneSpeedModifiers(modifiers = {}) {
+  const cloned = { ...DEFAULT_SPEED_MODIFIERS };
+  Object.keys(DEFAULT_SPEED_MODIFIERS).forEach((key) => {
+    cloned[key] = Number(modifiers?.[key] ?? DEFAULT_SPEED_MODIFIERS[key]);
+  });
+
+  cloned.FrictionCurve = Array.isArray(modifiers?.FrictionCurve)
+    ? modifiers.FrictionCurve.map((segment) => cloneFrictionSegment(segment))
+    : [];
+  cloned.AtmosphericFriction = cloneAtmosphericFriction(modifiers?.AtmosphericFriction || null);
+  return cloned;
+}
+
 function createDefaultNoCore() {
   return {
     ...createDefaultCore(),
@@ -549,7 +655,7 @@ function createDefaultCore() {
     manifestBlacklistedCoreSubtypeIds: [],
     allowedUpgradeModules: [],
     modifiers: { ...DEFAULT_GRID_MODIFIERS },
-    speedModifiers: { ...DEFAULT_SPEED_MODIFIERS },
+    speedModifiers: cloneSpeedModifiers(),
     passiveDefenseModifiers: { ...DEFAULT_DEFENSE_MODIFIERS },
     activeDefenseModifiers: { ...DEFAULT_DEFENSE_MODIFIERS },
     blockLimits: []
@@ -743,7 +849,7 @@ function cloneShipCore(core = createDefaultCore()) {
         }))
       : [],
     modifiers: { ...DEFAULT_GRID_MODIFIERS, ...(core.modifiers || {}) },
-    speedModifiers: { ...DEFAULT_SPEED_MODIFIERS, ...(core.speedModifiers || {}) },
+    speedModifiers: cloneSpeedModifiers(core.speedModifiers || {}),
     passiveDefenseModifiers: { ...DEFAULT_DEFENSE_MODIFIERS, ...(core.passiveDefenseModifiers || {}) },
     activeDefenseModifiers: { ...DEFAULT_DEFENSE_MODIFIERS, ...(core.activeDefenseModifiers || {}) },
     blockLimits: Array.isArray(core.blockLimits) ? core.blockLimits.map((limit) => cloneLimit(limit)) : []
@@ -1046,6 +1152,64 @@ function modifierFieldColumn({ title, fields, action, step = 0.01, dataAttrs = "
   `;
 }
 
+function frictionSegmentRows({ coreIndex, segments = [], action, removeAction }) {
+  return segments.map((segment, segmentIndex) => `
+    <div class="row wrap">
+      <label class="inline">StartSpeed <input data-action="${action}" data-c="${coreIndex}" data-f="${segmentIndex}" data-field="StartSpeed" class="small" type="number" step="0.01" value="${Number(segment.StartSpeed)}" /></label>
+      <label class="inline">EndSpeed <input data-action="${action}" data-c="${coreIndex}" data-f="${segmentIndex}" data-field="EndSpeed" class="small" type="number" step="0.01" value="${Number(segment.EndSpeed)}" /></label>
+      <label class="inline">StartDeceleration <input data-action="${action}" data-c="${coreIndex}" data-f="${segmentIndex}" data-field="StartDeceleration" class="small" type="number" step="0.01" value="${Number(segment.StartDeceleration)}" /></label>
+      <label class="inline">EndDeceleration <input data-action="${action}" data-c="${coreIndex}" data-f="${segmentIndex}" data-field="EndDeceleration" class="small" type="number" step="0.01" value="${Number(segment.EndDeceleration)}" /></label>
+      <button data-action="${removeAction}" data-c="${coreIndex}" data-f="${segmentIndex}">Remove</button>
+    </div>
+  `).join("");
+}
+
+function ensureAtmosphericFriction(speedModifiers) {
+  if (!speedModifiers.AtmosphericFriction) {
+    speedModifiers.AtmosphericFriction = cloneAtmosphericFriction(DEFAULT_ATMOSPHERIC_FRICTION);
+  }
+
+  return speedModifiers.AtmosphericFriction;
+}
+
+function speedModifierColumn({ coreIndex, modifiers }) {
+  const speedModifiers = cloneSpeedModifiers(modifiers);
+  const atmospheric = speedModifiers.AtmosphericFriction;
+
+  return `
+    <div class="modifier-column card">
+      <h5>Speed Modifiers</h5>
+      ${mapModifierFields(speedModifiers, DEFAULT_SPEED_MODIFIERS)
+        .map((field) => `<label class="modifier-field">${escapeXml(field.name)}<input data-action="core-modifier-speed" data-c="${coreIndex}" data-m="${field.name}" class="small" type="number" step="0.01" value="${field.value}" /></label>`)
+        .join("")}
+
+      <h5>Friction Curve</h5>
+      <button data-action="core-add-friction-segment" data-c="${coreIndex}">Add Segment</button>
+      ${frictionSegmentRows({
+        coreIndex,
+        segments: speedModifiers.FrictionCurve,
+        action: "core-friction-segment-field",
+        removeAction: "core-remove-friction-segment"
+      }) || `<p class="muted">No curve segments; legacy linear friction is used.</p>`}
+
+      <h5>Atmospheric Friction</h5>
+      <label class="inline">Enabled <input data-action="core-atmospheric-friction-enabled" data-c="${coreIndex}" type="checkbox" ${atmospheric ? "checked" : ""} /></label>
+      ${atmospheric ? `
+        <label class="modifier-field">CruiseFrictionMultiplier <input data-action="core-atmospheric-friction-field" data-c="${coreIndex}" data-field="CruiseFrictionMultiplier" class="small" type="number" step="0.01" value="${Number(atmospheric.CruiseFrictionMultiplier)}" /></label>
+        <label class="modifier-field">CruiseAccelerationThreshold <input data-action="core-atmospheric-friction-field" data-c="${coreIndex}" data-field="CruiseAccelerationThreshold" class="small" type="number" step="0.01" value="${Number(atmospheric.CruiseAccelerationThreshold)}" /></label>
+        <label class="modifier-field">AirDensityThreshold <input data-action="core-atmospheric-friction-field" data-c="${coreIndex}" data-field="AirDensityThreshold" class="small" type="number" step="0.01" value="${Number(atmospheric.AirDensityThreshold)}" /></label>
+        <button data-action="core-add-atmospheric-friction-segment" data-c="${coreIndex}">Add Atmos Segment</button>
+        ${frictionSegmentRows({
+          coreIndex,
+          segments: atmospheric.FrictionCurve,
+          action: "core-atmospheric-friction-segment-field",
+          removeAction: "core-remove-atmospheric-friction-segment"
+        }) || `<p class="muted">No atmospheric curve; normal friction curve is reused in atmosphere.</p>`}
+      ` : ""}
+    </div>
+  `;
+}
+
 function mapModifierFields(values, defaults) {
   return Object.keys(defaults).map((name) => ({
     name,
@@ -1167,11 +1331,9 @@ function renderShipCores() {
           dataAttrs: `data-c="${coreIndex}"`,
           fields: mapModifierFields(core.modifiers, DEFAULT_GRID_MODIFIERS)
         })}
-        ${modifierFieldColumn({
-          title: "Speed Modifiers",
-          action: "core-modifier-speed",
-          dataAttrs: `data-c="${coreIndex}"`,
-          fields: mapModifierFields(core.speedModifiers, DEFAULT_SPEED_MODIFIERS)
+        ${speedModifierColumn({
+          coreIndex,
+          modifiers: core.speedModifiers
         })}
         ${modifierFieldColumn({
           title: "Passive Defense Modifiers",
@@ -1398,7 +1560,7 @@ function parseCoreXml(text, originalFileName = "") {
       maxCount: numberOf(entryNode, "MaxCount", 0)
     })).filter((entry) => entry.subtypeId),
     modifiers: parseModifierNode(qsel(coreNode, "Modifiers"), DEFAULT_GRID_MODIFIERS),
-    speedModifiers: parseModifierNode(qsel(coreNode, "SpeedModifiers"), DEFAULT_SPEED_MODIFIERS),
+    speedModifiers: parseSpeedModifiersNode(childElement(coreNode, "SpeedModifiers")),
     passiveDefenseModifiers: parseModifierNode(qsel(coreNode, "PassiveDefenseModifiers"), DEFAULT_DEFENSE_MODIFIERS),
     activeDefenseModifiers: parseModifierNode(qsel(coreNode, "ActiveDefenseModifiers"), DEFAULT_DEFENSE_MODIFIERS),
     blockLimits: qselAll(coreNode, "BlockLimits").map((limitNode) => ({
@@ -1419,6 +1581,45 @@ function writeModifierXml(tag, values, defaults, indent = "  ") {
   return `${indent}<${tag}>\n${Object.keys(defaults)
     .map((name) => `${indent}  <${name}>${Number(values?.[name] ?? defaults[name])}</${name}>`)
     .join("\n")}\n${indent}</${tag}>`;
+}
+
+function writeFrictionCurveXml(segments = [], indent = "    ") {
+  const activeSegments = Array.isArray(segments) ? segments : [];
+  if (!activeSegments.length) return "";
+
+  return `${indent}<FrictionCurve>\n${activeSegments
+    .map((segment) => `${indent}  <Segment>\n${indent}    <StartSpeed>${Number(segment?.StartSpeed ?? 0)}</StartSpeed>\n${indent}    <EndSpeed>${Number(segment?.EndSpeed ?? 0)}</EndSpeed>\n${indent}    <StartDeceleration>${Number(segment?.StartDeceleration ?? 0)}</StartDeceleration>\n${indent}    <EndDeceleration>${Number(segment?.EndDeceleration ?? 0)}</EndDeceleration>\n${indent}  </Segment>`)
+    .join("\n")}\n${indent}</FrictionCurve>`;
+}
+
+function writeAtmosphericFrictionXml(settings, indent = "    ") {
+  if (!settings) return "";
+
+  const curveXml = writeFrictionCurveXml(settings.FrictionCurve, `${indent}  `);
+  return [
+    `${indent}<AtmosphericFriction>`,
+    `${indent}  <CruiseFrictionMultiplier>${Number(settings.CruiseFrictionMultiplier ?? DEFAULT_ATMOSPHERIC_FRICTION.CruiseFrictionMultiplier)}</CruiseFrictionMultiplier>`,
+    `${indent}  <CruiseAccelerationThreshold>${Number(settings.CruiseAccelerationThreshold ?? DEFAULT_ATMOSPHERIC_FRICTION.CruiseAccelerationThreshold)}</CruiseAccelerationThreshold>`,
+    `${indent}  <AirDensityThreshold>${Number(settings.AirDensityThreshold ?? DEFAULT_ATMOSPHERIC_FRICTION.AirDensityThreshold)}</AirDensityThreshold>`,
+    curveXml,
+    `${indent}</AtmosphericFriction>`
+  ].filter(Boolean).join("\n");
+}
+
+function writeSpeedModifiersXml(values, indent = "  ") {
+  const scalarXml = Object.keys(DEFAULT_SPEED_MODIFIERS)
+    .map((name) => `${indent}  <${name}>${Number(values?.[name] ?? DEFAULT_SPEED_MODIFIERS[name])}</${name}>`)
+    .join("\n");
+  const curveXml = writeFrictionCurveXml(values?.FrictionCurve, `${indent}  `);
+  const atmosphericXml = writeAtmosphericFrictionXml(values?.AtmosphericFriction, `${indent}  `);
+
+  return [
+    `${indent}<SpeedModifiers>`,
+    scalarXml,
+    curveXml,
+    atmosphericXml,
+    `${indent}</SpeedModifiers>`
+  ].filter(Boolean).join("\n");
 }
 
 function writeAllowedUpgradeModulesXml(entries = [], indent = "  ") {
@@ -1924,7 +2125,7 @@ function generateXml(options = {}) {
   const namedManifestGroups = getNamedManifestGroups();
 
   const noCore = state.noCoreCore
-    ? `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(state.noCoreCore.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(state.noCoreCore.uniqueName)}</UniqueName>\n  <ForceBroadCast>${state.noCoreCore.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${state.noCoreCore.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(state.noCoreCore.mobilityType)}</MobilityType>\n  <MaxBlocks>${state.noCoreCore.maxBlocks}</MaxBlocks>\n  <MinBlocks>${state.noCoreCore.minBlocks}</MinBlocks>\n  <MaxMass>${state.noCoreCore.maxMass}</MaxMass>\n  <MaxPCU>${state.noCoreCore.maxPcu}</MaxPCU>\n  <MaxBackupCores>${state.noCoreCore.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${state.noCoreCore.maxPerPlayer}</MaxPerPlayer>\n  <MaxPerFaction>${state.noCoreCore.maxPerFaction}</MaxPerFaction>\n  <FactionPlayersNeededPerCore>${state.noCoreCore.factionPlayersNeededPerCore}</FactionPlayersNeededPerCore>\n  <MinPlayers>${state.noCoreCore.minPerFaction}</MinPlayers>\n  <MaxPlayers>${state.noCoreCore.maxPlayers}</MaxPlayers>\n  <SpeedBoostEnabled>${state.noCoreCore.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(state.noCoreCore.speedLimitType)}</SpeedLimitType>\n  <SpeedOverrideMode>${escapeXml(state.noCoreCore.speedOverrideMode)}</SpeedOverrideMode>\n  <SpeedOverridePriority>${Number(state.noCoreCore.speedOverridePriority) || 0}</SpeedOverridePriority>\n  <EnableActiveDefenseModifiers>${state.noCoreCore.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeAllowedUpgradeModulesXml(state.noCoreCore.allowedUpgradeModules)}${state.noCoreCore.allowedUpgradeModules?.length ? "\n" : ""}${writeModifierXml("Modifiers", state.noCoreCore.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeModifierXml("SpeedModifiers", state.noCoreCore.speedModifiers, DEFAULT_SPEED_MODIFIERS)}\n${writeModifierXml("PassiveDefenseModifiers", state.noCoreCore.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", state.noCoreCore.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${state.noCoreCore.blockLimits
+    ? `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(state.noCoreCore.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(state.noCoreCore.uniqueName)}</UniqueName>\n  <ForceBroadCast>${state.noCoreCore.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${state.noCoreCore.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(state.noCoreCore.mobilityType)}</MobilityType>\n  <MaxBlocks>${state.noCoreCore.maxBlocks}</MaxBlocks>\n  <MinBlocks>${state.noCoreCore.minBlocks}</MinBlocks>\n  <MaxMass>${state.noCoreCore.maxMass}</MaxMass>\n  <MaxPCU>${state.noCoreCore.maxPcu}</MaxPCU>\n  <MaxBackupCores>${state.noCoreCore.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${state.noCoreCore.maxPerPlayer}</MaxPerPlayer>\n  <MaxPerFaction>${state.noCoreCore.maxPerFaction}</MaxPerFaction>\n  <FactionPlayersNeededPerCore>${state.noCoreCore.factionPlayersNeededPerCore}</FactionPlayersNeededPerCore>\n  <MinPlayers>${state.noCoreCore.minPerFaction}</MinPlayers>\n  <MaxPlayers>${state.noCoreCore.maxPlayers}</MaxPlayers>\n  <SpeedBoostEnabled>${state.noCoreCore.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(state.noCoreCore.speedLimitType)}</SpeedLimitType>\n  <SpeedOverrideMode>${escapeXml(state.noCoreCore.speedOverrideMode)}</SpeedOverrideMode>\n  <SpeedOverridePriority>${Number(state.noCoreCore.speedOverridePriority) || 0}</SpeedOverridePriority>\n  <EnableActiveDefenseModifiers>${state.noCoreCore.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeAllowedUpgradeModulesXml(state.noCoreCore.allowedUpgradeModules)}${state.noCoreCore.allowedUpgradeModules?.length ? "\n" : ""}${writeModifierXml("Modifiers", state.noCoreCore.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeSpeedModifiersXml(state.noCoreCore.speedModifiers)}\n${writeModifierXml("PassiveDefenseModifiers", state.noCoreCore.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", state.noCoreCore.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${state.noCoreCore.blockLimits
       .map((limit) => writeBlockLimitXml(limit))
       .join("\n")}\n</ShipCore>`
     : `${header}\n<ShipCore />`;
@@ -1945,7 +2146,7 @@ function generateXml(options = {}) {
     core,
     file: coreFilenames[coreIndex],
     outputPath: buildCoreOutputPath(core, coreFilenames[coreIndex]),
-    body: `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(core.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(core.uniqueName)}</UniqueName>\n  <ForceBroadCast>${core.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${core.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(core.mobilityType)}</MobilityType>\n  <MaxBlocks>${core.maxBlocks}</MaxBlocks>\n  <MinBlocks>${core.minBlocks}</MinBlocks>\n  <MaxMass>${core.maxMass}</MaxMass>\n  <MaxPCU>${core.maxPcu}</MaxPCU>\n  <MaxBackupCores>${core.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${core.maxPerPlayer}</MaxPerPlayer>\n  <MaxPerFaction>${core.maxPerFaction}</MaxPerFaction>\n  <FactionPlayersNeededPerCore>${core.factionPlayersNeededPerCore}</FactionPlayersNeededPerCore>\n  <MinPlayers>${core.minPerFaction}</MinPlayers>\n  <MaxPlayers>${core.maxPlayers}</MaxPlayers>\n  <SpeedBoostEnabled>${core.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(core.speedLimitType)}</SpeedLimitType>\n  <SpeedOverrideMode>${escapeXml(core.speedOverrideMode)}</SpeedOverrideMode>\n  <SpeedOverridePriority>${Number(core.speedOverridePriority) || 0}</SpeedOverridePriority>\n  <EnableActiveDefenseModifiers>${core.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeAllowedUpgradeModulesXml(core.allowedUpgradeModules)}${core.allowedUpgradeModules?.length ? "\n" : ""}${writeModifierXml("Modifiers", core.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeModifierXml("SpeedModifiers", core.speedModifiers, DEFAULT_SPEED_MODIFIERS)}\n${writeModifierXml("PassiveDefenseModifiers", core.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", core.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${core.blockLimits
+    body: `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(core.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(core.uniqueName)}</UniqueName>\n  <ForceBroadCast>${core.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${core.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(core.mobilityType)}</MobilityType>\n  <MaxBlocks>${core.maxBlocks}</MaxBlocks>\n  <MinBlocks>${core.minBlocks}</MinBlocks>\n  <MaxMass>${core.maxMass}</MaxMass>\n  <MaxPCU>${core.maxPcu}</MaxPCU>\n  <MaxBackupCores>${core.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${core.maxPerPlayer}</MaxPerPlayer>\n  <MaxPerFaction>${core.maxPerFaction}</MaxPerFaction>\n  <FactionPlayersNeededPerCore>${core.factionPlayersNeededPerCore}</FactionPlayersNeededPerCore>\n  <MinPlayers>${core.minPerFaction}</MinPlayers>\n  <MaxPlayers>${core.maxPlayers}</MaxPlayers>\n  <SpeedBoostEnabled>${core.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(core.speedLimitType)}</SpeedLimitType>\n  <SpeedOverrideMode>${escapeXml(core.speedOverrideMode)}</SpeedOverrideMode>\n  <SpeedOverridePriority>${Number(core.speedOverridePriority) || 0}</SpeedOverridePriority>\n  <EnableActiveDefenseModifiers>${core.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeAllowedUpgradeModulesXml(core.allowedUpgradeModules)}${core.allowedUpgradeModules?.length ? "\n" : ""}${writeModifierXml("Modifiers", core.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeSpeedModifiersXml(core.speedModifiers)}\n${writeModifierXml("PassiveDefenseModifiers", core.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", core.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${core.blockLimits
       .map((limit) => writeBlockLimitXml(limit))
       .join("\n")}\n</ShipCore>`
   }));
@@ -2006,6 +2207,7 @@ document.addEventListener("click", (event) => {
   const limitIndex = Number(target.dataset.l);
   const upgradeIndex = Number(target.dataset.u);
   const allowanceIndex = Number(target.dataset.au);
+  const frictionSegmentIndex = Number(target.dataset.f);
   const upgradeModifierIndex = Number(target.dataset.m);
   const blockLimitModifierIndex = Number(target.dataset.bm);
   const selectedCore = getCoreBySelectorIndex(coreIndex);
@@ -2153,6 +2355,22 @@ document.addEventListener("click", (event) => {
     selectedCore.allowedUpgradeModules.splice(allowanceIndex, 1);
     didMutate = true;
   }
+  if (action === "core-add-friction-segment" && selectedCore) {
+    selectedCore.speedModifiers.FrictionCurve.push(cloneFrictionSegment(DEFAULT_FRICTION_SEGMENT));
+    didMutate = true;
+  }
+  if (action === "core-remove-friction-segment" && selectedCore) {
+    selectedCore.speedModifiers.FrictionCurve.splice(frictionSegmentIndex, 1);
+    didMutate = true;
+  }
+  if (action === "core-add-atmospheric-friction-segment" && selectedCore) {
+    ensureAtmosphericFriction(selectedCore.speedModifiers).FrictionCurve.push(cloneFrictionSegment(DEFAULT_FRICTION_SEGMENT));
+    didMutate = true;
+  }
+  if (action === "core-remove-atmospheric-friction-segment" && selectedCore) {
+    ensureAtmosphericFriction(selectedCore.speedModifiers).FrictionCurve.splice(frictionSegmentIndex, 1);
+    didMutate = true;
+  }
   if (action === "add-upgrade-modifier" && selectedUpgrade) {
     selectedUpgrade.modifiers.push({ ...DEFAULT_UPGRADE_STAT_MODIFIER });
     didMutate = true;
@@ -2207,6 +2425,7 @@ document.addEventListener("input", (event) => {
   const limitIndex = Number(target.dataset.l);
   const upgradeIndex = Number(target.dataset.u);
   const allowanceIndex = Number(target.dataset.au);
+  const frictionSegmentIndex = Number(target.dataset.f);
   const upgradeModifierIndex = Number(target.dataset.m);
   const blockLimitModifierIndex = Number(target.dataset.bm);
   const capacityModifierIndex = Number(target.dataset.cm);
@@ -2247,6 +2466,15 @@ document.addEventListener("input", (event) => {
   if (action === "core-modifier-speed") selectedCore.speedModifiers[target.dataset.m] = Number(target.value || 0);
   if (action === "core-modifier-passive-defense") selectedCore.passiveDefenseModifiers[target.dataset.m] = Number(target.value || 0);
   if (action === "core-modifier-active-defense") selectedCore.activeDefenseModifiers[target.dataset.m] = Number(target.value || 0);
+  if (action === "core-friction-segment-field") {
+    selectedCore.speedModifiers.FrictionCurve[frictionSegmentIndex][target.dataset.field] = Number(target.value || 0);
+  }
+  if (action === "core-atmospheric-friction-field") {
+    ensureAtmosphericFriction(selectedCore.speedModifiers)[target.dataset.field] = Number(target.value || 0);
+  }
+  if (action === "core-atmospheric-friction-segment-field") {
+    ensureAtmosphericFriction(selectedCore.speedModifiers).FrictionCurve[frictionSegmentIndex][target.dataset.field] = Number(target.value || 0);
+  }
 
   if (action === "limit-name") {
     selectedCore.blockLimits[limitIndex].name = target.value;
@@ -2376,6 +2604,12 @@ document.addEventListener("change", (event) => {
   if (action === "core-fb" && inputElement) selectedCore.forceBroadcast = inputElement.checked;
   if (action === "core-mobility" && selectElement) selectedCore.mobilityType = selectElement.value;
   if (action === "core-speedboost" && inputElement) selectedCore.speedBoostEnabled = inputElement.checked;
+  if (action === "core-atmospheric-friction-enabled" && inputElement) {
+    selectedCore.speedModifiers.AtmosphericFriction = inputElement.checked
+      ? cloneAtmosphericFriction(DEFAULT_ATMOSPHERIC_FRICTION)
+      : null;
+    renderShipCores();
+  }
   if (action === "core-enable-active-defense" && inputElement) selectedCore.enableActiveDefenseModifiers = inputElement.checked;
   if (action === "core-speed-limit-type" && selectElement) selectedCore.speedLimitType = selectElement.value;
   if (action === "core-speed-override-mode" && selectElement) selectedCore.speedOverrideMode = selectElement.value;

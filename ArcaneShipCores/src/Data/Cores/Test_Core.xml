@@ -73,6 +73,23 @@
     <MinimumFrictionSpeedModifier>0.2</MinimumFrictionSpeedModifier>
     <MaximumFrictionSpeedModifier>0.7</MaximumFrictionSpeedModifier>
     <MaximumFrictionDeceleration>0.1</MaximumFrictionDeceleration>
+    <CruiseFrictionMultiplier>1</CruiseFrictionMultiplier>
+    <CruiseAccelerationThreshold>0.05</CruiseAccelerationThreshold>
+    <!-- With the default 300 m/s world speed and FrictionSpeedValueMode=Modifier, these breakpoints are 100, 200, and 300 m/s. -->
+    <FrictionCurve>
+      <Segment>
+        <StartSpeed>0.3333333</StartSpeed>
+        <EndSpeed>0.6666667</EndSpeed>
+        <StartDeceleration>20</StartDeceleration>
+        <EndDeceleration>20</EndDeceleration>
+      </Segment>
+      <Segment>
+        <StartSpeed>0.6666667</StartSpeed>
+        <EndSpeed>1</EndSpeed>
+        <StartDeceleration>60</StartDeceleration>
+        <EndDeceleration>60</EndDeceleration>
+      </Segment>
+    </FrictionCurve>
   </SpeedModifiers>
   <PassiveDefenseModifiers>
     <Bullet>0.5</Bullet>

@@ -246,7 +246,57 @@ All values are multipliers. `1` is neutral, below `1` reduces incoming damage, a
 | `MaximumFrictionSpeedAbsolute` | Friction max speed in m/s. | Used only when world `FrictionSpeedValueMode=Absolute`. |
 | `MinimumFrictionSpeedModifier` | Friction start speed as world-speed multiplier. | Used only when world `FrictionSpeedValueMode=Modifier`. |
 | `MaximumFrictionSpeedModifier` | Friction max speed as world-speed multiplier. | Used only when world `FrictionSpeedValueMode=Modifier`. |
-| `MaximumFrictionDeceleration` | Max friction deceleration in m/s². | Used by friction speed mode. |
+| `MaximumFrictionDeceleration` | Max friction deceleration in m/s². | Used by legacy linear friction when no `FrictionCurve` is configured. |
+| `CruiseFrictionMultiplier` | Multiplier applied to friction while the grid is above friction speed but not accelerating beyond the threshold. | Default `1`. Values below `1` make coasting decay slower. |
+| `CruiseAccelerationThreshold` | Acceleration threshold in m/s² for cruise friction detection. | Default `0.05`. |
+| `FrictionCurve` | Optional ordered list of friction curve `Segment` entries. | If missing, the old linear curve is synthesized from the min/max friction fields and `MaximumFrictionDeceleration`. Segment speeds use the world `FrictionSpeedValueMode`. |
+| `AtmosphericFriction` | Optional atmosphere-only override profile. | When present and local air density is above `AirDensityThreshold`, its curve/cruise fields override normal friction. Outside atmosphere, normal friction is used. |
+
+`FrictionCurve` segment fields:
+
+| Tag | Meaning |
+| --- | --- |
+| `StartSpeed` | Segment start speed. Interpreted as m/s in `Absolute` mode or as a world max-speed multiplier in `Modifier` mode. |
+| `EndSpeed` | Segment end speed. Interpreted the same way as `StartSpeed`. Above the last segment, the last segment's `EndDeceleration` continues. |
+| `StartDeceleration` | Deceleration in m/s² at `StartSpeed`. |
+| `EndDeceleration` | Deceleration in m/s² at `EndSpeed`. |
+
+Example absolute-speed curve with 20 m/s² from 100-200 m/s and 60 m/s² from 200 m/s upward:
+
+```xml
+<SpeedModifiers>
+  <MaxSpeed>1</MaxSpeed>
+  <MaxBoost>1</MaxBoost>
+  <BoostDuration>10</BoostDuration>
+  <BoostCoolDown>60</BoostCoolDown>
+  <MinimumFrictionSpeedAbsolute>100</MinimumFrictionSpeedAbsolute>
+  <MaximumFrictionSpeedAbsolute>300</MaximumFrictionSpeedAbsolute>
+  <MinimumFrictionSpeedModifier>0.3</MinimumFrictionSpeedModifier>
+  <MaximumFrictionSpeedModifier>1</MaximumFrictionSpeedModifier>
+  <MaximumFrictionDeceleration>1</MaximumFrictionDeceleration>
+  <CruiseFrictionMultiplier>0.25</CruiseFrictionMultiplier>
+  <CruiseAccelerationThreshold>0.05</CruiseAccelerationThreshold>
+  <FrictionCurve>
+    <Segment>
+      <StartSpeed>100</StartSpeed>
+      <EndSpeed>200</EndSpeed>
+      <StartDeceleration>20</StartDeceleration>
+      <EndDeceleration>20</EndDeceleration>
+    </Segment>
+    <Segment>
+      <StartSpeed>200</StartSpeed>
+      <EndSpeed>300</EndSpeed>
+      <StartDeceleration>60</StartDeceleration>
+      <EndDeceleration>60</EndDeceleration>
+    </Segment>
+  </FrictionCurve>
+  <AtmosphericFriction>
+    <CruiseFrictionMultiplier>1</CruiseFrictionMultiplier>
+    <CruiseAccelerationThreshold>0.05</CruiseAccelerationThreshold>
+    <AirDensityThreshold>0.05</AirDensityThreshold>
+  </AtmosphericFriction>
+</SpeedModifiers>
+```
 
 ### Active defense fields
 
@@ -328,6 +378,11 @@ Speed stats:
 - `MinimumFrictionSpeedModifier`
 - `MaximumFrictionSpeedModifier`
 - `MaximumFrictionDeceleration`
+- `CruiseFrictionMultiplier`
+- `CruiseAccelerationThreshold`
+- `AtmosphericCruiseFrictionMultiplier`
+- `AtmosphericCruiseAccelerationThreshold`
+- `AtmosphericAirDensityThreshold`
 
 Defense stats:
 

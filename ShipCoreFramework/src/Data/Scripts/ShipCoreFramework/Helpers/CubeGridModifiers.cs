@@ -163,6 +163,24 @@ namespace ShipCoreFramework
                         case "MaximumFrictionDeceleration":
                             modifiers.MaximumFrictionDeceleration = ApplyUpgradeModifier(modifiers.MaximumFrictionDeceleration, modifier.Value, modifier.ModifierType);
                             break;
+                        case "CruiseFrictionMultiplier":
+                            modifiers.CruiseFrictionMultiplier = ApplyUpgradeModifier(modifiers.CruiseFrictionMultiplier, modifier.Value, modifier.ModifierType);
+                            break;
+                        case "CruiseAccelerationThreshold":
+                            modifiers.CruiseAccelerationThreshold = ApplyUpgradeModifier(modifiers.CruiseAccelerationThreshold, modifier.Value, modifier.ModifierType);
+                            break;
+                        case "AtmosphericCruiseFrictionMultiplier":
+                            EnsureAtmosphericFrictionSettings(modifiers);
+                            modifiers.AtmosphericFriction.CruiseFrictionMultiplier = ApplyUpgradeModifier(modifiers.AtmosphericFriction.CruiseFrictionMultiplier, modifier.Value, modifier.ModifierType);
+                            break;
+                        case "AtmosphericCruiseAccelerationThreshold":
+                            EnsureAtmosphericFrictionSettings(modifiers);
+                            modifiers.AtmosphericFriction.CruiseAccelerationThreshold = ApplyUpgradeModifier(modifiers.AtmosphericFriction.CruiseAccelerationThreshold, modifier.Value, modifier.ModifierType);
+                            break;
+                        case "AtmosphericAirDensityThreshold":
+                            EnsureAtmosphericFrictionSettings(modifiers);
+                            modifiers.AtmosphericFriction.AirDensityThreshold = ApplyUpgradeModifier(modifiers.AtmosphericFriction.AirDensityThreshold, modifier.Value, modifier.ModifierType);
+                            break;
                     }
                 }
             }
@@ -283,7 +301,56 @@ namespace ShipCoreFramework
                 MaximumFrictionSpeedAbsolute = modifiers.MaximumFrictionSpeedAbsolute,
                 MinimumFrictionSpeedModifier = modifiers.MinimumFrictionSpeedModifier,
                 MaximumFrictionSpeedModifier = modifiers.MaximumFrictionSpeedModifier,
-                MaximumFrictionDeceleration = modifiers.MaximumFrictionDeceleration
+                MaximumFrictionDeceleration = modifiers.MaximumFrictionDeceleration,
+                CruiseFrictionMultiplier = modifiers.CruiseFrictionMultiplier,
+                CruiseAccelerationThreshold = modifiers.CruiseAccelerationThreshold,
+                FrictionCurve = Clone(modifiers.FrictionCurve),
+                AtmosphericFriction = Clone(modifiers.AtmosphericFriction)
+            };
+        }
+
+        private static void EnsureAtmosphericFrictionSettings(SpeedModifiers modifiers)
+        {
+            if (modifiers.AtmosphericFriction == null)
+                modifiers.AtmosphericFriction = new AtmosphericFrictionSettings();
+        }
+
+        private static FrictionCurve Clone(FrictionCurve curve)
+        {
+            if (curve == null) return null;
+
+            var sourceSegments = curve.Segments ?? new FrictionCurveSegment[0];
+            var segments = new FrictionCurveSegment[sourceSegments.Length];
+            for (var i = 0; i < sourceSegments.Length; i++)
+            {
+                var source = sourceSegments[i];
+                if (source == null) continue;
+
+                segments[i] = new FrictionCurveSegment
+                {
+                    StartSpeed = source.StartSpeed,
+                    EndSpeed = source.EndSpeed,
+                    StartDeceleration = source.StartDeceleration,
+                    EndDeceleration = source.EndDeceleration
+                };
+            }
+
+            return new FrictionCurve
+            {
+                Segments = segments
+            };
+        }
+
+        private static AtmosphericFrictionSettings Clone(AtmosphericFrictionSettings settings)
+        {
+            if (settings == null) return null;
+
+            return new AtmosphericFrictionSettings
+            {
+                FrictionCurve = Clone(settings.FrictionCurve),
+                CruiseFrictionMultiplier = settings.CruiseFrictionMultiplier,
+                CruiseAccelerationThreshold = settings.CruiseAccelerationThreshold,
+                AirDensityThreshold = settings.AirDensityThreshold
             };
         }
 

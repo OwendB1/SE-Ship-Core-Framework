@@ -908,7 +908,11 @@ namespace ShipCoreFramework
                         MaximumFrictionSpeedAbsolute = 0f,
                         MaximumFrictionDeceleration = 0f,
                         MinimumFrictionSpeedModifier = 0f,
-                        MaximumFrictionSpeedModifier = 0f
+                        MaximumFrictionSpeedModifier = 0f,
+                        FrictionCurve = Array.Empty<FrictionCurveSegmentData>(),
+                        CruiseFrictionMultiplier = 1f,
+                        CruiseAccelerationThreshold = 0.05f,
+                        AtmosphericFriction = null
                     },
                     ManifestGroupNames = Array.Empty<string>(),
                     ConnectorBlacklistCoreSubtypeIds = Array.Empty<string>(),
@@ -1296,7 +1300,11 @@ namespace ShipCoreFramework
                     MaximumFrictionSpeedAbsolute = 0f,
                     MaximumFrictionDeceleration = 0f,
                     MinimumFrictionSpeedModifier = 0f,
-                    MaximumFrictionSpeedModifier = 0f
+                    MaximumFrictionSpeedModifier = 0f,
+                    FrictionCurve = Array.Empty<FrictionCurveSegmentData>(),
+                    CruiseFrictionMultiplier = 1f,
+                    CruiseAccelerationThreshold = 0.05f,
+                    AtmosphericFriction = null
                 };
             }
 
@@ -1311,7 +1319,47 @@ namespace ShipCoreFramework
                 MaximumFrictionSpeedAbsolute = modifiers.MaximumFrictionSpeedAbsolute,
                 MaximumFrictionDeceleration = modifiers.MaximumFrictionDeceleration,
                 MinimumFrictionSpeedModifier = modifiers.MinimumFrictionSpeedModifier,
-                MaximumFrictionSpeedModifier = modifiers.MaximumFrictionSpeedModifier
+                MaximumFrictionSpeedModifier = modifiers.MaximumFrictionSpeedModifier,
+                FrictionCurve = ConvertToFrictionCurveData(modifiers.FrictionCurve),
+                CruiseFrictionMultiplier = modifiers.CruiseFrictionMultiplier,
+                CruiseAccelerationThreshold = modifiers.CruiseAccelerationThreshold,
+                AtmosphericFriction = ConvertToAtmosphericFrictionData(modifiers.AtmosphericFriction)
+            };
+        }
+
+        private static FrictionCurveSegmentData[] ConvertToFrictionCurveData(FrictionCurve curve)
+        {
+            if (curve == null || curve.Segments == null || curve.Segments.Length == 0)
+                return Array.Empty<FrictionCurveSegmentData>();
+
+            var segments = new List<FrictionCurveSegmentData>();
+            for (var i = 0; i < curve.Segments.Length; i++)
+            {
+                var segment = curve.Segments[i];
+                if (segment == null) continue;
+
+                segments.Add(new FrictionCurveSegmentData
+                {
+                    StartSpeed = segment.StartSpeed,
+                    EndSpeed = segment.EndSpeed,
+                    StartDeceleration = segment.StartDeceleration,
+                    EndDeceleration = segment.EndDeceleration
+                });
+            }
+
+            return segments.ToArray();
+        }
+
+        private static AtmosphericFrictionData ConvertToAtmosphericFrictionData(AtmosphericFrictionSettings settings)
+        {
+            if (settings == null) return null;
+
+            return new AtmosphericFrictionData
+            {
+                FrictionCurve = ConvertToFrictionCurveData(settings.FrictionCurve),
+                CruiseFrictionMultiplier = settings.CruiseFrictionMultiplier,
+                CruiseAccelerationThreshold = settings.CruiseAccelerationThreshold,
+                AirDensityThreshold = settings.AirDensityThreshold
             };
         }
 

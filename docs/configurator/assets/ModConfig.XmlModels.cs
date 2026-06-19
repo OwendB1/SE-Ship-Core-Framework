@@ -330,6 +330,87 @@ namespace ShipCoreFramework
 
         [XmlElement("MaximumFrictionDeceleration")]
         public float MaximumFrictionDeceleration = 1f;
+
+        [XmlElement("CruiseFrictionMultiplier")]
+        public float CruiseFrictionMultiplier = 1f;
+
+        [XmlElement("CruiseAccelerationThreshold")]
+        public float CruiseAccelerationThreshold = 0.05f;
+
+        [XmlElement("FrictionCurve")]
+        public FrictionCurve FrictionCurve;
+
+        [XmlElement("AtmosphericFriction")]
+        public AtmosphericFrictionSettings AtmosphericFriction;
+
+        public bool ShouldSerializeFrictionCurve()
+        {
+            return FrictionCurve != null && FrictionCurve.HasSegments();
+        }
+
+        public bool ShouldSerializeAtmosphericFriction()
+        {
+            return AtmosphericFriction != null && AtmosphericFriction.HasSettings();
+        }
+    }
+
+    [XmlRoot("FrictionCurve")]
+    public class FrictionCurve
+    {
+        [XmlElement("Segment")]
+        public FrictionCurveSegment[] Segments = Array.Empty<FrictionCurveSegment>();
+
+        public bool HasSegments()
+        {
+            if (Segments == null) return false;
+
+            for (var i = 0; i < Segments.Length; i++)
+            {
+                if (Segments[i] != null) return true;
+            }
+
+            return false;
+        }
+    }
+
+    [XmlRoot("Segment")]
+    public class FrictionCurveSegment
+    {
+        [XmlElement("StartSpeed")]
+        public float StartSpeed;
+
+        [XmlElement("EndSpeed")]
+        public float EndSpeed;
+
+        [XmlElement("StartDeceleration")]
+        public float StartDeceleration;
+
+        [XmlElement("EndDeceleration")]
+        public float EndDeceleration;
+    }
+
+    [XmlRoot("AtmosphericFriction")]
+    public class AtmosphericFrictionSettings
+    {
+        [XmlElement("FrictionCurve")]
+        public FrictionCurve FrictionCurve;
+
+        [XmlElement("CruiseFrictionMultiplier")]
+        public float CruiseFrictionMultiplier = 1f;
+
+        [XmlElement("CruiseAccelerationThreshold")]
+        public float CruiseAccelerationThreshold = 0.05f;
+
+        [XmlElement("AirDensityThreshold")]
+        public float AirDensityThreshold = 0.05f;
+
+        public bool HasSettings()
+        {
+            return FrictionCurve != null && FrictionCurve.HasSegments()
+                   || CruiseFrictionMultiplier != 1f
+                   || CruiseAccelerationThreshold != 0.05f
+                   || AirDensityThreshold != 0.05f;
+        }
     }
 
     [XmlRoot("GridModifiers")]

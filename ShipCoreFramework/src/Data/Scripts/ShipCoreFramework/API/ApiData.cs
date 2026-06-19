@@ -32,7 +32,7 @@ namespace ShipCoreFramework
         /// Increment when you add functionality in a backwards compatible way.
         /// Minor version changes remain compatible as long as the major version matches.
         /// </summary>
-        public const int API_MINOR = 7;
+        public const int API_MINOR = 8;
 
         /// <summary>
         /// Encoded API version (Major.Minor) packed into a single int.
@@ -508,6 +508,28 @@ namespace ShipCoreFramework
         [ProtoMember(8)] public float MaximumFrictionDeceleration;
         [ProtoMember(9)] public float MinimumFrictionSpeedModifier;
         [ProtoMember(10)] public float MaximumFrictionSpeedModifier;
+        [ProtoMember(11)] public FrictionCurveSegmentData[] FrictionCurve = Array.Empty<FrictionCurveSegmentData>();
+        [ProtoMember(12)] public float CruiseFrictionMultiplier;
+        [ProtoMember(13)] public float CruiseAccelerationThreshold;
+        [ProtoMember(14)] public AtmosphericFrictionData AtmosphericFriction;
+    }
+
+    [ProtoContract]
+    public class FrictionCurveSegmentData
+    {
+        [ProtoMember(1)] public float StartSpeed;
+        [ProtoMember(2)] public float EndSpeed;
+        [ProtoMember(3)] public float StartDeceleration;
+        [ProtoMember(4)] public float EndDeceleration;
+    }
+
+    [ProtoContract]
+    public class AtmosphericFrictionData
+    {
+        [ProtoMember(1)] public FrictionCurveSegmentData[] FrictionCurve = Array.Empty<FrictionCurveSegmentData>();
+        [ProtoMember(2)] public float CruiseFrictionMultiplier;
+        [ProtoMember(3)] public float CruiseAccelerationThreshold;
+        [ProtoMember(4)] public float AirDensityThreshold;
     }
 
     /// <summary>
