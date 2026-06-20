@@ -79,6 +79,12 @@ namespace ShipCoreFramework
 
         private void RefreshLimitedBlockPunishmentState()
         {
+            if (Deactivated || IsIgnoredByAiOrFactionTagThreadSafe())
+            {
+                PunishLimitedBlocks = false;
+                return;
+            }
+
             PunishLimitedBlocks = IsMinimumBlocksLimitedBlockGateTriggered() || HasConnectedBlacklistedLargerGroup();
         }
 
@@ -97,12 +103,12 @@ namespace ShipCoreFramework
 
         internal bool ShouldForceLimitedBlocksOff()
         {
-            return PunishLimitedBlocks;
+            return !Deactivated && !IsIgnoredGroup() && PunishLimitedBlocks;
         }
 
         internal bool ShouldForceLimitedBlocksOff(BlockLimit limit)
         {
-            return PunishLimitedBlocks && (limit == null || !limit.IsCriticalLimit);
+            return ShouldForceLimitedBlocksOff() && (limit == null || !limit.IsCriticalLimit);
         }
 
         internal void ScheduleExternalLimitValidation()
@@ -142,7 +148,7 @@ namespace ShipCoreFramework
 
         internal void RunLimitedBlockPunishmentTick()
         {
-            if (_closing)
+            if (_closing || Deactivated || IsIgnoredGroup())
             {
                 _nextMinimumBlocksGateCheckTick = 0;
                 PunishLimitedBlocks = false;
@@ -231,10 +237,11 @@ namespace ShipCoreFramework
 
         private void EnforceGroupPunishment(bool forceShutOffPunishment = false)
         {
-            if (IsIgnoredGroup()) return;
+            if (Deactivated || IsIgnoredGroup()) return;
 
             if (Session.IsGameThread) RefreshPunishmentFlags();
 
+            var directionReferenceBlock = GetDirectionLockReferenceBlock();
             var pendingPunishments = new List<PendingBlockPunishment>();
             foreach (var kv in Limits)
             {
@@ -266,27 +273,27 @@ namespace ShipCoreFramework
                     continue;
                 }
 
-                var effectiveMaxCount = GetEffectiveMaxCount(limit);
-                if (total <= effectiveMaxCount) continue;
-
-                var over = total - effectiveMaxCount;
                 var candidates = new List<KeyValuePair<IMySlimBlock, double>>(membersCopy.Count);
 
                 foreach (var block in membersCopy)
                 {
                     if (block == null || block.IsMovedBySplit || block.CubeGrid == null) continue;
 
-                    if (limit.AllowedDirections != null && MainCoreComponent?.CoreBlock != null)
-                        if (!IsValidDirection(MainCoreComponent.CoreBlock, block, limit.AllowedDirections))
-                        {
-                            pendingPunishments.Add(new PendingBlockPunishment(block, limit.PunishmentType));
-                            continue;
-                        }
+                    if (DoesBlockViolateAllowedDirection(directionReferenceBlock, limit, block))
+                    {
+                        NotifyDirectionalPlacementViolation(directionReferenceBlock, block);
+                        pendingPunishments.Add(new PendingBlockPunishment(block, limit.PunishmentType));
+                        continue;
+                    }
 
                     var weight = limit.GetWeight(GridComponent.KeyOf(block));
                     if (weight > 0d) candidates.Add(new KeyValuePair<IMySlimBlock, double>(block, weight));
                 }
 
+                var effectiveMaxCount = GetEffectiveMaxCount(limit);
+                if (total <= effectiveMaxCount) continue;
+
+                var over = total - effectiveMaxCount;
                 candidates.Sort((a, b) => a.Value.CompareTo(b.Value));
 
                 foreach (var candidate in candidates)
@@ -300,6 +307,40 @@ namespace ShipCoreFramework
             }
 
             ExecutePendingPunishments(pendingPunishments);
+        }
+
+        internal bool DoesBlockViolateAllowedDirection(BlockLimit limit, IMySlimBlock block)
+        {
+            return DoesBlockViolateAllowedDirection(GetDirectionLockReferenceBlock(), limit, block);
+        }
+
+        private static bool DoesBlockViolateAllowedDirection(IMyCubeBlock directionReferenceBlock, BlockLimit limit,
+            IMySlimBlock block)
+        {
+            return limit?.AllowedDirections != null &&
+                   directionReferenceBlock != null &&
+                   !IsValidDirection(directionReferenceBlock, block, limit.AllowedDirections, false);
+        }
+
+        private void NotifyDirectionalPlacementViolation(IMyCubeBlock directionReferenceBlock, IMySlimBlock block)
+        {
+            if (directionReferenceBlock == null || block == null) return;
+
+            var playerId = directionReferenceBlock.SlimBlock.BuiltBy;
+            var terminalBlock = directionReferenceBlock as IMyTerminalBlock;
+            if (playerId == 0 && terminalBlock != null) playerId = terminalBlock.OwnerId;
+
+            var mainCoreBlock = MainCoreComponent?.CoreBlock;
+            var controller = directionReferenceBlock as IMyShipController;
+            var referenceName = ReferenceEquals(mainCoreBlock, directionReferenceBlock)
+                ? "Core"
+                : controller != null && controller.IsMainCockpit
+                    ? "Main cockpit"
+                    : "Cockpit";
+
+            Utils.ShowNotification(
+                referenceName + " orientation violates directional locking for " + Utils.GetLocalizedBlockName(block),
+                playerId);
         }
 
         // Selection work can stay off-thread; block state mutation must run on game thread.
@@ -515,18 +556,18 @@ namespace ShipCoreFramework
             return true;
         }
 
-        internal static bool IsValidDirection(IMyCubeBlock myCore, IMySlimBlock block,
-            List<DirectionType> allowedDirections)
+        internal static bool IsValidDirection(IMyCubeBlock directionReferenceBlock, IMySlimBlock block,
+            List<DirectionType> allowedDirections, bool showNotification = true)
         {
-            if (myCore?.Orientation == null || block?.Orientation == null || allowedDirections == null ||
+            if (directionReferenceBlock?.Orientation == null || block?.Orientation == null || allowedDirections == null ||
                 allowedDirections.Count == 0)
                 return true;
 
-            if (myCore.CubeGrid != block.CubeGrid)
+            if (directionReferenceBlock.CubeGrid != block.CubeGrid)
                 return Session.Config != null && !Session.Config.BlockDirectionalPlacementOnSubgrids;
 
-            var coreFDir = myCore.Orientation.Forward;
-            var coreUDir = myCore.Orientation.Up;
+            var coreFDir = directionReferenceBlock.Orientation.Forward;
+            var coreUDir = directionReferenceBlock.Orientation.Up;
 
             var f = Base6Directions.GetVector(coreFDir);
             var u = Base6Directions.GetVector(coreUDir);
@@ -547,10 +588,10 @@ namespace ShipCoreFramework
                 DirectionType.Down;
 
             var isValid = allowedDirections.Contains(xyDirection);
-            if (!isValid)
+            if (!isValid && showNotification)
                 Utils.ShowNotification(
                     Utils.GetLocalizedBlockName(block) + ": the direction " + xyDirection + " is invalid",
-                    myCore.SlimBlock.BuiltBy);
+                    directionReferenceBlock.SlimBlock.BuiltBy);
 
             return isValid;
         }

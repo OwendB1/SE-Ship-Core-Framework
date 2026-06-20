@@ -11,6 +11,14 @@ namespace ShipCoreFramework
             return GridDictionary.Values.SelectMany(gridComponent => gridComponent.GetUpgradeModuleComponentsCopy());
         }
 
+        private static void MarkInvalidUpgradeModule(Dictionary<UpgradeModuleComponent, string> invalidModules,
+            UpgradeModuleComponent module, string reason)
+        {
+            if (invalidModules == null || module == null) return;
+            if (!invalidModules.ContainsKey(module))
+                invalidModules[module] = reason;
+        }
+
         private IEnumerable<UpgradeModuleComponent> GetMainCoreUpgradeModules(bool requireFunctionalForEffects)
         {
             var mainCore = MainCoreComponent;
@@ -100,10 +108,22 @@ namespace ShipCoreFramework
         private void RefreshGroupStateAndEnforce()
         {
             RefreshUpgradeModules();
+
+            if (Deactivated || IsIgnoredByAiOrFactionTagThreadSafe())
+            {
+                ClearDeactivatedLimitState();
+                RefreshModifierStateCache();
+                ApplyModifiers(Modifiers);
+                DefenseValuesChanged();
+                return;
+            }
+
             RebuildConnectorPunishmentLinks();
             RefreshMinimumBlocksLimitedBlockGateState();
             RefreshLimitedBlockPunishmentState();
             RefreshPunishmentState();
+            RefreshGridStateCache();
+            RefreshNoCoreDirectionLockReferenceCache();
             RefreshModifierStateCache();
             ApplyModifiers(Modifiers);
             DefenseValuesChanged();
@@ -122,7 +142,15 @@ namespace ShipCoreFramework
             var modules = GetUpgradeModules().OrderBy(module => module.ModuleBlock.EntityId).ToList();
             foreach (var module in modules) module.RefreshParentCore();
 
-            var invalidModules = new List<UpgradeModuleComponent>();
+            var invalidModules = new Dictionary<UpgradeModuleComponent, string>();
+            var coredNotAllowedReason = "This upgrade module is not allowed for this core.";
+            var coredOverflowReason = "This upgrade module exceeds the allowed amount for this core.";
+            var noCoreNotAllowedReason = "This upgrade module is not allowed for this no-core profile.";
+            var noCoreOverflowReason = "This upgrade module exceeds the allowed amount for this no-core profile.";
+
+            if (MainCoreComponent != null)
+                foreach (var module in modules.Where(module => module.ParentCoreComponent == null))
+                    MarkInvalidUpgradeModule(invalidModules, module, coredNotAllowedReason);
 
             foreach (var perCoreModules in modules
                          .Where(module => module.ParentCoreComponent != null)
@@ -132,7 +160,8 @@ namespace ShipCoreFramework
                 var shipCore = Session.Config.GetShipCoreByTypeId(core.SubtypeId);
                 if (shipCore == null)
                 {
-                    invalidModules.AddRange(perCoreModules);
+                    foreach (var module in perCoreModules)
+                        MarkInvalidUpgradeModule(invalidModules, module, coredNotAllowedReason);
                     continue;
                 }
 
@@ -148,14 +177,16 @@ namespace ShipCoreFramework
                             out maxAllowed) ||
                         maxAllowed <= 0)
                     {
-                        invalidModules.AddRange(definitionGroup);
+                        foreach (var module in definitionGroup)
+                            MarkInvalidUpgradeModule(invalidModules, module, coredNotAllowedReason);
                         continue;
                     }
 
                     var overflow = definitionGroup
                         .OrderBy(module => module.ModuleBlock.EntityId)
                         .Skip(maxAllowed);
-                    invalidModules.AddRange(overflow);
+                    foreach (var module in overflow)
+                        MarkInvalidUpgradeModule(invalidModules, module, coredOverflowReason);
                 }
             }
 
@@ -179,23 +210,21 @@ namespace ShipCoreFramework
                             out maxAllowed) ||
                         maxAllowed <= 0)
                     {
-                        invalidModules.AddRange(definitionGroup);
+                        foreach (var module in definitionGroup)
+                            MarkInvalidUpgradeModule(invalidModules, module, noCoreNotAllowedReason);
                         continue;
                     }
 
                     var overflow = definitionGroup
                         .OrderBy(module => module.ModuleBlock.EntityId)
                         .Skip(maxAllowed);
-                    invalidModules.AddRange(overflow);
+                    foreach (var module in overflow)
+                        MarkInvalidUpgradeModule(invalidModules, module, noCoreOverflowReason);
                 }
             }
 
-            var reason = MainCoreComponent == null && !Deactivated
-                ? "This upgrade module exceeds the allowed amount for this no-core profile."
-                : "This upgrade module exceeds the allowed amount for this core.";
-
-            foreach (var invalidModule in invalidModules.Distinct())
-                invalidModule.RemoveInvalidModule(reason);
+            foreach (var invalidModule in invalidModules)
+                invalidModule.Key.RemoveInvalidModule(invalidModule.Value);
         }
     }
 }

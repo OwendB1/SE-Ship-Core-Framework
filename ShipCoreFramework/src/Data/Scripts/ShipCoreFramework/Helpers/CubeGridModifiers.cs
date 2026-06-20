@@ -76,6 +76,10 @@ namespace ShipCoreFramework
 
         internal static GridModifiers GetActiveModifiers(GroupComponent groupComponent)
         {
+            if (groupComponent == null || groupComponent.Deactivated ||
+                groupComponent.IsIgnoredByAiOrFactionTagThreadSafe())
+                return new GridModifiers();
+
             if (groupComponent.PunishModifiers) return Session.Config.SelectedNoCore.Modifiers;
             var shipCore = groupComponent.ShipCore;
 
@@ -125,6 +129,10 @@ namespace ShipCoreFramework
         
         internal static SpeedModifiers GetActiveSpeedModifiers(GroupComponent groupComponent)
         {
+            if (groupComponent == null || groupComponent.Deactivated ||
+                groupComponent.IsIgnoredByAiOrFactionTagThreadSafe())
+                return new SpeedModifiers();
+
             var shipCore = groupComponent.ShipCore;
             var modifiers = Clone(shipCore.SpeedModifiers);
             foreach (var module in groupComponent.GetEffectiveUpgradeModules(true))

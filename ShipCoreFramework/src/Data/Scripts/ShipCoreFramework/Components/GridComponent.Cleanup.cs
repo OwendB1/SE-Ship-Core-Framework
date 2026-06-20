@@ -29,6 +29,9 @@ namespace ShipCoreFramework
                 var func = fatBlock as IMyFunctionalBlock;
                 if (func != null) func.EnabledChanged -= FuncBlockOnEnabledChanged;
 
+                var shipController = fatBlock as IMyShipController;
+                if (shipController != null) shipController.PropertiesChanged -= ShipControllerOnPropertiesChanged;
+
                 var connector = fatBlock as IMyShipConnector;
                 if (connector == null) continue;
                 

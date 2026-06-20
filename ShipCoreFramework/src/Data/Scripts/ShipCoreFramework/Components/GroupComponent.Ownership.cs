@@ -141,6 +141,11 @@ namespace ShipCoreFramework
                    Session.Config.IgnoredFactionTags.Contains(faction.Tag);
         }
 
+        internal bool IsIgnoredByAiOrFactionTagThreadSafe()
+        {
+            return Session.IsGameThread ? IsIgnoredByAiOrFactionTag() : GetCachedIsIgnoredByAiOrFactionTag();
+        }
+
         private long GetRepresentativeGridId()
         {
             if (!Session.IsGameThread)

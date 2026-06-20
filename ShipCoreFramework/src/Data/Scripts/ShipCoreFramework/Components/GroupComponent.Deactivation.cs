@@ -8,30 +8,44 @@ namespace ShipCoreFramework
     {
         internal void InitializeDeactivationState()
         {
-            _wasIgnoredGroup = IsIgnoredGroup();
+            _wasIgnoredGroup = ShouldDeactivateForIgnoredState();
             _ignoredStateInitialized = true;
+            if (_wasIgnoredGroup && !Deactivated)
+                Deactivate("Group initialized in an ignored state.");
         }
 
         internal void UpdateDeactivationState()
         {
             if (_closing) return;
 
-            var isIgnored = IsIgnoredGroup();
+            var isIgnored = ShouldDeactivateForIgnoredState();
             if (!_ignoredStateInitialized)
             {
                 _wasIgnoredGroup = isIgnored;
                 _ignoredStateInitialized = true;
+                if (isIgnored && !Deactivated)
+                    QueueDeactivate("Group initialized in an ignored state.");
                 return;
             }
 
             if (!Deactivated && isIgnored && !_wasIgnoredGroup)
-                MyAPIGateway.Utilities.InvokeOnGameThread(() =>
-                {
-                    if (_closing || Deactivated) return;
-                    Deactivate("Group entered an ignored state.");
-                });
+                QueueDeactivate("Group entered an ignored state.");
 
             _wasIgnoredGroup = isIgnored;
+        }
+
+        private bool ShouldDeactivateForIgnoredState()
+        {
+            return IsIgnoredByAiOrFactionTagThreadSafe();
+        }
+
+        private void QueueDeactivate(string reason)
+        {
+            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+            {
+                if (_closing || Deactivated) return;
+                Deactivate(reason);
+            });
         }
 
         private void Deactivate(string reason = null)
@@ -48,6 +62,7 @@ namespace ShipCoreFramework
             }
 
             Deactivated = true;
+            ClearDeactivatedLimitState();
 
             var representativeGrid = GridDictionary.Keys.FirstOrDefault();
             var gridName = representativeGrid == null ? "Unknown Grid" : ((IMyCubeGrid)representativeGrid).CustomName;
@@ -56,6 +71,8 @@ namespace ShipCoreFramework
 
             foreach (var core in CoreDictionary.Values)
                 core.IsMainCore = false;
+
+            ApplyModifiers(new GridModifiers());
 
             if (MainCoreComponent != null)
             {
@@ -68,6 +85,19 @@ namespace ShipCoreFramework
 
             if (_closing || !Session.HasStarted || Session.IsShuttingDown) return;
             OnUpgradeModulesChanged();
+        }
+
+        private void ClearDeactivatedLimitState()
+        {
+            PunishModifiers = false;
+            PunishSpeed = false;
+            PunishLimitedBlocks = false;
+            _minimumBlocksLimitedBlockGateActive = false;
+            _nextMinimumBlocksGateCheckTick = 0;
+            _pendingExternalLimitValidationTick = 0;
+            ClearPublishedLimitSnapshots();
+            InvalidateSpeedStateCache();
+            ClearDefenseModifierCache();
         }
     }
 }

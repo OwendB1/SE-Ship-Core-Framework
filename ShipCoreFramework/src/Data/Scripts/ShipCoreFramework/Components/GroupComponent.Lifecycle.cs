@@ -51,6 +51,9 @@ namespace ShipCoreFramework
                 EndGridInitialization();
             }
 
+            InitializeDeactivationState();
+            if (Deactivated) return true;
+
             SyncNoCoreLimitTracking();
             OnUpgradeModulesChanged();
             return true;

@@ -109,11 +109,12 @@ namespace ShipCoreFramework
 
             if (Session.Config != null && Session.Config.AllowUnattachedUpgradeModules)
             {
-                foreach (var core in _groupComponent.CoreDictionary.Values.OrderBy(c => c.CoreBlock.EntityId))
+                var mainCore = _groupComponent.MainCoreComponent;
+                if (mainCore != null)
                 {
-                    var shipCore = Session.Config.GetShipCoreByTypeId(core.SubtypeId);
+                    var shipCore = Session.Config.GetShipCoreByTypeId(mainCore.SubtypeId);
                     if (shipCore != null && shipCore.IsUpgradeModuleAllowed(UniqueName, SubtypeId))
-                        return core;
+                        return mainCore;
                 }
             }
 

@@ -33,7 +33,6 @@ namespace ShipCoreFramework
                 MyGroup = group
             };
             if (!GroupDict.TryAdd(group, gComp)) return;
-            gComp.InitializeDeactivationState();
             if (!gComp.InitGrids())
             {
                 GroupComponent discard;

@@ -9,6 +9,8 @@ namespace ShipCoreFramework
     {
         private bool TryApplyLimitsOnAdd(IMySlimBlock block, bool limitBasedPunish)
         {
+            if (GroupComponent.Deactivated) return true;
+
             var firstOwner = Grid?.BigOwners.FirstOrDefault() ?? 0;
             var deferPunishment = GroupComponent.IsLimitPunishmentDeferred();
 
@@ -17,6 +19,7 @@ namespace ShipCoreFramework
 
             var blockKey = KeyOf(block);
             var localizedBlockName = Utils.GetLocalizedBlockName(block);
+            var directionReferenceBlock = GroupComponent.GetDirectionLockReferenceBlock();
             foreach (var limit in limits)
             {
                 if (limit == null) continue;
@@ -31,8 +34,8 @@ namespace ShipCoreFramework
 
                 if (forceShutOff) block.WhackABlock(PunishmentType.ShutOff);
                 
-                if (GroupComponent.MainCoreComponent?.CoreBlock != null && 
-                    !GroupComponent.IsValidDirection(GroupComponent.MainCoreComponent.CoreBlock, block, limit.AllowedDirections))
+                if (directionReferenceBlock != null &&
+                    !GroupComponent.IsValidDirection(directionReferenceBlock, block, limit.AllowedDirections))
                 {
                     if (!deferPunishment)
                     {

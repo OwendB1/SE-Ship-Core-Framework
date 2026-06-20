@@ -54,6 +54,7 @@ namespace ShipCoreFramework
 
             var functionalBlock = block.FatBlock as IMyFunctionalBlock;
             var isTrackedUpgradeModule = Utils.IsTrackedUpgradeModuleBlock(functionalBlock);
+            var shipController = functionalBlock as IMyShipController;
             if (Utils.IsCoreBlock(functionalBlock))
             {
                 var newCore = new CoreComponent();
@@ -119,12 +120,14 @@ namespace ShipCoreFramework
                 groupComponent.OnBlockAddedToGroup();
 
                 if (functionalBlock != null) functionalBlock.EnabledChanged += FuncBlockOnEnabledChanged;
+                if (shipController != null) shipController.PropertiesChanged += ShipControllerOnPropertiesChanged;
 
                 var connector = block.FatBlock as IMyShipConnector;
                 if (connector != null) TrackConnector(connector);
             }
 
-            if (Utils.IsCoreBlock(functionalBlock) || isTrackedUpgradeModule)
+            if (Utils.IsCoreBlock(functionalBlock) || isTrackedUpgradeModule ||
+                shipController != null && groupComponent.MainCoreComponent == null)
                 groupComponent.OnUpgradeModulesChanged();
             else if (!groupComponent.IsInitializingGrids)
                 groupComponent.ApplyModifiers(groupComponent.Modifiers);
@@ -136,8 +139,10 @@ namespace ShipCoreFramework
             if (groupComponent == null) return;
 
             var functionalBlock = block.FatBlock as IMyFunctionalBlock;
+            var shipController = functionalBlock as IMyShipController;
             CoreComponent value = null;
             var removedUpgradeModule = false;
+            var removedNoCoreDirectionReferenceCandidate = shipController != null && groupComponent.MainCoreComponent == null;
             if (functionalBlock != null && CoreDictionary.TryRemove(functionalBlock, out value))
             {
                 value.CoreDestroyed();
@@ -192,30 +197,41 @@ namespace ShipCoreFramework
 
             groupComponent.OnBlockRemovedFromGroup();
 
-            var funcBlock = block.FatBlock as IMyFunctionalBlock;
-            if (funcBlock != null && value == null) funcBlock.EnabledChanged -= FuncBlockOnEnabledChanged;
+            if (functionalBlock != null && value == null) functionalBlock.EnabledChanged -= FuncBlockOnEnabledChanged;
+            if (shipController != null) shipController.PropertiesChanged -= ShipControllerOnPropertiesChanged;
 
             var removedConnector = block.FatBlock as IMyShipConnector;
             if (removedConnector != null) UntrackConnector(removedConnector);
-            if (value != null || removedUpgradeModule)
+            if (value != null || removedUpgradeModule || removedNoCoreDirectionReferenceCandidate)
                 groupComponent.OnUpgradeModulesChanged();
             else
                 groupComponent.ApplyModifiers(groupComponent.Modifiers);
+        }
+
+        private void ShipControllerOnPropertiesChanged(IMyTerminalBlock obj)
+        {
+            var groupComponent = GroupComponent;
+            if (groupComponent == null || groupComponent.MainCoreComponent != null) return;
+
+            groupComponent.OnNoCoreDirectionReferencePropertiesChanged();
         }
 
         private void FuncBlockOnEnabledChanged(IMyTerminalBlock obj)
         {
             var func = obj as IMyFunctionalBlock;
             if (func == null || !func.Enabled) return;
-            if (GroupComponent.IsLimitPunishmentDeferred()) return;
 
-            if (GroupComponent.ShouldForceLimitedBlocksOff())
+            var groupComponent = GroupComponent;
+            if (groupComponent == null || groupComponent.Deactivated || groupComponent.IsIgnoredGroup()) return;
+            if (groupComponent.IsLimitPunishmentDeferred()) return;
+
+            if (groupComponent.ShouldForceLimitedBlocksOff())
             {
                 foreach (var kv in Limits)
                 {
                     var limit = kv.Key;
                     if (limit == null) continue;
-                    if (!GroupComponent.ShouldForceLimitedBlocksOff(limit)) continue;
+                    if (!groupComponent.ShouldForceLimitedBlocksOff(limit)) continue;
                     if (!kv.Value.Members.Contains(obj.SlimBlock)) continue;
 
                     obj.SlimBlock.WhackABlock(PunishmentType.ShutOff);
@@ -230,8 +246,14 @@ namespace ShipCoreFramework
 
                 if (!bucket.Members.Contains(obj.SlimBlock)) continue;
 
+                if (groupComponent.DoesBlockViolateAllowedDirection(limit, obj.SlimBlock))
+                {
+                    obj.SlimBlock.WhackABlock(PunishmentType.ShutOff);
+                    return;
+                }
+
                 LimitBucket groupBucket;
-                if (!GroupComponent.Limits.TryGetValue(limit, out groupBucket)) continue;
+                if (!groupComponent.Limits.TryGetValue(limit, out groupBucket)) continue;
 
                 double total;
                 lock (groupBucket.BucketLock)
@@ -239,7 +261,7 @@ namespace ShipCoreFramework
                     total = groupBucket.TotalWeight;
                 }
 
-                var effectiveMaxCount = GroupComponent.GetEffectiveMaxCount(limit);
+                var effectiveMaxCount = groupComponent.GetEffectiveMaxCount(limit);
                 if (total <= effectiveMaxCount) continue;
 
                 var over = total - effectiveMaxCount;

@@ -30,6 +30,15 @@ namespace ShipCoreFramework
                 return;
             }
 
+            if (Deactivated || IsIgnoredByAiOrFactionTagThreadSafe())
+            {
+                ClearDeactivatedLimitState();
+                RefreshModifierStateCache();
+                ApplyModifiers(Modifiers);
+                RefreshDefenseModifierCache();
+                return;
+            }
+
             var mainCoreChanged = EnsureWorkingMainCore();
             var previousPunishModifiers = PunishModifiers;
 
@@ -42,6 +51,13 @@ namespace ShipCoreFramework
 
         internal void RefreshPunishmentFlags()
         {
+            if (Deactivated || IsIgnoredByAiOrFactionTagThreadSafe())
+            {
+                PunishSpeed = false;
+                PunishModifiers = false;
+                return;
+            }
+
             ApplyPunishmentFlags(EvaluatePunishmentGates());
         }
 

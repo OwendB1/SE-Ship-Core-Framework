@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRageMath;
 using ModEntity = VRage.ModAPI.IMyEntity;
@@ -67,14 +68,61 @@ namespace ShipCoreFramework
         private SpeedModifiers _cachedActiveSpeedModifiers = new SpeedModifiers();
         private GridDefenseModifiers _cachedPassiveDefenseModifiers = new GridDefenseModifiers();
         private GridDefenseModifiers _cachedActiveDefenseModifiers = new GridDefenseModifiers();
+        private IMyCubeBlock _cachedNoCoreDirectionLockReferenceBlock;
+        private bool _cachedIsIgnoredByAiOrFactionTag;
 
         internal void RefreshGameThreadStateCache()
         {
             if (_closing || Session.IsShuttingDown) return;
             RefreshGridStateCache();
+            var directionReferenceChanged = RefreshNoCoreDirectionLockReferenceCache();
             RefreshMassCache();
             RefreshModifierStateCache();
+            _cachedIsIgnoredByAiOrFactionTag = IsIgnoredByAiOrFactionTag();
             _cachedIsIgnoredGroup = ComputeIsIgnoredGroup();
+
+            if (directionReferenceChanged)
+                RevalidateNoCoreDirectionLock();
+        }
+
+        internal IMyCubeBlock GetDirectionLockReferenceBlock()
+        {
+            var mainCoreBlock = MainCoreComponent?.CoreBlock;
+            if (mainCoreBlock != null) return mainCoreBlock;
+            if (Deactivated) return null;
+
+            if (Session.IsGameThread)
+            {
+                RefreshGridStateCache();
+                RefreshNoCoreDirectionLockReferenceCache();
+            }
+
+            var referenceBlock = _cachedNoCoreDirectionLockReferenceBlock;
+            if (referenceBlock == null || referenceBlock.MarkedForClose || referenceBlock.Closed ||
+                referenceBlock.CubeGrid == null)
+                return null;
+
+            return referenceBlock;
+        }
+
+        internal void OnNoCoreDirectionReferencePropertiesChanged()
+        {
+            if (_closing || Deactivated || MainCoreComponent != null || IsInitializingGrids) return;
+
+            if (!Session.IsGameThread)
+            {
+                var groupKey = GetThreadWorkKey();
+                ThreadWork.Enqueue(ThreadWork.StateCategory, "direction-reference-refresh:" + groupKey,
+                    "No Core direction reference refresh for group " + groupKey,
+                    () => !_closing && !Session.IsShuttingDown,
+                    OnNoCoreDirectionReferencePropertiesChanged);
+                return;
+            }
+
+            RefreshGridStateCache();
+            if (!RefreshNoCoreDirectionLockReferenceCache()) return;
+
+            OnUpgradeModulesChanged();
         }
 
         internal long GetCachedRepresentativeGridId()
@@ -100,6 +148,11 @@ namespace ShipCoreFramework
         internal bool GetCachedIsIgnoredGroup()
         {
             return _cachedIsIgnoredGroup;
+        }
+
+        internal bool GetCachedIsIgnoredByAiOrFactionTag()
+        {
+            return _cachedIsIgnoredByAiOrFactionTag;
         }
 
         internal GridModifiers GetCachedActiveGridModifiers()
@@ -131,6 +184,76 @@ namespace ShipCoreFramework
             _cachedPassiveDefenseModifiers = ComputePassiveDefenseModifiers();
             _cachedActiveDefenseModifiers = ComputeActiveDefenseModifiers();
             RefreshEffectiveLimitCache();
+        }
+
+        private bool RefreshNoCoreDirectionLockReferenceCache()
+        {
+            if (!Session.IsGameThread || _closing || Session.IsShuttingDown) return false;
+
+            var previousReference = _cachedNoCoreDirectionLockReferenceBlock;
+
+            if (MainCoreComponent != null || Deactivated)
+            {
+                _cachedNoCoreDirectionLockReferenceBlock = null;
+                return !ReferenceEquals(previousReference, _cachedNoCoreDirectionLockReferenceBlock);
+            }
+
+            var representativeGrid = GetNoCoreDirectionLockReferenceGrid();
+            _cachedNoCoreDirectionLockReferenceBlock = GetMainShipController(representativeGrid);
+            return !ReferenceEquals(previousReference, _cachedNoCoreDirectionLockReferenceBlock);
+        }
+
+        private void RevalidateNoCoreDirectionLock()
+        {
+            if (_closing || Deactivated || MainCoreComponent != null || IsInitializingGrids || _refreshingUpgradeModules)
+                return;
+
+            OnUpgradeModulesChanged();
+        }
+
+        private MyCubeGrid GetNoCoreDirectionLockReferenceGrid()
+        {
+            var representativeGridId = GetCachedRepresentativeGridId();
+            MyCubeGrid fallbackGrid = null;
+            var fallbackBlocks = -1;
+
+            foreach (var grid in GridDictionary.Keys)
+            {
+                if (grid == null || grid.MarkedForClose || grid.Closed) continue;
+
+                if (representativeGridId != 0L && grid.EntityId == representativeGridId)
+                    return grid;
+
+                var blocks = grid.BlocksCount;
+                if (fallbackGrid == null || blocks > fallbackBlocks ||
+                    blocks == fallbackBlocks && grid.EntityId < fallbackGrid.EntityId)
+                {
+                    fallbackGrid = grid;
+                    fallbackBlocks = blocks;
+                }
+            }
+
+            return fallbackGrid;
+        }
+
+        private static IMyCubeBlock GetMainShipController(MyCubeGrid grid)
+        {
+            if (grid == null || grid.MarkedForClose || grid.Closed) return null;
+
+            IMyShipController fallbackController = null;
+            foreach (var controller in ((IMyCubeGrid)grid).GetFatBlocks<IMyShipController>())
+            {
+                if (controller == null || controller.MarkedForClose || controller.Closed) continue;
+                if (controller.CubeGrid == null || controller.CubeGrid.EntityId != grid.EntityId) continue;
+
+                if (controller.IsMainCockpit)
+                    return controller;
+
+                if (fallbackController == null || controller.EntityId < fallbackController.EntityId)
+                    fallbackController = controller;
+            }
+
+            return fallbackController;
         }
 
         private MyCubeGrid GetMobilityReferenceGrid()
