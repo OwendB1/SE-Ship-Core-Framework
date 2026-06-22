@@ -194,12 +194,13 @@ namespace ShipCoreFramework
 
         /// <summary>
         /// Enables/disables friction-based speed limiting for a logical grid group.
+        /// Friction cores are enabled by default; this is a runtime override.
         /// Signature: object -> bool (expects MyTuple&lt;IMyCubeGrid, bool&gt;).
         /// </summary>
         public const int SetFrictionEnabledForGroup = 25;
 
         /// <summary>
-        /// Gets whether friction-based speed limiting is enabled for a logical grid group.
+        /// Gets whether friction-based speed limiting is currently active for a logical grid group.
         /// Signature: IMyCubeGrid -> bool.
         /// </summary>
         public const int GetFrictionEnabledForGroup = 26;

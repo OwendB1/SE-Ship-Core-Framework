@@ -443,6 +443,7 @@ namespace ShipCoreFramework
 
         /// <summary>
         /// Enables/disables friction-based speed limiting for a logical grid group.
+        /// Friction cores are enabled by default; this is a runtime override.
         /// </summary>
         public bool SetFrictionEnabledForGroup(IMyCubeGrid grid, bool enabled) =>
             SetFrictionEnabledForGroup(GetEntityId(grid), enabled);
@@ -454,7 +455,7 @@ namespace ShipCoreFramework
         }
 
         /// <summary>
-        /// Gets whether friction-based speed limiting is enabled for a logical grid group.
+        /// Gets whether friction-based speed limiting is currently active for a logical grid group.
         /// </summary>
         public bool GetFrictionEnabledForGroup(IMyCubeGrid grid) => GetFrictionEnabledForGroup(GetEntityId(grid));
 

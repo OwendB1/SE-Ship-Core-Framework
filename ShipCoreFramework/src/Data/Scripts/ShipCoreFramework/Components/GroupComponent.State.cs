@@ -29,7 +29,7 @@ namespace ShipCoreFramework
         internal bool BoostEnabled;
         internal bool Deactivated;
 
-        internal bool FrictionEnforcementEnabled;
+        internal bool FrictionEnforcementEnabled = true;
         internal float BaseSpeedLimitMetersPerSecond = 100f;
         internal float EffectiveSpeedLimitMetersPerSecond = 100f;
         internal bool EffectiveBoostEnabled;

@@ -20,7 +20,8 @@ namespace ShipCoreFramework
         {
             lock (SpeedStateLock)
             {
-                return FrictionEnforcementEnabled;
+                var shipCore = ShipCore;
+                return shipCore != null && shipCore.SpeedLimitType == SpeedLimitType.Friction && FrictionEnforcementEnabled;
             }
         }
 
