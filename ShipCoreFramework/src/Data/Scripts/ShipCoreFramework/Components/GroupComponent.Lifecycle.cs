@@ -251,7 +251,7 @@ namespace ShipCoreFramework
                 return;
             }
 
-            var newMain = CoreDictionary.Values.FirstOrDefault();
+            var newMain = GetBestMainCoreCandidate(false);
             if (newMain == null)
             {
                 UnregisterCoreLimitTracking();
@@ -290,7 +290,7 @@ namespace ShipCoreFramework
                 return;
             }
 
-            var newMain = CoreDictionary.Values.FirstOrDefault();
+            var newMain = GetBestMainCoreCandidate(false);
             if (newMain == null)
             {
                 ResetCore();

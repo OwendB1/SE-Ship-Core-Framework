@@ -402,6 +402,7 @@ function parseManifestXml(text) {
     .map((entryNode) => ({
       filename: textOf(entryNode, "Filename"),
       groups: dedupeStrings(qselAll(entryNode, "Group").map((groupNode) => groupNode.textContent.trim())),
+      coreSelectionPriority: numberOf(entryNode, "CoreSelectionPriority", 0),
       blacklistedCoreSubtypeIds: normalizeManifestBlacklistSubtypeIds(
         qselAll(entryNode, "BlacklistedCoreSubtypeId").map((subtypeNode) => subtypeNode.textContent.trim())
       )
@@ -417,7 +418,7 @@ function parseManifestXml(text) {
   const legacyShipCores = qselAll(root, "ShipCoreFilenames")
     .map((node) => node.textContent.trim())
     .filter(Boolean)
-    .map((filename) => ({ filename, groups: [], blacklistedCoreSubtypeIds: [] }));
+    .map((filename) => ({ filename, groups: [], coreSelectionPriority: 0, blacklistedCoreSubtypeIds: [] }));
 
   const legacyUpgradeModules = qselAll(root, "UpgradeModuleFilenames")
     .map((node) => node.textContent.trim())
@@ -431,6 +432,7 @@ function parseManifestXml(text) {
     shipCoreMap.set(key, {
       filename: entry.filename.trim(),
       groups: dedupeStrings([...(existing?.groups || []), ...(entry.groups || [])]),
+      coreSelectionPriority: Number(entry.coreSelectionPriority ?? existing?.coreSelectionPriority ?? 0) || 0,
       blacklistedCoreSubtypeIds: normalizeManifestBlacklistSubtypeIds([
         ...(existing?.blacklistedCoreSubtypeIds || []),
         ...(entry.blacklistedCoreSubtypeIds || [])
@@ -650,6 +652,7 @@ function createDefaultCore() {
     speedLimitType: "Normal",
     speedOverrideMode: "OnlyIfHeavier",
     speedOverridePriority: 0,
+    coreSelectionPriority: 0,
     enableActiveDefenseModifiers: false,
     manifestGroups: [],
     manifestBlacklistedCoreSubtypeIds: [],
@@ -836,6 +839,7 @@ function cloneShipCore(core = createDefaultCore()) {
     ...createDefaultCore(),
     ...core,
     outputDirectory: normalizeOutputDirectory(core.outputDirectory, state.outputCoreDirectory || "Data/Cores/"),
+    coreSelectionPriority: Number(core.coreSelectionPriority ?? 0) || 0,
     manifestGroups: normalizeManifestGroupNames(Array.isArray(core?.manifestGroups) ? core.manifestGroups.map((groupName) => String(groupName ?? "").trim()) : []),
     manifestBlacklistedCoreSubtypeIds: normalizeManifestBlacklistSubtypeIds(
       Array.isArray(core?.manifestBlacklistedCoreSubtypeIds)
@@ -1063,6 +1067,10 @@ function manifestCoreEntryEditor() {
       </div>
       <h4>Manifest Groups</h4>
       ${manifestGroupsMarkup}
+      <h4>Core Selection</h4>
+      <div class="row wrap">
+        <label class="inline">CoreSelectionPriority <input data-action="core-selection-priority" data-c="${selectorIndex}" class="small" type="number" value="${Number(core.coreSelectionPriority) || 0}" /></label>
+      </div>
       <h4>Connector Blacklist</h4>
       ${blacklistMarkup}
     </div>
@@ -1313,6 +1321,10 @@ function renderShipCores() {
       ${state.manifestGroups.filter((group) => group.name.trim()).length
         ? `<div class="group-checklist">${manifestGroupCheckboxesForCore(coreIndex, core.manifestGroups || [])}</div>`
         : `<p class="muted">No manifest groups defined yet. Add them in the Manifest Groups section.</p>`}
+      <h4>Core Selection</h4>
+      <div class="row wrap">
+        <label class="inline">CoreSelectionPriority <input data-action="core-selection-priority" data-c="${coreIndex}" class="small" type="number" value="${Number(core.coreSelectionPriority) || 0}" /></label>
+      </div>
       `}
 
       <h4>Allowed Upgrade Modules</h4>
@@ -2171,7 +2183,8 @@ ${cores
     .map((entry) => {
       const groups = getValidManifestGroupNamesForCore(entry.core);
       const blacklistedCoreSubtypeIds = normalizeManifestBlacklistSubtypeIds(entry.core.manifestBlacklistedCoreSubtypeIds || []);
-      return `  <ShipCore>\n    <Filename>${escapeXml(entry.outputPath)}</Filename>${groups.length ? `\n${groups.map((groupName) => `    <Group>${escapeXml(groupName)}</Group>`).join("\n")}` : ""}${blacklistedCoreSubtypeIds.length ? `\n${blacklistedCoreSubtypeIds.map((subtypeId) => `    <BlacklistedCoreSubtypeId>${escapeXml(subtypeId)}</BlacklistedCoreSubtypeId>`).join("\n")}` : ""}\n  </ShipCore>`;
+      const coreSelectionPriority = Number(entry.core.coreSelectionPriority) || 0;
+      return `  <ShipCore>\n    <Filename>${escapeXml(entry.outputPath)}</Filename>${groups.length ? `\n${groups.map((groupName) => `    <Group>${escapeXml(groupName)}</Group>`).join("\n")}` : ""}${coreSelectionPriority ? `\n    <CoreSelectionPriority>${coreSelectionPriority}</CoreSelectionPriority>` : ""}${blacklistedCoreSubtypeIds.length ? `\n${blacklistedCoreSubtypeIds.map((subtypeId) => `    <BlacklistedCoreSubtypeId>${escapeXml(subtypeId)}</BlacklistedCoreSubtypeId>`).join("\n")}` : ""}\n  </ShipCore>`;
     })
     .join("\n")}
 ${upgradeModules
@@ -2683,6 +2696,10 @@ document.addEventListener("change", (event) => {
     selectedCore.manifestBlacklistedCoreSubtypeIds = normalizeManifestBlacklistSubtypeIds(Array.from(selectedSet));
     renderManifestGroups();
   }
+  if (action === "core-selection-priority" && inputElement) {
+    selectedCore.coreSelectionPriority = Number(inputElement.value) || 0;
+    renderManifestGroups();
+  }
 
   if (action === "upgrade-mod-stat" && selectElement) selectedUpgrade.modifiers[upgradeModifierIndex].stat = selectElement.value;
   if (action === "upgrade-mod-type" && selectElement) selectedUpgrade.modifiers[upgradeModifierIndex].modifierType = selectElement.value;
@@ -2962,6 +2979,7 @@ async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, cor
   const manifestCoreDirectoriesByFilename = new Map();
   const manifestCoreGroupsByFilename = new Map();
   const manifestCoreBlacklistByFilename = new Map();
+  const manifestCorePriorityByFilename = new Map();
 
   resetEditor(false);
   // Store passthrough files (SBCs and unrecognised files) for re-inclusion in Download All
@@ -2999,6 +3017,7 @@ async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, cor
         state.manifestCoreFullPathByFilename.set(fileName.toLowerCase(), normalizedPath);
         manifestCoreGroupsByFilename.set(fileName.toLowerCase(), dedupeStrings(entry.groups));
         manifestCoreBlacklistByFilename.set(fileName.toLowerCase(), normalizeManifestBlacklistSubtypeIds(entry.blacklistedCoreSubtypeIds));
+        manifestCorePriorityByFilename.set(fileName.toLowerCase(), Number(entry.coreSelectionPriority) || 0);
       });
       state.outputCoreDirectory = getManifestDirectory(listed, "Data/Cores/", "core", status);
       state.outputUpgradeModuleDirectory = getManifestDirectory(listedModules, "Data/UpgradeModules/", "upgrade module", status);
@@ -3062,6 +3081,7 @@ async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, cor
         parsed.manifestBlacklistedCoreSubtypeIds = normalizeManifestBlacklistSubtypeIds(
           manifestCoreBlacklistByFilename.get(file.name.trim().toLowerCase()) || []
         );
+        parsed.coreSelectionPriority = Number(manifestCorePriorityByFilename.get(file.name.trim().toLowerCase())) || 0;
         state.shipCores.push(parsed);
         status.push(`Loaded core '${parsed.subtypeId || file.name}'.`);
       }

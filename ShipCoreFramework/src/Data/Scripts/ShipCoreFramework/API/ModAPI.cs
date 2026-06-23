@@ -917,6 +917,7 @@ namespace ShipCoreFramework
                     },
                     ManifestGroupNames = Array.Empty<string>(),
                     ConnectorBlacklistCoreSubtypeIds = Array.Empty<string>(),
+                    CoreSelectionPriority = 0,
                     MaxBackupCores = -1,
                     AllowedUpgradeModules = Array.Empty<UpgradeModuleAllowanceData>(),
                     SpeedLimitTypeData = SpeedLimitTypeData.Normal,
@@ -964,6 +965,7 @@ namespace ShipCoreFramework
                     .Where(name => !string.IsNullOrWhiteSpace(name))
                     .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
                     .ToArray(),
+                CoreSelectionPriority = core.CoreSelectionPriority,
                 MaxBackupCores = core.MaxBackupCores,
                 AllowedUpgradeModules = (core.AllowedUpgradeModules ?? Array.Empty<UpgradeModuleAllowance>())
                     .Where(allowance => allowance != null)

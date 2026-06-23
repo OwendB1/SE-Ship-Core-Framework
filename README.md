@@ -61,7 +61,8 @@ Load behavior:
   - if the group is still below minimum when that timer check fires, limited blocks are shut off
 - Manifest connector blacklist is separate from `CrossConnectorPunishment`.
   - `CrossConnectorPunishment` only affects limits marked with that flag and only pulls in blocks from connected no-core groups.
-  - Manifest blacklist compares connected core groups and can shut off all limited blocks on the smaller blacklisted group.
+  - Manifest blacklist compares connected core groups by `CoreSelectionPriority`, then block count, and can shut off all limited blocks on the lower-priority or smaller blacklisted group.
+- When multiple different core types end up in one mechanical group, `CoreSelectionPriority` is also used to choose the main core. Equal priorities fall back to the larger cored grid and then a stable entity-id tie-breaker.
 
 ## World config reference (`ShipCoreConfig_World.xml`)
 
@@ -117,14 +118,17 @@ Repeated `<ShipCore>` entries under `<CoreManifest>`.
 | --- | --- | --- | --- |
 | `Filename` | `string` | Path to the `<ShipCore>` XML file in the mod. | Required. |
 | `Group` | `List<string>` | Manifest group membership for this core file. | Repeat the tag once per group membership. |
+| `CoreSelectionPriority` | `int` | Priority used when connector-linked or mechanically grouped cores compete. | Higher wins. Default `0`; equal priorities fall back to size. |
 | `BlacklistedCoreSubtypeId` | `List<string>` | Core subtype IDs this core blacklists when connected by connector. | Repeat the tag once per blacklisted subtype. |
 
 Blacklist behavior:
 
 - Only applies when two core groups are connector-linked.
-- The bigger group by block count is treated as the blacklisting side.
-- The bigger group's main core checks its blacklist against the smaller group's main core `SubtypeId`.
-- If matched, the smaller group's limited blocks are shut off.
+- The higher `CoreSelectionPriority` group is treated as the blacklisting side.
+- If priorities match, the bigger group by block count is treated as the blacklisting side.
+- The winning group's main core checks its blacklist against the losing group's main core `SubtypeId`.
+- If matched, the losing group's limited blocks are shut off.
+- If priority and block count both match, neither side outranks the other for blacklist punishment.
 
 ### Manifest upgrade-module entries
 

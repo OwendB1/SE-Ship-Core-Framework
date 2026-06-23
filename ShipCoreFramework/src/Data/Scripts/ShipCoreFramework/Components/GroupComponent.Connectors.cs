@@ -73,7 +73,7 @@ namespace ShipCoreFramework
             }
         }
 
-        private bool HasConnectedBlacklistedLargerGroup()
+        private bool HasConnectedBlacklistingCoreGroup()
         {
             GroupComponent blacklistingGroup;
             return TryGetConnectedBlacklistingGroup(out blacklistingGroup);
@@ -92,41 +92,37 @@ namespace ShipCoreFramework
             var selfSubtypeId = selfCore.SubtypeId;
             if (string.IsNullOrWhiteSpace(selfSubtypeId)) return false;
 
-            var selfBlockCount = GroupBlocksCount;
-            var connectedCoreGroups = connectedCoreGroupData
-                .Select(otherGroupData =>
-                {
-                    GroupComponent otherComp;
-                    return Session.GroupDict.TryGetValue(otherGroupData, out otherComp) ? otherComp : null;
-                })
-                .Where(otherComp => otherComp != null && otherComp.MainCoreComponent != null && !ReferenceEquals(otherComp, this))
-                .OrderByDescending(otherComp => otherComp.GroupBlocksCount)
-                .ThenBy(otherComp => otherComp.GetRepresentativeGridId())
-                .ToList();
-
-            foreach (var otherComp in connectedCoreGroups)
+            GroupComponent bestBlacklistingGroup = null;
+            foreach (var otherGroupData in connectedCoreGroupData)
             {
-                if (otherComp.GroupBlocksCount <= selfBlockCount)
-                    continue;
+                GroupComponent otherComp;
+                if (!Session.GroupDict.TryGetValue(otherGroupData, out otherComp)) continue;
+                if (otherComp == null || otherComp.MainCoreComponent == null || ReferenceEquals(otherComp, this)) continue;
 
                 var otherCore = otherComp.ShipCore;
                 if (otherCore == null || !otherCore.IsConnectorBlacklistedCore(selfSubtypeId))
                     continue;
 
-                blacklistingGroup = otherComp;
-                return true;
+                if (!DoesCoreGroupOutrankForConnectorBlacklist(otherComp, this))
+                    continue;
+
+                if (CompareCoreGroupsForSelection(otherComp, bestBlacklistingGroup, true) > 0)
+                    bestBlacklistingGroup = otherComp;
             }
 
-            return false;
+            if (bestBlacklistingGroup == null) return false;
+
+            blacklistingGroup = bestBlacklistingGroup;
+            return true;
         }
 
         private string GetConnectedBlacklistLimitedBlockPunishmentReason(GroupComponent blacklistingGroup)
         {
             if (blacklistingGroup?.ShipCore == null)
-                return "Connected to larger blacklisting core group";
+                return "Connected to higher-priority or larger blacklisting core group";
 
             return
-                $"Connected to larger blacklisting core group ({blacklistingGroup.ShipCore.UniqueName} blocks {ShipCore.UniqueName})";
+                $"Connected to higher-priority or larger blacklisting core group ({blacklistingGroup.ShipCore.UniqueName} blocks {ShipCore.UniqueName})";
         }
 
         private void ApplyCrossConnectorPunishment()

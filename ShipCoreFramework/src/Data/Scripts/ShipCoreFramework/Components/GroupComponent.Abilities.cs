@@ -250,7 +250,7 @@ namespace ShipCoreFramework
             var mainCoreBlock = currentMain?.CoreBlock;
             if (mainCoreBlock == null || mainCoreBlock.IsWorking || !CoreDictionary.Any()) return false;
 
-            var newMain = CoreDictionary.Values.FirstOrDefault(core => !core.IsMainCore && core.CoreBlock.IsWorking);
+            var newMain = GetBestReplacementMainCoreCandidate(currentMain, true);
             if (newMain == null) return false;
 
             Utils.ShowNotification(

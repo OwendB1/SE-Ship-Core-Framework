@@ -110,6 +110,9 @@ namespace ShipCoreFramework
         [XmlElement("Group")]
         public List<string> Groups = new List<string>();
 
+        [XmlElement("CoreSelectionPriority")]
+        public int CoreSelectionPriority;
+
         [XmlElement("BlacklistedCoreSubtypeId")]
         public List<string> BlacklistedCoreSubtypeIds = new List<string>();
     }
@@ -175,6 +178,9 @@ namespace ShipCoreFramework
         [XmlIgnore]
         public readonly HashSet<string> ConnectorBlacklistCoreSubtypeIds =
             new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        [XmlIgnore]
+        public int CoreSelectionPriority;
 
         [XmlElement("AllowedUpgradeModules")]
         public UpgradeModuleAllowance[] AllowedUpgradeModules = Array.Empty<UpgradeModuleAllowance>();

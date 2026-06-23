@@ -25,12 +25,15 @@
 
   <ShipCore>
     <Filename>Data\Cores\Stations\Citadel_Core.xml</Filename>
+    <CoreSelectionPriority>100</CoreSelectionPriority>
   </ShipCore>
   <ShipCore>
     <Filename>Data\Cores\Stations\Outpost_Core.xml</Filename>
+    <CoreSelectionPriority>100</CoreSelectionPriority>
   </ShipCore>
   <ShipCore>
     <Filename>Data\Cores\Stations\Stronghold_Core.xml</Filename>
+    <CoreSelectionPriority>100</CoreSelectionPriority>
   </ShipCore>
 
   <ShipCore>

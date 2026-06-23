@@ -51,7 +51,6 @@ namespace ShipCoreFramework
                                 && CoreBlock.Storage[Session.CoreStateStorageGUID] == "1";
             var existingMainCore = _groupComponent.MainCoreComponent;
             var groupHasMain = existingMainCore != null;
-            var hasSameTypeMain = groupHasMain && existingMainCore.SubtypeId == SubtypeId;
 
             if (CheckIfCoreOfOtherTypeExists())
             {
@@ -88,7 +87,7 @@ namespace ShipCoreFramework
             }
             
             Utils.Log($"Core Initial: {SubtypeId}, GroupHasMain: {groupHasMain}, PersistedMain: {persistedMain}", 1);
-            if (!groupHasMain || (persistedMain && !hasSameTypeMain))
+            if (!groupHasMain || _groupComponent.ShouldCoreBecomeMain(this, persistedMain))
             {
                 IsMainCore = true;
                 _groupComponent.Activate(this);

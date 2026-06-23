@@ -85,7 +85,7 @@ namespace ShipCoreFramework
                 return;
             }
 
-            PunishLimitedBlocks = IsMinimumBlocksLimitedBlockGateTriggered() || HasConnectedBlacklistedLargerGroup();
+            PunishLimitedBlocks = IsMinimumBlocksLimitedBlockGateTriggered() || HasConnectedBlacklistingCoreGroup();
         }
 
         internal List<string> GetLimitedBlockPunishmentGateDescriptions()

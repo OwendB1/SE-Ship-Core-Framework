@@ -348,6 +348,7 @@ namespace ShipCoreFramework
         [ProtoMember(30)] public UpgradeModuleAllowanceData[] AllowedUpgradeModules = Array.Empty<UpgradeModuleAllowanceData>();
         [ProtoMember(31)] public SpeedLimitTypeData SpeedLimitTypeData;
         [ProtoMember(32)] public BlockLimitData[] BlockLimits = Array.Empty<BlockLimitData>();
+        [ProtoMember(33)] public int CoreSelectionPriority;
     }
 
     [ProtoContract]

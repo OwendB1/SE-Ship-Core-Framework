@@ -101,6 +101,9 @@ namespace ShipCoreFramework
         [XmlElement("Group")]
         public List<string> Groups = new List<string>();
 
+        [XmlElement("CoreSelectionPriority")]
+        public int CoreSelectionPriority;
+
         [XmlElement("BlacklistedCoreSubtypeId")]
         public List<string> BlacklistedCoreSubtypeIds = new List<string>();
     }
@@ -187,6 +190,9 @@ namespace ShipCoreFramework
 
         [XmlElement("SpeedOverridePriority")]
         public int SpeedOverridePriority = 0;
+
+        [XmlIgnore]
+        public int CoreSelectionPriority;
 
         [XmlElement("SpeedModifiers")]
         public SpeedModifiers SpeedModifiers = new SpeedModifiers();
