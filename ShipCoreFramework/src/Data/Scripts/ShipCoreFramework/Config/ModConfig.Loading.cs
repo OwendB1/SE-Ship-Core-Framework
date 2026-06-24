@@ -206,7 +206,8 @@ namespace ShipCoreFramework
                 foreach (var shipCoreEntry in coreManifest.ShipCores
                              .Where(shipCoreEntry => MyAPIGateway.Utilities.FileExistsInModLocation(shipCoreEntry.Filename, mod)))
                     LoadShipCoreFromManifest(mod, shipCoreEntry.Filename, shipCoreEntry.Groups,
-                        shipCoreEntry.BlacklistedCoreSubtypeIds, shipCoreEntry.CoreSelectionPriority);
+                        shipCoreEntry.BlacklistedCoreSubtypeIds, coreManifest.CrossConnectorPunishmentWhitelist,
+                        shipCoreEntry.CoreSelectionPriority);
 
                 foreach (var upgradeModuleEntry in coreManifest.UpgradeModules
                              .Where(upgradeModuleEntry => MyAPIGateway.Utilities.FileExistsInModLocation(upgradeModuleEntry.Filename, mod)))
@@ -248,7 +249,7 @@ namespace ShipCoreFramework
 
         private void LoadShipCoreFromManifest(MyObjectBuilder_Checkpoint.ModItem mod, string shipCoreFilename,
             IEnumerable<string> manifestGroupNames, IEnumerable<string> blacklistedCoreSubtypeIds,
-            int coreSelectionPriority)
+            IEnumerable<string> crossConnectorPunishmentWhitelist, int coreSelectionPriority)
         {
             using (var textReader = MyAPIGateway.Utilities.ReadFileInModLocation(shipCoreFilename, mod))
             {
@@ -261,6 +262,7 @@ namespace ShipCoreFramework
                 NormalizeShipCoreBlockLimits(newShipCore, mod.FriendlyName, shipCoreFilename);
                 AssignManifestGroupsToCore(newShipCore, manifestGroupNames, mod.FriendlyName, shipCoreFilename);
                 AssignManifestConnectorBlacklistToCore(newShipCore, blacklistedCoreSubtypeIds);
+                AssignCrossConnectorPunishmentWhitelistToCore(newShipCore, crossConnectorPunishmentWhitelist);
                 newShipCore.CoreSelectionPriority = coreSelectionPriority;
                 newShipCore.ConfigSource = mod.FriendlyName;
                 newShipCore.ConfigFile = shipCoreFilename;
@@ -306,6 +308,20 @@ namespace ShipCoreFramework
                          .Where(coreSubtypeId => !string.IsNullOrWhiteSpace(coreSubtypeId))
                          .Select(coreSubtypeId => coreSubtypeId.Trim()))
                 core.ConnectorBlacklistCoreSubtypeIds.Add(coreSubtypeId);
+        }
+
+        private static void AssignCrossConnectorPunishmentWhitelistToCore(ShipCore core,
+            IEnumerable<string> crossConnectorPunishmentWhitelist)
+        {
+            if (core == null)
+                return;
+
+            core.CrossConnectorPunishmentWhitelisted = false;
+            if (crossConnectorPunishmentWhitelist == null || string.IsNullOrWhiteSpace(core.SubtypeId))
+                return;
+
+            core.CrossConnectorPunishmentWhitelisted = crossConnectorPunishmentWhitelist
+                .Any(coreSubtypeId => string.Equals(coreSubtypeId, core.SubtypeId, StringComparison.OrdinalIgnoreCase));
         }
 
         private void ResolveBlockGroupsForCores(IEnumerable<ShipCore> cores)

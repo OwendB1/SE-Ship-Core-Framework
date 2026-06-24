@@ -132,11 +132,13 @@ namespace ShipCoreFramework
 
         private void ApplyCrossConnectorPunishment(ConcurrentDictionary<BlockLimit, LimitBucket> targetLimits)
         {
+            if (ShipCore == null || ShipCore.CrossConnectorPunishmentWhitelisted) return;
+
             var connectedGroups = GetConnectedNoCoreGroupDataSnapshot();
             if (connectedGroups.Count == 0) return;
             if (targetLimits == null) return;
 
-            var blockLimits = ShipCore?.BlockLimits;
+            var blockLimits = ShipCore.BlockLimits;
             if (blockLimits == null || blockLimits.Length == 0) return;
 
             var punishedLimits = blockLimits.Where(limit => limit != null && limit.CrossConnectorPunishment).ToArray();

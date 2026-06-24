@@ -32,7 +32,7 @@ namespace ShipCoreFramework
         /// Increment when you add functionality in a backwards compatible way.
         /// Minor version changes remain compatible as long as the major version matches.
         /// </summary>
-        public const int API_MINOR = 8;
+        public const int API_MINOR = 9;
 
         /// <summary>
         /// Encoded API version (Major.Minor) packed into a single int.
@@ -349,6 +349,8 @@ namespace ShipCoreFramework
         [ProtoMember(31)] public SpeedLimitTypeData SpeedLimitTypeData;
         [ProtoMember(32)] public BlockLimitData[] BlockLimits = Array.Empty<BlockLimitData>();
         [ProtoMember(33)] public int CoreSelectionPriority;
+        [ProtoMember(34)] public bool CrossConnectorPunishmentWhitelisted;
+        [ProtoMember(35)] public FactionRankData MinFactionRank;
     }
 
     [ProtoContract]
@@ -471,6 +473,7 @@ namespace ShipCoreFramework
         [ProtoMember(1)] public string TypeId;
         [ProtoMember(2)] public string SubtypeId;
         [ProtoMember(3)] public float CountWeight;
+        [ProtoMember(4)] public DirectionTypeData PrimaryDirection;
     }
 
     /// <summary>
@@ -618,6 +621,14 @@ namespace ShipCoreFramework
         Down = 3,
         Left = 4,
         Right = 5
+    }
+
+    public enum FactionRankData
+    {
+        None = 0,
+        Member = 1,
+        Leader = 2,
+        Founder = 3
     }
 
     // ===== Event Argument Classes =====

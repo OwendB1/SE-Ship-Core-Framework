@@ -24,18 +24,17 @@ namespace ShipCoreFramework
             {
                 if (limit == null) continue;
                 var forceShutOff = !deferPunishment && GroupComponent.ShouldForceLimitedBlocksOff(limit);
-                var hit = limit.BlockGroups.Any(group =>
-                    group.BlockTypes.Any(blockType =>
-                        blockType != null && blockType.Matches(blockKey)));
-                if (!hit) continue;
+                var matchedBlockType = limit.GetMatchingBlockType(blockKey);
+                if (matchedBlockType == null) continue;
 
-                var weight = limit.GetWeight(blockKey);
+                var weight = matchedBlockType.CountWeight;
                 if (weight <= 0d) continue;
 
                 if (forceShutOff) block.WhackABlock(PunishmentType.ShutOff);
                 
                 if (directionReferenceBlock != null &&
-                    !GroupComponent.IsValidDirection(directionReferenceBlock, block, limit.AllowedDirections))
+                    !GroupComponent.IsValidDirection(directionReferenceBlock, block, limit.AllowedDirections, true,
+                        matchedBlockType.PrimaryDirection))
                 {
                     if (!deferPunishment)
                     {

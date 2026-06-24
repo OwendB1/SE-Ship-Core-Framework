@@ -44,6 +44,22 @@ namespace ShipCoreFramework
             GridComponent = gridComponent;
             _groupComponent = groupComponent;
             SubtypeId = CoreBlock.BlockDefinition.SubtypeId;
+
+            var shipCoreConfig = Session.Config.GetShipCoreByTypeId(SubtypeId);
+            var rankOwnerId = CoreBlock.CubeGrid.BigOwners.FirstOrDefault();
+            if (rankOwnerId == 0) rankOwnerId = builder;
+            var rankFaction = rankOwnerId == 0 || MyAPIGateway.Session?.Factions == null
+                ? null
+                : MyAPIGateway.Session.Factions.TryGetPlayerFaction(rankOwnerId);
+            string rankFailureReason;
+            if (!isIgnoredNpcGrid &&
+                PerFactionManager.TryGetMinFactionRankViolation(shipCoreConfig, rankFaction, rankOwnerId, out rankFailureReason))
+            {
+                Utils.ShowNotification(rankFailureReason, builder);
+                CoreBlock.SlimBlock.RemoveAndRefund();
+                return false;
+            }
+
             CubeGridModifiers.RegisterUpgradeModuleLink(CoreBlock);
 
             var persistedMain = CoreBlock.Storage != null

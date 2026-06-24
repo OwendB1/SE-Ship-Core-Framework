@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.ModAPI;
+using VRage.Game;
 using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
@@ -36,6 +37,46 @@ namespace ShipCoreFramework
                 return GetFactionMemberCount(owningFaction);
 
             return ShouldCountTowardsPlayerLimits(ownerId) ? 1 : 0;
+        }
+
+        internal static FactionRank GetFactionRank(IMyFaction owningFaction, long ownerId)
+        {
+            if (owningFaction == null || ownerId <= 0)
+                return FactionRank.None;
+
+            foreach (KeyValuePair<long, MyFactionMember> member in owningFaction.Members)
+            {
+                if (member.Key != ownerId)
+                    continue;
+
+                if (member.Value.IsFounder || owningFaction.IsFounder(ownerId))
+                    return FactionRank.Founder;
+
+                if (member.Value.IsLeader || owningFaction.IsLeader(ownerId))
+                    return FactionRank.Leader;
+
+                return FactionRank.Member;
+            }
+
+            return FactionRank.None;
+        }
+
+        internal static bool TryGetMinFactionRankViolation(ShipCore core, IMyFaction owningFaction, long ownerId, out string reason)
+        {
+            reason = string.Empty;
+            if (core == null || core.MinFactionRank == FactionRank.None)
+                return false;
+
+            FactionRank ownerRank = GetFactionRank(owningFaction, ownerId);
+            if (ownerRank >= core.MinFactionRank)
+                return false;
+
+            string coreName = string.IsNullOrWhiteSpace(core.UniqueName) ? core.SubtypeId : core.UniqueName;
+            reason = "Core " + coreName + " requires faction rank " + core.MinFactionRank + " or higher.";
+            if (ownerRank == FactionRank.None)
+                reason += " Owner is not a faction member.";
+
+            return true;
         }
 
         private static bool ShouldCountTowardsPlayerLimits(long identityId)

@@ -317,9 +317,13 @@ namespace ShipCoreFramework
         private static bool DoesBlockViolateAllowedDirection(IMyCubeBlock directionReferenceBlock, BlockLimit limit,
             IMySlimBlock block)
         {
-            return limit?.AllowedDirections != null &&
-                   directionReferenceBlock != null &&
-                   !IsValidDirection(directionReferenceBlock, block, limit.AllowedDirections, false);
+            if (limit?.AllowedDirections == null || directionReferenceBlock == null || block == null) return false;
+
+            var matchedBlockType = limit.GetMatchingBlockType(GridComponent.KeyOf(block));
+            if (matchedBlockType == null) return false;
+
+            return !IsValidDirection(directionReferenceBlock, block, limit.AllowedDirections, false,
+                matchedBlockType.PrimaryDirection);
         }
 
         private void NotifyDirectionalPlacementViolation(IMyCubeBlock directionReferenceBlock, IMySlimBlock block)
@@ -557,7 +561,8 @@ namespace ShipCoreFramework
         }
 
         internal static bool IsValidDirection(IMyCubeBlock directionReferenceBlock, IMySlimBlock block,
-            List<DirectionType> allowedDirections, bool showNotification = true)
+            List<DirectionType> allowedDirections, bool showNotification = true,
+            DirectionType primaryDirection = DirectionType.Forward)
         {
             if (directionReferenceBlock?.Orientation == null || block?.Orientation == null || allowedDirections == null ||
                 allowedDirections.Count == 0)
@@ -578,7 +583,7 @@ namespace ShipCoreFramework
             Vector3.Cross(ref u, ref f, out l);
             Vector3.Cross(ref f, ref u, out r);
 
-            var bf = Base6Directions.GetVector(block.Orientation.Forward);
+            var bf = GetBlockPrimaryDirectionVector(block, primaryDirection);
             var xyDirection =
                 bf == f ? DirectionType.Forward :
                 bf == b ? DirectionType.Backward :
@@ -594,6 +599,32 @@ namespace ShipCoreFramework
                     directionReferenceBlock.SlimBlock.BuiltBy);
 
             return isValid;
+        }
+
+        private static Vector3 GetBlockPrimaryDirectionVector(IMySlimBlock block, DirectionType primaryDirection)
+        {
+            var f = Base6Directions.GetVector(block.Orientation.Forward);
+            var u = Base6Directions.GetVector(block.Orientation.Up);
+
+            switch (primaryDirection)
+            {
+                case DirectionType.Backward:
+                    return Base6Directions.GetVector(Base6Directions.GetOppositeDirection(block.Orientation.Forward));
+                case DirectionType.Up:
+                    return u;
+                case DirectionType.Down:
+                    return Base6Directions.GetVector(Base6Directions.GetOppositeDirection(block.Orientation.Up));
+                case DirectionType.Left:
+                    Vector3 l;
+                    Vector3.Cross(ref u, ref f, out l);
+                    return l;
+                case DirectionType.Right:
+                    Vector3 r;
+                    Vector3.Cross(ref f, ref u, out r);
+                    return r;
+                default:
+                    return f;
+            }
         }
     }
 }

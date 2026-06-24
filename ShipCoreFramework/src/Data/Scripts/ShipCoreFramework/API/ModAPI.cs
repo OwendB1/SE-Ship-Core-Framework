@@ -918,6 +918,8 @@ namespace ShipCoreFramework
                     ManifestGroupNames = Array.Empty<string>(),
                     ConnectorBlacklistCoreSubtypeIds = Array.Empty<string>(),
                     CoreSelectionPriority = 0,
+                    CrossConnectorPunishmentWhitelisted = false,
+                    MinFactionRank = FactionRankData.None,
                     MaxBackupCores = -1,
                     AllowedUpgradeModules = Array.Empty<UpgradeModuleAllowanceData>(),
                     SpeedLimitTypeData = SpeedLimitTypeData.Normal,
@@ -966,6 +968,8 @@ namespace ShipCoreFramework
                     .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
                     .ToArray(),
                 CoreSelectionPriority = core.CoreSelectionPriority,
+                CrossConnectorPunishmentWhitelisted = core.CrossConnectorPunishmentWhitelisted,
+                MinFactionRank = (FactionRankData)(int)core.MinFactionRank,
                 MaxBackupCores = core.MaxBackupCores,
                 AllowedUpgradeModules = (core.AllowedUpgradeModules ?? Array.Empty<UpgradeModuleAllowance>())
                     .Where(allowance => allowance != null)
@@ -1252,7 +1256,8 @@ namespace ShipCoreFramework
             {
                 TypeId = blockType.TypeId ?? string.Empty,
                 SubtypeId = blockType.SubtypeId ?? string.Empty,
-                CountWeight = blockType.CountWeight
+                CountWeight = blockType.CountWeight,
+                PrimaryDirection = (DirectionTypeData)(int)blockType.PrimaryDirection
             };
         }
 

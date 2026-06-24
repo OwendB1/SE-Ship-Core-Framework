@@ -61,6 +61,7 @@ Load behavior:
   - if the group is still below minimum when that timer check fires, limited blocks are shut off
 - Manifest connector blacklist is separate from `CrossConnectorPunishment`.
   - `CrossConnectorPunishment` only affects limits marked with that flag and only pulls in blocks from connected no-core groups.
+  - `CrossConnectorPunishmentWhitelist` in the manifest disables that pull-in behavior for listed core `SubtypeId` values.
   - Manifest blacklist compares connected core groups by `CoreSelectionPriority`, then block count, and can shut off all limited blocks on the lower-priority or smaller blacklisted group.
 - When multiple different core types end up in one mechanical group, `CoreSelectionPriority` is also used to choose the main core. Equal priorities fall back to the larger cored grid and then a stable entity-id tie-breaker.
 
@@ -110,6 +111,10 @@ Root tag: `<CoreManifest>`
 | `Name` | `string` | Shared manifest group name. | Referenced by ship-core manifest entries. |
 | `MaxCount` | `int` | Maximum simultaneous cores in this manifest group. | Must be non-negative. Group counts are global across loaded mods/configs. |
 
+### Cross connector punishment whitelist
+
+Repeated `<CrossConnectorPunishmentWhitelist>` entries under `<CoreManifest>` list core `SubtypeId` values. If the active core type is listed, `CrossConnectorPunishment` limits on that core do not pull blocks from connected no-core groups.
+
 ### Manifest ship-core entries
 
 Repeated `<ShipCore>` entries under `<CoreManifest>`.
@@ -156,6 +161,7 @@ This file is an XML list of `BlockGroup` entries. `BlockGroup` definitions let m
 | `TypeId` | `string` | Space Engineers block type ID. | Required for a useful match. |
 | `SubtypeId` | `string` | Specific subtype ID. | Empty means any subtype under that type. `any` also works as wildcard. |
 | `CountWeight` | `float` | Weight contributed by a matching block. | Use fractions or larger weights for weighted caps. |
+| `PrimaryDirection` | `DirectionType` | Block-local axis used for directional locking. | Optional. Defaults to `Forward`; use values like `Up` for blocks whose practical facing is not their forward axis. |
 
 ## Ship-core and no-core reference (`Data/ShipCoreConfig_No_Core.xml` and per-core XML files)
 
@@ -179,6 +185,7 @@ The no-core file and normal core files use the same schema. Manifest groups and 
 | `MaxPCU` | `int` | Maximum allowed total group PCU. | New blocks are removed if they exceed this. Negative disables. |
 | `MaxPerFaction` | `int` | Fixed cap on how many groups of this core a faction may own. | `-1` disables fixed faction cap. |
 | `FactionPlayersNeededPerCore` | `int` | Player-scaled faction cap. | `N` means one allowed core per `N` faction members. If combined with `MaxPerFaction`, runtime uses the lower of the two caps. |
+| `MinFactionRank` | `None`, `Member`, `Leader`, `Founder` | Minimum grid majority-owner faction rank required to place this core. | Optional, defaults to `None`. Invalid placement is rejected and refunded before the core activates or counts against faction limits. |
 | `MaxPerPlayer` | `int` | Cap on how many groups of this core a single player may own. | Negative disables. |
 | `MinPlayers` | `int` | Minimum faction member count required for this core. | If set and owner has no faction, placement is rejected. Negative disables. |
 | `MaxPlayers` | `int` | Maximum faction member count allowed for this core. | If faction is larger than this, placement/punishment gates fail. Negative disables. |
@@ -322,7 +329,7 @@ Each entry uses `<BlockLimit>`.
 | `PunishByNoFlyZone` | `bool` | Applies this limit's punishment inside no-fly zones. | Only used when the zone itself is not forcing everything off. |
 | `IsCriticalLimit` | `bool` | Marks this limit as exempt from total limited-block shutoff gates. | Min-block and manifest-blacklist shutoff skip this limit. Normal limit overflow, directional checks, and no-fly-zone punishment still work normally. |
 | `PunishmentType` | `ShutOff`, `Damage`, `Delete`, `Explode` | Punishment for blocks in this limit when the limit is violated. | Limited-block gate punishment always uses `ShutOff`, regardless of this setting. |
-| `AllowedDirections` | `List<DirectionType>` | Directional lock for this limit. | If set, mismatched blocks are punished even if count is under cap. Directions are relative to the main core. Subgrid behavior is controlled by world setting `BlockDirectionalPlacementOnSubgrids`. |
+| `AllowedDirections` | `List<DirectionType>` | Directional lock for this limit. | If set, mismatched blocks are punished even if count is under cap. Directions are relative to the main core and compare the matched `BlockType.PrimaryDirection` axis. Subgrid behavior is controlled by world setting `BlockDirectionalPlacementOnSubgrids`. |
 
 ### Direction values
 

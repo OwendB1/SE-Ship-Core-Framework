@@ -161,6 +161,19 @@ namespace ShipCoreFramework
                 }
             }
 
+            if (manifest.CrossConnectorPunishmentWhitelist == null)
+            {
+                manifest.CrossConnectorPunishmentWhitelist = new List<string>();
+            }
+            else
+            {
+                manifest.CrossConnectorPunishmentWhitelist = manifest.CrossConnectorPunishmentWhitelist
+                    .Where(coreSubtypeId => !string.IsNullOrWhiteSpace(coreSubtypeId))
+                    .Select(coreSubtypeId => coreSubtypeId.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }
+
             if (manifest.UpgradeModules == null)
             {
                 manifest.UpgradeModules = new List<ManifestUpgradeModuleEntry>();

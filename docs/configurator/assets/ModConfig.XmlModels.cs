@@ -73,6 +73,8 @@ namespace ShipCoreFramework
         [XmlArray("ManifestGroups")]
         [XmlArrayItem("Group")]
         public List<ManifestCoreGroup> ManifestGroups = new List<ManifestCoreGroup>();
+        [XmlElement("CrossConnectorPunishmentWhitelist")]
+        public List<string> CrossConnectorPunishmentWhitelist = new List<string>();
         [XmlElement("ShipCore")]
         public List<ManifestShipCoreEntry> ShipCores = new List<ManifestShipCoreEntry>();
         [XmlElement("UpgradeModule")]
@@ -154,6 +156,9 @@ namespace ShipCoreFramework
         [XmlElement("FactionPlayersNeededPerCore")]
         public int FactionPlayersNeededPerCore = -1;
 
+        [XmlElement("MinFactionRank")]
+        public FactionRank MinFactionRank = FactionRank.None;
+
         [XmlElement("MaxPerPlayer")]
         public int MaxPerPlayer = -1;
 
@@ -165,6 +170,14 @@ namespace ShipCoreFramework
 
         [XmlIgnore]
         public readonly List<string> ManifestGroupNames = new List<string>();
+
+        [XmlIgnore]
+        public bool CrossConnectorPunishmentWhitelisted;
+
+        public bool ShouldSerializeMinFactionRank()
+        {
+            return MinFactionRank != FactionRank.None;
+        }
 
         [XmlElement("AllowedUpgradeModules")]
         public UpgradeModuleAllowance[] AllowedUpgradeModules = Array.Empty<UpgradeModuleAllowance>();
@@ -524,7 +537,13 @@ namespace ShipCoreFramework
 
         internal double GetWeight(BlockKey key)
         {
-            if (BlockGroups == null) return 0d;
+            var blockType = GetMatchingBlockType(key);
+            return blockType != null ? blockType.CountWeight : 0d;
+        }
+
+        internal BlockType GetMatchingBlockType(BlockKey key)
+        {
+            if (BlockGroups == null) return null;
 
             foreach (var group in BlockGroups)
             {
@@ -534,11 +553,11 @@ namespace ShipCoreFramework
                 {
                     if (blockType == null) continue;
                     if (blockType.Matches(key))
-                        return blockType.CountWeight;
+                        return blockType;
                 }
             }
 
-            return 0d;
+            return null;
         }
     }
 
@@ -564,18 +583,29 @@ namespace ShipCoreFramework
         [XmlElement("CountWeight")]
         public float CountWeight;
 
+        [XmlElement("PrimaryDirection")]
+        public DirectionType PrimaryDirection;
+
         public BlockType()
         {
             TypeId = string.Empty;
             SubtypeId = string.Empty;
             CountWeight = 1;
+            PrimaryDirection = DirectionType.Forward;
         }
 
-        public BlockType(string typeId, string subtypeId = "", float countWeight = 1)
+        public BlockType(string typeId, string subtypeId = "", float countWeight = 1,
+            DirectionType primaryDirection = DirectionType.Forward)
         {
             TypeId = typeId;
             SubtypeId = subtypeId;
             CountWeight = countWeight;
+            PrimaryDirection = primaryDirection;
+        }
+
+        public bool ShouldSerializePrimaryDirection()
+        {
+            return PrimaryDirection != DirectionType.Forward;
         }
 
         internal bool Matches(BlockKey key)
@@ -684,5 +714,14 @@ namespace ShipCoreFramework
         Down,
         Left,
         Right
+    }
+
+    [XmlRoot("FactionRank")]
+    public enum FactionRank
+    {
+        None = 0,
+        Member = 1,
+        Leader = 2,
+        Founder = 3
     }
 }

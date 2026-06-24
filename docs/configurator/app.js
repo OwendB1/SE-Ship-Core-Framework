@@ -144,6 +144,7 @@ const DEFAULT_CAPACITY_MODIFIER = {
 };
 
 const VALID_DIRECTIONS = ["Forward", "Backward", "Up", "Down", "Left", "Right"];
+const FACTION_RANKS = ["None", "Member", "Leader", "Founder"];
 const DRAFT_STORAGE_KEY = "ship-core-configurator-draft-v1";
 
 const ids = (id) => document.getElementById(id);
@@ -375,8 +376,12 @@ function normalizeManifestGroupNames(groupNames = [], manifestGroups = state.man
   }));
 }
 
-function normalizeManifestBlacklistSubtypeIds(subtypeIds = []) {
+function normalizeManifestCoreSubtypeIds(subtypeIds = []) {
   return dedupeStrings((subtypeIds || []).map((subtypeId) => String(subtypeId ?? "").trim()));
+}
+
+function normalizeManifestBlacklistSubtypeIds(subtypeIds = []) {
+  return normalizeManifestCoreSubtypeIds(subtypeIds);
 }
 
 function parseManifestXml(text) {
@@ -387,6 +392,7 @@ function parseManifestXml(text) {
       groups: [],
       shipCores: [],
       upgradeModules: [],
+      crossConnectorPunishmentWhitelist: [],
       sourceFormat: "invalid"
     };
   }
@@ -414,6 +420,10 @@ function parseManifestXml(text) {
       filename: textOf(entryNode, "Filename")
     }))
     .filter((entry) => entry.filename);
+
+  const crossConnectorPunishmentWhitelist = normalizeManifestCoreSubtypeIds(
+    qselAll(root, "CrossConnectorPunishmentWhitelist").map((subtypeNode) => subtypeNode.textContent.trim())
+  );
 
   const legacyShipCores = qselAll(root, "ShipCoreFilenames")
     .map((node) => node.textContent.trim())
@@ -448,6 +458,7 @@ function parseManifestXml(text) {
   });
 
   const sourceFormat = currentShipCores.length || currentUpgradeModules.length || manifestGroups.length
+    || crossConnectorPunishmentWhitelist.length
     ? "current"
     : (legacyShipCores.length || legacyUpgradeModules.length ? "legacy" : "empty");
 
@@ -459,6 +470,7 @@ function parseManifestXml(text) {
       blacklistedCoreSubtypeIds: normalizeManifestBlacklistSubtypeIds(entry.blacklistedCoreSubtypeIds)
     })),
     upgradeModules: Array.from(upgradeModuleMap.values()),
+    crossConnectorPunishmentWhitelist,
     sourceFormat
   };
 }
@@ -643,6 +655,7 @@ function createDefaultCore() {
     maxBackupCores: -1,
     maxPerFaction: -1,
     factionPlayersNeededPerCore: -1,
+    minFactionRank: "None",
     minPerFaction: -1,
     maxPlayers: -1,
     maxPerPlayer: -1,
@@ -653,6 +666,7 @@ function createDefaultCore() {
     speedOverrideMode: "OnlyIfHeavier",
     speedOverridePriority: 0,
     coreSelectionPriority: 0,
+    crossConnectorPunishmentWhitelisted: false,
     enableActiveDefenseModifiers: false,
     manifestGroups: [],
     manifestBlacklistedCoreSubtypeIds: [],
@@ -703,8 +717,19 @@ function cloneBlockType(blockType = {}) {
   return {
     typeId: String(blockType.typeId ?? ""),
     subtypeId: String(blockType.subtypeId ?? ""),
-    countWeight: Number(blockType.countWeight ?? 1)
+    countWeight: Number(blockType.countWeight ?? 1),
+    primaryDirection: normalizePrimaryDirection(blockType.primaryDirection)
   };
+}
+
+function normalizePrimaryDirection(direction) {
+  const value = String(direction ?? "").trim();
+  return value && VALID_DIRECTIONS.includes(value) && value !== "Forward" ? value : "";
+}
+
+function normalizeFactionRank(rank) {
+  const value = String(rank ?? "").trim();
+  return FACTION_RANKS.includes(value) ? value : "None";
 }
 
 function cloneLimit(limit = createDefaultLimit()) {
@@ -840,6 +865,8 @@ function cloneShipCore(core = createDefaultCore()) {
     ...core,
     outputDirectory: normalizeOutputDirectory(core.outputDirectory, state.outputCoreDirectory || "Data/Cores/"),
     coreSelectionPriority: Number(core.coreSelectionPriority ?? 0) || 0,
+    crossConnectorPunishmentWhitelisted: Boolean(core.crossConnectorPunishmentWhitelisted),
+    minFactionRank: normalizeFactionRank(core.minFactionRank),
     manifestGroups: normalizeManifestGroupNames(Array.isArray(core?.manifestGroups) ? core.manifestGroups.map((groupName) => String(groupName ?? "").trim()) : []),
     manifestBlacklistedCoreSubtypeIds: normalizeManifestBlacklistSubtypeIds(
       Array.isArray(core?.manifestBlacklistedCoreSubtypeIds)
@@ -925,10 +952,19 @@ function resetEditor(seed = true) {
 }
 
 function blockTypeEditor(groupIdx, blockType, blockTypeIdx) {
+  const primaryDirection = normalizePrimaryDirection(blockType.primaryDirection);
+  const primaryDirectionOptions = [
+    `<option value="" ${primaryDirection ? "" : "selected"}>Forward (default)</option>`,
+    ...VALID_DIRECTIONS.filter((direction) => direction !== "Forward").map(
+      (direction) => `<option value="${escapeXml(direction)}" ${primaryDirection === direction ? "selected" : ""}>${escapeXml(direction)}</option>`
+    )
+  ].join("");
+
   return `<div class="row wrap">
     <label class="inline">TypeId <input data-action="bt-type" data-g="${groupIdx}" data-i="${blockTypeIdx}" class="small" placeholder="TypeId" value="${escapeXml(blockType.typeId)}" /></label>
     <label class="inline">SubtypeId <input data-action="bt-subtype" data-g="${groupIdx}" data-i="${blockTypeIdx}" class="small" placeholder="SubtypeId, blank = base subtype, any = wildcard" value="${escapeXml(blockType.subtypeId)}" /></label>
     <label class="inline">CountWeight <input data-action="bt-weight" data-g="${groupIdx}" data-i="${blockTypeIdx}" class="small" type="number" step="0.1" value="${blockType.countWeight}" /></label>
+    <label class="inline">PrimaryDirection <select data-action="bt-primary-direction" data-g="${groupIdx}" data-i="${blockTypeIdx}" class="small">${primaryDirectionOptions}</select></label>
     <button data-action="remove-bt" data-g="${groupIdx}" data-i="${blockTypeIdx}">Remove BlockType</button>
   </div>`;
 }
@@ -1015,6 +1051,20 @@ function manifestBlacklistCheckboxesForCore(coreIndex, selected = []) {
     .join("");
 }
 
+function crossConnectorPunishmentWhitelistItemForCore(coreIndex, core) {
+  const subtypeId = String(core?.subtypeId ?? "").trim();
+  if (!subtypeId) return `<p class="muted">Set Core Subtype before adding this core to the whitelist.</p>`;
+
+  const label = core.uniqueName?.trim() ? `${subtypeId} (${core.uniqueName.trim()})` : subtypeId;
+  const isSelected = Boolean(core.crossConnectorPunishmentWhitelisted);
+  return `<div class="group-checklist">
+    <label class="group-checklist-item ${isSelected ? "selected" : ""}">
+      <input data-action="core-cross-connector-punishment-whitelist-toggle" data-c="${coreIndex}" type="checkbox" ${isSelected ? "checked" : ""} />
+      <span>${escapeXml(label)}</span>
+    </label>
+  </div>`;
+}
+
 function manifestCoreEntryLabel(core, idx) {
   const labelBase = core?.subtypeId?.trim() || core?.uniqueName?.trim() || `Unnamed Core ${idx + 1}`;
   return `${idx + 1}. ${labelBase}`;
@@ -1073,6 +1123,8 @@ function manifestCoreEntryEditor() {
       </div>
       <h4>Connector Blacklist</h4>
       ${blacklistMarkup}
+      <h4>CrossConnectorPunishment Whitelist</h4>
+      ${crossConnectorPunishmentWhitelistItemForCore(selectorIndex, core)}
     </div>
   `;
 }
@@ -1239,6 +1291,13 @@ function upgradeStatSelectOptions(selectedStat = "") {
   ].join("");
 }
 
+function factionRankOptions(selectedRank = "None") {
+  const normalizedSelected = normalizeFactionRank(selectedRank);
+  return FACTION_RANKS
+    .map((rank) => `<option value="${escapeXml(rank)}" ${normalizedSelected === rank ? "selected" : ""}>${escapeXml(rank)}</option>`)
+    .join("");
+}
+
 function renderCoreSelector() {
   ensureValidSelectedIndexes();
   const selector = ids("selectedCore");
@@ -1293,6 +1352,11 @@ function renderShipCores() {
         <label class="inline">MaxPerPlayer <input data-action="core-maxpp" data-c="${coreIndex}" class="small" type="number" value="${core.maxPerPlayer}" /></label>
         <label class="inline">MaxPerFaction <input data-action="core-maxpf" data-c="${coreIndex}" class="small" type="number" value="${core.maxPerFaction}" /></label>
         <label class="inline">FactionPlayersNeededPerCore <input data-action="core-faction-players-needed" data-c="${coreIndex}" class="small" type="number" value="${core.factionPlayersNeededPerCore}" /></label>
+        <label class="inline">MinFactionRank
+          <select data-action="core-min-faction-rank" data-c="${coreIndex}" class="small">
+            ${factionRankOptions(core.minFactionRank)}
+          </select>
+        </label>
         <label class="inline">MinPlayers <input data-action="core-minplayers" data-c="${coreIndex}" class="small" type="number" value="${core.minPerFaction}" /></label>
         <label class="inline">MaxPlayers <input data-action="core-maxplayers" data-c="${coreIndex}" class="small" type="number" value="${core.maxPlayers}" /></label>
       </div>
@@ -1532,7 +1596,8 @@ function parseGroupsXml(text) {
       blockTypes: qselAll(groupNode, "BlockTypes").map((typeNode) => ({
         typeId: textOf(typeNode, "TypeId"),
         subtypeId: textOf(typeNode, "SubtypeId"),
-        countWeight: numberOf(typeNode, "CountWeight", 1)
+        countWeight: numberOf(typeNode, "CountWeight", 1),
+        primaryDirection: normalizePrimaryDirection(textOf(typeNode, "PrimaryDirection"))
       }))
     }))
     .filter((group) => group.name);
@@ -1557,6 +1622,7 @@ function parseCoreXml(text, originalFileName = "") {
     maxBackupCores: numberOf(coreNode, "MaxBackupCores", -1),
     maxPerFaction: numberOf(coreNode, "MaxPerFaction", -1),
     factionPlayersNeededPerCore: numberOf(coreNode, "FactionPlayersNeededPerCore", -1),
+    minFactionRank: normalizeFactionRank(textOf(coreNode, "MinFactionRank")),
     minPerFaction: numberOf(coreNode, "MinPlayers", numberOf(coreNode, "MinPerFaction", -1)),
     maxPlayers: numberOf(coreNode, "MaxPlayers", -1),
     maxPerPlayer: numberOf(coreNode, "MaxPerPlayer", -1),
@@ -1642,6 +1708,11 @@ function writeAllowedUpgradeModulesXml(entries = [], indent = "  ") {
         `${indent}<AllowedUpgradeModules>\n${indent}  <SubtypeId>${escapeXml(entry.subtypeId)}</SubtypeId>\n${indent}  <MaxCount>${Number(entry.maxCount ?? 0)}</MaxCount>\n${indent}</AllowedUpgradeModules>`
     )
     .join("\n");
+}
+
+function writeMinFactionRankXml(core, indent = "  ") {
+  const rank = normalizeFactionRank(core?.minFactionRank);
+  return rank === "None" ? "" : `\n${indent}<MinFactionRank>${escapeXml(rank)}</MinFactionRank>`;
 }
 
 function writeBlockLimitXml(limit, indent = "  ") {
@@ -1788,7 +1859,8 @@ function normalizeBlockTypeSignature(blockTypes, mergeMode = "strict") {
     .map((blockType) => ({
       typeId: String(blockType?.typeId || "").trim(),
       subtypeId: String(blockType?.subtypeId || "").trim(),
-      countWeight: Number(blockType?.countWeight)
+      countWeight: Number(blockType?.countWeight),
+      primaryDirection: normalizePrimaryDirection(blockType?.primaryDirection)
     }))
     .filter((blockType) => blockType.typeId || blockType.subtypeId);
 
@@ -1799,7 +1871,7 @@ function normalizeBlockTypeSignature(blockTypes, mergeMode = "strict") {
   }
 
   return normalized
-    .map((blockType) => `${blockType.typeId}|${blockType.subtypeId}|${blockType.countWeight}`)
+    .map((blockType) => `${blockType.typeId}|${blockType.subtypeId}|${blockType.countWeight}|${blockType.primaryDirection}`)
     .sort((a, b) => a.localeCompare(b))
     .join("\n");
 }
@@ -1817,7 +1889,8 @@ function parseLegacyBlockTypes(limitNode) {
     .map((blockNode) => ({
       typeId: textOf(blockNode, "TypeId"),
       subtypeId: textOf(blockNode, "SubtypeId"),
-      countWeight: numberOf(blockNode, "CountWeight", 1)
+      countWeight: numberOf(blockNode, "CountWeight", 1),
+      primaryDirection: normalizePrimaryDirection(textOf(blockNode, "PrimaryDirection"))
     }))
     .filter((blockType) => blockType.typeId || blockType.subtypeId);
 }
@@ -2137,14 +2210,17 @@ function generateXml(options = {}) {
   const namedManifestGroups = getNamedManifestGroups();
 
   const noCore = state.noCoreCore
-    ? `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(state.noCoreCore.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(state.noCoreCore.uniqueName)}</UniqueName>\n  <ForceBroadCast>${state.noCoreCore.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${state.noCoreCore.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(state.noCoreCore.mobilityType)}</MobilityType>\n  <MaxBlocks>${state.noCoreCore.maxBlocks}</MaxBlocks>\n  <MinBlocks>${state.noCoreCore.minBlocks}</MinBlocks>\n  <MaxMass>${state.noCoreCore.maxMass}</MaxMass>\n  <MaxPCU>${state.noCoreCore.maxPcu}</MaxPCU>\n  <MaxBackupCores>${state.noCoreCore.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${state.noCoreCore.maxPerPlayer}</MaxPerPlayer>\n  <MaxPerFaction>${state.noCoreCore.maxPerFaction}</MaxPerFaction>\n  <FactionPlayersNeededPerCore>${state.noCoreCore.factionPlayersNeededPerCore}</FactionPlayersNeededPerCore>\n  <MinPlayers>${state.noCoreCore.minPerFaction}</MinPlayers>\n  <MaxPlayers>${state.noCoreCore.maxPlayers}</MaxPlayers>\n  <SpeedBoostEnabled>${state.noCoreCore.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(state.noCoreCore.speedLimitType)}</SpeedLimitType>\n  <SpeedOverrideMode>${escapeXml(state.noCoreCore.speedOverrideMode)}</SpeedOverrideMode>\n  <SpeedOverridePriority>${Number(state.noCoreCore.speedOverridePriority) || 0}</SpeedOverridePriority>\n  <EnableActiveDefenseModifiers>${state.noCoreCore.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeAllowedUpgradeModulesXml(state.noCoreCore.allowedUpgradeModules)}${state.noCoreCore.allowedUpgradeModules?.length ? "\n" : ""}${writeModifierXml("Modifiers", state.noCoreCore.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeSpeedModifiersXml(state.noCoreCore.speedModifiers)}\n${writeModifierXml("PassiveDefenseModifiers", state.noCoreCore.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", state.noCoreCore.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${state.noCoreCore.blockLimits
+    ? `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(state.noCoreCore.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(state.noCoreCore.uniqueName)}</UniqueName>\n  <ForceBroadCast>${state.noCoreCore.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${state.noCoreCore.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(state.noCoreCore.mobilityType)}</MobilityType>\n  <MaxBlocks>${state.noCoreCore.maxBlocks}</MaxBlocks>\n  <MinBlocks>${state.noCoreCore.minBlocks}</MinBlocks>\n  <MaxMass>${state.noCoreCore.maxMass}</MaxMass>\n  <MaxPCU>${state.noCoreCore.maxPcu}</MaxPCU>\n  <MaxBackupCores>${state.noCoreCore.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${state.noCoreCore.maxPerPlayer}</MaxPerPlayer>\n  <MaxPerFaction>${state.noCoreCore.maxPerFaction}</MaxPerFaction>\n  <FactionPlayersNeededPerCore>${state.noCoreCore.factionPlayersNeededPerCore}</FactionPlayersNeededPerCore>${writeMinFactionRankXml(state.noCoreCore)}\n  <MinPlayers>${state.noCoreCore.minPerFaction}</MinPlayers>\n  <MaxPlayers>${state.noCoreCore.maxPlayers}</MaxPlayers>\n  <SpeedBoostEnabled>${state.noCoreCore.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(state.noCoreCore.speedLimitType)}</SpeedLimitType>\n  <SpeedOverrideMode>${escapeXml(state.noCoreCore.speedOverrideMode)}</SpeedOverrideMode>\n  <SpeedOverridePriority>${Number(state.noCoreCore.speedOverridePriority) || 0}</SpeedOverridePriority>\n  <EnableActiveDefenseModifiers>${state.noCoreCore.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeAllowedUpgradeModulesXml(state.noCoreCore.allowedUpgradeModules)}${state.noCoreCore.allowedUpgradeModules?.length ? "\n" : ""}${writeModifierXml("Modifiers", state.noCoreCore.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeSpeedModifiersXml(state.noCoreCore.speedModifiers)}\n${writeModifierXml("PassiveDefenseModifiers", state.noCoreCore.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", state.noCoreCore.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${state.noCoreCore.blockLimits
       .map((limit) => writeBlockLimitXml(limit))
       .join("\n")}\n</ShipCore>`
     : `${header}\n<ShipCore />`;
 
   const groups = `${header}\n<ArrayOfBlockGroup>\n${state.blockGroups
     .map((group) => `  <BlockGroup>\n    <Name>${escapeXml(group.name)}</Name>\n${group.blockTypes
-      .map((bt) => `    <BlockTypes>\n      <TypeId>${escapeXml(bt.typeId)}</TypeId>\n      <SubtypeId>${escapeXml(bt.subtypeId || "")}</SubtypeId>\n      <CountWeight>${bt.countWeight}</CountWeight>\n    </BlockTypes>`)
+      .map((bt) => {
+        const primaryDirection = normalizePrimaryDirection(bt.primaryDirection);
+        return `    <BlockTypes>\n      <TypeId>${escapeXml(bt.typeId)}</TypeId>\n      <SubtypeId>${escapeXml(bt.subtypeId || "")}</SubtypeId>\n      <CountWeight>${bt.countWeight}</CountWeight>${primaryDirection ? `\n      <PrimaryDirection>${escapeXml(primaryDirection)}</PrimaryDirection>` : ""}\n    </BlockTypes>`;
+      })
       .join("\n")}\n  </BlockGroup>`)
     .join("\n")}\n</ArrayOfBlockGroup>`;
 
@@ -2158,7 +2234,7 @@ function generateXml(options = {}) {
     core,
     file: coreFilenames[coreIndex],
     outputPath: buildCoreOutputPath(core, coreFilenames[coreIndex]),
-    body: `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(core.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(core.uniqueName)}</UniqueName>\n  <ForceBroadCast>${core.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${core.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(core.mobilityType)}</MobilityType>\n  <MaxBlocks>${core.maxBlocks}</MaxBlocks>\n  <MinBlocks>${core.minBlocks}</MinBlocks>\n  <MaxMass>${core.maxMass}</MaxMass>\n  <MaxPCU>${core.maxPcu}</MaxPCU>\n  <MaxBackupCores>${core.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${core.maxPerPlayer}</MaxPerPlayer>\n  <MaxPerFaction>${core.maxPerFaction}</MaxPerFaction>\n  <FactionPlayersNeededPerCore>${core.factionPlayersNeededPerCore}</FactionPlayersNeededPerCore>\n  <MinPlayers>${core.minPerFaction}</MinPlayers>\n  <MaxPlayers>${core.maxPlayers}</MaxPlayers>\n  <SpeedBoostEnabled>${core.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(core.speedLimitType)}</SpeedLimitType>\n  <SpeedOverrideMode>${escapeXml(core.speedOverrideMode)}</SpeedOverrideMode>\n  <SpeedOverridePriority>${Number(core.speedOverridePriority) || 0}</SpeedOverridePriority>\n  <EnableActiveDefenseModifiers>${core.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeAllowedUpgradeModulesXml(core.allowedUpgradeModules)}${core.allowedUpgradeModules?.length ? "\n" : ""}${writeModifierXml("Modifiers", core.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeSpeedModifiersXml(core.speedModifiers)}\n${writeModifierXml("PassiveDefenseModifiers", core.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", core.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${core.blockLimits
+    body: `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(core.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(core.uniqueName)}</UniqueName>\n  <ForceBroadCast>${core.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${core.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(core.mobilityType)}</MobilityType>\n  <MaxBlocks>${core.maxBlocks}</MaxBlocks>\n  <MinBlocks>${core.minBlocks}</MinBlocks>\n  <MaxMass>${core.maxMass}</MaxMass>\n  <MaxPCU>${core.maxPcu}</MaxPCU>\n  <MaxBackupCores>${core.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${core.maxPerPlayer}</MaxPerPlayer>\n  <MaxPerFaction>${core.maxPerFaction}</MaxPerFaction>\n  <FactionPlayersNeededPerCore>${core.factionPlayersNeededPerCore}</FactionPlayersNeededPerCore>${writeMinFactionRankXml(core)}\n  <MinPlayers>${core.minPerFaction}</MinPlayers>\n  <MaxPlayers>${core.maxPlayers}</MaxPlayers>\n  <SpeedBoostEnabled>${core.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(core.speedLimitType)}</SpeedLimitType>\n  <SpeedOverrideMode>${escapeXml(core.speedOverrideMode)}</SpeedOverrideMode>\n  <SpeedOverridePriority>${Number(core.speedOverridePriority) || 0}</SpeedOverridePriority>\n  <EnableActiveDefenseModifiers>${core.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeAllowedUpgradeModulesXml(core.allowedUpgradeModules)}${core.allowedUpgradeModules?.length ? "\n" : ""}${writeModifierXml("Modifiers", core.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeSpeedModifiersXml(core.speedModifiers)}\n${writeModifierXml("PassiveDefenseModifiers", core.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", core.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${core.blockLimits
       .map((limit) => writeBlockLimitXml(limit))
       .join("\n")}\n</ShipCore>`
   }));
@@ -2168,6 +2244,11 @@ function generateXml(options = {}) {
     file: upgradeModuleFilenames[moduleIndex],
     body: writeUpgradeModuleXml(module)
   }));
+  const crossConnectorPunishmentWhitelist = normalizeManifestCoreSubtypeIds(
+    cores
+      .filter((entry) => entry.core.crossConnectorPunishmentWhitelisted)
+      .map((entry) => entry.core.subtypeId)
+  );
 
   const manifest = `${header}
 <CoreManifest>
@@ -2177,6 +2258,9 @@ ${namedManifestGroups
       .map((group) => `    <Group>\n      <Name>${escapeXml(group.name)}</Name>\n      <MaxCount>${Number(group.maxCount)}</MaxCount>\n    </Group>`)
       .join("\n")}
   </ManifestGroups>`
+    : ""}
+${crossConnectorPunishmentWhitelist.length
+    ? crossConnectorPunishmentWhitelist.map((subtypeId) => `  <CrossConnectorPunishmentWhitelist>${escapeXml(subtypeId)}</CrossConnectorPunishmentWhitelist>`).join("\n")
     : ""}
 ${cores
     .filter((entry) => entry.core.subtypeId.trim())
@@ -2228,7 +2312,7 @@ document.addEventListener("click", (event) => {
   let didMutate = false;
 
   if (action === "add-bt") {
-    state.blockGroups[groupIndex].blockTypes.push({ typeId: "", subtypeId: "", countWeight: 1 });
+    state.blockGroups[groupIndex].blockTypes.push({ typeId: "", subtypeId: "", countWeight: 1, primaryDirection: "" });
     didMutate = true;
   }
   if (action === "remove-bt") {
@@ -2599,6 +2683,12 @@ document.addEventListener("change", (event) => {
   const inputElement = target instanceof HTMLInputElement ? target : null;
   const selectElement = target instanceof HTMLSelectElement ? target : null;
 
+  if (action === "bt-primary-direction" && selectElement) {
+    state.blockGroups[groupIndex].blockTypes[blockTypeIndex].primaryDirection = normalizePrimaryDirection(selectElement.value);
+    generateXml();
+    return;
+  }
+
   if (action === "selected-manifest-core-entry" && selectElement) {
     state.selectedManifestCoreEntryIndex = Number(selectElement.value);
     renderManifestGroups();
@@ -2626,6 +2716,7 @@ document.addEventListener("change", (event) => {
   if (action === "core-enable-active-defense" && inputElement) selectedCore.enableActiveDefenseModifiers = inputElement.checked;
   if (action === "core-speed-limit-type" && selectElement) selectedCore.speedLimitType = selectElement.value;
   if (action === "core-speed-override-mode" && selectElement) selectedCore.speedOverrideMode = selectElement.value;
+  if (action === "core-min-faction-rank" && selectElement) selectedCore.minFactionRank = normalizeFactionRank(selectElement.value);
   if (action === "core-speed-override-priority") selectedCore.speedOverridePriority = Number(target.value || 0);
   if (action === "limit-punish" && inputElement) {
     selectedCore.blockLimits[limitIndex].punishByNoFlyZone = inputElement.checked;
@@ -2694,6 +2785,10 @@ document.addEventListener("change", (event) => {
     if (inputElement.checked) selectedSet.add(blacklistedSubtype);
     else selectedSet.delete(blacklistedSubtype);
     selectedCore.manifestBlacklistedCoreSubtypeIds = normalizeManifestBlacklistSubtypeIds(Array.from(selectedSet));
+    renderManifestGroups();
+  }
+  if (action === "core-cross-connector-punishment-whitelist-toggle" && inputElement) {
+    selectedCore.crossConnectorPunishmentWhitelisted = inputElement.checked;
     renderManifestGroups();
   }
   if (action === "core-selection-priority" && inputElement) {
@@ -2980,6 +3075,7 @@ async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, cor
   const manifestCoreGroupsByFilename = new Map();
   const manifestCoreBlacklistByFilename = new Map();
   const manifestCorePriorityByFilename = new Map();
+  let manifestCrossConnectorPunishmentWhitelist = new Set();
 
   resetEditor(false);
   // Store passthrough files (SBCs and unrecognised files) for re-inclusion in Download All
@@ -3000,6 +3096,9 @@ async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, cor
     } else {
       const listed = manifest.shipCores.map((entry) => entry.filename);
       const listedModules = manifest.upgradeModules.map((entry) => entry.filename);
+      manifestCrossConnectorPunishmentWhitelist = new Set(
+        normalizeManifestCoreSubtypeIds(manifest.crossConnectorPunishmentWhitelist || []).map((subtypeId) => subtypeId.toLowerCase())
+      );
       state.manifestGroups = manifest.groups;
       state.selectedManifestGroupIndex = manifest.groups.length ? 0 : -1;
       state.selectedManifestCoreEntryIndex = -1;
@@ -3082,6 +3181,9 @@ async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, cor
           manifestCoreBlacklistByFilename.get(file.name.trim().toLowerCase()) || []
         );
         parsed.coreSelectionPriority = Number(manifestCorePriorityByFilename.get(file.name.trim().toLowerCase())) || 0;
+        parsed.crossConnectorPunishmentWhitelisted = manifestCrossConnectorPunishmentWhitelist.has(
+          String(parsed.subtypeId || "").trim().toLowerCase()
+        );
         state.shipCores.push(parsed);
         status.push(`Loaded core '${parsed.subtypeId || file.name}'.`);
       }
