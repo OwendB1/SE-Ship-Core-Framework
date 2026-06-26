@@ -1,4 +1,3 @@
-using System.Linq;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using VRage.Game.ModAPI;
@@ -64,7 +63,7 @@ namespace ShipCoreFramework
             var shipCore = _groupComponent.ShipCore;
             if (BeaconBlock == null || shipCore == null || !shipCore.ForceBroadCast) return;
 
-            SyncForceBroadcast();
+            _groupComponent.SyncBeaconComponents();
             if (!_groupComponent.IsIgnoredByAiOrFactionTag() && ShouldForceBroadcast()) BeaconBlock.Enabled = true;
             _groupComponent.RefreshPunishmentState();
         }
@@ -98,9 +97,45 @@ namespace ShipCoreFramework
 
         private bool ShouldForceBroadcast()
         {
-            if(_groupComponent.GridDictionary.Values.Any(gc => gc.BeaconDictionary.Any(bc => bc.Key.IsWorking))) return false;
             var shipCore = _groupComponent?.ShipCore;
-            return shipCore != null && shipCore.ForceBroadCast;
+            if (shipCore == null || !shipCore.ForceBroadCast) return false;
+
+            if (HasOtherWorkingForceBroadcastBeacon()) return false;
+            if (BeaconBlock != null && BeaconBlock.IsWorking) return true;
+
+            return !HasWorkingBeacon();
+        }
+
+        private bool HasOtherWorkingForceBroadcastBeacon()
+        {
+            foreach (var gridComponent in _groupComponent.GridDictionary.Values)
+            {
+                foreach (var beaconPair in gridComponent.BeaconDictionary)
+                {
+                    var beaconComponent = beaconPair.Value;
+                    if (beaconComponent == null || ReferenceEquals(beaconComponent, this)) continue;
+                    if (!beaconComponent._hasAppliedForceBroadcast) continue;
+
+                    var beacon = beaconComponent.BeaconBlock;
+                    if (beacon != null && beacon.IsWorking) return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool HasWorkingBeacon()
+        {
+            foreach (var gridComponent in _groupComponent.GridDictionary.Values)
+            {
+                foreach (var beaconPair in gridComponent.BeaconDictionary)
+                {
+                    var beacon = beaconPair.Key;
+                    if (beacon != null && beacon.IsWorking) return true;
+                }
+            }
+
+            return false;
         }
 
         internal void SyncForceBroadcast()
