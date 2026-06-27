@@ -243,6 +243,7 @@ namespace ShipCoreFramework
             Session.Config = null;
             Session.Config = new ModConfig();
             Session.Config.LoadConfig();
+            if (Session.IsServer) Session.RefreshGroupsAfterConfigChanged();
             if (Session.MpActive && !Session.IsServer) Session.Networking.SendToServer(new PacketRequestConfig(), onlyToServer: true);
             return "Config reloaded from disk.";
         }
@@ -474,6 +475,7 @@ namespace ShipCoreFramework
 
             Session.Config.SelectedNoCoreUniqueName = found.UniqueName ?? string.Empty;
             Session.Config.ResolveSelectedNoCore();
+            Session.RefreshGroupsAfterConfigChanged();
             Session.Config.SaveConfig(true);
             return $"Selected 'no core' config: {found.UniqueName} ({found.SubtypeId}). Please save the world and reload the save file afterwards.";
         }

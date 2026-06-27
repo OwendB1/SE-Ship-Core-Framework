@@ -329,6 +329,17 @@ namespace ShipCoreFramework
                 gridComponent.SyncBeaconComponents();
         }
 
+        internal void OnConfigChanged()
+        {
+            if (_closing || Session.IsShuttingDown) return;
+
+            InvalidateGameThreadStateCache(true);
+            InvalidateModifierStateCache();
+            IncrementLimitGeneration();
+            SyncNoCoreLimitTracking();
+            OnUpgradeModulesChanged();
+        }
+
         internal void Clean()
         {
             _closing = true;
@@ -373,13 +384,19 @@ namespace ShipCoreFramework
 
         private void RegisterNoCoreLimitTracking(long ownerId)
         {
-            if (_noCoreLimitsRegistered) return;
-
             var shipCore = ShipCore;
             var subtypeId = shipCore?.SubtypeId ?? string.Empty;
             if (string.IsNullOrWhiteSpace(subtypeId)) return;
 
             var factionId = GetFactionId(ownerId);
+            if (_noCoreLimitsRegistered &&
+                _registeredNoCoreLimitSubtypeId == subtypeId &&
+                _registeredNoCoreLimitOwnerId == ownerId &&
+                _registeredNoCoreLimitFactionId == factionId)
+                return;
+
+            UnregisterNoCoreLimitTracking();
+
             PerFactionManager.AddGridGroup(factionId, subtypeId);
             PerPlayerManager.AddGridGroup(ownerId, subtypeId);
             PerManifestGroupManager.AddGridGroup(subtypeId);

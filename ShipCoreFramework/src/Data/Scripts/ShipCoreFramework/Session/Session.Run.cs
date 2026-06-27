@@ -325,5 +325,15 @@ namespace ShipCoreFramework
             foreach (var p in players)
                 Networking.SendToPlayer(packet, p.SteamUserId);
         }
+
+        internal static void RefreshGroupsAfterConfigChanged()
+        {
+            var groups = new List<GroupComponent>(GroupDict.Values);
+            foreach (var group in groups)
+            {
+                if (group == null) continue;
+                group.OnConfigChanged();
+            }
+        }
     }
 }
