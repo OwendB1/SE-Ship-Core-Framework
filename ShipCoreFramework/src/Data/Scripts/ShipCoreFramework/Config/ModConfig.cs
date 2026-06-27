@@ -5,7 +5,7 @@ namespace ShipCoreFramework
 {
     public partial class ModConfig
     {
-        private const string DefaultUpgradeModuleTypeId = "UpgradeModule";
+        internal const string DefaultUpgradeModuleTypeId = "UpgradeModule";
 
         internal ShipCore GetShipCoreByTypeId(string coreTypeId)
         {
@@ -30,21 +30,25 @@ namespace ShipCoreFramework
 
         internal UpgradeModuleConfig GetUpgradeModuleByTypeId(string moduleSubtypeId)
         {
-            if (string.IsNullOrWhiteSpace(moduleSubtypeId)) return null;
-            return UpgradeModules.FirstOrDefault(module =>
-                module != null && module.SubtypeId.Equals(moduleSubtypeId, StringComparison.OrdinalIgnoreCase));
+            return GetUpgradeModuleByExactDefinition(DefaultUpgradeModuleTypeId, moduleSubtypeId);
         }
 
         internal UpgradeModuleConfig GetUpgradeModuleByDefinition(string typeId, string subtypeId)
         {
+            if (string.IsNullOrWhiteSpace(subtypeId)) return null;
+
+            var normalizedTypeId = string.IsNullOrWhiteSpace(typeId) ? DefaultUpgradeModuleTypeId : typeId;
+            return GetUpgradeModuleByExactDefinition(normalizedTypeId, subtypeId);
+        }
+
+        private UpgradeModuleConfig GetUpgradeModuleByExactDefinition(string typeId, string subtypeId)
+        {
             if (string.IsNullOrWhiteSpace(typeId) || string.IsNullOrWhiteSpace(subtypeId)) return null;
 
             var definitionId = FormatBlockDefinitionId(typeId, subtypeId);
-            var exactMatch = UpgradeModules.FirstOrDefault(module =>
+            return UpgradeModules.FirstOrDefault(module =>
                 module != null &&
                 FormatBlockDefinitionId(module.TypeId, module.SubtypeId).Equals(definitionId, StringComparison.OrdinalIgnoreCase));
-
-            return exactMatch ?? GetUpgradeModuleByTypeId(subtypeId);
         }
 
         internal bool IsTrackedUpgradeModuleType(string moduleTypeId)

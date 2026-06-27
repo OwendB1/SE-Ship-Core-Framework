@@ -1113,6 +1113,7 @@ namespace ShipCoreFramework
                 return new UpgradeModuleAllowanceData
                 {
                     UniqueName = string.Empty,
+                    TypeId = string.Empty,
                     SubtypeId = string.Empty
                 };
             }
@@ -1120,6 +1121,7 @@ namespace ShipCoreFramework
             return new UpgradeModuleAllowanceData
             {
                 UniqueName = allowance.UniqueName ?? string.Empty,
+                TypeId = allowance.TypeId ?? string.Empty,
                 SubtypeId = allowance.SubtypeId ?? string.Empty,
                 MaxCount = allowance.MaxCount
             };

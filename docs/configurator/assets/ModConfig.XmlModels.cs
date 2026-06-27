@@ -186,6 +186,10 @@ namespace ShipCoreFramework
         public readonly Dictionary<string, int> AllowedUpgradeModuleCounts =
             new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
+        [XmlIgnore]
+        public readonly Dictionary<string, int> AllowedUpgradeModuleUniqueNameCounts =
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
         [XmlElement("Modifiers")]
         public GridModifiers Modifiers = new GridModifiers();
 
@@ -221,8 +225,13 @@ namespace ShipCoreFramework
 
         public bool IsUpgradeModuleAllowed(string moduleSubtypeId)
         {
-            return !string.IsNullOrWhiteSpace(moduleSubtypeId) && 
-                   AllowedUpgradeModuleCounts.ContainsKey(moduleSubtypeId);
+            return IsUpgradeModuleAllowed(string.Empty, moduleSubtypeId);
+        }
+
+        public bool IsUpgradeModuleAllowed(string moduleUniqueName, string moduleSubtypeId)
+        {
+            int maxCount;
+            return TryGetAllowedUpgradeModuleCount(moduleUniqueName, moduleSubtypeId, out maxCount);
         }
 
         public bool TryGetAllowedUpgradeModuleCount(string moduleSubtypeId, out int maxCount)
@@ -236,9 +245,19 @@ namespace ShipCoreFramework
             return AllowedUpgradeModuleCounts.TryGetValue(moduleSubtypeId, out maxCount);
         }
 
+        public bool TryGetAllowedUpgradeModuleCount(string moduleUniqueName, string moduleSubtypeId, out int maxCount)
+        {
+            if (!string.IsNullOrWhiteSpace(moduleUniqueName) &&
+                AllowedUpgradeModuleUniqueNameCounts.TryGetValue(moduleUniqueName.Trim(), out maxCount))
+                return true;
+
+            return TryGetAllowedUpgradeModuleCount(moduleSubtypeId, out maxCount);
+        }
+
         internal void NormalizeAllowedUpgradeModules(string source, string coreFileOrKey)
         {
             AllowedUpgradeModuleCounts.Clear();
+            AllowedUpgradeModuleUniqueNameCounts.Clear();
             if (AllowedUpgradeModules == null)
             {
                 AllowedUpgradeModules = Array.Empty<UpgradeModuleAllowance>();
@@ -247,7 +266,23 @@ namespace ShipCoreFramework
 
             foreach (var allowance in AllowedUpgradeModules)
             {
-                if (allowance == null || string.IsNullOrWhiteSpace(allowance.SubtypeId)) continue;
+                if (allowance == null) continue;
+
+                allowance.TypeId = allowance.TypeId == null ? string.Empty : allowance.TypeId.Trim();
+                allowance.UniqueName = allowance.UniqueName == null ? string.Empty : allowance.UniqueName.Trim();
+                allowance.SubtypeId = allowance.SubtypeId == null ? string.Empty : allowance.SubtypeId.Trim();
+
+                if (string.IsNullOrWhiteSpace(allowance.SubtypeId))
+                {
+                    if (string.IsNullOrWhiteSpace(allowance.UniqueName)) continue;
+
+                    if (AllowedUpgradeModuleUniqueNameCounts.ContainsKey(allowance.UniqueName))
+                        throw new Exception(
+                            $"ShipCore '{UniqueName}' from {source} ({coreFileOrKey}) has duplicate AllowedUpgradeModules entry for '{allowance.UniqueName}'.");
+
+                    AllowedUpgradeModuleUniqueNameCounts[allowance.UniqueName] = allowance.MaxCount;
+                    continue;
+                }
 
                 if (AllowedUpgradeModuleCounts.ContainsKey(allowance.SubtypeId))
                     throw new Exception(
@@ -261,6 +296,12 @@ namespace ShipCoreFramework
     [XmlRoot("AllowedUpgradeModules")]
     public class UpgradeModuleAllowance
     {
+        [XmlElement("TypeId")]
+        public string TypeId = string.Empty;
+
+        [XmlElement("UniqueName")]
+        public string UniqueName = string.Empty;
+
         [XmlElement("SubtypeId")]
         public string SubtypeId = string.Empty;
 

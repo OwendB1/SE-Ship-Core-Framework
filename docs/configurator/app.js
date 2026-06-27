@@ -875,6 +875,8 @@ function cloneShipCore(core = createDefaultCore()) {
     ),
     allowedUpgradeModules: Array.isArray(core.allowedUpgradeModules)
       ? core.allowedUpgradeModules.map((entry) => ({
+          typeId: String(entry.typeId ?? ""),
+          uniqueName: String(entry.uniqueName ?? ""),
           subtypeId: String(entry.subtypeId ?? ""),
           maxCount: Number(entry.maxCount ?? 0)
         }))
@@ -1394,7 +1396,9 @@ function renderShipCores() {
       <h4>Allowed Upgrade Modules</h4>
       ${(core.allowedUpgradeModules || []).map((entry, allowanceIndex) => `
         <div class="row wrap">
+          <label class="inline">TypeId <input data-action="core-upgrade-type" data-c="${coreIndex}" data-au="${allowanceIndex}" class="small" placeholder="blank = UpgradeModule" value="${escapeXml(entry.typeId || "")}" /></label>
           <label class="inline">SubtypeId <input data-action="core-upgrade-subtype" data-c="${coreIndex}" data-au="${allowanceIndex}" class="small" value="${escapeXml(entry.subtypeId)}" /></label>
+          <label class="inline">UniqueName <input data-action="core-upgrade-unique" data-c="${coreIndex}" data-au="${allowanceIndex}" class="small" value="${escapeXml(entry.uniqueName || "")}" /></label>
           <label class="inline">MaxCount <input data-action="core-upgrade-max" data-c="${coreIndex}" data-au="${allowanceIndex}" class="small" type="number" value="${Number(entry.maxCount)}" /></label>
           <button data-action="remove-core-upgrade-allowance" data-c="${coreIndex}" data-au="${allowanceIndex}">Remove</button>
         </div>
@@ -1634,9 +1638,11 @@ function parseCoreXml(text, originalFileName = "") {
     speedOverridePriority: numberOf(coreNode, "SpeedOverridePriority", 0),
     enableActiveDefenseModifiers: boolOf(coreNode, "EnableActiveDefenseModifiers", false),
     allowedUpgradeModules: qselAll(coreNode, "AllowedUpgradeModules").map((entryNode) => ({
+      typeId: textOf(entryNode, "TypeId"),
+      uniqueName: textOf(entryNode, "UniqueName"),
       subtypeId: textOf(entryNode, "SubtypeId"),
       maxCount: numberOf(entryNode, "MaxCount", 0)
-    })).filter((entry) => entry.subtypeId),
+    })).filter((entry) => entry.subtypeId || entry.uniqueName),
     modifiers: parseModifierNode(qsel(coreNode, "Modifiers"), DEFAULT_GRID_MODIFIERS),
     speedModifiers: parseSpeedModifiersNode(childElement(coreNode, "SpeedModifiers")),
     passiveDefenseModifiers: parseModifierNode(qsel(coreNode, "PassiveDefenseModifiers"), DEFAULT_DEFENSE_MODIFIERS),
@@ -1702,10 +1708,19 @@ function writeSpeedModifiersXml(values, indent = "  ") {
 
 function writeAllowedUpgradeModulesXml(entries = [], indent = "  ") {
   return entries
-    .filter((entry) => String(entry?.subtypeId ?? "").trim())
+    .filter((entry) => String(entry?.subtypeId ?? "").trim() || String(entry?.uniqueName ?? "").trim())
     .map(
-      (entry) =>
-        `${indent}<AllowedUpgradeModules>\n${indent}  <SubtypeId>${escapeXml(entry.subtypeId)}</SubtypeId>\n${indent}  <MaxCount>${Number(entry.maxCount ?? 0)}</MaxCount>\n${indent}</AllowedUpgradeModules>`
+      (entry) => {
+        const typeId = String(entry.typeId ?? "").trim();
+        const subtypeId = String(entry.subtypeId ?? "").trim();
+        const uniqueName = String(entry.uniqueName ?? "").trim();
+        const identityLines = [
+          typeId ? `${indent}  <TypeId>${escapeXml(typeId)}</TypeId>` : "",
+          subtypeId ? `${indent}  <SubtypeId>${escapeXml(subtypeId)}</SubtypeId>` : "",
+          uniqueName ? `${indent}  <UniqueName>${escapeXml(uniqueName)}</UniqueName>` : ""
+        ].filter(Boolean).join("\n");
+        return `${indent}<AllowedUpgradeModules>\n${identityLines}\n${indent}  <MaxCount>${Number(entry.maxCount ?? 0)}</MaxCount>\n${indent}</AllowedUpgradeModules>`;
+      }
     )
     .join("\n");
 }
@@ -2444,7 +2459,7 @@ document.addEventListener("click", (event) => {
   }
 
   if (action === "add-core-upgrade-allowance" && selectedCore) {
-    selectedCore.allowedUpgradeModules.push({ subtypeId: "", maxCount: 0 });
+    selectedCore.allowedUpgradeModules.push({ typeId: "", subtypeId: "", uniqueName: "", maxCount: 0 });
     didMutate = true;
   }
   if (action === "remove-core-upgrade-allowance" && selectedCore) {
@@ -2556,7 +2571,9 @@ document.addEventListener("input", (event) => {
   if (action === "core-maxplayers") selectedCore.maxPlayers = Number(target.value || -1);
   if (action === "core-maxpp") selectedCore.maxPerPlayer = Number(target.value || -1);
   if (action === "core-fbr") selectedCore.forceBroadcastRange = Number(target.value || 0);
+  if (action === "core-upgrade-type") selectedCore.allowedUpgradeModules[allowanceIndex].typeId = target.value;
   if (action === "core-upgrade-subtype") selectedCore.allowedUpgradeModules[allowanceIndex].subtypeId = target.value;
+  if (action === "core-upgrade-unique") selectedCore.allowedUpgradeModules[allowanceIndex].uniqueName = target.value;
   if (action === "core-upgrade-max") selectedCore.allowedUpgradeModules[allowanceIndex].maxCount = Number(target.value || 0);
 
   if (action === "core-modifier-grid") selectedCore.modifiers[target.dataset.m] = Number(target.value || 0);

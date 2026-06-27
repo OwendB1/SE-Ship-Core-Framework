@@ -42,7 +42,7 @@ namespace ShipCoreFramework
         {
             return block != null
                    && Session.Config != null
-                   && Session.Config.IsTrackedUpgradeModuleDefinition(GetBlockTypeId(block), block.BlockDefinition.SubtypeId);
+                   && Session.Config.IsTrackedUpgradeModuleDefinition(GetBlockTypeId(block), GetBlockSubtypeId(block));
         }
 
         internal static bool IsTrackedUpgradeModuleBlock(IMySlimBlock block)
@@ -57,12 +57,23 @@ namespace ShipCoreFramework
 
         internal static string GetBlockTypeId(IMyCubeBlock block)
         {
+            if (block?.SlimBlock?.BlockDefinition != null)
+                return GetBlockTypeId(block.SlimBlock);
+
             return Convert.ToString(block.BlockDefinition.TypeId).Replace("MyObjectBuilder_", "");
         }
 
         internal static string GetBlockSubtypeId(IMySlimBlock block)
         {
             return Convert.ToString(block.BlockDefinition.Id.SubtypeId);
+        }
+
+        internal static string GetBlockSubtypeId(IMyCubeBlock block)
+        {
+            if (block?.SlimBlock?.BlockDefinition != null)
+                return GetBlockSubtypeId(block.SlimBlock);
+
+            return Convert.ToString(block.BlockDefinition.SubtypeId);
         }
 
         internal static string GetLocalizedBlockName(IMySlimBlock block)

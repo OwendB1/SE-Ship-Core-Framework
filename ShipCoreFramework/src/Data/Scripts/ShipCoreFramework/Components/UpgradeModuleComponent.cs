@@ -34,7 +34,7 @@ namespace ShipCoreFramework
             if (ModuleBlock == null) return false;
 
             TypeId = Utils.GetBlockTypeId(ModuleBlock);
-            SubtypeId = ModuleBlock.BlockDefinition.SubtypeId;
+            SubtypeId = Utils.GetBlockSubtypeId(ModuleBlock);
             if (Session.IsGameThread)
                 RefreshParentCore();
             else
@@ -107,18 +107,49 @@ namespace ShipCoreFramework
                     if (attachedModule.EntityId == myModule.EntityId) return core;
             }
 
+            foreach (var core in _groupComponent.CoreDictionary.Values)
+            {
+                if (core?.CoreBlock == null) continue;
+                if (IsFaceAdjacent(ModuleBlock?.SlimBlock, core.CoreBlock.SlimBlock))
+                    return core;
+            }
+
             if (Session.Config != null && Session.Config.AllowUnattachedUpgradeModules)
             {
                 var mainCore = _groupComponent.MainCoreComponent;
                 if (mainCore != null)
                 {
                     var shipCore = Session.Config.GetShipCoreByTypeId(mainCore.SubtypeId);
-                    if (shipCore != null && shipCore.IsUpgradeModuleAllowed(UniqueName, SubtypeId))
+                    if (shipCore != null && shipCore.IsUpgradeModuleAllowed(UniqueName, TypeId, SubtypeId))
                         return mainCore;
                 }
             }
 
             return null;
+        }
+
+        private static bool IsFaceAdjacent(IMySlimBlock module, IMySlimBlock core)
+        {
+            if (module?.CubeGrid == null || core?.CubeGrid == null) return false;
+            if (module.CubeGrid.EntityId != core.CubeGrid.EntityId) return false;
+
+            var adjacentAxes = 0;
+            if (!RangesTouch(module.Min.X, module.Max.X, core.Min.X, core.Max.X, ref adjacentAxes)) return false;
+            if (!RangesTouch(module.Min.Y, module.Max.Y, core.Min.Y, core.Max.Y, ref adjacentAxes)) return false;
+            if (!RangesTouch(module.Min.Z, module.Max.Z, core.Min.Z, core.Max.Z, ref adjacentAxes)) return false;
+
+            return adjacentAxes == 1;
+        }
+
+        private static bool RangesTouch(int minA, int maxA, int minB, int maxB, ref int adjacentAxes)
+        {
+            if (maxA + 1 == minB || maxB + 1 == minA)
+            {
+                adjacentAxes++;
+                return true;
+            }
+
+            return maxA >= minB && maxB >= minA;
         }
     }
 }

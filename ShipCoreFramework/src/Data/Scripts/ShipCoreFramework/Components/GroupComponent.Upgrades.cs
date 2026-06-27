@@ -61,14 +61,14 @@ namespace ShipCoreFramework
 
             foreach (var definitionGroup in modules
                          .Where(module => module != null)
-                         .GroupBy(module => shipCore.GetUpgradeModuleAllowanceKey(module.UniqueName, module.SubtypeId),
+                         .GroupBy(module => shipCore.GetUpgradeModuleAllowanceKey(module.UniqueName, module.TypeId, module.SubtypeId),
                              StringComparer.OrdinalIgnoreCase))
             {
                 var firstModule = definitionGroup.FirstOrDefault();
                 if (firstModule == null) continue;
 
                 int maxAllowed;
-                if (!shipCore.TryGetAllowedUpgradeModuleCount(firstModule.UniqueName, firstModule.SubtypeId,
+                if (!shipCore.TryGetAllowedUpgradeModuleCount(firstModule.UniqueName, firstModule.TypeId, firstModule.SubtypeId,
                         out maxAllowed) ||
                     maxAllowed <= 0)
                     continue;
@@ -168,14 +168,14 @@ namespace ShipCoreFramework
                 }
 
                 foreach (var definitionGroup in perCoreModules.GroupBy(
-                             module => shipCore.GetUpgradeModuleAllowanceKey(module.UniqueName, module.SubtypeId),
+                             module => shipCore.GetUpgradeModuleAllowanceKey(module.UniqueName, module.TypeId, module.SubtypeId),
                              StringComparer.OrdinalIgnoreCase))
                 {
                     var firstModule = definitionGroup.FirstOrDefault();
                     if (firstModule == null) continue;
 
                     int maxAllowed;
-                    if (!shipCore.TryGetAllowedUpgradeModuleCount(firstModule.UniqueName, firstModule.SubtypeId,
+                    if (!shipCore.TryGetAllowedUpgradeModuleCount(firstModule.UniqueName, firstModule.TypeId, firstModule.SubtypeId,
                             out maxAllowed) ||
                         maxAllowed <= 0)
                     {
@@ -200,7 +200,7 @@ namespace ShipCoreFramework
                              .Where(module => module.ParentCoreComponent == null)
                              .GroupBy(module => noCoreConfig == null
                                      ? module.DefinitionId
-                                     : noCoreConfig.GetUpgradeModuleAllowanceKey(module.UniqueName, module.SubtypeId),
+                                     : noCoreConfig.GetUpgradeModuleAllowanceKey(module.UniqueName, module.TypeId, module.SubtypeId),
                                  StringComparer.OrdinalIgnoreCase))
                 {
                     var firstModule = definitionGroup.FirstOrDefault();
@@ -208,7 +208,7 @@ namespace ShipCoreFramework
 
                     int maxAllowed;
                     if (noCoreConfig == null ||
-                        !noCoreConfig.TryGetAllowedUpgradeModuleCount(firstModule.UniqueName, firstModule.SubtypeId,
+                        !noCoreConfig.TryGetAllowedUpgradeModuleCount(firstModule.UniqueName, firstModule.TypeId, firstModule.SubtypeId,
                             out maxAllowed) ||
                         maxAllowed <= 0)
                     {

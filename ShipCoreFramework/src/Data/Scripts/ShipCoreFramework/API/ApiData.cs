@@ -419,6 +419,7 @@ namespace ShipCoreFramework
         [ProtoMember(1)] public string SubtypeId;
         [ProtoMember(2)] public int MaxCount;
         [ProtoMember(3)] public string UniqueName;
+        [ProtoMember(4)] public string TypeId;
     }
 
     [ProtoContract]

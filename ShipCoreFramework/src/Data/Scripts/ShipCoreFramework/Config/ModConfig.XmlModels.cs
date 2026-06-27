@@ -198,6 +198,10 @@ namespace ShipCoreFramework
             new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
         [XmlIgnore]
+        public readonly Dictionary<string, int> AllowedUpgradeModuleDefinitionCounts =
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        [XmlIgnore]
         public readonly Dictionary<string, int> AllowedUpgradeModuleUniqueNameCounts =
             new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
@@ -239,36 +243,75 @@ namespace ShipCoreFramework
 
         public bool IsUpgradeModuleAllowed(string moduleSubtypeId)
         {
-            return IsUpgradeModuleAllowed(string.Empty, moduleSubtypeId);
+            return IsUpgradeModuleAllowed(string.Empty, ModConfig.DefaultUpgradeModuleTypeId, moduleSubtypeId);
         }
 
         public bool IsUpgradeModuleAllowed(string moduleUniqueName, string moduleSubtypeId)
         {
+            return IsUpgradeModuleAllowed(moduleUniqueName, ModConfig.DefaultUpgradeModuleTypeId, moduleSubtypeId);
+        }
+
+        public bool IsUpgradeModuleAllowed(string moduleUniqueName, string moduleTypeId, string moduleSubtypeId)
+        {
             int maxCount;
-            return TryGetAllowedUpgradeModuleCount(moduleUniqueName, moduleSubtypeId, out maxCount);
+            return TryGetAllowedUpgradeModuleCount(moduleUniqueName, moduleTypeId, moduleSubtypeId, out maxCount);
         }
 
         public bool TryGetAllowedUpgradeModuleCount(string moduleSubtypeId, out int maxCount)
         {
-            return TryGetAllowedUpgradeModuleCount(string.Empty, moduleSubtypeId, out maxCount);
+            return TryGetAllowedUpgradeModuleCount(string.Empty, ModConfig.DefaultUpgradeModuleTypeId, moduleSubtypeId, out maxCount);
         }
 
         public bool TryGetAllowedUpgradeModuleCount(string moduleUniqueName, string moduleSubtypeId, out int maxCount)
         {
+            return TryGetAllowedUpgradeModuleCount(moduleUniqueName, ModConfig.DefaultUpgradeModuleTypeId, moduleSubtypeId, out maxCount);
+        }
+
+        public bool TryGetAllowedUpgradeModuleCount(string moduleUniqueName, string moduleTypeId, string moduleSubtypeId, out int maxCount)
+        {
             maxCount = 0;
 
-            if (!string.IsNullOrWhiteSpace(moduleUniqueName) &&
-                AllowedUpgradeModuleUniqueNameCounts.TryGetValue(moduleUniqueName.Trim(), out maxCount))
-                return true;
+            if (!string.IsNullOrWhiteSpace(moduleSubtypeId))
+            {
+                var subtypeId = moduleSubtypeId.Trim();
+                var typeId = string.IsNullOrWhiteSpace(moduleTypeId)
+                    ? ModConfig.DefaultUpgradeModuleTypeId
+                    : ModConfig.NormalizeBlockTypeId(moduleTypeId);
+                var definitionId = ModConfig.FormatBlockDefinitionId(typeId, subtypeId);
+                if (AllowedUpgradeModuleDefinitionCounts.TryGetValue(definitionId, out maxCount))
+                    return true;
 
-            if (string.IsNullOrWhiteSpace(moduleSubtypeId))
-                return false;
+                if (typeId.Equals(ModConfig.DefaultUpgradeModuleTypeId, StringComparison.OrdinalIgnoreCase) &&
+                    AllowedUpgradeModuleCounts.TryGetValue(subtypeId, out maxCount))
+                    return true;
+            }
 
-            return AllowedUpgradeModuleCounts.TryGetValue(moduleSubtypeId, out maxCount);
+            return !string.IsNullOrWhiteSpace(moduleUniqueName) &&
+                   AllowedUpgradeModuleUniqueNameCounts.TryGetValue(moduleUniqueName.Trim(), out maxCount);
         }
 
         public string GetUpgradeModuleAllowanceKey(string moduleUniqueName, string moduleSubtypeId)
         {
+            return GetUpgradeModuleAllowanceKey(moduleUniqueName, ModConfig.DefaultUpgradeModuleTypeId, moduleSubtypeId);
+        }
+
+        public string GetUpgradeModuleAllowanceKey(string moduleUniqueName, string moduleTypeId, string moduleSubtypeId)
+        {
+            if (!string.IsNullOrWhiteSpace(moduleSubtypeId))
+            {
+                var subtypeId = moduleSubtypeId.Trim();
+                var typeId = string.IsNullOrWhiteSpace(moduleTypeId)
+                    ? ModConfig.DefaultUpgradeModuleTypeId
+                    : ModConfig.NormalizeBlockTypeId(moduleTypeId);
+                var definitionId = ModConfig.FormatBlockDefinitionId(typeId, subtypeId);
+                if (AllowedUpgradeModuleDefinitionCounts.ContainsKey(definitionId))
+                    return definitionId;
+
+                if (typeId.Equals(ModConfig.DefaultUpgradeModuleTypeId, StringComparison.OrdinalIgnoreCase) &&
+                    AllowedUpgradeModuleCounts.ContainsKey(subtypeId))
+                    return subtypeId;
+            }
+
             if (!string.IsNullOrWhiteSpace(moduleUniqueName))
             {
                 var uniqueName = moduleUniqueName.Trim();
@@ -278,7 +321,10 @@ namespace ShipCoreFramework
 
             if (string.IsNullOrWhiteSpace(moduleSubtypeId)) return string.Empty;
 
-            return moduleSubtypeId.Trim();
+            var fallbackTypeId = string.IsNullOrWhiteSpace(moduleTypeId)
+                ? ModConfig.DefaultUpgradeModuleTypeId
+                : moduleTypeId;
+            return ModConfig.FormatBlockDefinitionId(fallbackTypeId, moduleSubtypeId);
         }
 
         public bool IsConnectorBlacklistedCore(string coreSubtypeId)
@@ -295,6 +341,7 @@ namespace ShipCoreFramework
         internal void NormalizeAllowedUpgradeModules(string source, string coreFileOrKey)
         {
             AllowedUpgradeModuleCounts.Clear();
+            AllowedUpgradeModuleDefinitionCounts.Clear();
             AllowedUpgradeModuleUniqueNameCounts.Clear();
             if (AllowedUpgradeModules == null)
             {
@@ -308,24 +355,39 @@ namespace ShipCoreFramework
 
                 allowance.UniqueName = (allowance.UniqueName ?? string.Empty).Trim();
                 allowance.SubtypeId = (allowance.SubtypeId ?? string.Empty).Trim();
+                allowance.TypeId = string.IsNullOrWhiteSpace(allowance.TypeId)
+                    ? string.Empty
+                    : ModConfig.NormalizeBlockTypeId(allowance.TypeId);
 
-                if (!string.IsNullOrWhiteSpace(allowance.UniqueName))
+                if (!string.IsNullOrWhiteSpace(allowance.SubtypeId))
                 {
-                    if (AllowedUpgradeModuleUniqueNameCounts.ContainsKey(allowance.UniqueName))
+                    var typeId = string.IsNullOrWhiteSpace(allowance.TypeId)
+                        ? ModConfig.DefaultUpgradeModuleTypeId
+                        : allowance.TypeId;
+                    var definitionId = ModConfig.FormatBlockDefinitionId(typeId, allowance.SubtypeId);
+                    if (AllowedUpgradeModuleDefinitionCounts.ContainsKey(definitionId))
                         throw new Exception(
-                            $"ShipCore '{UniqueName}' from {source} ({coreFileOrKey}) has duplicate AllowedUpgradeModules entry for '{allowance.UniqueName}'.");
+                            $"ShipCore '{UniqueName}' from {source} ({coreFileOrKey}) has duplicate AllowedUpgradeModules entry for '{definitionId}'.");
 
-                    AllowedUpgradeModuleUniqueNameCounts[allowance.UniqueName] = allowance.MaxCount;
+                    AllowedUpgradeModuleDefinitionCounts[definitionId] = allowance.MaxCount;
+                    if (typeId.Equals(ModConfig.DefaultUpgradeModuleTypeId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (AllowedUpgradeModuleCounts.ContainsKey(allowance.SubtypeId))
+                            throw new Exception(
+                                $"ShipCore '{UniqueName}' from {source} ({coreFileOrKey}) has duplicate AllowedUpgradeModules entry for '{allowance.SubtypeId}'.");
+
+                        AllowedUpgradeModuleCounts[allowance.SubtypeId] = allowance.MaxCount;
+                    }
                     continue;
                 }
 
-                if (string.IsNullOrWhiteSpace(allowance.SubtypeId)) continue;
+                if (string.IsNullOrWhiteSpace(allowance.UniqueName)) continue;
 
-                if (AllowedUpgradeModuleCounts.ContainsKey(allowance.SubtypeId))
+                if (AllowedUpgradeModuleUniqueNameCounts.ContainsKey(allowance.UniqueName))
                     throw new Exception(
-                        $"ShipCore '{UniqueName}' from {source} ({coreFileOrKey}) has duplicate AllowedUpgradeModules entry for '{allowance.SubtypeId}'.");
+                        $"ShipCore '{UniqueName}' from {source} ({coreFileOrKey}) has duplicate AllowedUpgradeModules entry for '{allowance.UniqueName}'.");
 
-                AllowedUpgradeModuleCounts[allowance.SubtypeId] = allowance.MaxCount;
+                AllowedUpgradeModuleUniqueNameCounts[allowance.UniqueName] = allowance.MaxCount;
             }
         }
     }
@@ -333,6 +395,9 @@ namespace ShipCoreFramework
     [XmlRoot("AllowedUpgradeModules")]
     public class UpgradeModuleAllowance
     {
+        [XmlElement("TypeId")]
+        public string TypeId = string.Empty;
+
         [XmlElement("UniqueName")]
         public string UniqueName = string.Empty;
 

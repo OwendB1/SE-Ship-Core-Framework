@@ -46,13 +46,13 @@ Load behavior:
 
 - `SelectedNoCoreUniqueName` picks one loaded no-core profile by `UniqueName`.
 - Manifest groups are global across all loaded manifest files.
-- Duplicate core names, subtype IDs, manifest group names, and upgrade module subtype IDs are rejected during load.
+- Duplicate core names, subtype IDs, manifest group names, and upgrade module `TypeId`/`SubtypeId` pairs are rejected during load.
 
 ## Conventions and behavior notes
 
 - Most optional caps use a negative value to mean "disabled". Use the notes below for field-specific behavior.
 - `UniqueName` is the friendly/config name shown in commands and some UI.
-- `SubtypeId` is the actual block definition subtype used for core identity and upgrade-module identity.
+- `SubtypeId` is the actual block definition subtype used for core identity and default `UpgradeModule` upgrade-module identity.
 - Logical groups are mechanical groups. Connectors, rotors, pistons, and similar subgrids can end up in one group depending on the game link graph.
 - Many punishment gates do not remove the core. They shut off modifiers, speed, or limited blocks instead.
 - `MinBlocks` is no longer only a one-time startup check. It also drives a limited-block punishment gate:
@@ -196,12 +196,14 @@ Repeated `<AllowedUpgradeModules>` entries inside `<ShipCore>`.
 
 | Tag | Type | Meaning | Notes |
 | --- | --- | --- | --- |
-| `SubtypeId` | `string` | Allowed upgrade-module subtype. | Must match the upgrade module's `SubtypeId`. |
-| `MaxCount` | `int` | Maximum attached modules of that subtype on this main core. | Exceeding modules are removed as invalid. |
+| `TypeId` | `string` | Allowed upgrade-module block type. | Optional. If omitted with `SubtypeId`, defaults to `UpgradeModule` for legacy entries. |
+| `SubtypeId` | `string` | Allowed upgrade-module subtype. | Legacy/default path: matches `UpgradeModule/<SubtypeId>`. If set, this identity is checked before `UniqueName`. |
+| `UniqueName` | `string` | Allowed upgrade-module config name. | Use this for upgrade modules whose config defines a non-default `TypeId`. |
+| `MaxCount` | `int` | Maximum attached modules for that allowance on this main core. | Exceeding modules are removed as invalid. |
 
 Upgrade-module application rules:
 
-- Module subtype must be listed here.
+- Module definition or `UniqueName` must be listed here.
 - Module must be attached to the current main core.
 - Module must be functional and enabled.
 - Only modules attached to the current main core contribute effects.
