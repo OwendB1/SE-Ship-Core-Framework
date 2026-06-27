@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
@@ -22,6 +21,10 @@ namespace ShipCoreFramework
 
         internal GridModifiers Modifiers => GetCachedActiveGridModifiers();
         internal SpeedModifiers SpeedModifiers => GetCachedActiveSpeedModifiers();
+        private const int DefaultGridStateCacheCapacity = 4;
+        private const int GridStateCacheRefreshIntervalTicks = 10;
+        private const int MassCacheRefreshIntervalTicks = 60;
+        private const int IgnoredStateCacheRefreshIntervalTicks = 60;
 
         internal int GroupPCU {
             get
@@ -29,7 +32,7 @@ namespace ShipCoreFramework
                 if (!Session.IsGameThread)
                     return Interlocked.CompareExchange(ref _cachedGroupPCU, 0, 0);
 
-                RefreshGridStateCache();
+                RefreshGridStateCacheIfNeeded(true);
                 return Interlocked.CompareExchange(ref _cachedGroupPCU, 0, 0);
             }
         }
@@ -40,7 +43,7 @@ namespace ShipCoreFramework
                 if (!Session.IsGameThread)
                     return _cachedConfiguredMass;
 
-                RefreshMassCache();
+                RefreshMassCacheIfDirty();
                 return _cachedConfiguredMass;
             }
         }
@@ -51,7 +54,7 @@ namespace ShipCoreFramework
                 if (!Session.IsGameThread)
                     return _cachedDryMass;
 
-                RefreshMassCache();
+                RefreshMassCacheIfDirty();
                 return _cachedDryMass;
             }
         }
@@ -70,16 +73,37 @@ namespace ShipCoreFramework
         private GridDefenseModifiers _cachedActiveDefenseModifiers = new GridDefenseModifiers();
         private IMyCubeBlock _cachedNoCoreDirectionLockReferenceBlock;
         private bool _cachedIsIgnoredByAiOrFactionTag;
+        private bool _gridStateCacheDirty = true;
+        private bool _massCacheDirty = true;
+        private bool _directionReferenceCacheDirty = true;
+        private bool _modifierStateCacheDirty = true;
+        private bool _ignoredStateCacheDirty = true;
+        private int _nextGridStateCacheRefreshTick;
+        private int _nextMassCacheRefreshTick;
+        private int _nextIgnoredStateCacheRefreshTick;
+
+        internal void InvalidateGameThreadStateCache(bool directionReferenceMayChange)
+        {
+            _gridStateCacheDirty = true;
+            _massCacheDirty = true;
+            _ignoredStateCacheDirty = true;
+
+            if (directionReferenceMayChange)
+                _directionReferenceCacheDirty = true;
+        }
+
+        private void InvalidateModifierStateCache()
+        {
+            _modifierStateCacheDirty = true;
+        }
 
         internal void RefreshGameThreadStateCache()
         {
             if (_closing || Session.IsShuttingDown) return;
-            RefreshGridStateCache();
-            var directionReferenceChanged = RefreshNoCoreDirectionLockReferenceCache();
-            RefreshMassCache();
-            RefreshModifierStateCache();
-            _cachedIsIgnoredByAiOrFactionTag = IsIgnoredByAiOrFactionTag();
-            _cachedIsIgnoredGroup = ComputeIsIgnoredGroup();
+            RefreshGridStateCacheIfNeeded(true);
+            var directionReferenceChanged = RefreshNoCoreDirectionLockReferenceCacheIfNeeded();
+            RefreshModifierStateCacheIfNeeded();
+            RefreshIgnoredStateCacheIfNeeded(true);
 
             if (directionReferenceChanged)
                 RevalidateNoCoreDirectionLock();
@@ -93,8 +117,8 @@ namespace ShipCoreFramework
 
             if (Session.IsGameThread)
             {
-                RefreshGridStateCache();
-                RefreshNoCoreDirectionLockReferenceCache();
+                RefreshGridStateCacheIfNeeded(false);
+                RefreshNoCoreDirectionLockReferenceCacheIfNeeded();
             }
 
             var referenceBlock = _cachedNoCoreDirectionLockReferenceBlock;
@@ -184,6 +208,7 @@ namespace ShipCoreFramework
             _cachedPassiveDefenseModifiers = ComputePassiveDefenseModifiers();
             _cachedActiveDefenseModifiers = ComputeActiveDefenseModifiers();
             RefreshEffectiveLimitCache();
+            _modifierStateCacheDirty = false;
         }
 
         private bool RefreshNoCoreDirectionLockReferenceCache()
@@ -195,12 +220,87 @@ namespace ShipCoreFramework
             if (MainCoreComponent != null || Deactivated)
             {
                 _cachedNoCoreDirectionLockReferenceBlock = null;
+                _directionReferenceCacheDirty = false;
                 return !ReferenceEquals(previousReference, _cachedNoCoreDirectionLockReferenceBlock);
             }
 
             var representativeGrid = GetNoCoreDirectionLockReferenceGrid();
             _cachedNoCoreDirectionLockReferenceBlock = GetMainShipController(representativeGrid);
+            _directionReferenceCacheDirty = false;
             return !ReferenceEquals(previousReference, _cachedNoCoreDirectionLockReferenceBlock);
+        }
+
+        private static bool IsRefreshDue(int currentTick, int nextRefreshTick)
+        {
+            return nextRefreshTick == 0 || currentTick >= nextRefreshTick;
+        }
+
+        private void RefreshGridStateCacheIfNeeded(bool allowPeriodicRefresh)
+        {
+            if (!Session.IsGameThread || _closing || Session.IsShuttingDown) return;
+
+            var tick = Session.CurrentTick;
+            if (!_gridStateCacheDirty &&
+                (!allowPeriodicRefresh || !IsRefreshDue(tick, _nextGridStateCacheRefreshTick)))
+                return;
+
+            RefreshGridStateCache();
+        }
+
+        private void RefreshMassCacheIfDirty()
+        {
+            if (!Session.IsGameThread || _closing || Session.IsShuttingDown) return;
+            if (!_massCacheDirty) return;
+
+            RefreshMassCache();
+        }
+
+        internal bool RefreshScheduledMassCache()
+        {
+            if (!Session.IsGameThread || _closing || Session.IsShuttingDown) return false;
+
+            var shouldRefresh = _massCacheDirty ||
+                                IsRefreshDue(Session.CurrentTick, _nextMassCacheRefreshTick);
+            if (!shouldRefresh) return false;
+
+            RefreshMassCache();
+            return true;
+        }
+
+        private bool RefreshNoCoreDirectionLockReferenceCacheIfNeeded()
+        {
+            if (!Session.IsGameThread || _closing || Session.IsShuttingDown) return false;
+
+            var referenceBlock = _cachedNoCoreDirectionLockReferenceBlock;
+            var referenceInvalid = referenceBlock != null &&
+                                   (referenceBlock.MarkedForClose || referenceBlock.Closed ||
+                                    referenceBlock.CubeGrid == null);
+
+            if (!_directionReferenceCacheDirty && !referenceInvalid)
+                return false;
+
+            return RefreshNoCoreDirectionLockReferenceCache();
+        }
+
+        private void RefreshModifierStateCacheIfNeeded()
+        {
+            if (!_modifierStateCacheDirty) return;
+            RefreshModifierStateCache();
+        }
+
+        private void RefreshIgnoredStateCacheIfNeeded(bool allowPeriodicRefresh)
+        {
+            if (!Session.IsGameThread || _closing || Session.IsShuttingDown) return;
+
+            var tick = Session.CurrentTick;
+            if (!_ignoredStateCacheDirty &&
+                (!allowPeriodicRefresh || !IsRefreshDue(tick, _nextIgnoredStateCacheRefreshTick)))
+                return;
+
+            _cachedIsIgnoredByAiOrFactionTag = IsIgnoredByAiOrFactionTag();
+            _cachedIsIgnoredGroup = ComputeIsIgnoredGroup();
+            _ignoredStateCacheDirty = false;
+            _nextIgnoredStateCacheRefreshTick = tick + IgnoredStateCacheRefreshIntervalTicks;
         }
 
         private void RevalidateNoCoreDirectionLock()
@@ -217,8 +317,9 @@ namespace ShipCoreFramework
             MyCubeGrid fallbackGrid = null;
             var fallbackBlocks = -1;
 
-            foreach (var grid in GridDictionary.Keys)
+            foreach (KeyValuePair<MyCubeGrid, GridComponent> kvp in GridDictionary)
             {
+                MyCubeGrid grid = kvp.Key;
                 if (grid == null || grid.MarkedForClose || grid.Closed) continue;
 
                 if (representativeGridId != 0L && grid.EntityId == representativeGridId)
@@ -236,12 +337,16 @@ namespace ShipCoreFramework
             return fallbackGrid;
         }
 
-        private static IMyCubeBlock GetMainShipController(MyCubeGrid grid)
+        private IMyCubeBlock GetMainShipController(MyCubeGrid grid)
         {
             if (grid == null || grid.MarkedForClose || grid.Closed) return null;
 
+            GridComponent gridComponent;
+            if (!GridDictionary.TryGetValue(grid, out gridComponent)) return null;
+
             IMyShipController fallbackController = null;
-            foreach (var controller in ((IMyCubeGrid)grid).GetFatBlocks<IMyShipController>())
+            var shipControllers = gridComponent.GetShipControllersCopy();
+            foreach (var controller in shipControllers)
             {
                 if (controller == null || controller.MarkedForClose || controller.Closed) continue;
                 if (controller.CubeGrid == null || controller.CubeGrid.EntityId != grid.EntityId) continue;
@@ -261,28 +366,43 @@ namespace ShipCoreFramework
             var mainGrid = MainCoreComponent?.CoreBlock?.CubeGrid as MyCubeGrid;
             if (mainGrid != null) return mainGrid;
 
-            return GridDictionary.Keys
-                .Where(grid => grid != null && !grid.MarkedForClose && !grid.Closed)
-                .OrderByDescending(grid => grid.BlocksCount)
-                .ThenBy(grid => grid.EntityId)
-                .FirstOrDefault();
+            MyCubeGrid bestGrid = null;
+            int bestBlocks = -1;
+            foreach (KeyValuePair<MyCubeGrid, GridComponent> kvp in GridDictionary)
+            {
+                MyCubeGrid grid = kvp.Key;
+                if (grid == null || grid.MarkedForClose || grid.Closed) continue;
+
+                int blocks = grid.BlocksCount;
+                if (bestGrid == null || blocks > bestBlocks ||
+                    blocks == bestBlocks && grid.EntityId < bestGrid.EntityId)
+                {
+                    bestGrid = grid;
+                    bestBlocks = blocks;
+                }
+            }
+
+            return bestGrid;
         }
 
         private void RefreshGridStateCache()
         {
-            var groupPcu = 0;
-            var representativeGridId = 0L;
-            var representativeBlocks = -1;
-            var movableGrids = new List<MyCubeGrid>();
-            var mechanicalGridIds = new List<long>();
-            var gridStates = new List<CachedGridState>();
+            int capacity = Math.Max(_cachedGridStates == null ? 0 : _cachedGridStates.Length,
+                DefaultGridStateCacheCapacity);
+            int groupPcu = 0;
+            long representativeGridId = 0L;
+            int representativeBlocks = -1;
+            List<MyCubeGrid> movableGrids = new List<MyCubeGrid>(capacity);
+            List<long> mechanicalGridIds = new List<long>(capacity);
+            List<CachedGridState> gridStates = new List<CachedGridState>(capacity);
 
-            var mainGrid = MainCoreComponent?.GridComponent?.Grid;
+            MyCubeGrid mainGrid = MainCoreComponent?.GridComponent?.Grid;
             if (mainGrid != null && !mainGrid.MarkedForClose && !mainGrid.Closed)
                 representativeGridId = mainGrid.EntityId;
 
-            foreach (var grid in GridDictionary.Keys)
+            foreach (KeyValuePair<MyCubeGrid, GridComponent> kvp in GridDictionary)
             {
+                MyCubeGrid grid = kvp.Key;
                 if (grid == null || grid.MarkedForClose || grid.Closed) continue;
 
                 groupPcu += grid.BlocksPCU;
@@ -301,7 +421,7 @@ namespace ShipCoreFramework
                     movableGrids.Add(grid);
 
                 if (representativeGridId != 0) continue;
-                var blocks = grid.BlocksCount;
+                int blocks = grid.BlocksCount;
                 if (blocks > representativeBlocks || blocks == representativeBlocks && grid.EntityId < representativeGridId)
                 {
                     representativeBlocks = blocks;
@@ -314,19 +434,28 @@ namespace ShipCoreFramework
             _cachedMovableGrids = movableGrids.ToArray();
             _cachedMechanicalGridIds = mechanicalGridIds.ToArray();
             _cachedGridStates = gridStates.ToArray();
+            _gridStateCacheDirty = false;
+            _nextGridStateCacheRefreshTick = Session.CurrentTick + GridStateCacheRefreshIntervalTicks;
         }
 
         private void RefreshMassCache()
         {
-            var referenceGrid = GridDictionary.Keys.FirstOrDefault(grid =>
-                grid != null &&
-                !grid.MarkedForClose &&
-                !grid.Closed &&
-                grid.Physics != null);
+            MyCubeGrid referenceGrid = null;
+            foreach (KeyValuePair<MyCubeGrid, GridComponent> kvp in GridDictionary)
+            {
+                MyCubeGrid grid = kvp.Key;
+                if (grid == null || grid.MarkedForClose || grid.Closed || grid.Physics == null) continue;
+
+                referenceGrid = grid;
+                break;
+            }
+
             if (referenceGrid == null)
             {
                 _cachedDryMass = 0f;
                 _cachedConfiguredMass = 0f;
+                _massCacheDirty = false;
+                _nextMassCacheRefreshTick = Session.CurrentTick + MassCacheRefreshIntervalTicks;
                 return;
             }
 
@@ -344,6 +473,8 @@ namespace ShipCoreFramework
 
             _cachedDryMass = dryMass;
             _cachedConfiguredMass = Session.Config.MassTypeMode == MassTypeMode.Dry ? dryMass : wetMass;
+            _massCacheDirty = false;
+            _nextMassCacheRefreshTick = Session.CurrentTick + MassCacheRefreshIntervalTicks;
         }
     }
 }

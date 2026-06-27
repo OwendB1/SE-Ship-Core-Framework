@@ -11,7 +11,10 @@ namespace ShipCoreFramework
     {
         private static NexusAPI _myNexusApi;
         private const int MaxQueuedStateWorkPerTick = 64;
+        private const int MaxMassCacheRefreshesPerTick = 4;
+        private const int MaxMassCacheGroupsCheckedPerTick = 32;
         private bool _startedNexus;
+        private int _massCacheRefreshCursor;
         private int _tick;
         internal static int CurrentTick;
         private static readonly MyStringId MatSphere = MyStringId.GetOrCompute("HighlightArea");

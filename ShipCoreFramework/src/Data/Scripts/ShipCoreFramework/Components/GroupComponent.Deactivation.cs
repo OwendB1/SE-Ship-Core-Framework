@@ -62,6 +62,8 @@ namespace ShipCoreFramework
             }
 
             Deactivated = true;
+            InvalidateGameThreadStateCache(true);
+            InvalidateModifierStateCache();
             ClearDeactivatedLimitState();
 
             var representativeGrid = GridDictionary.Keys.FirstOrDefault();

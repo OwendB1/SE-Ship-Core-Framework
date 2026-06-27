@@ -54,6 +54,8 @@ namespace ShipCoreFramework
             if (Deactivated || IsIgnoredByAiOrFactionTagThreadSafe())
             {
                 PunishSpeed = false;
+                if (PunishModifiers)
+                    InvalidateModifierStateCache();
                 PunishModifiers = false;
                 return;
             }
@@ -259,6 +261,8 @@ namespace ShipCoreFramework
             currentMain.IsMainCore = false;
             MainCoreComponent = newMain;
             MainCoreComponent.IsMainCore = true;
+            InvalidateGameThreadStateCache(true);
+            InvalidateModifierStateCache();
             InvalidateSpeedStateCache();
             Session.MarkPhysicalSpeedClusterSourceDirty(this);
             SyncBeaconComponents();
@@ -271,8 +275,12 @@ namespace ShipCoreFramework
             if (PunishSpeed != punishSpeed)
                 InvalidateSpeedStateCache();
 
+            var punishModifiers = (punishments & GroupPunishmentFlags.Modifiers) != 0;
+            if (PunishModifiers != punishModifiers)
+                InvalidateModifierStateCache();
+
             PunishSpeed = punishSpeed;
-            PunishModifiers = (punishments & GroupPunishmentFlags.Modifiers) != 0;
+            PunishModifiers = punishModifiers;
         }
 
         private GridDefenseModifiers GetCurrentDefenseModifiers()

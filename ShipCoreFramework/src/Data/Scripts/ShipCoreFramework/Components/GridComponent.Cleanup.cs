@@ -40,6 +40,11 @@ namespace ShipCoreFramework
                 connector.DetachFinished -= ConnectorOnConnectionChanged;
             }
 
+            lock (_shipControllersLock)
+            {
+                _shipControllers.Clear();
+            }
+
             _trackedConnectorIds.Clear();
 
             PublishLimitsSnapshot(null);

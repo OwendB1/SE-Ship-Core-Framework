@@ -82,6 +82,8 @@ namespace ShipCoreFramework
         {
             if (_closing || _refreshingUpgradeModules || IsInitializingGrids) return;
             IncrementLimitGeneration();
+            InvalidateGameThreadStateCache(true);
+            InvalidateModifierStateCache();
 
             if (!Session.IsGameThread)
             {

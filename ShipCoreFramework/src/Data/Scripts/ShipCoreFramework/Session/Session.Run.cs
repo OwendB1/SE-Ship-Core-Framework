@@ -177,16 +177,26 @@ namespace ShipCoreFramework
             CurrentTick = _tick;
             ThreadWork.FlushPendingWrites(ThreadWork.CountsCategory);
             ThreadWork.FlushPendingWrites(null, MaxQueuedStateWorkPerTick);
-            foreach (var group in GroupDict.Values)
-                group.RefreshGameThreadStateCache();
+            foreach (KeyValuePair<IMyGridGroupData, GroupComponent> kvp in GroupDict)
+            {
+                GroupComponent group = kvp.Value;
+                if (group != null)
+                    group.RefreshGameThreadStateCache();
+            }
+
+            RefreshMassCacheBatch();
             if (IsServer) LimitsNexusSync.RunPeriodicSnapshotTick();
-            var runNfz = _tick % 10 == 0;
-            var doPunish = _tick % 60 == 0;
+            bool runNfz = _tick % 10 == 0;
+            bool doPunish = _tick % 60 == 0;
 
             if (doPunish)
             {
-                foreach (var group in new List<GroupComponent>(GroupDict.Values))
-                    group.RefreshPunishmentState();
+                foreach (KeyValuePair<IMyGridGroupData, GroupComponent> kvp in GroupDict)
+                {
+                    GroupComponent group = kvp.Value;
+                    if (group != null)
+                        group.RefreshPunishmentState();
+                }
             }
 
             MyAPIGateway.Parallel.StartBackground(() =>
@@ -205,6 +215,46 @@ namespace ShipCoreFramework
 
                 SpeedEnforcement.DispatchBatch(speedBatch);
             });
+        }
+
+        private void RefreshMassCacheBatch()
+        {
+            int index = 0;
+            int checkedGroups = 0;
+            int refreshedGroups = 0;
+            bool sawAnyGroup = false;
+            bool stoppedEarly = false;
+
+            foreach (KeyValuePair<IMyGridGroupData, GroupComponent> kvp in GroupDict)
+            {
+                sawAnyGroup = true;
+                if (index < _massCacheRefreshCursor)
+                {
+                    index++;
+                    continue;
+                }
+
+                index++;
+                checkedGroups++;
+                GroupComponent group = kvp.Value;
+                if (group != null && group.RefreshScheduledMassCache())
+                    refreshedGroups++;
+
+                if (checkedGroups >= MaxMassCacheGroupsCheckedPerTick ||
+                    refreshedGroups >= MaxMassCacheRefreshesPerTick)
+                {
+                    stoppedEarly = true;
+                    break;
+                }
+            }
+
+            if (!sawAnyGroup || checkedGroups == 0)
+            {
+                _massCacheRefreshCursor = 0;
+                return;
+            }
+
+            _massCacheRefreshCursor = stoppedEarly ? index : 0;
         }
 
         internal static void ApplyConfigToDefinitions()

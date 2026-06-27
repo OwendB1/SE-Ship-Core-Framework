@@ -151,7 +151,7 @@ namespace ShipCoreFramework
             if (!Session.IsGameThread)
                 return GetCachedRepresentativeGridId();
 
-            RefreshGridStateCache();
+            RefreshGridStateCacheIfNeeded(false);
             var cachedRepresentativeGridId = GetCachedRepresentativeGridId();
             if (cachedRepresentativeGridId != 0) return cachedRepresentativeGridId;
 

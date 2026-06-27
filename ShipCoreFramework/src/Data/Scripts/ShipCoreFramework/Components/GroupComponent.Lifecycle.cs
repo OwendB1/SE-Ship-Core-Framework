@@ -76,6 +76,7 @@ namespace ShipCoreFramework
             if (!GridDictionary.TryAdd(grid, gridComp))
                 return;
 
+            InvalidateGameThreadStateCache(true);
             gridComp.Init(grid, groupData, processBlocks);
         }
 
@@ -103,6 +104,8 @@ namespace ShipCoreFramework
             }
 
             MainCoreComponent = coreComponent;
+            InvalidateGameThreadStateCache(true);
+            InvalidateModifierStateCache();
             IncrementLimitGeneration();
             if (wasInactive || old.SubtypeId != coreComponent.SubtypeId)
                 ClearPublishedLimitSnapshots();
@@ -158,6 +161,8 @@ namespace ShipCoreFramework
             ModAPI.BroadcastCoreDeactivated(GetRepresentativeGridId(), type, old.CoreBlock.CustomName);
 
             MainCoreComponent = null;
+            InvalidateGameThreadStateCache(true);
+            InvalidateModifierStateCache();
             IncrementLimitGeneration();
             InvalidateSpeedStateCache();
             Session.MarkPhysicalSpeedClusterSourceDirty(this);
@@ -186,6 +191,7 @@ namespace ShipCoreFramework
                 EndGridInitialization();
             }
 
+            InvalidateGameThreadStateCache(true);
             Utils.Log($"OnGridAdded: {grid.EntityId}, {OwnerId}, {grid.CustomName}", 2);
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
@@ -214,6 +220,7 @@ namespace ShipCoreFramework
                 comp.Clean();
                 GridComponent discarded;
                 GridDictionary.TryRemove(g, out discarded);
+                InvalidateGameThreadStateCache(true);
             }
 
             if (removedMain != null) MainCoreLeftGroup(removedMain);
@@ -243,6 +250,8 @@ namespace ShipCoreFramework
             var oldName = lost.CoreBlock?.CustomName ?? string.Empty;
 
             MainCoreComponent = null;
+            InvalidateGameThreadStateCache(true);
+            InvalidateModifierStateCache();
 
             if (Deactivated)
             {
@@ -264,6 +273,8 @@ namespace ShipCoreFramework
             {
                 MainCoreComponent = newMain;
                 MainCoreComponent.IsMainCore = true;
+                InvalidateGameThreadStateCache(true);
+                InvalidateModifierStateCache();
                 RegisterCoreLimitTracking();
                 InvalidateSpeedStateCache();
                 Session.MarkPhysicalSpeedClusterSourceDirty(this);
@@ -283,6 +294,8 @@ namespace ShipCoreFramework
             if (Deactivated)
             {
                 MainCoreComponent = null;
+                InvalidateGameThreadStateCache(true);
+                InvalidateModifierStateCache();
                 InvalidateSpeedStateCache();
                 Session.MarkPhysicalSpeedClusterSourceDirty(this);
                 SyncBeaconComponents();
@@ -299,6 +312,8 @@ namespace ShipCoreFramework
             {
                 MainCoreComponent = newMain;
                 MainCoreComponent.IsMainCore = true;
+                InvalidateGameThreadStateCache(true);
+                InvalidateModifierStateCache();
                 RegisterCoreLimitTracking();
                 InvalidateSpeedStateCache();
                 Session.MarkPhysicalSpeedClusterSourceDirty(this);

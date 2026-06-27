@@ -55,6 +55,7 @@ namespace ShipCoreFramework
             var functionalBlock = block.FatBlock as IMyFunctionalBlock;
             var isTrackedUpgradeModule = Utils.IsTrackedUpgradeModuleBlock(functionalBlock);
             var shipController = functionalBlock as IMyShipController;
+            groupComponent.InvalidateGameThreadStateCache(shipController != null && groupComponent.MainCoreComponent == null);
             if (Utils.IsCoreBlock(functionalBlock))
             {
                 var newCore = new CoreComponent();
@@ -117,6 +118,7 @@ namespace ShipCoreFramework
                     _blocks.Add(block);
                 }
 
+                if (shipController != null) TrackShipController(shipController);
                 groupComponent.OnBlockAddedToGroup();
 
                 if (functionalBlock != null) functionalBlock.EnabledChanged += FuncBlockOnEnabledChanged;
@@ -195,6 +197,7 @@ namespace ShipCoreFramework
                 _blocks.Remove(block);
             }
 
+            if (shipController != null) UntrackShipController(shipController);
             groupComponent.OnBlockRemovedFromGroup();
 
             if (functionalBlock != null && value == null) functionalBlock.EnabledChanged -= FuncBlockOnEnabledChanged;

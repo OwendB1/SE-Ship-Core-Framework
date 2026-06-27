@@ -124,6 +124,7 @@ namespace ShipCoreFramework
 
         internal void OnBlockAddedToGroup()
         {
+            InvalidateGameThreadStateCache(true);
             IncrementLimitGeneration();
             AddGroupBlocksCount(1);
             InvalidateSpeedStateCache();
@@ -139,6 +140,7 @@ namespace ShipCoreFramework
 
         internal void OnBlockRemovedFromGroup()
         {
+            InvalidateGameThreadStateCache(true);
             IncrementLimitGeneration();
             AddGroupBlocksCount(-1);
 
