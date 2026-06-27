@@ -64,14 +64,15 @@ namespace ShipCoreFramework
             Utils.Log($"ManifestCoreGroups.Count = {ManifestCoreGroups.Count}", 1, "Ship Core Config");
             Utils.Log($"UpgradeModules.Count = {UpgradeModules.Count}", 1, "Ship Core Config");
 
+            NormalizeNoCoreConfigs();
+            ResolveBlockGroups(DefaultNoCoreConfig.ShipCore);
+            ResolveBlockGroupsForCores(NoCoreConfigs);
             ResolveBlockGroupsForCores(ShipCores);
 
             ImportLegacyWorldSettingsIfNeeded(allowWorldStorageReadWrite, hasIgnoreAiSetting, hasIgnoredFactionTagsSetting, hasSelectedNoCoreSetting);
             NormalizeIgnoredFactionTags(hasIgnoredFactionTagsSetting);
             EnsurePersistedWorldSettings();
             ResolveSelectedNoCore();
-            NormalizeShipCoreBlockLimits(SelectedNoCore, "WorldStorage", SelectedNoCoreUniqueName);
-            ResolveBlockGroups(SelectedNoCore);
         }
 
         internal void EnsurePersistedWorldSettings()
@@ -101,6 +102,42 @@ namespace ShipCoreFramework
                 SelectedNoCore = DefaultNoCoreConfig.ShipCore;
 
             SelectedNoCoreUniqueName = SelectedNoCore?.UniqueName ?? string.Empty;
+            NormalizeAndResolveSelectedNoCore();
+        }
+
+        private void NormalizeNoCoreConfigs()
+        {
+            NormalizeShipCoreBlockLimits(DefaultNoCoreConfig.ShipCore, "BuiltIn", "DefaultNoCoreConfig");
+
+            foreach (var core in NoCoreConfigs)
+            {
+                if (core == null) continue;
+                NormalizeShipCoreBlockLimits(core, GetCoreConfigSource(core, "NoCoreConfig"),
+                    GetCoreConfigFile(core, core.UniqueName));
+            }
+        }
+
+        private void NormalizeAndResolveSelectedNoCore()
+        {
+            if (SelectedNoCore == null) return;
+
+            NormalizeShipCoreBlockLimits(SelectedNoCore, GetCoreConfigSource(SelectedNoCore, "SelectedNoCore"),
+                GetCoreConfigFile(SelectedNoCore, SelectedNoCoreUniqueName));
+            ResolveBlockGroups(SelectedNoCore);
+        }
+
+        private static string GetCoreConfigSource(ShipCore core, string fallback)
+        {
+            return core != null && !string.IsNullOrWhiteSpace(core.ConfigSource)
+                ? core.ConfigSource
+                : fallback;
+        }
+
+        private static string GetCoreConfigFile(ShipCore core, string fallback)
+        {
+            return core != null && !string.IsNullOrWhiteSpace(core.ConfigFile)
+                ? core.ConfigFile
+                : fallback;
         }
 
         private void ImportLegacyWorldSettingsIfNeeded(bool allowWorldStorageReadWrite, bool hasIgnoreAiSetting,
@@ -346,11 +383,20 @@ namespace ShipCoreFramework
                 limit.BlockGroups.Clear();
                 foreach (var shorthand in limit.BlockGroupsShortHand)
                 {
-                    foreach (var group in BlockGroups.Where(group => group.Name == shorthand))
+                    var groupName = shorthand == null ? string.Empty : shorthand.Trim();
+                    var found = false;
+                    foreach (var group in BlockGroups.Where(group =>
+                                 group != null &&
+                                 group.Name != null &&
+                                 group.Name.Equals(groupName, StringComparison.OrdinalIgnoreCase)))
                     {
                         limit.BlockGroups.Add(group);
+                        found = true;
                         Utils.Log($"{group.Name} Count: {limit.BlockGroups.Count}", 0, "Ship Core Config groups");
                     }
+
+                    if (!found && !string.IsNullOrWhiteSpace(groupName))
+                        Utils.Log($"Config warning: ShipCore '{core.UniqueName}' references unknown BlockGroup '{groupName}' in limit '{limit.Name}'.", 2, "Config Validation");
                 }
             }
         }

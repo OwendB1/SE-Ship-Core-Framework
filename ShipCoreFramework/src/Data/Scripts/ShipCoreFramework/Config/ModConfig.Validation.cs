@@ -74,6 +74,14 @@ namespace ShipCoreFramework
                     limit.BlockGroupsShortHand = Array.Empty<string>();
                     Utils.Log($"Config warning: ShipCore '{core.UniqueName}' from {source} ({coreFileOrKey}) has a <BlockLimit> with null <BlockGroups>; treating as empty.", 2, "Config Validation");
                 }
+                else
+                {
+                    limit.BlockGroupsShortHand = limit.BlockGroupsShortHand
+                        .Where(groupName => !string.IsNullOrWhiteSpace(groupName))
+                        .Select(groupName => groupName.Trim())
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToArray();
+                }
 
                 if (limit.BlockGroups == null) limit.BlockGroups = new List<BlockGroup>();
             }
@@ -240,7 +248,7 @@ namespace ShipCoreFramework
                     continue;
                 }
 
-                if (group.Name == null) group.Name = string.Empty;
+                group.Name = group.Name == null ? string.Empty : group.Name.Trim();
 
                 if (group.BlockTypes == null)
                 {
@@ -250,6 +258,11 @@ namespace ShipCoreFramework
                 else
                 {
                     group.BlockTypes.RemoveAll(type => type == null);
+                    foreach (var type in group.BlockTypes)
+                    {
+                        type.TypeId = NormalizeBlockTypeId(type.TypeId);
+                        type.SubtypeId = type.SubtypeId == null ? string.Empty : type.SubtypeId.Trim();
+                    }
                 }
             }
         }
