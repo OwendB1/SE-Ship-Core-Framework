@@ -1,4 +1,4 @@
-// app.js build v1012
+// app.js build v1013
 const state = {
   schema: {},
   blockGroups: [],
@@ -298,6 +298,7 @@ function restoreDraftFromStorage() {
       ? parsedDraft.expandedLimitPanelsByCore
       : {};
 
+    pruneMissingBlockGroupReferences();
     ensureValidSelectedIndexes();
     return true;
   } catch (error) {
@@ -382,6 +383,62 @@ function normalizeManifestCoreSubtypeIds(subtypeIds = []) {
 
 function normalizeManifestBlacklistSubtypeIds(subtypeIds = []) {
   return normalizeManifestCoreSubtypeIds(subtypeIds);
+}
+
+function getBlockGroupCanonicalNameMap(blockGroups = state.blockGroups) {
+  const canonicalNames = new Map();
+  (blockGroups || []).forEach((group) => {
+    const name = String(group?.name ?? "").trim();
+    if (!name) return;
+    const key = name.toLowerCase();
+    if (!canonicalNames.has(key)) canonicalNames.set(key, name);
+  });
+  return canonicalNames;
+}
+
+function normalizeBlockGroupNames(groupNames = [], blockGroups = state.blockGroups, pruned = null) {
+  const canonicalNames = getBlockGroupCanonicalNameMap(blockGroups);
+
+  return dedupeStrings((groupNames || []).map((groupName) => {
+    const normalized = String(groupName ?? "").trim();
+    if (!normalized) return "";
+
+    const canonical = canonicalNames.get(normalized.toLowerCase());
+    if (!canonical) {
+      if (pruned) {
+        pruned.count += 1;
+        pruned.names.add(normalized);
+      }
+      return "";
+    }
+
+    return canonical;
+  }));
+}
+
+function pruneMissingBlockGroupReferences(status = null) {
+  const pruned = { count: 0, names: new Set() };
+  const pruneCore = (core) => {
+    if (!core || !Array.isArray(core.blockLimits)) return;
+
+    core.blockLimits.forEach((limit) => {
+      if (!limit) return;
+      limit.blockGroups = normalizeBlockGroupNames(limit.blockGroups || [], state.blockGroups, pruned);
+    });
+  };
+
+  pruneCore(state.noCoreCore);
+  state.shipCores.forEach(pruneCore);
+
+  if (status && pruned.count > 0) {
+    const names = Array.from(pruned.names);
+    const suffix = names.length
+      ? ` (${names.slice(0, 8).join(", ")}${names.length > 8 ? ", ..." : ""})`
+      : "";
+    status.push(`Pruned ${pruned.count} missing BlockGroup reference(s) from BlockLimits${suffix}.`);
+  }
+
+  return pruned.count;
 }
 
 function parseManifestXml(text) {
@@ -903,7 +960,8 @@ function createDefaultLimit() {
   };
 }
 
-function resetEditor(seed = true) {
+function resetEditor(seed = true, options = {}) {
+  const { persistDraft = true } = options;
   state.blockGroups = [];
   state.manifestGroups = [];
   state.shipCores = [];
@@ -950,7 +1008,7 @@ function resetEditor(seed = true) {
   }
 
   renderUpgradeModules();
-  generateXml();
+  generateXml({ persistDraft });
 }
 
 function blockTypeEditor(groupIdx, blockType, blockTypeIdx) {
@@ -1316,6 +1374,7 @@ function renderCoreSelector() {
 
 function renderShipCores() {
   ensureValidSelectedIndexes();
+  pruneMissingBlockGroupReferences();
   renderCoreSelector();
 
   const coreIndex = state.selectedCoreIndex;
@@ -2221,6 +2280,7 @@ function download(filename, content) {
 
 function generateXml(options = {}) {
   const { persistDraft = true } = options;
+  pruneMissingBlockGroupReferences();
   const header = '<?xml version="1.0" encoding="UTF-8"?>';
   const namedManifestGroups = getNamedManifestGroups();
 
@@ -3086,7 +3146,8 @@ async function readZipFiles(zipFile) {
   return results;
 }
 
-async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, coreFiles, initialStatus = [], sbcFiles = [], passthroughFiles = [], fileZipPathMap = new Map()) {
+async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, coreFiles, initialStatus = [], sbcFiles = [], passthroughFiles = [], fileZipPathMap = new Map(), options = {}) {
+  const { persistDraft = true } = options;
   const status = [...initialStatus];
   const manifestCoreDirectoriesByFilename = new Map();
   const manifestCoreGroupsByFilename = new Map();
@@ -3094,7 +3155,7 @@ async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, cor
   const manifestCorePriorityByFilename = new Map();
   let manifestCrossConnectorPunishmentWhitelist = new Set();
 
-  resetEditor(false);
+  resetEditor(false, { persistDraft });
   // Store passthrough files (SBCs and unrecognised files) for re-inclusion in Download All
   state.uploadedPassthroughFiles = passthroughFiles.slice();
   state.manifestCoreFullPathByFilename = new Map();
@@ -3252,6 +3313,8 @@ async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, cor
   state.selectedUpgradeModuleIndex = 0;
   state.expandedLimitPanelsByCore = {};
 
+  pruneMissingBlockGroupReferences(status);
+
   if (state.noCoreCore) status.push(`Loaded no-core from ${state.noCoreCore.originalFileName || "legacy import"}.`);
   if (state.blockGroups.length === 0) status.push("No block groups loaded (you can still create them manually).");
   if (state.manifestGroups.length === 0) status.push("No manifest groups loaded (you can still create them manually).");
@@ -3259,7 +3322,7 @@ async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, cor
   if (state.upgradeModules.length === 0) status.push("No upgrade modules loaded (you can still add upgrade modules manually).");
 
   renderEditors();
-  generateXml();
+  generateXml({ persistDraft });
   setImportStatus(status);
 }
 
@@ -3343,6 +3406,12 @@ ids("loadUploadedXml").addEventListener("click", async () => {
   }
 
   const zipInputFile = ids("zipUpload").files?.[0] || null;
+  const clearSavedDraftForImport = folderFiles.length > 0 || Boolean(zipInputFile);
+  if (clearSavedDraftForImport) {
+    clearDraftFromStorage();
+    preStatus.push("Cleared autosaved draft before loading folder/ZIP content.");
+  }
+
   if (zipInputFile) {
     try {
       const allZipFiles = await readZipFiles(zipInputFile);
@@ -3371,7 +3440,18 @@ ids("loadUploadedXml").addEventListener("click", async () => {
     return;
   }
 
-  await processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, coreFiles, preStatus, sbcFiles, passthroughFiles, fileZipPathMap);
+  await processUploadedXmlFiles(
+    groupsFile,
+    manifestFile,
+    noCoreFile,
+    coreFiles,
+    preStatus,
+    sbcFiles,
+    passthroughFiles,
+    fileZipPathMap,
+    { persistDraft: !clearSavedDraftForImport }
+  );
+  if (clearSavedDraftForImport) clearDraftFromStorage();
 });
 
 (async () => {
