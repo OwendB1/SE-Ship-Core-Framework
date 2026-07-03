@@ -51,6 +51,9 @@ namespace ShipCoreFramework
                 EndGridInitialization();
             }
 
+            if (MainCoreComponent == null)
+                ScheduleMissingCoreRescan();
+
             InitializeDeactivationState();
             if (Deactivated) return true;
 
@@ -164,9 +167,11 @@ namespace ShipCoreFramework
             InvalidateGameThreadStateCache(true);
             InvalidateModifierStateCache();
             IncrementLimitGeneration();
+            ClearPublishedLimitSnapshots();
             InvalidateSpeedStateCache();
             Session.MarkPhysicalSpeedClusterSourceDirty(this);
             SyncNoCoreLimitTracking();
+            ScheduleMissingCoreRescan();
             SyncBeaconComponents();
 
             if (_closing || !Session.HasStarted || Session.IsShuttingDown) return;
@@ -192,6 +197,9 @@ namespace ShipCoreFramework
             }
 
             InvalidateGameThreadStateCache(true);
+            if (MainCoreComponent == null)
+                ScheduleMissingCoreRescan();
+
             Utils.Log($"OnGridAdded: {grid.EntityId}, {OwnerId}, {grid.CustomName}", 2);
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
@@ -265,9 +273,11 @@ namespace ShipCoreFramework
             {
                 UnregisterCoreLimitTracking();
                 ModAPI.BroadcastCoreDeactivated(GetRepresentativeGridId(), oldType, oldName);
+                ClearPublishedLimitSnapshots();
                 InvalidateSpeedStateCache();
                 Session.MarkPhysicalSpeedClusterSourceDirty(this);
                 SyncNoCoreLimitTracking();
+                ScheduleMissingCoreRescan();
             }
             else
             {
@@ -275,6 +285,8 @@ namespace ShipCoreFramework
                 MainCoreComponent.IsMainCore = true;
                 InvalidateGameThreadStateCache(true);
                 InvalidateModifierStateCache();
+                if (!string.Equals(oldType, MainCoreComponent.SubtypeId, StringComparison.OrdinalIgnoreCase))
+                    ClearPublishedLimitSnapshots();
                 RegisterCoreLimitTracking();
                 InvalidateSpeedStateCache();
                 Session.MarkPhysicalSpeedClusterSourceDirty(this);
@@ -314,6 +326,8 @@ namespace ShipCoreFramework
                 MainCoreComponent.IsMainCore = true;
                 InvalidateGameThreadStateCache(true);
                 InvalidateModifierStateCache();
+                if (!string.Equals(lost.SubtypeId, MainCoreComponent.SubtypeId, StringComparison.OrdinalIgnoreCase))
+                    ClearPublishedLimitSnapshots();
                 RegisterCoreLimitTracking();
                 InvalidateSpeedStateCache();
                 Session.MarkPhysicalSpeedClusterSourceDirty(this);
@@ -337,7 +351,97 @@ namespace ShipCoreFramework
             InvalidateModifierStateCache();
             IncrementLimitGeneration();
             SyncNoCoreLimitTracking();
+            if (MainCoreComponent == null)
+                ScheduleMissingCoreRescan();
             OnUpgradeModulesChanged();
+        }
+
+        internal void ScheduleMissingCoreRescan()
+        {
+            if (_closing || Deactivated || MainCoreComponent != null) return;
+            if (_nextMissingCoreRescanTick != 0) return;
+            if (_missingCoreRescanAttempts >= MissingCoreRescanMaxAttempts) return;
+
+            _nextMissingCoreRescanTick = Session.CurrentTick + MissingCoreRescanInitialDelayTicks;
+        }
+
+        internal void RunMissingCoreRescanTick()
+        {
+            if (_closing || Deactivated)
+            {
+                ClearMissingCoreRescan();
+                return;
+            }
+
+            if (MainCoreComponent != null)
+            {
+                ClearMissingCoreRescan();
+                return;
+            }
+
+            if (_nextMissingCoreRescanTick == 0 || Session.CurrentTick < _nextMissingCoreRescanTick)
+                return;
+
+            if (!Session.IsGameThread)
+            {
+                var groupKey = GetThreadWorkKey();
+                ThreadWork.Enqueue(ThreadWork.StateCategory, "missing-core-rescan:" + groupKey,
+                    "Missing core rescan for group " + groupKey,
+                    () => !_closing && !Session.IsShuttingDown,
+                    RunMissingCoreRescanTick);
+                return;
+            }
+
+            _missingCoreRescanAttempts++;
+            var foundCore = TryInitializeMissingCoreBlocks();
+            if (MainCoreComponent != null)
+            {
+                ClearMissingCoreRescan();
+                return;
+            }
+
+            if (_missingCoreRescanAttempts >= MissingCoreRescanMaxAttempts)
+            {
+                _nextMissingCoreRescanTick = 0;
+                if (foundCore)
+                    Utils.Log("Missing core rescan found core blocks but none could become main for group " + GetThreadWorkKey(), 1);
+                return;
+            }
+
+            _nextMissingCoreRescanTick = Session.CurrentTick + MissingCoreRescanRetryDelayTicks;
+        }
+
+        private bool TryInitializeMissingCoreBlocks()
+        {
+            if (_closing || Deactivated || MainCoreComponent != null) return false;
+
+            var foundCore = false;
+            BeginGridInitialization();
+            try
+            {
+                foreach (var gridComponent in GridDictionary.Values)
+                    if (gridComponent != null && gridComponent.InitializeCoreBlocks())
+                        foundCore = true;
+            }
+            finally
+            {
+                EndGridInitialization();
+            }
+
+            if (foundCore)
+            {
+                InvalidateGameThreadStateCache(true);
+                SyncNoCoreLimitTracking();
+                OnUpgradeModulesChanged();
+            }
+
+            return foundCore;
+        }
+
+        private void ClearMissingCoreRescan()
+        {
+            _nextMissingCoreRescanTick = 0;
+            _missingCoreRescanAttempts = 0;
         }
 
         internal void Clean()

@@ -26,12 +26,36 @@ namespace ShipCoreFramework
             BlockAddedInternal(block, false);
         }
 
-        private void BlockAddedInternal(IMySlimBlock block, bool limitBasedPunish = true)
+        private bool IsTrackedBlock(IMySlimBlock block)
         {
-            if (block?.CubeGrid == null || Grid == null || block.CubeGrid != Grid) return;
+            lock (_blocksLock)
+                return _blocks.Contains(block);
+        }
+
+        private void AddTrackedBlock(IMySlimBlock block)
+        {
+            lock (_blocksLock)
+            {
+                if (!_blocks.Contains(block))
+                    _blocks.Add(block);
+            }
+        }
+
+        private static void RollBackCoreInitialization(GroupComponent groupComponent, CoreComponent coreComponent)
+        {
+            if (groupComponent != null && ReferenceEquals(groupComponent.MainCoreComponent, coreComponent))
+                groupComponent.ResetCore();
+
+            if (coreComponent != null)
+                coreComponent.Clean();
+        }
+
+        private bool BlockAddedInternal(IMySlimBlock block, bool limitBasedPunish = true)
+        {
+            if (block?.CubeGrid == null || Grid == null || block.CubeGrid != Grid) return false;
 
             var groupComponent = GroupComponent;
-            if (groupComponent == null) return;
+            if (groupComponent == null) return false;
 
             var builderId = block.BuiltBy;
 
@@ -45,7 +69,7 @@ namespace ShipCoreFramework
                     && MyAPIGateway.Session.IsUserIgnorePCULimit(myPlayer.SteamUserId))
                 {
                     Utils.ShowNotification("Block Was Placed By Admin, Block limits NOT Applied.");
-                    return;
+                    return false;
                 }
             }
 
@@ -58,27 +82,43 @@ namespace ShipCoreFramework
             groupComponent.InvalidateGameThreadStateCache(shipController != null && groupComponent.MainCoreComponent == null);
             if (Utils.IsCoreBlock(functionalBlock))
             {
+                CoreComponent existingCore;
+                if (CoreDictionary.TryGetValue(functionalBlock, out existingCore))
+                    return false;
+
+                var alreadyTrackedBlock = IsTrackedBlock(block);
                 var newCore = new CoreComponent();
                 var success = newCore.Init(functionalBlock, this, groupComponent);
-                if (!success) return;
+                if (!success)
+                {
+                    groupComponent.ScheduleMissingCoreRescan();
+                    return false;
+                }
 
                 if (!CoreDictionary.TryAdd(block.FatBlock, newCore))
                 {
-                    newCore.Clean();
-                    return;
+                    RollBackCoreInitialization(groupComponent, newCore);
+                    return false;
                 }
 
-                if (!TryApplyLimitsOnAdd(block, limitBasedPunish)) return;
-
-                lock (_blocksLock)
+                if (!alreadyTrackedBlock)
                 {
-                    _blocks.Add(block);
-                }
+                    if (!TryApplyLimitsOnAdd(block, limitBasedPunish))
+                    {
+                        CoreComponent removedCore;
+                        CoreDictionary.TryRemove(block.FatBlock, out removedCore);
+                        RollBackCoreInitialization(groupComponent, newCore);
+                        return false;
+                    }
 
-                groupComponent.OnBlockAddedToGroup();
+                    AddTrackedBlock(block);
+
+                    groupComponent.OnBlockAddedToGroup();
+                }
             }
             else
             {
+                if (IsTrackedBlock(block)) return false;
                 if (functionalBlock is IMyBeacon) TrackBeacon(functionalBlock, groupComponent);
                 if (isTrackedUpgradeModule) TrackUpgradeModule(functionalBlock, groupComponent);
                 if (!limitBasedPunish)
@@ -93,30 +133,27 @@ namespace ShipCoreFramework
                     {
                         Utils.ShowNotification(localizedBlockName + " violates MaxBlocks!", firstBigOwner);
                         block.RemoveAndRefund();
-                        return;
+                        return false;
                     }
 
                     if (groupComponent.GroupPCU > maxPCU && maxPCU > 0)
                     {
                         Utils.ShowNotification(localizedBlockName + " violates MaxPCU!", firstBigOwner);
                         block.RemoveAndRefund();
-                        return;
+                        return false;
                     }
 
                     if (groupComponent.GroupMass > maxMass && maxMass > 0f)
                     {
                         Utils.ShowNotification(localizedBlockName + " violates MaxMass!", firstBigOwner);
                         block.RemoveAndRefund();
-                        return;
+                        return false;
                     }
                 }
 
-                if (!TryApplyLimitsOnAdd(block, limitBasedPunish)) return;
+                if (!TryApplyLimitsOnAdd(block, limitBasedPunish)) return false;
 
-                lock (_blocksLock)
-                {
-                    _blocks.Add(block);
-                }
+                AddTrackedBlock(block);
 
                 if (shipController != null) TrackShipController(shipController);
                 groupComponent.OnBlockAddedToGroup();
@@ -133,6 +170,8 @@ namespace ShipCoreFramework
                 groupComponent.OnUpgradeModulesChanged();
             else if (!groupComponent.IsInitializingGrids)
                 groupComponent.ApplyModifiers(groupComponent.Modifiers);
+
+            return true;
         }
 
         private void BlockRemoved(IMySlimBlock block)

@@ -6,6 +6,10 @@ namespace ShipCoreFramework
 {
     internal partial class GroupComponent
     {
+        private const int MissingCoreRescanInitialDelayTicks = 30;
+        private const int MissingCoreRescanRetryDelayTicks = 120;
+        private const int MissingCoreRescanMaxAttempts = 10;
+
         internal int GroupBlocksCount => Interlocked.CompareExchange(ref _groupBlocksCount, 0, 0);
         private float BoostDuration => SpeedModifiers.BoostDuration;
         private float BoostCoolDown => SpeedModifiers.BoostCoolDown;
@@ -75,6 +79,8 @@ namespace ShipCoreFramework
         private string _registeredCoreLimitSubtypeId = string.Empty;
         private long _registeredCoreLimitOwnerId;
         private long _registeredCoreLimitFactionId = -1;
+        private int _nextMissingCoreRescanTick;
+        private int _missingCoreRescanAttempts;
         internal int LastSpeedStateUpdateTick = -1;
 
         internal float ActiveDefenseDuration => ShipCore.ActiveDefenseModifiers.Duration;

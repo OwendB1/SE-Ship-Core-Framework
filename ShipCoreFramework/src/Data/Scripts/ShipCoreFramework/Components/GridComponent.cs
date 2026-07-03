@@ -64,13 +64,17 @@ namespace ShipCoreFramework
             InitializeNonCoreBlocks();
         }
 
-        internal void InitializeCoreBlocks()
+        internal bool InitializeCoreBlocks()
         {
+            var initializedCore = false;
             var blocks = new List<IMySlimBlock>();
             ((IMyCubeGrid)Grid).GetBlocks(blocks);
 
             var coreBlocks = blocks.Where(Utils.IsCoreBlock).ToList();
-            foreach (var coreBlock in coreBlocks) BlockAddedInternal(coreBlock);
+            foreach (var coreBlock in coreBlocks)
+                initializedCore |= BlockAddedInternal(coreBlock);
+
+            return initializedCore;
         }
 
         internal void InitializeNonCoreBlocks()

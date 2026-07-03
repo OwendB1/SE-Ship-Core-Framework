@@ -15,8 +15,8 @@ namespace ShipCoreFramework
             if (builder == 0 && !isIgnoredNpcGrid)
             {
                 var name = CoreBlock.CustomName;
-                Utils.ShowChatMessage($"Was not able to determine builder of core {name}, removing from world!", logPriority: 3);
-                CoreBlock.SlimBlock.RemoveAndRefund();
+                Utils.Log($"Core init deferred for {name}: owner/builder identity is not available yet.", 1);
+                groupComponent.ScheduleMissingCoreRescan();
                 return false;
             }
 

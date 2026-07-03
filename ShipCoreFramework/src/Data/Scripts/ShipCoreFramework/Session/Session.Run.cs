@@ -181,7 +181,10 @@ namespace ShipCoreFramework
             {
                 GroupComponent group = kvp.Value;
                 if (group != null)
+                {
                     group.RefreshGameThreadStateCache();
+                    group.RunMissingCoreRescanTick();
+                }
             }
 
             RefreshMassCacheBatch();

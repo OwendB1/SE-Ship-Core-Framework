@@ -2,16 +2,19 @@
 <ShipCore xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <SubtypeId>ARCANE-NO-CORE</SubtypeId>
   <UniqueName>Arcane</UniqueName>
-  <LargeGridStatic>true</LargeGridStatic>
-  <LargeGridMobile>true</LargeGridMobile>
-  <SmallGrid>true</SmallGrid>
+  <ForceBroadCast>false</ForceBroadCast>
+  <ForceBroadCastRange>2000</ForceBroadCastRange>
+  <MobilityType>Both</MobilityType>
   <MaxBlocks>5000</MaxBlocks>
+  <MinBlocks>-1</MinBlocks>
   <MaxMass>-1</MaxMass>
   <MaxPCU>10000</MaxPCU>
+  <MaxBackupCores>-1</MaxBackupCores>
   <MaxPerFaction>-1</MaxPerFaction>
+  <FactionPlayersNeededPerCore>-1</FactionPlayersNeededPerCore>
   <MaxPerPlayer>-1</MaxPerPlayer>
-  <MinBlocks>-1</MinBlocks>
   <MinPlayers>-1</MinPlayers>
+  <MaxPlayers>-1</MaxPlayers>
   <AllowedUpgradeModules>
     <UniqueName>Economy Upgrade Module</UniqueName>
     <MaxCount>1</MaxCount>
@@ -27,11 +30,13 @@
     <ThrusterEfficiency>1</ThrusterEfficiency>
     <ThrusterForce>1</ThrusterForce>
   </Modifiers>
-  <DyamicBoostEnabled>true</DyamicBoostEnabled>
+  <SpeedBoostEnabled>false</SpeedBoostEnabled>
+  <SpeedLimitType>Normal</SpeedLimitType>
+  <SpeedOverrideMode>OnlyIfHeavier</SpeedOverrideMode>
+  <SpeedOverridePriority>0</SpeedOverridePriority>
   <SpeedModifiers>
     <MaxSpeed>0.2</MaxSpeed>
     <MaxBoost>0.4</MaxBoost>
-    <BoostResistance>10</BoostResistance>
     <BoostDuration>30</BoostDuration>
     <BoostCoolDown>90</BoostCoolDown>
   </SpeedModifiers>
@@ -45,7 +50,6 @@
     <Explosion>1</Explosion>
     <Environment>1</Environment>
   </PassiveDefenseModifiers>
-  <SpeedBoostEnabled>false</SpeedBoostEnabled>
   <EnableActiveDefenseModifiers>false</EnableActiveDefenseModifiers>
   <ActiveDefenseModifiers>
     <Bullet>1</Bullet>
@@ -57,31 +61,29 @@
     <Explosion>1</Explosion>
     <Environment>1</Environment>
   </ActiveDefenseModifiers>
-  <EnableReloadModifier>false</EnableReloadModifier>
-  <ReloadModifier>1</ReloadModifier>
   <BlockLimits>
     <Name>Tools</Name>
     <BlockGroups>Grinders</BlockGroups>
     <BlockGroups>Welders</BlockGroups>
     <BlockGroups>Drills</BlockGroups>
     <MaxCount>1</MaxCount>
-    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>ShutOff</PunishmentType>
   </BlockLimits>
   <BlockLimits>
     <Name>Weaponry PDC Only</Name>
     <BlockGroups>Weaponry</BlockGroups>
     <MaxCount>2</MaxCount>
-    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>Delete</PunishmentType>
   </BlockLimits>
-    <BlockLimits>
+  <BlockLimits>
     <Name>Non-PDC Weapons</Name>
     <BlockGroups>Turrets</BlockGroups>
     <BlockGroups>VanillaSmallGridFixedWeapons</BlockGroups>
     <BlockGroups>VanillaLargeGridFixedWeapons</BlockGroups>
     <MaxCount>0</MaxCount>
-    <TurnedOffByNoFlyZone>true</TurnedOffByNoFlyZone>
+    <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>Delete</PunishmentType>
   </BlockLimits>
 </ShipCore>
