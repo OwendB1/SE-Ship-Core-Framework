@@ -1,94 +1,103 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
-using Sandbox.Game.Entities;
+using Sandbox.Game.Components;
 using Sandbox.Game.GameSystems.TextSurfaceScripts;
 using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 using VRage.Game.GUI.TextPanel;
 using VRageMath;
 using IngameCubeBlock = VRage.Game.ModAPI.Ingame.IMyCubeBlock;
 using IngameIMyEntity = VRage.Game.ModAPI.Ingame.IMyEntity;
+using IngameTextSurface = Sandbox.ModAPI.Ingame.IMyTextSurface;
+using IngameTextSurfaceProvider = Sandbox.ModAPI.Ingame.IMyTextSurfaceProvider;
 
 namespace ShipCoreFramework
 {
     [MyTextSurfaceScript("CoreTypeLCDScript", "Core status")]
     internal class CoreTypeLCDScript : MyTSSCommon
     {
-        private static readonly float ScrollSpeed = 3; //pixels per update
-        private static readonly int ScrollPauseUpdates = 15; //how many updates to say paused at the start and end when scrolling
         private const string CustomDataSection = "ShipCoreLCD";
         private const string FontSizeKey = "FontSize";
+        private const string CombinePanelsKey = "CombinePanels";
+        private const string ShowCursorKey = "ShowCursor";
+        private const string PageKey = "Page";
         private const float DefaultFontScale = 1f;
-        private const float MinFontScale = 0.5f;
+        private const float MinFontScale = 0.45f;
         private const float MaxFontScale = 2.5f;
+        private const float ManualScrollStepPixels = 72f;
+        private const int CursorTimeoutTicks = 18;
+        private const int ScrollInputTimeoutTicks = 60;
+        private const int RedrawIntervalTicks = 10;
+        private const double SamePlaneToleranceMeters = 0.08d;
+        private const double TouchToleranceMeters = 0.08d;
+        private const int MaxCombinedPanelMembers = 16;
+        private const int MaxCombinedPanelCandidates = 64;
+        private const float MaxCombinedVirtualPixels = 4096f;
+        private const double MinScreenPixelsPerMeter = 16d;
+        private const double MaxScreenPixelsPerMeter = 8192d;
+        private const double MaxScreenAreaMeters = 8d;
+        private const float MinPhysicalRenderScale = 0.25f;
+        private const float MaxPhysicalRenderScale = 1.5f;
 
-        private readonly Table _appliedModifiersTable = new Table
-        {
-            Columns = new List<Column>
-            {
-                new Column { Name = "ModifierName" },
-                new Column { Name = "Value" }
-            }
-        };
+        private static readonly object InstancesLock = new object();
+        private static readonly List<CoreTypeLCDScript> Instances = new List<CoreTypeLCDScript>();
+        private static readonly Dictionary<string, CursorState> CursorStates =
+            new Dictionary<string, CursorState>(StringComparer.Ordinal);
+        private static readonly Dictionary<string, ScrollState> ScrollStates =
+            new Dictionary<string, ScrollState>(StringComparer.Ordinal);
+        private static readonly Dictionary<string, int> PendingWheelDeltas =
+            new Dictionary<string, int>(StringComparer.Ordinal);
+        private static string ActiveScrollGroupKey;
+        private static int ActiveScrollGroupTick = -1;
+        private static int LastInputSampleTick = -1;
+        private static int LastWheelInputTick = -1;
+        private static int NextInstanceId;
 
-        private readonly Table _gridResultsTable = new Table
-        {
-            Columns = new List<Column>
-            {
-                new Column { Name = "Property" },
-                new Column { Name = "Value", Alignment = TextAlignment.RIGHT },
-                new Column { Name = "Separator" },
-                new Column { Name = "Max" },
-                new Column { Name = "Success" }
-            }
-        };
-        
-        private readonly Table _gridLimitsTable = new Table
-        {
-            Columns = new List<Column>
-            {
-                new Column { Name = "LimitName" },
-                new Column { Name = "Value", Alignment = TextAlignment.RIGHT },
-                new Column { Name = "Separator" },
-                new Column { Name = "Max" },
-                new Column { Name = "Punishment Type" }
-            }
-        };
-
-        private readonly Table _headerTable = new Table
-        {
-            Columns = new List<Column>
-            {
-                new Column { Name = "Label" },
-                new Column { Name = "Name" },
-                new Column { Name = "Success" }
-            }
-        };
-
+        private readonly int _instanceId;
         private readonly IMyTerminalBlock _terminalBlock;
+        private readonly IMyCubeBlock _cubeBlock;
+        private bool _disposed;
+        private bool _surfaceIndexResolved;
+        private int _surfaceIndex;
+        private int _lastDrawTick = -RedrawIntervalTicks;
         private float _fontScale = DefaultFontScale;
-        private int _scrollTime;
+        private bool _combinePanels = true;
+        private bool _showCursor = true;
+        private string _page = "Auto";
 
         public CoreTypeLCDScript(IMyTextSurface surface, IngameCubeBlock block, Vector2 size) : base(surface, block, size)
         {
-            _terminalBlock = (IMyTerminalBlock)block; // internal stored m_block is the in-game interface that has no events, so can't unhook later on therefore, this field is required.
-            _terminalBlock.OnMarkForClose += BlockMarkedForClose; // required if you're going to make use of Dispose() as it won't get called when the block is removed or grid is cut/unloaded.
+            _terminalBlock = (IMyTerminalBlock)block;
+            _cubeBlock = _terminalBlock as IMyCubeBlock;
+            _instanceId = ++NextInstanceId;
+            _terminalBlock.OnMarkForClose += BlockMarkedForClose;
             ReloadCustomDataSettings();
 
-            // Called when the script is created.
-            // This class is instanced per LCD that uses it, which means the same block can have multiple instances of this script as well (e.g., a cockpit with all its screens set to use this script).
+            lock (InstancesLock)
+            {
+                Instances.Add(this);
+            }
         }
 
-        public override ScriptUpdate NeedsUpdate => ScriptUpdate.Update10; // frequency that Run() is called.
+        public override ScriptUpdate NeedsUpdate { get { return ScriptUpdate.Update10; } }
 
-        private GroupComponent GroupComponent => _terminalBlock?.GetGroupComponent();
-        private ShipCore ShipCore => GroupComponent?.ShipCore;
+        private GroupComponent GroupComponent { get { return _terminalBlock != null ? _terminalBlock.GetGroupComponent() : null; } }
 
         public override void Dispose()
         {
+            if (_disposed) return;
+            _disposed = true;
+
+            lock (InstancesLock)
+            {
+                Instances.Remove(this);
+            }
+
+            if (_terminalBlock != null)
+                _terminalBlock.OnMarkForClose -= BlockMarkedForClose;
+
             base.Dispose();
-            _terminalBlock.OnMarkForClose -= BlockMarkedForClose;
         }
 
         private void BlockMarkedForClose(IngameIMyEntity ent)
@@ -98,14 +107,24 @@ namespace ShipCoreFramework
 
         public override void Run()
         {
-            if (Session.Config.SelectedNoCore == null) return;
             try
             {
-                base.Run(); // do not remove
-                _gridResultsTable.Clear();
+                base.Run();
                 if (!Session.IsClient) return;
 
-                Draw();
+                SampleScrollInput();
+                if (!ShouldDrawNow()) return;
+
+                ReloadCustomDataSettings();
+
+                if (Session.Config.SelectedNoCore == null)
+                {
+                    DrawMessage("SCF config missing", "No selected No Core config. Reload world after fixing config.");
+                    return;
+                }
+
+                DrawDashboard();
+                _lastDrawTick = Session.CurrentTick;
             }
             catch (Exception e)
             {
@@ -113,366 +132,1315 @@ namespace ShipCoreFramework
             }
         }
 
-        private void Draw()
+        private void DrawDashboard()
         {
-            if (!Session.IsClient) return;
-            if (GroupComponent == null) return;
-
-            ReloadCustomDataSettings();
-            
-            var screenSize = Surface.SurfaceSize;
-            var screenTopLeft = (Surface.TextureSize - screenSize) * 0.5f;
-            var padding = new Vector2(10, 10) * _fontScale;
-            var cellGap = new Vector2(12, 5) * _fontScale;
-            var screenInnerWidth = Surface.SurfaceSize.X - padding.X * 2;
-            var successColor = Color.Green;
-            var failColor = Color.Red;
-            var headerScale = _fontScale;
-            var bodyScale = _fontScale * 13 / TextUtils.CharWidth;
-
-            var frame = Surface.DrawFrame();
-
-            // https://github.com/malware-dev/MDK-SE/wiki/Text-Panels-and-Drawing-Sprites
-
-            AddBackground(frame, Color.Black.Alpha(0f));
-            Surface.ScriptBackgroundColor = Color.Black;
-            Surface.ScriptForegroundColor = Color.Black;
-            // the colors in the terminal are Surface.ScriptBackgroundColor and Surface.ScriptForegroundColor, the other ones without Script in name are for text/image mode.
-            _gridResultsTable.Clear();
-            _gridLimitsTable.Clear();
-
-            Vector2 currentPosition;
-            var spritesToRender = new List<MySprite>();
-
-            //Render the header
-            _headerTable.Clear();
-
-            _headerTable.Rows.Add(new Row
+            GroupComponent group = GroupComponent;
+            if (group == null || group.ShipCore == null)
             {
-                new Cell("Type:"),
-                new Cell(ShipCore.UniqueName),
-                new Cell()
-            });
-
-            _headerTable.RenderToSprites(spritesToRender, screenTopLeft + padding, screenInnerWidth,
-                new Vector2(15, 0) * _fontScale, out currentPosition, headerScale);
-
-            //Render the results checklist
-
-            var punishModifiers = GroupComponent.PunishModifiers;
-            _gridResultsTable.Rows.Add(new Row
-            {
-                new Cell("Modifiers punished: "),
-                new Cell(""),
-                new Cell(""),
-                new Cell(punishModifiers ? "Yes" : "No", punishModifiers ? failColor : successColor),
-                punishModifiers ? new Cell("X", failColor) : new Cell()
-            });
-            
-            var punishSpeed = GroupComponent.PunishSpeed;
-            _gridResultsTable.Rows.Add(new Row
-            {
-                new Cell("Speed punished: "),
-                new Cell(""),
-                new Cell(""),
-                new Cell(punishSpeed ? "Yes" : "No", punishSpeed ? failColor : successColor),
-                punishSpeed ? new Cell("X", failColor) : new Cell()
-            });
-
-            var deactivated = GroupComponent.Deactivated;
-            _gridResultsTable.Rows.Add(new Row
-            {
-                new Cell("Deactivated: "),
-                new Cell(""),
-                new Cell(""),
-                new Cell(deactivated ? "Yes" : "No", deactivated ? failColor : successColor),
-                deactivated ? new Cell("X", failColor) : new Cell()
-            });
-
-            if (deactivated)
-            {
-                var deactivatedTableTopLeft = currentPosition + new Vector2(0, 5) * _fontScale;
-                _gridResultsTable.RenderToSprites(spritesToRender, deactivatedTableTopLeft, screenInnerWidth, cellGap,
-                    out currentPosition, bodyScale);
-
-                var deactivatedScrollPosition = GetScrollPosition(currentPosition + padding);
-
-                foreach (var t in spritesToRender)
-                {
-                    var sprite = t;
-                    if (deactivatedScrollPosition.Y != 0) sprite.Position -= deactivatedScrollPosition;
-                    frame.Add(sprite);
-                }
-
-                frame.Dispose();
+                DrawMessage("No ship core data", "Grid group not ready yet.");
                 return;
             }
-            
-            SpeedEnforcement.RefreshSpeedState(GroupComponent);
+
+            SpeedEnforcement.RefreshSpeedState(group);
+
+            PanelGroupLayout layout = BuildPanelGroupLayout();
+            bool hasCursorHit = UpdateCursorState(layout);
+
+            float configuredFontScale = _fontScale;
+            _fontScale = configuredFontScale * layout.RenderScale;
+            try
+            {
+                CoreLcdSnapshot snapshot = BuildSnapshot(group, layout);
+                List<MySprite> sprites = new List<MySprite>(128);
+                Vector2 contentBottomRight;
+                RenderDashboardSprites(sprites, snapshot, layout.VirtualSize, out contentBottomRight);
+
+                float scrollOffset = UpdateManualScroll(layout, contentBottomRight.Y, hasCursorHit);
+                Vector2 scroll = new Vector2(0f, scrollOffset);
+                MySpriteDrawFrame frame = Surface.DrawFrame();
+                Surface.ScriptBackgroundColor = Color.Black;
+                Surface.ScriptForegroundColor = Color.White;
+                EmitSprites(frame, layout, sprites, scroll);
+                RenderScrollIndicator(frame, layout, contentBottomRight.Y, scrollOffset);
+
+                if (_showCursor)
+                    RenderCursor(frame, layout);
+
+                frame.Dispose();
+            }
+            finally
+            {
+                _fontScale = configuredFontScale;
+            }
+        }
+
+        private CoreLcdSnapshot BuildSnapshot(GroupComponent group, PanelGroupLayout layout)
+        {
+            CoreLcdSnapshot snapshot = new CoreLcdSnapshot();
+            ShipCore core = group.ShipCore;
+            snapshot.CoreName = string.IsNullOrWhiteSpace(core.UniqueName) ? core.SubtypeId : core.UniqueName;
+            snapshot.PanelCount = layout.MemberCount;
+
+            bool punishModifiers = group.PunishModifiers;
+            bool punishSpeed = group.PunishSpeed;
+            bool deactivated = group.Deactivated;
+            bool punishLimitedBlocks = group.PunishLimitedBlocks;
+
             float speed;
             long speedSourceGridId;
-            lock (GroupComponent.SpeedStateLock)
+            lock (group.SpeedStateLock)
             {
-                speed = GroupComponent.EffectiveSpeedLimitMetersPerSecond;
-                speedSourceGridId = GroupComponent.SpeedSourceGroupGridId;
-            }
-            var speedLabel = speedSourceGridId != 0 && !GroupComponent.GridDictionary.Keys.Any(g => g != null && g.EntityId == speedSourceGridId)
-                ? "Max Speed*: "
-                : "Max Speed: ";
-            _gridResultsTable.Rows.Add(new Row
-            {
-                new Cell(speedLabel),
-                new Cell(""),
-                new Cell(""),
-                new Cell($"{speed} m/s"),
-                new Cell("")
-            });
-            
-            if (ShipCore.MaxBackupCores > 0 )
-            {
-                var passed = GroupComponent.CoreDictionary.Count - 1 <= ShipCore.MaxBackupCores;
-                var target = ShipCore.MaxBackupCores.ToString();
-
-                _gridResultsTable.Rows.Add(new Row
-                {
-                    new Cell("Backup cores: "),
-                    new Cell((GroupComponent.CoreDictionary.Count - 1).ToString()),
-                    new Cell("/"),
-                    new Cell(target, passed ? successColor : failColor),
-                    passed ? new Cell() : new Cell("X", failColor)
-                });
-            }
-            
-            if (ShipCore.MaxBlocks > 1 )
-            {
-                var blockCount = GroupComponent.GroupBlocksCount;
-                var effectiveMaxBlocks = GroupComponent.GetEffectiveMaxBlocks();
-                var passed = blockCount <= effectiveMaxBlocks;
-
-                _gridResultsTable.Rows.Add(new Row
-                {
-                    new Cell("Blocks: "),
-                    new Cell(blockCount.ToString()),
-                    new Cell("/"),
-                    new Cell(effectiveMaxBlocks.ToString(), passed ? successColor : failColor),
-                    passed ? new Cell() : new Cell("X", failColor)
-                });
+                speed = group.EffectiveSpeedLimitMetersPerSecond;
+                speedSourceGridId = group.SpeedSourceGroupGridId;
             }
 
-            if (ShipCore.MinBlocks > 0)
-            {
-                var passed = GroupComponent.GroupBlocksCount >= ShipCore.MinBlocks;
-                var target = ShipCore.MinBlocks.ToString();
+            string speedLabel = IsSpeedSourceInGroup(group, speedSourceGridId) ? "Max Speed" : "Max Speed*";
+            snapshot.Metrics.Add(new MetricRow(speedLabel, FormatDecimal(speed, "0.#") + " m/s", -1d, 0d, false));
 
-                _gridResultsTable.Rows.Add(new Row
-                {
-                    new Cell("Min Blocks: "),
-                    new Cell(GroupComponent.GroupBlocksCount.ToString()),
-                    new Cell("/"),
-                    new Cell(target, passed ? successColor : failColor),
-                    passed ? new Cell() : new Cell("X", failColor)
-                });
+            if (core.MaxBackupCores > 0)
+            {
+                int backupCores = Math.Max(0, group.CoreDictionary.Count - 1);
+                bool fail = backupCores > core.MaxBackupCores;
+                snapshot.Metrics.Add(new MetricRow("Backup Cores", backupCores.ToString(CultureInfo.InvariantCulture),
+                    core.MaxBackupCores, core.MaxBackupCores > 0 ? backupCores / (double)core.MaxBackupCores : 0d, fail));
             }
 
-            if (ShipCore.MaxMass > 1)
+            if (core.MaxBlocks > 1)
             {
-                var groupMass = GroupComponent.GroupMass;
-                var effectiveMaxMass = GroupComponent.GetEffectiveMaxMass();
-                var passed = groupMass <= effectiveMaxMass;
-
-                _gridResultsTable.Rows.Add(new Row
-                {
-                    new Cell("Mass: "),
-                    new Cell(groupMass.ToString(CultureInfo.InvariantCulture)),
-                    new Cell("/"),
-                    new Cell(effectiveMaxMass.ToString(CultureInfo.InvariantCulture), passed ? successColor : failColor),
-                    passed ? new Cell() : new Cell("X", failColor)
-                });
+                int maxBlocks = group.GetEffectiveMaxBlocks();
+                bool fail = group.GroupBlocksCount > maxBlocks;
+                snapshot.Metrics.Add(new MetricRow("Blocks", FormatInt(group.GroupBlocksCount), maxBlocks,
+                    maxBlocks > 0 ? group.GroupBlocksCount / (double)maxBlocks : 0d, fail));
             }
 
-            if (ShipCore.MaxPCU > 1)
+            if (core.MinBlocks > 0)
             {
-                var groupPcu = GroupComponent.GroupPCU;
-                var effectiveMaxPcu = GroupComponent.GetEffectiveMaxPCU();
-                _gridResultsTable.Rows.Add(new Row
-                {
-                    new Cell("PCU: "),
-                    new Cell(groupPcu.ToString()),
-                    new Cell("/"),
-                    new Cell(effectiveMaxPcu.ToString(),
-                        groupPcu <= effectiveMaxPcu ? successColor : failColor),
-                    groupPcu <= effectiveMaxPcu ? new Cell() : new Cell("X", failColor)
-                });
+                bool fail = group.GroupBlocksCount < core.MinBlocks;
+                double ratio = core.MinBlocks > 0 ? group.GroupBlocksCount / (double)core.MinBlocks : 0d;
+                snapshot.Metrics.Add(new MetricRow("Min Blocks", FormatInt(group.GroupBlocksCount), core.MinBlocks,
+                    ratio, fail));
             }
-            
-            var gridResultsTableTopLeft = currentPosition + new Vector2(0, 5) * _fontScale;
 
-            _gridResultsTable.RenderToSprites(spritesToRender, gridResultsTableTopLeft, screenInnerWidth, cellGap,
-                out currentPosition, bodyScale);
-
-            if (GroupComponent.ShipCore.BlockLimits != null)
+            if (core.MaxMass > 1)
             {
-                foreach (var blockLimit in GroupComponent.ShipCore.BlockLimits)
+                float maxMass = group.GetEffectiveMaxMass();
+                bool fail = group.GroupMass > maxMass;
+                snapshot.Metrics.Add(new MetricRow("Mass", FormatMass(group.GroupMass), maxMass,
+                    maxMass > 0f ? group.GroupMass / (double)maxMass : 0d, fail));
+            }
+
+            if (core.MaxPCU > 1)
+            {
+                int maxPcu = group.GetEffectiveMaxPCU();
+                bool fail = group.GroupPCU > maxPcu;
+                snapshot.Metrics.Add(new MetricRow("PCU", FormatInt(group.GroupPCU), maxPcu,
+                    maxPcu > 0 ? group.GroupPCU / (double)maxPcu : 0d, fail));
+            }
+
+            snapshot.Flags.Add(new FlagRow("Modifiers", punishModifiers));
+            snapshot.Flags.Add(new FlagRow("Speed", punishSpeed));
+            snapshot.Flags.Add(new FlagRow("Limited blocks", punishLimitedBlocks));
+            snapshot.Flags.Add(new FlagRow("Deactivated", deactivated));
+
+            if (core.BlockLimits != null)
+            {
+                for (int i = 0; i < core.BlockLimits.Length; i++)
                 {
+                    BlockLimit limit = core.BlockLimits[i];
+                    if (limit == null) continue;
+
                     double totalWeight = 0d;
                     LimitBucket bucket;
-                    if (GroupComponent.Limits.TryGetValue(blockLimit, out bucket))
+                    if (group.Limits.TryGetValue(limit, out bucket))
                         totalWeight = bucket.TotalWeight;
-                    var effectiveMaxCount = GroupComponent.GetEffectiveMaxCount(blockLimit);
-                    var isOk = totalWeight <= effectiveMaxCount;
 
-                    _gridLimitsTable.Rows.Add(new Row
-                    {
-                        new Cell(blockLimit.Name + ":"),
-                        new Cell(totalWeight.ToString(CultureInfo.InvariantCulture)),
-                        new Cell("/"),
-                        new Cell(effectiveMaxCount.ToString(CultureInfo.InvariantCulture), isOk ? successColor : failColor),
-                        new Cell("Type: " + blockLimit.PunishmentType)
-                    });
+                    double max = group.GetEffectiveMaxCount(limit);
+                    bool fail = totalWeight > max;
+                    double ratio = max > 0d ? totalWeight / max : 0d;
+                    snapshot.Limits.Add(new LimitRow(limit.Name, totalWeight, max, ratio, limit.PunishmentType.ToString(), fail));
                 }
             }
 
-            var gridLimitsTableTopLeft = currentPosition + new Vector2(0, 5) * _fontScale;
-
-            _gridLimitsTable.RenderToSprites(spritesToRender, gridLimitsTableTopLeft, screenInnerWidth, cellGap,
-                out currentPosition, bodyScale);
-
-            //Applied modifiers
-            spritesToRender.Add(CreateLine("Applied modifiers", currentPosition + new Vector2(0, 5) * _fontScale,
-                out currentPosition, headerScale));
-
-            _appliedModifiersTable.Clear();
-
-            var appliedModifiersTableTopLeft = currentPosition + new Vector2(0, 5) * _fontScale;
-
-            foreach (var modifierValue in GroupComponent.Modifiers.GetModifierValues())
-                _appliedModifiersTable.Rows.Add(new Row
-                {
-                    new Cell($"{modifierValue.Name}:"),
-                    new Cell(modifierValue.Value.ToString(CultureInfo.InvariantCulture))
-                });
-
-            _appliedModifiersTable.RenderToSprites(spritesToRender, appliedModifiersTableTopLeft, screenInnerWidth,
-                cellGap, out currentPosition, bodyScale);
-            var scrollPosition = GetScrollPosition(currentPosition + padding);
-
-            foreach (var t in spritesToRender)
+            snapshot.Limits.Sort(delegate(LimitRow left, LimitRow right)
             {
-                var sprite = t;
-                if (scrollPosition.Y != 0) sprite.Position -= scrollPosition;
-                frame.Add(sprite);
+                int failCompare = right.Failing.CompareTo(left.Failing);
+                if (failCompare != 0) return failCompare;
+                return right.Ratio.CompareTo(left.Ratio);
+            });
+
+            List<ModifierNameValue> modifiers = group.Modifiers.GetModifierValues();
+            for (int i = 0; i < modifiers.Count; i++)
+                snapshot.Modifiers.Add(new ModifierRow(modifiers[i].Name, modifiers[i].Value));
+
+            int warnings = 0;
+            for (int i = 0; i < snapshot.Metrics.Count; i++)
+                if (snapshot.Metrics[i].Failing)
+                    warnings++;
+            for (int i = 0; i < snapshot.Limits.Count; i++)
+                if (snapshot.Limits[i].Failing)
+                    warnings++;
+            if (punishModifiers) warnings++;
+            if (punishSpeed) warnings++;
+            if (punishLimitedBlocks) warnings++;
+            if (deactivated) warnings++;
+            if (deactivated)
+            {
+                snapshot.StateText = "OFF";
+                snapshot.StateColor = Palette.Red;
+            }
+            else if (warnings > 0)
+            {
+                snapshot.StateText = "ATTN";
+                snapshot.StateColor = Palette.Amber;
+            }
+            else
+            {
+                snapshot.StateText = "OK";
+                snapshot.StateColor = Palette.Green;
             }
 
-            frame.Dispose(); // send sprites to the screen
+            return snapshot;
+        }
+
+        private void RenderDashboardSprites(List<MySprite> sprites, CoreLcdSnapshot snapshot, Vector2 canvas,
+            out Vector2 contentBottomRight)
+        {
+            float scale = _fontScale;
+            float margin = 18f * scale;
+            float bodyScale = 0.58f * scale;
+            float smallScale = 0.48f * scale;
+            float titleScale = 0.82f * scale;
+            float y = 0f;
+
+            AddRect(sprites, 0f, 0f, canvas.X, 58f * scale, Palette.Header);
+            AddText(sprites, "SCF", new Vector2(margin, 13f * scale), Palette.Muted, 0.62f * scale);
+            AddText(sprites, TrimToWidth(snapshot.CoreName, Math.Max(80f, canvas.X - 260f * scale), titleScale),
+                new Vector2(76f * scale, 10f * scale), Color.White, titleScale);
+            AddPill(sprites, snapshot.StateText, snapshot.StateColor, new Vector2(canvas.X - 118f * scale, 11f * scale),
+                new Vector2(94f * scale, 34f * scale), 0.56f * scale);
+            if (snapshot.PanelCount > 1)
+                AddText(sprites, snapshot.PanelCount.ToString(CultureInfo.InvariantCulture) + " panels",
+                    new Vector2(canvas.X - 216f * scale, 19f * scale), Palette.Muted, smallScale);
+
+            y = 74f * scale;
+            y = RenderMetricCards(sprites, snapshot, canvas, margin, y, bodyScale, smallScale);
+            y += 12f * scale;
+            y = RenderFlags(sprites, snapshot, canvas, margin, y, smallScale);
+            y += 14f * scale;
+
+            bool showAll = IsPage("All") || IsPage("Auto") && canvas.X >= 900f;
+            bool showOverview = IsPage("Overview") || IsPage("Auto");
+            bool showLimits = showAll || showOverview || IsPage("Limits");
+            bool showModifiers = showAll || IsPage("Modifiers");
+
+            if (showLimits)
+            {
+                int limitRows = showAll || IsPage("Limits") ? snapshot.Limits.Count : Math.Min(snapshot.Limits.Count, 8);
+                y = RenderLimits(sprites, snapshot, canvas, margin, y, bodyScale, smallScale, limitRows);
+                y += 14f * scale;
+            }
+
+            if (showModifiers)
+                y = RenderModifiers(sprites, snapshot, canvas, margin, y, bodyScale, smallScale);
+
+            if (!showLimits && !showModifiers)
+            {
+                AddText(sprites, "Unknown page: " + _page, new Vector2(margin, y), Palette.Red, bodyScale);
+                y += TextUtils.GetLineHeight(bodyScale);
+            }
+
+            contentBottomRight = new Vector2(canvas.X, y + margin);
+        }
+
+        private float RenderMetricCards(List<MySprite> sprites, CoreLcdSnapshot snapshot, Vector2 canvas, float margin,
+            float y, float bodyScale, float smallScale)
+        {
+            int columns = canvas.X >= 980f ? 4 : canvas.X >= 560f ? 3 : 2;
+            float gap = 10f * _fontScale;
+            float cardW = (canvas.X - margin * 2f - gap * (columns - 1)) / columns;
+            float cardH = 78f * _fontScale;
+
+            for (int i = 0; i < snapshot.Metrics.Count; i++)
+            {
+                int col = i % columns;
+                int row = i / columns;
+                float x = margin + col * (cardW + gap);
+                float cardY = y + row * (cardH + gap);
+                MetricRow metric = snapshot.Metrics[i];
+                Color border = metric.Failing ? Palette.Red : Palette.Border;
+
+                AddRect(sprites, x, cardY, cardW, cardH, Palette.Panel);
+                AddRect(sprites, x, cardY, 3f * _fontScale, cardH, border);
+                AddText(sprites, metric.Name, new Vector2(x + 11f * _fontScale, cardY + 9f * _fontScale), Palette.Muted, smallScale);
+                AddText(sprites, metric.Value, new Vector2(x + 11f * _fontScale, cardY + 31f * _fontScale),
+                    metric.Failing ? Palette.Red : Color.White, bodyScale);
+                if (metric.Max > 0d)
+                {
+                    AddProgress(sprites, x + 11f * _fontScale, cardY + 61f * _fontScale, cardW - 22f * _fontScale,
+                        6f * _fontScale, metric.Ratio, metric.Failing);
+                }
+            }
+
+            int rows = (snapshot.Metrics.Count + columns - 1) / columns;
+            return y + rows * cardH + Math.Max(0, rows - 1) * gap;
+        }
+
+        private float RenderFlags(List<MySprite> sprites, CoreLcdSnapshot snapshot, Vector2 canvas, float margin, float y,
+            float smallScale)
+        {
+            float x = margin;
+            float pillH = 24f * _fontScale;
+            float gap = 8f * _fontScale;
+            for (int i = 0; i < snapshot.Flags.Count; i++)
+            {
+                FlagRow flag = snapshot.Flags[i];
+                string text = flag.Name + ": " + (flag.Active ? "YES" : "NO");
+                float width = Math.Max(92f * _fontScale, TextUtils.GetTextWidth(text, smallScale) + 18f * _fontScale);
+                if (x + width > canvas.X - margin)
+                {
+                    x = margin;
+                    y += pillH + gap;
+                }
+
+                AddPill(sprites, text, flag.Active ? Palette.Red : Palette.Green, new Vector2(x, y),
+                    new Vector2(width, pillH), smallScale);
+                x += width + gap;
+            }
+
+            return y + pillH;
+        }
+
+        private float RenderLimits(List<MySprite> sprites, CoreLcdSnapshot snapshot, Vector2 canvas, float margin, float y,
+            float bodyScale, float smallScale, int rowLimit)
+        {
+            AddSectionTitle(sprites, "Block Limits", y, margin, bodyScale);
+            y += 34f * _fontScale;
+
+            if (snapshot.Limits.Count == 0)
+            {
+                AddText(sprites, "No configured block limits.", new Vector2(margin, y), Palette.Muted, bodyScale);
+                return y + TextUtils.GetLineHeight(bodyScale);
+            }
+
+            float nameW = Math.Max(120f * _fontScale, canvas.X * 0.34f);
+            float countW = 145f * _fontScale;
+            float punishW = Math.Max(110f * _fontScale, canvas.X - margin * 2f - nameW - countW - 130f * _fontScale);
+            float barW = Math.Max(70f * _fontScale, canvas.X - margin * 2f - nameW - countW - punishW - 16f * _fontScale);
+            float rowH = 28f * _fontScale;
+            int rows = Math.Min(rowLimit, snapshot.Limits.Count);
+
+            AddText(sprites, "Limit", new Vector2(margin, y), Palette.Muted, smallScale);
+            AddText(sprites, "Used", new Vector2(margin + nameW, y), Palette.Muted, smallScale);
+            AddText(sprites, "Punishment", new Vector2(margin + nameW + countW + barW + 16f * _fontScale, y), Palette.Muted, smallScale);
+            y += rowH;
+
+            for (int i = 0; i < rows; i++)
+            {
+                LimitRow row = snapshot.Limits[i];
+                Color rowColor = row.Failing ? Palette.Red : Color.White;
+                AddRect(sprites, margin, y - 3f * _fontScale, canvas.X - margin * 2f, rowH, i % 2 == 0 ? Palette.RowA : Palette.RowB);
+                AddText(sprites, TrimToWidth(row.Name, nameW - 8f * _fontScale, smallScale), new Vector2(margin + 6f * _fontScale, y),
+                    rowColor, smallScale);
+                AddText(sprites, FormatLimitNumber(row.Used) + "/" + FormatLimitNumber(row.Max), new Vector2(margin + nameW, y),
+                    rowColor, smallScale);
+                AddProgress(sprites, margin + nameW + countW, y + 8f * _fontScale, barW, 6f * _fontScale, row.Ratio, row.Failing);
+                AddText(sprites, TrimToWidth(row.Punishment, punishW, smallScale),
+                    new Vector2(margin + nameW + countW + barW + 16f * _fontScale, y), Palette.Muted, smallScale);
+                y += rowH;
+            }
+
+            if (rows < snapshot.Limits.Count)
+            {
+                AddText(sprites, "+" + (snapshot.Limits.Count - rows).ToString(CultureInfo.InvariantCulture) + " more",
+                    new Vector2(margin, y + 2f * _fontScale), Palette.Muted, smallScale);
+                y += rowH;
+            }
+
+            return y;
+        }
+
+        private float RenderModifiers(List<MySprite> sprites, CoreLcdSnapshot snapshot, Vector2 canvas, float margin, float y,
+            float bodyScale, float smallScale)
+        {
+            AddSectionTitle(sprites, "Applied Modifiers", y, margin, bodyScale);
+            y += 34f * _fontScale;
+
+            int columns = canvas.X >= 760f ? 3 : 2;
+            float gap = 10f * _fontScale;
+            float cellW = (canvas.X - margin * 2f - gap * (columns - 1)) / columns;
+            float rowH = 34f * _fontScale;
+
+            for (int i = 0; i < snapshot.Modifiers.Count; i++)
+            {
+                int col = i % columns;
+                int row = i / columns;
+                float x = margin + col * (cellW + gap);
+                float cellY = y + row * rowH;
+                ModifierRow modifier = snapshot.Modifiers[i];
+                Color valueColor = Math.Abs(modifier.Value - 1f) > 0.001f ? Palette.Cyan : Color.White;
+
+                AddRect(sprites, x, cellY, cellW, rowH - 5f * _fontScale, Palette.Panel);
+                AddText(sprites, TrimToWidth(modifier.Name, cellW - 64f * _fontScale, smallScale),
+                    new Vector2(x + 9f * _fontScale, cellY + 7f * _fontScale), Palette.Muted, smallScale);
+                AddText(sprites, FormatDecimal(modifier.Value, "0.###") + "x",
+                    new Vector2(x + cellW - 56f * _fontScale, cellY + 7f * _fontScale), valueColor, smallScale);
+            }
+
+            int rows = (snapshot.Modifiers.Count + columns - 1) / columns;
+            return y + rows * rowH;
+        }
+
+        private void AddSectionTitle(List<MySprite> sprites, string text, float y, float margin, float scale)
+        {
+            AddText(sprites, text, new Vector2(margin, y), Color.White, scale);
+            AddRect(sprites, margin, y + 27f * _fontScale, 170f * _fontScale, 2f * _fontScale, Palette.Cyan);
+        }
+
+        private PanelGroupLayout BuildPanelGroupLayout()
+        {
+            LcdSurfaceLayout current;
+            bool hasCurrentLayout = TryGetSurfaceLayout(out current);
+            float singleRenderScale = hasCurrentLayout ? GetPhysicalRenderScale(current.PixelsPerMeter) : 1f;
+            PanelGroupLayout single = PanelGroupLayout.Single(Surface.SurfaceSize, GetMemberKey(), singleRenderScale);
+            if (!_combinePanels || _cubeBlock == null || _cubeBlock.CubeGrid == null || !hasCurrentLayout)
+                return single;
+
+            List<CoreTypeLCDScript> scripts = new List<CoreTypeLCDScript>();
+            lock (InstancesLock)
+            {
+                for (int i = 0; i < Instances.Count; i++)
+                    scripts.Add(Instances[i]);
+            }
+
+            List<LcdSurfaceLayout> candidates = new List<LcdSurfaceLayout>();
+            for (int i = 0; i < scripts.Count; i++)
+            {
+                CoreTypeLCDScript script = scripts[i];
+                if (script == null || !script.IsUsableForGroup(_page, _cubeBlock.CubeGrid.EntityId)) continue;
+
+                LcdSurfaceLayout layout;
+                if (!script.TryGetSurfaceLayout(out layout)) continue;
+                if (!IsSamePanelPlane(current, layout)) continue;
+
+                Vector3D delta = layout.Center - current.Center;
+                double x = Vector3D.Dot(delta, current.Right);
+                double y = -Vector3D.Dot(delta, current.Up);
+                layout.Rect = new PanelRect(x - layout.WidthM * 0.5d, y - layout.HeightM * 0.5d,
+                    x + layout.WidthM * 0.5d, y + layout.HeightM * 0.5d);
+                candidates.Add(layout);
+            }
+
+            if (candidates.Count <= 1)
+                return single;
+            if (candidates.Count > MaxCombinedPanelCandidates)
+                return single;
+
+            int currentIndex = -1;
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                if (candidates[i].Owner == this)
+                {
+                    currentIndex = i;
+                    break;
+                }
+            }
+
+            if (currentIndex < 0)
+                return single;
+
+            bool[] connected = new bool[candidates.Count];
+            connected[currentIndex] = true;
+            bool changed;
+            do
+            {
+                changed = false;
+                for (int i = 0; i < candidates.Count; i++)
+                {
+                    if (!connected[i]) continue;
+
+                    for (int j = 0; j < candidates.Count; j++)
+                    {
+                        if (connected[j]) continue;
+                        if (!PanelRect.Touching(candidates[i].Rect, candidates[j].Rect, TouchToleranceMeters)) continue;
+                        connected[j] = true;
+                        changed = true;
+                    }
+                }
+            }
+            while (changed);
+
+            List<LcdSurfaceLayout> members = new List<LcdSurfaceLayout>();
+            for (int i = 0; i < candidates.Count; i++)
+                if (connected[i])
+                    members.Add(candidates[i]);
+
+            if (members.Count <= 1)
+                return single;
+            if (members.Count > MaxCombinedPanelMembers)
+                return single;
+
+            double minX = double.MaxValue;
+            double minY = double.MaxValue;
+            double maxX = double.MinValue;
+            double maxY = double.MinValue;
+            double ppmTotal = 0d;
+            for (int i = 0; i < members.Count; i++)
+            {
+                PanelRect rect = members[i].Rect;
+                if (rect.MinX < minX) minX = rect.MinX;
+                if (rect.MinY < minY) minY = rect.MinY;
+                if (rect.MaxX > maxX) maxX = rect.MaxX;
+                if (rect.MaxY > maxY) maxY = rect.MaxY;
+                ppmTotal += members[i].PixelsPerMeter;
+            }
+
+            double ppm = ppmTotal / members.Count;
+            if (ppm <= 1d) return single;
+
+            current.Rect = candidates[currentIndex].Rect;
+            float scaleX = (float)(current.PixelsPerMeterX / ppm);
+            float scaleY = (float)(current.PixelsPerMeterY / ppm);
+            Vector2 virtualSize = new Vector2((float)((maxX - minX) * ppm), (float)((maxY - minY) * ppm));
+            if (virtualSize.X <= 1f || virtualSize.Y <= 1f ||
+                virtualSize.X > MaxCombinedVirtualPixels || virtualSize.Y > MaxCombinedVirtualPixels)
+                return single;
+
+            Vector2 viewportMin = new Vector2((float)((current.Rect.MinX - minX) * ppm), (float)((current.Rect.MinY - minY) * ppm));
+            string key = BuildGroupKey(members);
+            return new PanelGroupLayout(virtualSize, viewportMin, scaleX, scaleY, key, members.Count,
+                GetPhysicalRenderScale(ppm));
+        }
+
+        private float GetPhysicalRenderScale(double pixelsPerMeter)
+        {
+            if (pixelsPerMeter <= 0d || Surface == null || _cubeBlock == null || _cubeBlock.CubeGrid == null)
+                return 1f;
+            if (Surface.SurfaceSize.X <= 1f || _cubeBlock.CubeGrid.GridSize <= 0.01f)
+                return 1f;
+
+            double referencePixelsPerMeter = Surface.SurfaceSize.X / _cubeBlock.CubeGrid.GridSize;
+            if (referencePixelsPerMeter <= 0d) return 1f;
+
+            double renderScale = pixelsPerMeter / referencePixelsPerMeter;
+            if (renderScale < MinPhysicalRenderScale) renderScale = MinPhysicalRenderScale;
+            if (renderScale > MaxPhysicalRenderScale) renderScale = MaxPhysicalRenderScale;
+            return (float)renderScale;
+        }
+
+        private bool TryGetSurfaceLayout(out LcdSurfaceLayout layout)
+        {
+            layout = null;
+            if (_cubeBlock == null || Surface == null) return false;
+
+            int surfaceIndex = ResolveSurfaceIndex();
+            MatrixD worldMatrix;
+            double widthM;
+            double heightM;
+            if (!ScfScreenAreaGeometry.TryGetScreenWorldMatrix(_cubeBlock, surfaceIndex, out worldMatrix) ||
+                !ScfScreenAreaGeometry.TryGetScreenAreaSize(_cubeBlock, surfaceIndex, out widthM, out heightM))
+                return false;
+
+            if (widthM <= 0.01d || heightM <= 0.01d) return false;
+            if (widthM > MaxScreenAreaMeters || heightM > MaxScreenAreaMeters) return false;
+            if (Surface.SurfaceSize.X <= 1f || Surface.SurfaceSize.Y <= 1f) return false;
+
+            double pixelsPerMeterX = Surface.SurfaceSize.X / widthM;
+            double pixelsPerMeterY = Surface.SurfaceSize.Y / heightM;
+            if (pixelsPerMeterX < MinScreenPixelsPerMeter || pixelsPerMeterX > MaxScreenPixelsPerMeter ||
+                pixelsPerMeterY < MinScreenPixelsPerMeter || pixelsPerMeterY > MaxScreenPixelsPerMeter)
+                return false;
+
+            Vector3D right = worldMatrix.Right;
+            Vector3D up = worldMatrix.Up;
+            Vector3D normal = worldMatrix.Forward;
+            if (!Normalize(ref right) || !Normalize(ref up) || !Normalize(ref normal)) return false;
+
+            layout = new LcdSurfaceLayout
+            {
+                Owner = this,
+                Center = worldMatrix.Translation,
+                Right = right,
+                Up = up,
+                Normal = normal,
+                WidthM = widthM,
+                HeightM = heightM,
+                PixelsPerMeterX = pixelsPerMeterX,
+                PixelsPerMeterY = pixelsPerMeterY,
+                MemberKey = GetMemberKey()
+            };
+            layout.PixelsPerMeter = (layout.PixelsPerMeterX + layout.PixelsPerMeterY) * 0.5d;
+            layout.Rect = new PanelRect(-widthM * 0.5d, -heightM * 0.5d, widthM * 0.5d, heightM * 0.5d);
+            return true;
+        }
+
+        private bool IsUsableForGroup(string page, long gridId)
+        {
+            if (_disposed || _cubeBlock == null || _cubeBlock.CubeGrid == null || Surface == null) return false;
+            if (!_combinePanels) return false;
+            if (_cubeBlock.CubeGrid.EntityId != gridId) return false;
+            return string.Equals(_page, page, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsSamePanelPlane(LcdSurfaceLayout current, LcdSurfaceLayout candidate)
+        {
+            if (current == null || candidate == null) return false;
+            if (Vector3D.Dot(current.Normal, candidate.Normal) < 0.996d) return false;
+            if (Vector3D.Dot(current.Right, candidate.Right) < 0.996d) return false;
+            if (Vector3D.Dot(current.Up, candidate.Up) < 0.996d) return false;
+
+            double planeDistance = Math.Abs(Vector3D.Dot(candidate.Center - current.Center, current.Normal));
+            return planeDistance <= SamePlaneToleranceMeters;
+        }
+
+        private static bool Normalize(ref Vector3D vector)
+        {
+            if (vector.LengthSquared() <= 1e-12d) return false;
+            vector.Normalize();
+            return true;
+        }
+
+        private string BuildGroupKey(List<LcdSurfaceLayout> members)
+        {
+            List<string> keys = new List<string>(members.Count);
+            for (int i = 0; i < members.Count; i++)
+                keys.Add(members[i].MemberKey);
+            keys.Sort(StringComparer.Ordinal);
+            return string.Join("|", keys.ToArray());
+        }
+
+        private string GetMemberKey()
+        {
+            long entityId = _cubeBlock != null ? _cubeBlock.EntityId : _instanceId;
+            return entityId.ToString(CultureInfo.InvariantCulture) + "#" + ResolveSurfaceIndex().ToString(CultureInfo.InvariantCulture);
+        }
+
+        private int ResolveSurfaceIndex()
+        {
+            if (_surfaceIndexResolved) return _surfaceIndex;
+            _surfaceIndexResolved = true;
+            _surfaceIndex = 0;
+
+            if (_cubeBlock is IMyTextPanel)
+            {
+                foreach (var component in _cubeBlock.Components)
+                {
+                    IMyLcdSurfaceComponent lcdSurfaceComponent = component as IMyLcdSurfaceComponent;
+                    if (lcdSurfaceComponent == null) continue;
+
+                    _surfaceIndex = lcdSurfaceComponent.SelectedRotationIndex;
+                    return _surfaceIndex;
+                }
+            }
+
+            IngameTextSurfaceProvider provider = _terminalBlock as IngameTextSurfaceProvider;
+            if (provider == null || Surface == null) return _surfaceIndex;
+
+            string surfaceName = Surface.Name;
+            for (int i = 0; i < provider.SurfaceCount; i++)
+            {
+                IngameTextSurface surface = provider.GetSurface(i);
+                if (surface == null) continue;
+                if (ReferenceEquals(surface, Surface) ||
+                    string.Equals(surface.Name, surfaceName, StringComparison.Ordinal))
+                {
+                    _surfaceIndex = i;
+                    return _surfaceIndex;
+                }
+            }
+
+            return _surfaceIndex;
+        }
+
+        private bool UpdateCursorState(PanelGroupLayout layout)
+        {
+            if (layout == null || _cubeBlock == null || MyAPIGateway.Session == null ||
+                MyAPIGateway.Session.Camera == null)
+                return false;
+
+            Vector3D origin = MyAPIGateway.Session.Camera.WorldMatrix.Translation;
+            Vector3D direction = MyAPIGateway.Session.Camera.WorldMatrix.Forward;
+            if (Vector3D.DistanceSquared(origin, _cubeBlock.WorldMatrix.Translation) > 10000d)
+                return false;
+
+            Vector2 screenPoint;
+            if (!ScfScreenAreaGeometry.TryGetScreenPointIntersection(_cubeBlock, ResolveSurfaceIndex(), Surface, origin,
+                    direction, out screenPoint))
+                return false;
+
+            Vector2 screenTopLeft = (Surface.TextureSize - Surface.SurfaceSize) * 0.5f;
+            Vector2 visible = screenPoint - screenTopLeft;
+            if (visible.X < 0f || visible.Y < 0f || visible.X > Surface.SurfaceSize.X || visible.Y > Surface.SurfaceSize.Y)
+                return false;
+
+            Vector2 virtualPoint = new Vector2(
+                layout.ViewportMin.X + visible.X / Math.Max(0.001f, layout.ScaleX),
+                layout.ViewportMin.Y + visible.Y / Math.Max(0.001f, layout.ScaleY));
+
+            CursorStates[layout.GroupKey] = new CursorState
+            {
+                Position = virtualPoint,
+                Tick = Session.CurrentTick
+            };
+            ActiveScrollGroupKey = layout.GroupKey;
+            ActiveScrollGroupTick = Session.CurrentTick;
+
+            return true;
+        }
+
+        private void RenderCursor(MySpriteDrawFrame frame, PanelGroupLayout layout)
+        {
+            CursorState state;
+            if (!CursorStates.TryGetValue(layout.GroupKey, out state)) return;
+            if (Session.CurrentTick - state.Tick > CursorTimeoutTicks) return;
+
+            List<MySprite> cursor = new List<MySprite>(6);
+            float r = 8f * _fontScale;
+            float thickness = 2f * _fontScale;
+            AddRect(cursor, state.Position.X - r, state.Position.Y - thickness * 0.5f, r * 2f, thickness, Palette.Cursor);
+            AddRect(cursor, state.Position.X - thickness * 0.5f, state.Position.Y - r, thickness, r * 2f, Palette.Cursor);
+            AddRect(cursor, state.Position.X - 2f * _fontScale, state.Position.Y - 2f * _fontScale,
+                4f * _fontScale, 4f * _fontScale, Color.White);
+            EmitSprites(frame, layout, cursor, Vector2.Zero);
+        }
+
+        private void EmitSprites(MySpriteDrawFrame frame, PanelGroupLayout layout, List<MySprite> sprites, Vector2 scroll)
+        {
+            Vector2 screenTopLeft = (Surface.TextureSize - Surface.SurfaceSize) * 0.5f;
+            Vector2 clipMin = layout.ViewportMin;
+            Vector2 clipMax = layout.ViewportMin + new Vector2(
+                Surface.SurfaceSize.X / layout.ScaleX,
+                Surface.SurfaceSize.Y / layout.ScaleY);
+
+            for (int i = 0; i < sprites.Count; i++)
+            {
+                MySprite sprite = sprites[i];
+                if (sprite.Type == SpriteType.TEXTURE && sprite.Position.HasValue && sprite.Size.HasValue)
+                {
+                    Vector2 center = sprite.Position.Value;
+                    center.Y -= scroll.Y;
+                    Vector2 size = sprite.Size.Value;
+                    if (!ClipVirtualRect(ref center, ref size, clipMin, clipMax)) continue;
+
+                    sprite.Position = new Vector2(
+                        screenTopLeft.X + (center.X - layout.ViewportMin.X) * layout.ScaleX,
+                        screenTopLeft.Y + (center.Y - layout.ViewportMin.Y) * layout.ScaleY);
+                    sprite.Size = new Vector2(size.X * layout.ScaleX, size.Y * layout.ScaleY);
+                    frame.Add(sprite);
+                    continue;
+                }
+
+                if (sprite.Position.HasValue)
+                {
+                    Vector2 p = sprite.Position.Value;
+                    p.Y -= scroll.Y;
+                    if (sprite.Type == SpriteType.TEXT && !IsVirtualTextVisible(p, clipMin, clipMax))
+                        continue;
+
+                    p = new Vector2(
+                        screenTopLeft.X + (p.X - layout.ViewportMin.X) * layout.ScaleX,
+                        screenTopLeft.Y + (p.Y - layout.ViewportMin.Y) * layout.ScaleY);
+                    sprite.Position = p;
+                }
+
+                if (sprite.Size.HasValue)
+                {
+                    Vector2 size = sprite.Size.Value;
+                    sprite.Size = new Vector2(size.X * layout.ScaleX, size.Y * layout.ScaleY);
+                }
+
+                if (sprite.Type == SpriteType.TEXT)
+                    sprite.RotationOrScale *= layout.TextScale;
+
+                frame.Add(sprite);
+            }
+        }
+
+        private static bool ClipVirtualRect(ref Vector2 center, ref Vector2 size, Vector2 clipMin, Vector2 clipMax)
+        {
+            if (size.X <= 0f || size.Y <= 0f) return false;
+
+            float minX = center.X - size.X * 0.5f;
+            float maxX = center.X + size.X * 0.5f;
+            float minY = center.Y - size.Y * 0.5f;
+            float maxY = center.Y + size.Y * 0.5f;
+
+            minX = Math.Max(minX, clipMin.X);
+            maxX = Math.Min(maxX, clipMax.X);
+            minY = Math.Max(minY, clipMin.Y);
+            maxY = Math.Min(maxY, clipMax.Y);
+
+            if (maxX <= minX || maxY <= minY) return false;
+
+            center = new Vector2((minX + maxX) * 0.5f, (minY + maxY) * 0.5f);
+            size = new Vector2(maxX - minX, maxY - minY);
+            return true;
+        }
+
+        private static bool IsVirtualTextVisible(Vector2 position, Vector2 clipMin, Vector2 clipMax)
+        {
+            return position.X >= clipMin.X - 420f &&
+                   position.X <= clipMax.X + 80f &&
+                   position.Y >= clipMin.Y - 80f &&
+                   position.Y <= clipMax.Y + 80f;
+        }
+
+        private float UpdateManualScroll(PanelGroupLayout layout, float contentHeight, bool hasCursorHit)
+        {
+            if (layout == null || string.IsNullOrEmpty(layout.GroupKey)) return 0f;
+
+            ScrollState state = GetScrollState(layout.GroupKey);
+            float maxScroll = Math.Max(0f, contentHeight - layout.VirtualSize.Y);
+            if (maxScroll <= 0f)
+            {
+                state.Offset = 0f;
+                return 0f;
+            }
+
+            int wheelDelta = ConsumePendingWheelDelta(layout.GroupKey);
+            bool canScroll = hasCursorHit || IsGroupCursorActive(layout);
+            if (canScroll && wheelDelta != 0 && state.LastInputTick != Session.CurrentTick)
+            {
+                float step = ManualScrollStepPixels * Math.Max(0.25f, _fontScale);
+                float steps = Math.Max(1f, Math.Abs(wheelDelta) / 120f);
+                state.Offset += wheelDelta > 0 ? -step * steps : step * steps;
+                state.LastInputTick = Session.CurrentTick;
+            }
+
+            state.Offset = Math.Max(0f, Math.Min(maxScroll, state.Offset));
+            return state.Offset;
+        }
+
+        private bool ShouldDrawNow()
+        {
+            if (Session.CurrentTick - _lastDrawTick >= RedrawIntervalTicks)
+                return true;
+
+            return LastWheelInputTick == Session.CurrentTick;
+        }
+
+        internal static void SampleScrollInput()
+        {
+            if (LastInputSampleTick == Session.CurrentTick) return;
+            LastInputSampleTick = Session.CurrentTick;
+
+            if (MyAPIGateway.Input == null) return;
+            if (string.IsNullOrEmpty(ActiveScrollGroupKey)) return;
+            if (Session.CurrentTick - ActiveScrollGroupTick > ScrollInputTimeoutTicks) return;
+
+            int wheelDelta = MyAPIGateway.Input.DeltaMouseScrollWheelValue();
+            if (wheelDelta == 0) return;
+
+            int pending;
+            PendingWheelDeltas.TryGetValue(ActiveScrollGroupKey, out pending);
+            PendingWheelDeltas[ActiveScrollGroupKey] = pending + wheelDelta;
+            LastWheelInputTick = Session.CurrentTick;
+        }
+
+        internal static void RunFrameScrollUpdate()
+        {
+            SampleScrollInput();
+            if (LastWheelInputTick != Session.CurrentTick) return;
+            if (string.IsNullOrEmpty(ActiveScrollGroupKey)) return;
+
+            List<CoreTypeLCDScript> scripts = new List<CoreTypeLCDScript>();
+            lock (InstancesLock)
+            {
+                for (int i = 0; i < Instances.Count; i++)
+                    scripts.Add(Instances[i]);
+            }
+
+            for (int i = 0; i < scripts.Count; i++)
+            {
+                CoreTypeLCDScript script = scripts[i];
+                if (script == null || script._disposed) continue;
+                if (!IsGroupKeyMember(ActiveScrollGroupKey, script.GetMemberKey())) continue;
+                script.DrawFromFrameScrollUpdate();
+            }
+        }
+
+        private void DrawFromFrameScrollUpdate()
+        {
+            try
+            {
+                if (!Session.IsClient || Session.Config.SelectedNoCore == null) return;
+                ReloadCustomDataSettings();
+                DrawDashboard();
+                _lastDrawTick = Session.CurrentTick;
+            }
+            catch (Exception e)
+            {
+                DrawError(e);
+            }
+        }
+
+        private static bool IsGroupKeyMember(string groupKey, string memberKey)
+        {
+            if (string.IsNullOrEmpty(groupKey) || string.IsNullOrEmpty(memberKey)) return false;
+            if (string.Equals(groupKey, memberKey, StringComparison.Ordinal)) return true;
+            if (groupKey.StartsWith(memberKey + "|", StringComparison.Ordinal)) return true;
+            if (groupKey.EndsWith("|" + memberKey, StringComparison.Ordinal)) return true;
+            return groupKey.IndexOf("|" + memberKey + "|", StringComparison.Ordinal) >= 0;
+        }
+
+        private static int ConsumePendingWheelDelta(string groupKey)
+        {
+            if (string.IsNullOrEmpty(groupKey)) return 0;
+
+            int wheelDelta;
+            if (!PendingWheelDeltas.TryGetValue(groupKey, out wheelDelta)) return 0;
+
+            PendingWheelDeltas.Remove(groupKey);
+            return wheelDelta;
+        }
+
+        private static bool IsGroupCursorActive(PanelGroupLayout layout)
+        {
+            if (layout == null || string.IsNullOrEmpty(layout.GroupKey)) return false;
+
+            CursorState state;
+            if (!CursorStates.TryGetValue(layout.GroupKey, out state)) return false;
+            return Session.CurrentTick - state.Tick <= CursorTimeoutTicks;
+        }
+
+        private static ScrollState GetScrollState(string key)
+        {
+            ScrollState state;
+            if (!ScrollStates.TryGetValue(key, out state))
+            {
+                state = new ScrollState();
+                ScrollStates[key] = state;
+            }
+
+            return state;
+        }
+
+        private void RenderScrollIndicator(MySpriteDrawFrame frame, PanelGroupLayout layout, float contentHeight,
+            float scrollOffset)
+        {
+            if (layout == null || contentHeight <= layout.VirtualSize.Y + 1f) return;
+
+            float maxScroll = Math.Max(1f, contentHeight - layout.VirtualSize.Y);
+            float trackTop = 66f * _fontScale;
+            float trackBottom = layout.VirtualSize.Y - 16f * _fontScale;
+            float trackHeight = trackBottom - trackTop;
+            if (trackHeight <= 20f) return;
+
+            float trackWidth = 4f * _fontScale;
+            float trackX = layout.VirtualSize.X - 10f * _fontScale;
+            float thumbHeight = Math.Max(18f * _fontScale, trackHeight * layout.VirtualSize.Y / contentHeight);
+            float thumbTravel = Math.Max(1f, trackHeight - thumbHeight);
+            float thumbTop = trackTop + thumbTravel * (scrollOffset / maxScroll);
+
+            List<MySprite> sprites = new List<MySprite>(2);
+            AddRect(sprites, trackX, trackTop, trackWidth, trackHeight, Palette.BarBack.Alpha(0.65f));
+            AddRect(sprites, trackX - 1f * _fontScale, thumbTop, trackWidth + 2f * _fontScale, thumbHeight,
+                Palette.Muted.Alpha(0.9f));
+            EmitSprites(frame, layout, sprites, Vector2.Zero);
+        }
+
+        private void AddText(List<MySprite> sprites, string text, Vector2 position, Color color, float scale)
+        {
+            MySprite sprite = MySprite.CreateText(text ?? string.Empty, "Monospace", color, scale, TextAlignment.LEFT);
+            sprite.Position = position;
+            sprites.Add(sprite);
+        }
+
+        private void AddRect(List<MySprite> sprites, float x, float y, float w, float h, Color color)
+        {
+            if (w <= 0f || h <= 0f) return;
+            sprites.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple",
+                new Vector2(x + w * 0.5f, y + h * 0.5f), new Vector2(w, h), color));
+        }
+
+        private void AddPill(List<MySprite> sprites, string text, Color color, Vector2 position, Vector2 size, float textScale)
+        {
+            AddRect(sprites, position.X, position.Y, size.X, size.Y, color.Alpha(0.22f));
+            AddRect(sprites, position.X, position.Y, 3f * _fontScale, size.Y, color);
+            AddText(sprites, text, new Vector2(position.X + 9f * _fontScale, position.Y + 6f * _fontScale), color, textScale);
+        }
+
+        private void AddProgress(List<MySprite> sprites, float x, float y, float w, float h, double ratio, bool failing)
+        {
+            AddRect(sprites, x, y, w, h, Palette.BarBack);
+            double clamped = Math.Max(0d, Math.Min(1d, ratio));
+            Color color = failing ? Palette.Red : ratio >= 0.85d ? Palette.Amber : Palette.Green;
+            AddRect(sprites, x, y, (float)(w * clamped), h, color);
+            if (ratio > 1d)
+                AddRect(sprites, x + w - 3f * _fontScale, y - 2f * _fontScale, 3f * _fontScale, h + 4f * _fontScale,
+                    Palette.Red);
+        }
+
+        private string TrimToWidth(string text, float maxWidth, float scale)
+        {
+            if (string.IsNullOrEmpty(text)) return string.Empty;
+            if (TextUtils.GetTextWidth(text, scale) <= maxWidth) return text;
+
+            const string suffix = "...";
+            int maxChars = Math.Max(1, (int)(maxWidth / (TextUtils.CharWidth * scale)) - suffix.Length);
+            if (maxChars >= text.Length) return text;
+            return text.Substring(0, maxChars) + suffix;
+        }
+
+        private void DrawMessage(string title, string body)
+        {
+            MySpriteDrawFrame frame = Surface.DrawFrame();
+            Vector2 screenSize = Surface.SurfaceSize;
+            Vector2 screenTopLeft = (Surface.TextureSize - screenSize) * 0.5f;
+            frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", Surface.TextureSize * 0.5f,
+                Surface.TextureSize, Palette.Background));
+
+            MySprite titleSprite = MySprite.CreateText(title, "Monospace", Color.White, 0.85f * _fontScale, TextAlignment.LEFT);
+            titleSprite.Position = screenTopLeft + new Vector2(18f * _fontScale, 18f * _fontScale);
+            frame.Add(titleSprite);
+
+            MySprite bodySprite = MySprite.CreateText(body, "Monospace", Palette.Muted, 0.55f * _fontScale, TextAlignment.LEFT);
+            bodySprite.Position = screenTopLeft + new Vector2(18f * _fontScale, 58f * _fontScale);
+            frame.Add(bodySprite);
+            frame.Dispose();
         }
 
         private void ReloadCustomDataSettings()
         {
             _fontScale = DefaultFontScale;
+            _combinePanels = true;
+            _showCursor = true;
+            _page = "Auto";
 
-            var customData = _terminalBlock?.CustomData;
+            string customData = _terminalBlock != null ? _terminalBlock.CustomData : null;
             if (string.IsNullOrWhiteSpace(customData)) return;
 
             string currentSection = null;
-
-            var lines = customData.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (var rawLine in lines)
+            string[] lines = customData.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            for (int i = 0; i < lines.Length; i++)
             {
-                var line = rawLine.Trim();
-                if (line.Length == 0 || line.StartsWith(";") || line.StartsWith("#") || line.StartsWith("//")) continue;
+                string line = lines[i].Trim();
+                if (line.Length == 0 || line.StartsWith(";", StringComparison.Ordinal) ||
+                    line.StartsWith("#", StringComparison.Ordinal) || line.StartsWith("//", StringComparison.Ordinal))
+                    continue;
 
-                if (line.StartsWith("[") && line.EndsWith("]"))
+                if (line.StartsWith("[", StringComparison.Ordinal) && line.EndsWith("]", StringComparison.Ordinal))
                 {
                     currentSection = line.Substring(1, line.Length - 2).Trim();
                     continue;
                 }
 
-                var separatorIndex = line.IndexOf('=');
+                int separatorIndex = line.IndexOf('=');
                 if (separatorIndex < 0) separatorIndex = line.IndexOf(':');
                 if (separatorIndex <= 0) continue;
+                if (!string.Equals(currentSection, CustomDataSection, StringComparison.OrdinalIgnoreCase)) continue;
 
-                var key = line.Substring(0, separatorIndex).Trim();
-                if (!string.Equals(currentSection, CustomDataSection, StringComparison.OrdinalIgnoreCase) ||
-                    !string.Equals(key, FontSizeKey, StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                var value = line.Substring(separatorIndex + 1).Trim();
-                float parsedValue;
-                if (!float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out parsedValue) &&
-                    !float.TryParse(value, NumberStyles.Float, CultureInfo.CurrentCulture, out parsedValue))
-                    return;
-
-                _fontScale = MathHelper.Clamp(parsedValue, MinFontScale, MaxFontScale);
-                return;
+                string key = line.Substring(0, separatorIndex).Trim();
+                string value = line.Substring(separatorIndex + 1).Trim();
+                ApplySetting(key, value);
             }
         }
 
-        private Vector2 GetScrollPosition(Vector2 contentBottomRight)
+        private void ApplySetting(string key, string value)
         {
-            var screenSize = Surface.SurfaceSize;
-            var screenTopLeft = (Surface.TextureSize - screenSize) * 0.5f;
-            var contentHeight = contentBottomRight.Y - screenTopLeft.Y;
+            if (string.Equals(key, FontSizeKey, StringComparison.OrdinalIgnoreCase))
+            {
+                float parsedValue;
+                if (float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out parsedValue) ||
+                    float.TryParse(value, NumberStyles.Float, CultureInfo.CurrentCulture, out parsedValue))
+                    _fontScale = MathHelper.Clamp(parsedValue, MinFontScale, MaxFontScale);
+                return;
+            }
 
-            if (!(contentHeight > screenSize.Y)) return new Vector2();
-            var scrollRange = contentHeight - screenSize.Y;
-            var scrollSpeed = ScrollSpeed * _fontScale;
-            var numUpdatesToScroll = (int)Math.Ceiling(scrollRange / scrollSpeed);
-            var fullScrollCycleTime = (ScrollPauseUpdates + numUpdatesToScroll) * 2;
-            Vector2 scrollPosition;
+            if (string.Equals(key, CombinePanelsKey, StringComparison.OrdinalIgnoreCase))
+            {
+                bool parsed;
+                if (TryParseBool(value, out parsed)) _combinePanels = parsed;
+                return;
+            }
 
-            if (_scrollTime < ScrollPauseUpdates)
-                scrollPosition = new Vector2();
-            else if (_scrollTime < ScrollPauseUpdates + numUpdatesToScroll)
-                scrollPosition = new Vector2(0, (_scrollTime - ScrollPauseUpdates) * scrollSpeed);
-            else if (_scrollTime < ScrollPauseUpdates * 2 + numUpdatesToScroll)
-                scrollPosition = new Vector2(0, scrollRange);
-            else
-                scrollPosition = new Vector2(0,
-                    scrollRange - (_scrollTime - (ScrollPauseUpdates * 2 + numUpdatesToScroll)) * scrollSpeed);
+            if (string.Equals(key, ShowCursorKey, StringComparison.OrdinalIgnoreCase))
+            {
+                bool parsed;
+                if (TryParseBool(value, out parsed)) _showCursor = parsed;
+                return;
+            }
 
-            _scrollTime++;
-
-            if (_scrollTime > fullScrollCycleTime) _scrollTime = 0;
-
-            return scrollPosition;
+            if (string.Equals(key, PageKey, StringComparison.OrdinalIgnoreCase))
+            {
+                if (IsKnownPage(value)) _page = value.Trim();
+            }
         }
 
-        private static MySprite CreateLine(string text, Vector2 position, out Vector2 positionAfter, float scale = 1)
+        private static bool TryParseBool(string value, out bool result)
         {
-            var sprite = MySprite.CreateText(text, "Monospace", Color.White, scale, TextAlignment.LEFT);
-            sprite.Position =
-                position; // screenCorner + padding + new Vector2(0, y); // 16px from the top left corner of the visible surface
+            result = false;
+            if (string.IsNullOrWhiteSpace(value)) return false;
 
-            positionAfter = position + new Vector2(0, TextUtils.GetTextHeight(text, scale));
+            if (bool.TryParse(value, out result)) return true;
+            string normalized = value.Trim();
+            if (string.Equals(normalized, "1", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(normalized, "yes", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(normalized, "on", StringComparison.OrdinalIgnoreCase))
+            {
+                result = true;
+                return true;
+            }
 
-            return sprite;
+            if (string.Equals(normalized, "0", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(normalized, "no", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(normalized, "off", StringComparison.OrdinalIgnoreCase))
+            {
+                result = false;
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool IsPage(string page)
+        {
+            return string.Equals(_page, page, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsKnownPage(string page)
+        {
+            return string.Equals(page, "Auto", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(page, "Overview", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(page, "Limits", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(page, "Modifiers", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(page, "All", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsSpeedSourceInGroup(GroupComponent group, long gridId)
+        {
+            if (group == null || gridId == 0) return true;
+            foreach (IMyCubeGrid grid in group.GridDictionary.Keys)
+            {
+                if (grid != null && grid.EntityId == gridId)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static string FormatDecimal(float value, string format)
+        {
+            return value.ToString(format, CultureInfo.InvariantCulture);
+        }
+
+        private static string FormatInt(int value)
+        {
+            return value.ToString("N0", CultureInfo.InvariantCulture);
+        }
+
+        private static string FormatMass(float value)
+        {
+            if (Math.Abs(value) >= 1000000f)
+                return (value / 1000000f).ToString("0.##", CultureInfo.InvariantCulture) + " Mt";
+            if (Math.Abs(value) >= 1000f)
+                return (value / 1000f).ToString("0.#", CultureInfo.InvariantCulture) + " t";
+            return value.ToString("0", CultureInfo.InvariantCulture) + " kg";
+        }
+
+        private static string FormatLimitNumber(double value)
+        {
+            if (Math.Abs(value - Math.Round(value)) < 0.001d)
+                return ((int)Math.Round(value)).ToString(CultureInfo.InvariantCulture);
+            return value.ToString("0.##", CultureInfo.InvariantCulture);
         }
 
         private void DrawError(Exception e)
         {
-            Utils.Log($"Failed to draw LCD: {e.Message}\n{e.StackTrace}");
+            Utils.Log("Failed to draw LCD: " + e.Message + "\n" + e.StackTrace);
 
-            try // first try printing the error on the LCD
+            try
             {
-                var screenSize = Surface.SurfaceSize;
-                var screenCorner = (Surface.TextureSize - screenSize) * 0.5f;
+                MySpriteDrawFrame frame = Surface.DrawFrame();
+                Vector2 screenSize = Surface.SurfaceSize;
+                Vector2 screenCorner = (Surface.TextureSize - screenSize) * 0.5f;
 
-                var frame = Surface.DrawFrame();
+                frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", Surface.TextureSize * 0.5f,
+                    Surface.TextureSize, Color.Black));
 
-                var bg = new MySprite(SpriteType.TEXTURE, "SquareSimple", null, null, Color.Black);
-                frame.Add(bg);
-
-                var text = MySprite.CreateText(
-                    $"ERROR: {e.Message}\n{e.StackTrace}\n\nPlease send screenshot of this to mod author.\n{MyAPIGateway.Utilities.GamePaths.ModScopeName}",
-                    "White", Color.Red, 0.7f, TextAlignment.LEFT);
-                text.Position = screenCorner + new Vector2(16, 16);
+                MySprite text = MySprite.CreateText(
+                    "ERROR: " + e.Message + "\n" + e.StackTrace + "\n\nPlease send screenshot to mod author.\n" +
+                    MyAPIGateway.Utilities.GamePaths.ModScopeName,
+                    "White", Color.Red, 0.55f, TextAlignment.LEFT);
+                text.Position = screenCorner + new Vector2(16f, 16f);
                 frame.Add(text);
-
                 frame.Dispose();
             }
             catch (Exception e2)
             {
-                Utils.Log($"Also failed to draw error on screen: {e2.Message}\n{e2.StackTrace}");
+                Utils.Log("Also failed to draw error on screen: " + e2.Message + "\n" + e2.StackTrace);
+            }
+        }
+
+        private static class Palette
+        {
+            internal static readonly Color Background = new Color(8, 10, 13, 255);
+            internal static readonly Color Header = new Color(18, 24, 31, 255);
+            internal static readonly Color Panel = new Color(24, 30, 38, 245);
+            internal static readonly Color RowA = new Color(16, 20, 26, 225);
+            internal static readonly Color RowB = new Color(22, 27, 34, 225);
+            internal static readonly Color Border = new Color(65, 75, 85, 255);
+            internal static readonly Color BarBack = new Color(48, 55, 64, 255);
+            internal static readonly Color Muted = new Color(160, 170, 180, 255);
+            internal static readonly Color Green = new Color(78, 210, 118, 255);
+            internal static readonly Color Amber = new Color(255, 178, 66, 255);
+            internal static readonly Color Red = new Color(238, 82, 82, 255);
+            internal static readonly Color Cyan = new Color(70, 190, 220, 255);
+            internal static readonly Color Cursor = new Color(255, 255, 255, 210);
+        }
+
+        private sealed class CoreLcdSnapshot
+        {
+            internal string CoreName;
+            internal string StateText;
+            internal Color StateColor;
+            internal int PanelCount;
+            internal readonly List<MetricRow> Metrics = new List<MetricRow>();
+            internal readonly List<FlagRow> Flags = new List<FlagRow>();
+            internal readonly List<LimitRow> Limits = new List<LimitRow>();
+            internal readonly List<ModifierRow> Modifiers = new List<ModifierRow>();
+        }
+
+        private struct MetricRow
+        {
+            internal readonly string Name;
+            internal readonly string Value;
+            internal readonly double Max;
+            internal readonly double Ratio;
+            internal readonly bool Failing;
+
+            internal MetricRow(string name, string value, double max, double ratio, bool failing)
+            {
+                Name = name;
+                Value = value;
+                Max = max;
+                Ratio = ratio;
+                Failing = failing;
+            }
+        }
+
+        private struct FlagRow
+        {
+            internal readonly string Name;
+            internal readonly bool Active;
+
+            internal FlagRow(string name, bool active)
+            {
+                Name = name;
+                Active = active;
+            }
+        }
+
+        private struct LimitRow
+        {
+            internal readonly string Name;
+            internal readonly double Used;
+            internal readonly double Max;
+            internal readonly double Ratio;
+            internal readonly string Punishment;
+            internal readonly bool Failing;
+
+            internal LimitRow(string name, double used, double max, double ratio, string punishment, bool failing)
+            {
+                Name = name;
+                Used = used;
+                Max = max;
+                Ratio = ratio;
+                Punishment = punishment;
+                Failing = failing;
+            }
+        }
+
+        private struct ModifierRow
+        {
+            internal readonly string Name;
+            internal readonly float Value;
+
+            internal ModifierRow(string name, float value)
+            {
+                Name = name;
+                Value = value;
+            }
+        }
+
+        private sealed class CursorState
+        {
+            internal Vector2 Position;
+            internal int Tick;
+        }
+
+        private sealed class ScrollState
+        {
+            internal float Offset;
+            internal int LastInputTick = -1;
+        }
+
+        private sealed class LcdSurfaceLayout
+        {
+            internal CoreTypeLCDScript Owner;
+            internal Vector3D Center;
+            internal Vector3D Right;
+            internal Vector3D Up;
+            internal Vector3D Normal;
+            internal double WidthM;
+            internal double HeightM;
+            internal double PixelsPerMeterX;
+            internal double PixelsPerMeterY;
+            internal double PixelsPerMeter;
+            internal PanelRect Rect;
+            internal string MemberKey;
+        }
+
+        private sealed class PanelGroupLayout
+        {
+            internal readonly Vector2 VirtualSize;
+            internal readonly Vector2 ViewportMin;
+            internal readonly float ScaleX;
+            internal readonly float ScaleY;
+            internal readonly float TextScale;
+            internal readonly string GroupKey;
+            internal readonly int MemberCount;
+            internal readonly float RenderScale;
+
+            internal PanelGroupLayout(Vector2 virtualSize, Vector2 viewportMin, float scaleX, float scaleY, string groupKey,
+                int memberCount, float renderScale)
+            {
+                VirtualSize = virtualSize;
+                ViewportMin = viewportMin;
+                ScaleX = Math.Max(0.001f, scaleX);
+                ScaleY = Math.Max(0.001f, scaleY);
+                TextScale = Math.Min(ScaleX, ScaleY);
+                GroupKey = groupKey;
+                MemberCount = memberCount;
+                RenderScale = Math.Max(MinPhysicalRenderScale, Math.Min(MaxPhysicalRenderScale, renderScale));
+            }
+
+            internal static PanelGroupLayout Single(Vector2 size, string key, float renderScale)
+            {
+                return new PanelGroupLayout(size, Vector2.Zero, 1f, 1f, key, 1, renderScale);
+            }
+        }
+
+        private struct PanelRect
+        {
+            internal readonly double MinX;
+            internal readonly double MinY;
+            internal readonly double MaxX;
+            internal readonly double MaxY;
+
+            internal PanelRect(double minX, double minY, double maxX, double maxY)
+            {
+                MinX = minX;
+                MinY = minY;
+                MaxX = maxX;
+                MaxY = maxY;
+            }
+
+            internal static bool Touching(PanelRect a, PanelRect b, double tolerance)
+            {
+                return a.MaxX + tolerance >= b.MinX &&
+                       b.MaxX + tolerance >= a.MinX &&
+                       a.MaxY + tolerance >= b.MinY &&
+                       b.MaxY + tolerance >= a.MinY;
             }
         }
     }

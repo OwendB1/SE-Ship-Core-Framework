@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Sandbox.ModAPI;
 using VRage.Game;
@@ -186,84 +187,81 @@ namespace ShipCoreFramework
 
         private void LoadBlockGroupsFromMod(MyObjectBuilder_Checkpoint.ModItem mod)
         {
-            if (!MyAPIGateway.Utilities.FileExistsInModLocation(BlockGroupsFileName, mod)) return;
+            string text;
+            if (!TryReadModTextFile(mod, BlockGroupsFileName, out text)) return;
 
-            using (var reader = MyAPIGateway.Utilities.ReadFileInModLocation(BlockGroupsFileName, mod))
+            var newBlockGroups = MyAPIGateway.Utilities.SerializeFromXML<List<BlockGroup>>(text);
+
+            if (newBlockGroups == null)
+                throw new Exception($"Failed to load block groups from Mod: {mod.FriendlyName}");
+            NormalizeBlockGroups(newBlockGroups, mod.FriendlyName);
+            foreach (var group in newBlockGroups.Where(group => group != null))
             {
-                var text = reader.ReadToEnd();
-                var newBlockGroups = MyAPIGateway.Utilities.SerializeFromXML<List<BlockGroup>>(text);
-
-                if (newBlockGroups == null)
-                    throw new Exception($"Failed to load block groups from Mod: {mod.FriendlyName}");
-                NormalizeBlockGroups(newBlockGroups, mod.FriendlyName);
-                foreach (var group in newBlockGroups.Where(group => group != null))
-                {
-                    group.ConfigSource = mod.FriendlyName;
-                    group.ConfigFile = BlockGroupsFileName;
-                }
-
-                BlockGroups.AddRange(newBlockGroups);
-                Utils.Log($"Loaded Groups From: {mod.FriendlyName}", 1, "Ship Core Config");
+                group.ConfigSource = mod.FriendlyName;
+                group.ConfigFile = BlockGroupsFileName;
             }
+
+            BlockGroups.AddRange(newBlockGroups);
+            Utils.Log($"Loaded Groups From: {mod.FriendlyName}", 1, "Ship Core Config");
         }
 
         private void LoadNoCoreConfigFromMod(MyObjectBuilder_Checkpoint.ModItem mod)
         {
-            if (!MyAPIGateway.Utilities.FileExistsInModLocation(DefaultNoCoreFileName, mod)) return;
+            string text;
+            if (!TryReadModTextFile(mod, DefaultNoCoreFileName, out text)) return;
 
-            using (var reader = MyAPIGateway.Utilities.ReadFileInModLocation(DefaultNoCoreFileName, mod))
-            {
-                var text = reader.ReadToEnd();
-                var newNoCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(text);
+            var newNoCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(text);
 
-                if (newNoCore == null)
-                    throw new Exception($"Failed to load no-core from Mod: {mod.FriendlyName}");
-                newNoCore.ConfigSource = mod.FriendlyName;
-                newNoCore.ConfigFile = DefaultNoCoreFileName;
-                NoCoreConfigs.Add(newNoCore);
-                Utils.Log($"Loaded No-Core Config From: {mod.FriendlyName}", 1, "Ship Core Config");
-            }
+            if (newNoCore == null)
+                throw new Exception($"Failed to load no-core from Mod: {mod.FriendlyName}");
+            newNoCore.ConfigSource = mod.FriendlyName;
+            newNoCore.ConfigFile = DefaultNoCoreFileName;
+            NoCoreConfigs.Add(newNoCore);
+            Utils.Log($"Loaded No-Core Config From: {mod.FriendlyName}", 1, "Ship Core Config");
         }
 
         private void LoadManifestContentFromMod(MyObjectBuilder_Checkpoint.ModItem mod)
         {
-            if (!MyAPIGateway.Utilities.FileExistsInModLocation(CoreManifestFileName, mod)) return;
+            string text;
+            if (!TryReadModTextFile(mod, CoreManifestFileName, out text)) return;
+
             Utils.Log($"Found Manifest in: {mod.FriendlyName}", 1, "Ship Core Config");
+            var coreManifest = MyAPIGateway.Utilities.SerializeFromXML<CoreManifest>(text);
+            if (coreManifest == null)
+                throw new Exception($"Failed to Load Classes from Mod: {mod.FriendlyName}");
 
-            using (var reader = MyAPIGateway.Utilities.ReadFileInModLocation(CoreManifestFileName, mod))
+            NormalizeCoreManifest(coreManifest, mod.FriendlyName);
+            RegisterManifestGroups(coreManifest.ManifestGroups, mod.FriendlyName, CoreManifestFileName);
+
+            foreach (var shipCoreEntry in coreManifest.ShipCores)
             {
-                var text = reader.ReadToEnd();
-                var coreManifest = MyAPIGateway.Utilities.SerializeFromXML<CoreManifest>(text);
-                if (coreManifest == null)
-                    throw new Exception($"Failed to Load Classes from Mod: {mod.FriendlyName}");
-
-                NormalizeCoreManifest(coreManifest, mod.FriendlyName);
-                RegisterManifestGroups(coreManifest.ManifestGroups, mod.FriendlyName, CoreManifestFileName);
-
-                foreach (var shipCoreEntry in coreManifest.ShipCores
-                             .Where(shipCoreEntry => MyAPIGateway.Utilities.FileExistsInModLocation(shipCoreEntry.Filename, mod)))
-                    LoadShipCoreFromManifest(mod, shipCoreEntry.Filename, shipCoreEntry.Groups,
+                if (shipCoreEntry == null || string.IsNullOrWhiteSpace(shipCoreEntry.Filename)) continue;
+                LoadShipCoreFromManifest(mod, shipCoreEntry.Filename, shipCoreEntry.Groups,
                         shipCoreEntry.BlacklistedCoreSubtypeIds, coreManifest.CrossConnectorPunishmentWhitelist,
                         shipCoreEntry.CoreSelectionPriority);
+            }
 
-                foreach (var upgradeModuleEntry in coreManifest.UpgradeModules
-                             .Where(upgradeModuleEntry => MyAPIGateway.Utilities.FileExistsInModLocation(upgradeModuleEntry.Filename, mod)))
+            foreach (var upgradeModuleEntry in coreManifest.UpgradeModules)
+            {
+                if (upgradeModuleEntry == null || string.IsNullOrWhiteSpace(upgradeModuleEntry.Filename)) continue;
+
+                string modText;
+                if (!TryReadModTextFile(mod, upgradeModuleEntry.Filename, out modText))
                 {
-                    using (var textReader = MyAPIGateway.Utilities.ReadFileInModLocation(upgradeModuleEntry.Filename, mod))
-                    {
-                        var modText = textReader.ReadToEnd();
-                        var newUpgradeModule = MyAPIGateway.Utilities.SerializeFromXML<UpgradeModuleConfig>(modText);
-
-                        if (newUpgradeModule == null)
-                            throw new Exception($"Failed to load upgrade module from file {upgradeModuleEntry.Filename} in Mod: {mod.FriendlyName}");
-
-                        NormalizeUpgradeModule(newUpgradeModule, mod.FriendlyName, upgradeModuleEntry.Filename);
-                        newUpgradeModule.ConfigSource = mod.FriendlyName;
-                        newUpgradeModule.ConfigFile = upgradeModuleEntry.Filename;
-                        UpgradeModules.Add(newUpgradeModule);
-                        Utils.Log($"Loaded Upgrade Module {newUpgradeModule.UniqueName} From: {mod.FriendlyName}", 1, "Ship Core Config");
-                    }
+                    Utils.Log($"Upgrade module file '{upgradeModuleEntry.Filename}' was listed in {CoreManifestFileName} but could not be read from Mod: {mod.FriendlyName}", 2, "Ship Core Config");
+                    continue;
                 }
+
+                var newUpgradeModule = MyAPIGateway.Utilities.SerializeFromXML<UpgradeModuleConfig>(modText);
+
+                if (newUpgradeModule == null)
+                    throw new Exception($"Failed to load upgrade module from file {upgradeModuleEntry.Filename} in Mod: {mod.FriendlyName}");
+
+                NormalizeUpgradeModule(newUpgradeModule, mod.FriendlyName, upgradeModuleEntry.Filename);
+                newUpgradeModule.ConfigSource = mod.FriendlyName;
+                newUpgradeModule.ConfigFile = upgradeModuleEntry.Filename;
+                UpgradeModules.Add(newUpgradeModule);
+                Utils.Log($"Loaded Upgrade Module {newUpgradeModule.UniqueName} From: {mod.FriendlyName}", 1, "Ship Core Config");
             }
         }
 
@@ -288,24 +286,107 @@ namespace ShipCoreFramework
             IEnumerable<string> manifestGroupNames, IEnumerable<string> blacklistedCoreSubtypeIds,
             IEnumerable<string> crossConnectorPunishmentWhitelist, int coreSelectionPriority)
         {
-            using (var textReader = MyAPIGateway.Utilities.ReadFileInModLocation(shipCoreFilename, mod))
+            string modText;
+            if (!TryReadModTextFile(mod, shipCoreFilename, out modText))
             {
-                var modText = textReader.ReadToEnd();
-                var newShipCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(modText);
-
-                if (newShipCore == null)
-                    throw new Exception($"Failed to load ship core from file {shipCoreFilename} in Mod: {mod.FriendlyName}");
-
-                NormalizeShipCoreBlockLimits(newShipCore, mod.FriendlyName, shipCoreFilename);
-                AssignManifestGroupsToCore(newShipCore, manifestGroupNames, mod.FriendlyName, shipCoreFilename);
-                AssignManifestConnectorBlacklistToCore(newShipCore, blacklistedCoreSubtypeIds);
-                AssignCrossConnectorPunishmentWhitelistToCore(newShipCore, crossConnectorPunishmentWhitelist);
-                newShipCore.CoreSelectionPriority = coreSelectionPriority;
-                newShipCore.ConfigSource = mod.FriendlyName;
-                newShipCore.ConfigFile = shipCoreFilename;
-                ShipCores.Add(newShipCore);
-                Utils.Log($"Loaded Core {newShipCore.UniqueName} From: {mod.FriendlyName}", 1, "Ship Core Config");
+                Utils.Log($"Ship core file '{shipCoreFilename}' was listed in {CoreManifestFileName} but could not be read from Mod: {mod.FriendlyName}", 2, "Ship Core Config");
+                return;
             }
+
+            var newShipCore = MyAPIGateway.Utilities.SerializeFromXML<ShipCore>(modText);
+
+            if (newShipCore == null)
+                throw new Exception($"Failed to load ship core from file {shipCoreFilename} in Mod: {mod.FriendlyName}");
+
+            NormalizeShipCoreBlockLimits(newShipCore, mod.FriendlyName, shipCoreFilename);
+            AssignManifestGroupsToCore(newShipCore, manifestGroupNames, mod.FriendlyName, shipCoreFilename);
+            AssignManifestConnectorBlacklistToCore(newShipCore, blacklistedCoreSubtypeIds);
+            AssignCrossConnectorPunishmentWhitelistToCore(newShipCore, crossConnectorPunishmentWhitelist);
+            newShipCore.CoreSelectionPriority = coreSelectionPriority;
+            newShipCore.ConfigSource = mod.FriendlyName;
+            newShipCore.ConfigFile = shipCoreFilename;
+            ShipCores.Add(newShipCore);
+            Utils.Log($"Loaded Core {newShipCore.UniqueName} From: {mod.FriendlyName}", 1, "Ship Core Config");
+        }
+
+        private static bool TryReadModTextFile(MyObjectBuilder_Checkpoint.ModItem mod, string fileName, out string text)
+        {
+            text = null;
+            if (string.IsNullOrWhiteSpace(fileName) || MyAPIGateway.Utilities == null)
+                return false;
+
+            List<string> candidates = BuildModPathCandidates(fileName);
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                TextReader reader = TryOpenModTextFile(mod, candidates[i]);
+                if (reader == null) continue;
+
+                using (reader)
+                    text = reader.ReadToEnd();
+
+                return true;
+            }
+
+            return false;
+        }
+
+        private static TextReader TryOpenModTextFile(MyObjectBuilder_Checkpoint.ModItem mod, string fileName)
+        {
+            try
+            {
+                TextReader reader = MyAPIGateway.Utilities.ReadFileInModLocation(fileName, mod);
+                if (reader != null) return reader;
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                if (MyAPIGateway.Utilities.FileExistsInModLocation(fileName, mod))
+                    return MyAPIGateway.Utilities.ReadFileInModLocation(fileName, mod);
+            }
+            catch
+            {
+            }
+
+            return null;
+        }
+
+        private static List<string> BuildModPathCandidates(string fileName)
+        {
+            List<string> candidates = new List<string>();
+            string forward = fileName.Replace('\\', '/');
+            AddModPathCandidate(candidates, fileName);
+            AddModPathCandidate(candidates, forward);
+            AddModPathCandidate(candidates, fileName.Replace('/', '\\'));
+
+            while (forward.StartsWith("/", StringComparison.Ordinal))
+                forward = forward.Substring(1);
+
+            if (forward.StartsWith("data/", StringComparison.OrdinalIgnoreCase) && forward.Length > 5)
+            {
+                AddModPathCandidate(candidates, "Data/" + forward.Substring(5));
+                AddModPathCandidate(candidates, "data/" + forward.Substring(5));
+            }
+
+            return candidates;
+        }
+
+        private static void AddModPathCandidate(List<string> candidates, string fileName)
+        {
+            if (candidates == null || string.IsNullOrWhiteSpace(fileName)) return;
+
+            string normalized = fileName.Trim();
+            while (normalized.StartsWith("/", StringComparison.Ordinal) ||
+                   normalized.StartsWith("\\", StringComparison.Ordinal))
+                normalized = normalized.Substring(1);
+
+            for (int i = 0; i < candidates.Count; i++)
+                if (string.Equals(candidates[i], normalized, StringComparison.Ordinal))
+                    return;
+
+            candidates.Add(normalized);
         }
 
         private void AssignManifestGroupsToCore(ShipCore core, IEnumerable<string> manifestGroupNames, string source, string coreFile)
