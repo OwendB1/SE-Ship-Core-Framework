@@ -355,6 +355,7 @@ namespace ShipCoreFramework
 
             return new AtmosphericFrictionSettings
             {
+                Enabled = settings.Enabled,
                 FrictionCurve = Clone(settings.FrictionCurve),
                 CruiseFrictionMultiplier = settings.CruiseFrictionMultiplier,
                 CruiseAccelerationThreshold = settings.CruiseAccelerationThreshold,

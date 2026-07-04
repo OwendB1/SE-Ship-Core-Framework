@@ -56,14 +56,14 @@ Load behavior:
 - Logical groups are mechanical groups. Connectors, rotors, pistons, and similar subgrids can end up in one group depending on the game link graph.
 - Many punishment gates do not remove the core. They shut off modifiers, speed, or limited blocks instead.
 - `MinBlocks` is no longer only a one-time startup check. It also drives a limited-block punishment gate:
-  - falling below minimum does not shut off limited blocks immediately
-  - the group is checked on the periodic timer, about every 10 minutes
-  - if the group is still below minimum when that timer check fires, limited blocks are shut off
+  - falling below minimum immediately forces non-critical limited blocks off
+  - once the group reaches minimum again, the limited-block gate clears
+  - the group is still periodically rechecked so stale state is corrected
 - Manifest connector blacklist is separate from `CrossConnectorPunishment`.
   - `CrossConnectorPunishment` only affects limits marked with that flag and only pulls in blocks from connected no-core groups.
   - `CrossConnectorPunishmentWhitelist` in the manifest disables that pull-in behavior for listed core `SubtypeId` values.
   - Manifest blacklist compares connected core groups by `CoreSelectionPriority`, then block count, and can shut off all limited blocks on the lower-priority or smaller blacklisted group.
-- When multiple different core types end up in one mechanical group, `CoreSelectionPriority` is also used to choose the main core. Equal priorities fall back to the larger cored grid and then a stable entity-id tie-breaker.
+- Mechanical groups only allow one configured core subtype. Main-core selection is only backup/failover selection within that subtype and does not use `CoreSelectionPriority`.
 
 ## World config reference (`ShipCoreConfig_World.xml`)
 
@@ -123,7 +123,7 @@ Repeated `<ShipCore>` entries under `<CoreManifest>`.
 | --- | --- | --- | --- |
 | `Filename` | `string` | Path to the `<ShipCore>` XML file in the mod. | Required. |
 | `Group` | `List<string>` | Manifest group membership for this core file. | Repeat the tag once per group membership. |
-| `CoreSelectionPriority` | `int` | Priority used when connector-linked or mechanically grouped cores compete. | Higher wins. Default `0`; equal priorities fall back to size. |
+| `CoreSelectionPriority` | `int` | Priority used only by manifest connector blacklist ranking. | Higher wins. Default `0`; equal priorities fall back to size. |
 | `BlacklistedCoreSubtypeId` | `List<string>` | Core subtype IDs this core blacklists when connected by connector. | Repeat the tag once per blacklisted subtype. |
 
 Blacklist behavior:
@@ -180,7 +180,7 @@ The no-core file and normal core files use the same schema. Manifest groups and 
 | `ForceBroadCastRange` | `float` | Beacon radius forced onto tracked beacons. | Used when `ForceBroadCast=true`. |
 | `MobilityType` | `Static`, `Mobile`, `Both` | Allowed grid mobility type for the group. | Mismatch punishes both speed and modifiers. |
 | `MaxBlocks` | `int` | Maximum allowed total blocks in the logical group. | New blocks are removed if they exceed this. At/over cap also triggers capacity punishment. Negative disables. |
-| `MinBlocks` | `int` | Minimum blocks required to keep limited blocks enabled. | Falling below this does not punish immediately. The group is rechecked on the periodic timer, about every 10 minutes, and limited blocks are shut off only if it is still below minimum at that check. Negative disables. |
+| `MinBlocks` | `int` | Minimum blocks required to keep limited blocks enabled. | Falling below this immediately forces non-critical limited blocks off; reaching the minimum clears the gate. Negative disables. |
 | `MaxMass` | `float` | Maximum allowed total group mass. | Uses `MassTypeMode` to choose dry or wet mass. New blocks are removed if they exceed this. Negative disables. |
 | `MaxPCU` | `int` | Maximum allowed total group PCU. | New blocks are removed if they exceed this. Negative disables. |
 | `MaxPerFaction` | `int` | Fixed cap on how many groups of this core a faction may own. | `-1` disables fixed faction cap. |
@@ -263,7 +263,7 @@ All values are multipliers. `1` is neutral, below `1` reduces incoming damage, a
 | `CruiseFrictionMultiplier` | Multiplier applied to friction while the grid is above friction speed but not accelerating beyond the threshold. | Default `1`. Values below `1` make coasting decay slower. |
 | `CruiseAccelerationThreshold` | Acceleration threshold in m/s² for cruise friction detection. | Default `0.05`. |
 | `FrictionCurve` | Optional ordered list of friction curve `Segment` entries. | If missing, the old linear curve is synthesized from the min/max friction fields and `MaximumFrictionDeceleration`. Segment speeds use the world `FrictionSpeedValueMode`. |
-| `AtmosphericFriction` | Optional atmosphere-only override profile. | When present and local air density is above `AirDensityThreshold`, its curve/cruise fields override normal friction. Outside atmosphere, normal friction is used. |
+| `AtmosphericFriction` | Optional atmosphere-only override profile. | When present, `Enabled=true`, and local air density is above `AirDensityThreshold`, its curve/cruise fields override normal friction. Outside atmosphere or when disabled, normal friction is used. |
 
 `FrictionCurve` segment fields:
 
@@ -304,6 +304,7 @@ Example absolute-speed curve with 20 m/s² from 100-200 m/s and 60 m/s² from 20
     </Segment>
   </FrictionCurve>
   <AtmosphericFriction>
+    <Enabled>true</Enabled>
     <CruiseFrictionMultiplier>1</CruiseFrictionMultiplier>
     <CruiseAccelerationThreshold>0.05</CruiseAccelerationThreshold>
     <AirDensityThreshold>0.05</AirDensityThreshold>

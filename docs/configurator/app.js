@@ -55,6 +55,7 @@ const DEFAULT_FRICTION_SEGMENT = {
 };
 
 const DEFAULT_ATMOSPHERIC_FRICTION = {
+  Enabled: true,
   FrictionCurve: [],
   CruiseFrictionMultiplier: 1,
   CruiseAccelerationThreshold: 0.05,
@@ -580,6 +581,7 @@ function parseAtmosphericFrictionNode(node) {
   if (!node) return null;
 
   return {
+    Enabled: boolOf(node, "Enabled", true),
     FrictionCurve: parseFrictionCurveNode(childElement(node, "FrictionCurve")),
     CruiseFrictionMultiplier: childNumberOf(node, "CruiseFrictionMultiplier", DEFAULT_ATMOSPHERIC_FRICTION.CruiseFrictionMultiplier),
     CruiseAccelerationThreshold: childNumberOf(node, "CruiseAccelerationThreshold", DEFAULT_ATMOSPHERIC_FRICTION.CruiseAccelerationThreshold),
@@ -613,6 +615,7 @@ function cloneAtmosphericFriction(settings = null) {
   if (!settings) return null;
 
   return {
+    Enabled: settings.Enabled !== false,
     FrictionCurve: Array.isArray(settings.FrictionCurve)
       ? settings.FrictionCurve.map((segment) => cloneFrictionSegment(segment))
       : [],
@@ -1295,6 +1298,7 @@ function ensureAtmosphericFriction(speedModifiers) {
 function speedModifierColumn({ coreIndex, modifiers }) {
   const speedModifiers = cloneSpeedModifiers(modifiers);
   const atmospheric = speedModifiers.AtmosphericFriction;
+  const atmosphericEnabled = atmospheric && atmospheric.Enabled !== false;
 
   return `
     <div class="modifier-column card">
@@ -1313,7 +1317,7 @@ function speedModifierColumn({ coreIndex, modifiers }) {
       }) || `<p class="muted">No curve segments; legacy linear friction is used.</p>`}
 
       <h5>Atmospheric Friction</h5>
-      <label class="inline">Enabled <input data-action="core-atmospheric-friction-enabled" data-c="${coreIndex}" type="checkbox" ${atmospheric ? "checked" : ""} /></label>
+      <label class="inline">Enabled <input data-action="core-atmospheric-friction-enabled" data-c="${coreIndex}" type="checkbox" ${atmosphericEnabled ? "checked" : ""} /></label>
       ${atmospheric ? `
         <label class="modifier-field">CruiseFrictionMultiplier <input data-action="core-atmospheric-friction-field" data-c="${coreIndex}" data-field="CruiseFrictionMultiplier" class="small" type="number" step="0.01" value="${Number(atmospheric.CruiseFrictionMultiplier)}" /></label>
         <label class="modifier-field">CruiseAccelerationThreshold <input data-action="core-atmospheric-friction-field" data-c="${coreIndex}" data-field="CruiseAccelerationThreshold" class="small" type="number" step="0.01" value="${Number(atmospheric.CruiseAccelerationThreshold)}" /></label>
@@ -1741,6 +1745,7 @@ function writeAtmosphericFrictionXml(settings, indent = "    ") {
   const curveXml = writeFrictionCurveXml(settings.FrictionCurve, `${indent}  `);
   return [
     `${indent}<AtmosphericFriction>`,
+    `${indent}  <Enabled>${settings.Enabled !== false}</Enabled>`,
     `${indent}  <CruiseFrictionMultiplier>${Number(settings.CruiseFrictionMultiplier ?? DEFAULT_ATMOSPHERIC_FRICTION.CruiseFrictionMultiplier)}</CruiseFrictionMultiplier>`,
     `${indent}  <CruiseAccelerationThreshold>${Number(settings.CruiseAccelerationThreshold ?? DEFAULT_ATMOSPHERIC_FRICTION.CruiseAccelerationThreshold)}</CruiseAccelerationThreshold>`,
     `${indent}  <AirDensityThreshold>${Number(settings.AirDensityThreshold ?? DEFAULT_ATMOSPHERIC_FRICTION.AirDensityThreshold)}</AirDensityThreshold>`,
@@ -2785,9 +2790,8 @@ document.addEventListener("change", (event) => {
   if (action === "core-mobility" && selectElement) selectedCore.mobilityType = selectElement.value;
   if (action === "core-speedboost" && inputElement) selectedCore.speedBoostEnabled = inputElement.checked;
   if (action === "core-atmospheric-friction-enabled" && inputElement) {
-    selectedCore.speedModifiers.AtmosphericFriction = inputElement.checked
-      ? cloneAtmosphericFriction(DEFAULT_ATMOSPHERIC_FRICTION)
-      : null;
+    const atmosphericFriction = ensureAtmosphericFriction(selectedCore.speedModifiers);
+    atmosphericFriction.Enabled = inputElement.checked;
     renderShipCores();
   }
   if (action === "core-enable-active-defense" && inputElement) selectedCore.enableActiveDefenseModifiers = inputElement.checked;

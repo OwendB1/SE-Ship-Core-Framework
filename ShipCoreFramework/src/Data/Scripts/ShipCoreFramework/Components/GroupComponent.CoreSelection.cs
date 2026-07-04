@@ -55,9 +55,6 @@ namespace ShipCoreFramework
             if (left == null) return -1;
             if (right == null) return 1;
 
-            int priorityCompare = GetCoreSelectionPriority(left).CompareTo(GetCoreSelectionPriority(right));
-            if (priorityCompare != 0) return priorityCompare;
-
             int blockCompare = GetCoreGridBlockCount(left).CompareTo(GetCoreGridBlockCount(right));
             if (blockCompare != 0) return blockCompare;
 
@@ -74,7 +71,8 @@ namespace ShipCoreFramework
             if (left == null) return -1;
             if (right == null) return 1;
 
-            int priorityCompare = GetCoreSelectionPriority(left.ShipCore).CompareTo(GetCoreSelectionPriority(right.ShipCore));
+            int priorityCompare = GetCoreSelectionPriority(left.ShipCore)
+                .CompareTo(GetCoreSelectionPriority(right.ShipCore));
             if (priorityCompare != 0) return priorityCompare;
 
             int blockCompare = left.GroupBlocksCount.CompareTo(right.GroupBlocksCount);
@@ -96,14 +94,6 @@ namespace ShipCoreFramework
             IMyFunctionalBlock block = core == null ? null : core.CoreBlock;
             if (block == null || block.MarkedForClose || block.Closed) return false;
             return !requireWorking || block.IsWorking;
-        }
-
-        private static int GetCoreSelectionPriority(CoreComponent core)
-        {
-            if (core == null || Session.Config == null || string.IsNullOrWhiteSpace(core.SubtypeId))
-                return 0;
-
-            return GetCoreSelectionPriority(Session.Config.GetShipCoreByTypeId(core.SubtypeId));
         }
 
         private static int GetCoreSelectionPriority(ShipCore core)

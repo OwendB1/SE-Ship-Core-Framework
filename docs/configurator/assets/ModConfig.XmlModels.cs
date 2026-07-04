@@ -452,6 +452,9 @@ namespace ShipCoreFramework
     [XmlRoot("AtmosphericFriction")]
     public class AtmosphericFrictionSettings
     {
+        [XmlElement("Enabled")]
+        public bool Enabled = true;
+
         [XmlElement("FrictionCurve")]
         public FrictionCurve FrictionCurve;
 
@@ -466,7 +469,8 @@ namespace ShipCoreFramework
 
         public bool HasSettings()
         {
-            return FrictionCurve != null && FrictionCurve.HasSegments()
+            return !Enabled
+                   || FrictionCurve != null && FrictionCurve.HasSegments()
                    || CruiseFrictionMultiplier != 1f
                    || CruiseAccelerationThreshold != 0.05f
                    || AirDensityThreshold != 0.05f;

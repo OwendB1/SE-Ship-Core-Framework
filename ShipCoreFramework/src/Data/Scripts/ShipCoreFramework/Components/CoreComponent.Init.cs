@@ -1,7 +1,9 @@
+using System;
 using System.Linq;
 using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI;
 using VRage.Game;
+using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
 {
@@ -70,7 +72,7 @@ namespace ShipCoreFramework
 
             if (CheckIfCoreOfOtherTypeExists())
             {
-                Utils.ShowNotification($"Other Core Type Exist On Grid: {CoreBlock.CubeGrid.CustomName}", builder);
+                Utils.ShowNotification($"Other Core Type Exists In Mechanical Group: {CoreBlock.CubeGrid.CustomName}", builder);
                 CoreBlock.SlimBlock.RemoveAndRefund();
                 return false;
             }
@@ -148,15 +150,34 @@ namespace ShipCoreFramework
 
         private bool CheckIfCoreOfOtherTypeExists()
         {
-            var fatTerminals = CoreBlock.CubeGrid.GetFatBlocks<IMyFunctionalBlock>();
-            var coreSubtypeId = Session.Config.ShipCores.Select(core => core.SubtypeId).ToList();
-            coreSubtypeId.Remove(SubtypeId);
-            return fatTerminals.Any(terminal =>
+            var knownOtherCoreSubtypeIds = Session.Config?.ShipCores
+                .Where(core => core != null &&
+                               !string.Equals(core.SubtypeId, SubtypeId, StringComparison.OrdinalIgnoreCase))
+                .Select(core => core.SubtypeId)
+                .Where(subtypeId => !string.IsNullOrWhiteSpace(subtypeId))
+                .ToList();
+
+            if (knownOtherCoreSubtypeIds == null || knownOtherCoreSubtypeIds.Count == 0)
+                return false;
+
+            foreach (var gridComponent in _groupComponent.GridDictionary.Values)
             {
-                if (!Utils.IsCoreBlock(terminal)) return false;
-                var subtype = terminal.BlockDefinition.SubtypeId;
-                return coreSubtypeId.Any(sub => sub == subtype);
-            });
+                if (gridComponent == null || gridComponent.Grid == null) continue;
+
+                var fatTerminals = ((IMyCubeGrid)gridComponent.Grid).GetFatBlocks<IMyFunctionalBlock>();
+                foreach (var terminal in fatTerminals)
+                {
+                    if (terminal == null || ReferenceEquals(terminal, CoreBlock)) continue;
+                    if (!Utils.IsCoreBlock(terminal)) continue;
+
+                    var subtype = terminal.BlockDefinition.SubtypeId;
+                    if (knownOtherCoreSubtypeIds.Any(sub =>
+                        string.Equals(sub, subtype, StringComparison.OrdinalIgnoreCase)))
+                        return true;
+                }
+            }
+
+            return false;
         }
 
         private long ResolvePlacementOwnerIdentityId()

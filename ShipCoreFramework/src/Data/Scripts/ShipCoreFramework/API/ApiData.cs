@@ -536,6 +536,7 @@ namespace ShipCoreFramework
         [ProtoMember(2)] public float CruiseFrictionMultiplier;
         [ProtoMember(3)] public float CruiseAccelerationThreshold;
         [ProtoMember(4)] public float AirDensityThreshold;
+        [ProtoMember(5)] public bool Enabled = true;
     }
 
     /// <summary>

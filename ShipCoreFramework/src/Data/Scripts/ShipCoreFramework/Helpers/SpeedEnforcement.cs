@@ -263,7 +263,7 @@ namespace ShipCoreFramework
                 speedModifiers.CruiseFrictionMultiplier,
                 speedModifiers.CruiseAccelerationThreshold);
 
-            if (speedModifiers.AtmosphericFriction != null)
+            if (speedModifiers.AtmosphericFriction != null && speedModifiers.AtmosphericFriction.Enabled)
             {
                 context.HasAtmosphericFrictionProfile = true;
                 context.AtmosphericFrictionProfile = CreateAtmosphericFrictionProfile(

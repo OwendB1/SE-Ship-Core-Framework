@@ -46,25 +46,34 @@ namespace ShipCoreFramework
             _nextMinimumBlocksGateCheckTick = Session.CurrentTick + LimitedBlockMinimumBlocksRecheckIntervalTicks;
         }
 
-        private void RefreshMinimumBlocksLimitedBlockGateState()
+        private bool RefreshMinimumBlocksLimitedBlockGateState()
         {
             var minBlocks = ShipCore?.MinBlocks ?? -1;
             if (minBlocks <= 0)
             {
+                var changed = _minimumBlocksLimitedBlockGateActive || _nextMinimumBlocksGateCheckTick != 0;
                 _minimumBlocksLimitedBlockGateActive = false;
                 _nextMinimumBlocksGateCheckTick = 0;
-                return;
+                return changed;
             }
 
-            if (_minimumBlocksLimitedBlockGateActive)
+            if (IsBelowMinimumBlocksRequirement())
             {
-                if (IsBelowMinimumBlocksRequirement())
-                    return;
-
-                _minimumBlocksLimitedBlockGateActive = false;
+                var changed = !_minimumBlocksLimitedBlockGateActive;
+                _minimumBlocksLimitedBlockGateActive = true;
+                if (_nextMinimumBlocksGateCheckTick == 0 ||
+                    Session.CurrentTick >= _nextMinimumBlocksGateCheckTick)
+                    ScheduleMinimumBlocksGateRecheck();
+                return changed;
             }
 
-            ScheduleMinimumBlocksGateRecheck();
+            var wasActive = _minimumBlocksLimitedBlockGateActive;
+            _minimumBlocksLimitedBlockGateActive = false;
+            if (_nextMinimumBlocksGateCheckTick == 0 ||
+                Session.CurrentTick >= _nextMinimumBlocksGateCheckTick)
+                ScheduleMinimumBlocksGateRecheck();
+
+            return wasActive;
         }
 
         private bool IsMinimumBlocksLimitedBlockGateTriggered()
@@ -130,12 +139,13 @@ namespace ShipCoreFramework
             InvalidateSpeedStateCache();
             Session.MarkPhysicalSpeedClusterSourceDirty(this);
 
-            if (!_minimumBlocksLimitedBlockGateActive) return;
-            if (IsBelowMinimumBlocksRequirement()) return;
-
-            _minimumBlocksLimitedBlockGateActive = false;
-            ScheduleMinimumBlocksGateRecheck();
-            RefreshLimitedBlockPunishmentState();
+            var wasPunishingLimitedBlocks = PunishLimitedBlocks;
+            if (RefreshMinimumBlocksLimitedBlockGateState())
+            {
+                RefreshLimitedBlockPunishmentState();
+                if (!wasPunishingLimitedBlocks && PunishLimitedBlocks)
+                    EnforceGroupPunishment(true);
+            }
         }
 
         internal void OnBlockRemovedFromGroup()
@@ -146,6 +156,14 @@ namespace ShipCoreFramework
 
             InvalidateSpeedStateCache();
             Session.MarkPhysicalSpeedClusterSourceDirty(this);
+
+            var wasPunishingLimitedBlocks = PunishLimitedBlocks;
+            if (RefreshMinimumBlocksLimitedBlockGateState())
+            {
+                RefreshLimitedBlockPunishmentState();
+                if (!wasPunishingLimitedBlocks && PunishLimitedBlocks)
+                    EnforceGroupPunishment(true);
+            }
         }
 
         internal void RunLimitedBlockPunishmentTick()
@@ -157,21 +175,8 @@ namespace ShipCoreFramework
                 return;
             }
 
-            var minBlocks = ShipCore?.MinBlocks ?? -1;
-            if (minBlocks <= 0)
-            {
-                _nextMinimumBlocksGateCheckTick = 0;
-            }
-            else if (!_minimumBlocksLimitedBlockGateActive && _nextMinimumBlocksGateCheckTick != 0 &&
-                     Session.CurrentTick >= _nextMinimumBlocksGateCheckTick)
-            {
-                if (IsBelowMinimumBlocksRequirement())
-                    _minimumBlocksLimitedBlockGateActive = true;
-                else
-                    ScheduleMinimumBlocksGateRecheck();
-            }
-
             var wasPunishingLimitedBlocks = PunishLimitedBlocks;
+            RefreshMinimumBlocksLimitedBlockGateState();
             RefreshLimitedBlockPunishmentState();
             if (!wasPunishingLimitedBlocks && PunishLimitedBlocks)
                 EnforceGroupPunishment(true);
