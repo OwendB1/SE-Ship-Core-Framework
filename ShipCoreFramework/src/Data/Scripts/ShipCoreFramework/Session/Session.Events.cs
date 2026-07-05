@@ -80,6 +80,12 @@ namespace ShipCoreFramework
             long factionId, long playerId)
         {
             if (Config.SelectedNoCore == null) return;
+            if (playerId > 0)
+            {
+                var identityFactionId = toFactionId > 0 ? toFactionId : factionId > 0 ? factionId : fromFactionId;
+                PerFactionManager.TrackFactionIdentity(playerId, identityFactionId);
+            }
+
             if (!IsRelevantFactionStateChange(action)) return;
             Utils.Log($"FactionStateChanged: {action} from {fromFactionId} to {toFactionId} for faction {factionId} and player {playerId}");
 
@@ -110,10 +116,21 @@ namespace ShipCoreFramework
 
             EnforceOverCapacityForGroups(affectedGroups);
         }
+
+        private static void FactionCreated(long factionId)
+        {
+            PerFactionManager.TrackFactionMembers(factionId);
+        }
+
+        private static void FactionEdited(long factionId)
+        {
+            PerFactionManager.TrackFactionMembers(factionId);
+        }
         
         private static void SessionReady()
         {
             if (Config.SelectedNoCore == null || !IsServer) return;
+            PerFactionManager.InitializeIdentityCache();
             MyAPIGateway.Session.DamageSystem.RegisterBeforeDamageHandler(-100, CubeGridModifiers.GridCoreDamageHandler);
             MyExplosions.OnExplosion += CubeGridModifiers.HandleLightningExplosions;
         }

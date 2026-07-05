@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.ModAPI;
@@ -19,16 +20,127 @@ namespace ShipCoreFramework
         private static readonly GameThreadWriteDictionary<CoreCountKey, int> PerFactionCounts =
             new GameThreadWriteDictionary<CoreCountKey, int>(null, ThreadWork.CountsCategory, "faction-counts");
 
+        private static readonly ConcurrentDictionary<long, byte> PlayerIdentityIds =
+            new ConcurrentDictionary<long, byte>();
+
+        private static readonly ConcurrentDictionary<long, byte> NonPlayerIdentityIds =
+            new ConcurrentDictionary<long, byte>();
+
+        private static readonly ConcurrentDictionary<long, byte> RegisteredIdentityIds =
+            new ConcurrentDictionary<long, byte>();
+
+        private static readonly ConcurrentDictionary<long, byte> LoggedIdentityClassifications =
+            new ConcurrentDictionary<long, byte>();
+
         private static bool _suppressEvents;
+        private static bool _identityCacheInitialized;
 
         private static ModConfig Config => Session.Config;
+
+        internal static void InitializeIdentityCache()
+        {
+            if (!Session.IsGameThread)
+            {
+                MyAPIGateway.Utilities.InvokeOnGameThread(InitializeIdentityCache);
+                return;
+            }
+
+            PlayerIdentityIds.Clear();
+            NonPlayerIdentityIds.Clear();
+            RegisteredIdentityIds.Clear();
+            LoggedIdentityClassifications.Clear();
+
+            CacheCheckpointIdentities();
+            CacheRegisteredIdentities();
+            CacheOnlinePlayers();
+
+            _identityCacheInitialized = true;
+            Utils.Log("PerFactionManager::InitializeIdentityCache: cached " +
+                      PlayerIdentityIds.Count + " player identities, " +
+                      NonPlayerIdentityIds.Count + " non-player identities, " +
+                      RegisteredIdentityIds.Count + " registered identities.", 1);
+        }
+
+        internal static void TrackFactionMembers(long factionId)
+        {
+            if (factionId <= 0 || MyAPIGateway.Session?.Factions == null)
+                return;
+
+            var faction = MyAPIGateway.Session.Factions.TryGetFactionById(factionId);
+            if (faction == null)
+                return;
+
+            foreach (KeyValuePair<long, MyFactionMember> member in faction.Members)
+                TrackFactionIdentity(member.Key, faction.Tag);
+        }
+
+        internal static void TrackFactionIdentity(long identityId, long factionId)
+        {
+            string factionTag = null;
+            if (factionId > 0 && MyAPIGateway.Session?.Factions != null)
+            {
+                var faction = MyAPIGateway.Session.Factions.TryGetFactionById(factionId);
+                factionTag = faction?.Tag;
+            }
+
+            TrackFactionIdentity(identityId, factionTag);
+        }
+
+        private static void TrackFactionIdentity(long identityId, string factionTag)
+        {
+            if (identityId <= 0)
+                return;
+
+            if (!Session.IsGameThread)
+            {
+                MyAPIGateway.Utilities.InvokeOnGameThread(() => TrackFactionIdentity(identityId, factionTag));
+                return;
+            }
+
+            EnsureIdentityCacheInitialized();
+
+            var steamId = TryGetSteamId(identityId);
+            if (steamId != 0)
+            {
+                MarkPlayerIdentity(identityId);
+                LogIdentityClassification(identityId, factionTag, steamId, true, true, "faction-event-steam");
+                return;
+            }
+
+            var player = TryGetActivePlayer(identityId);
+            if (player != null)
+            {
+                if (player.IsBot)
+                    MarkNonPlayerIdentity(identityId);
+                else
+                    MarkPlayerIdentity(identityId);
+
+                LogIdentityClassification(identityId, factionTag, steamId, true, !player.IsBot,
+                    player.IsBot ? "faction-event-active-bot" : "faction-event-active-player");
+                return;
+            }
+
+            var inRegisteredIdentities = RefreshRegisteredIdentity(identityId);
+            if (inRegisteredIdentities && !PlayerIdentityIds.ContainsKey(identityId))
+                MarkNonPlayerIdentity(identityId);
+
+            LogIdentityClassification(identityId, factionTag, steamId, inRegisteredIdentities, false,
+                inRegisteredIdentities ? "faction-event-registered-no-player" : "faction-event-missing-identity");
+        }
 
         internal static int GetFactionMemberCount(IMyFaction owningFaction)
         {
             if (owningFaction == null)
                 return 0;
 
-            return owningFaction.Members.Count(member => ShouldCountTowardsPlayerLimits(member.Key));
+            int count = 0;
+            foreach (KeyValuePair<long, MyFactionMember> member in owningFaction.Members)
+            {
+                if (ShouldCountTowardsPlayerLimits(member.Key, owningFaction.Tag))
+                    count++;
+            }
+
+            return count;
         }
 
         internal static int GetFactionPlayerCount(IMyFaction owningFaction, long ownerId)
@@ -36,7 +148,7 @@ namespace ShipCoreFramework
             if (owningFaction != null)
                 return GetFactionMemberCount(owningFaction);
 
-            return ShouldCountTowardsPlayerLimits(ownerId) ? 1 : 0;
+            return ShouldCountTowardsPlayerLimits(ownerId, null) ? 1 : 0;
         }
 
         internal static FactionRank GetFactionRank(IMyFaction owningFaction, long ownerId)
@@ -79,15 +191,248 @@ namespace ShipCoreFramework
             return true;
         }
 
-        private static bool ShouldCountTowardsPlayerLimits(long identityId)
+        private static bool ShouldCountTowardsPlayerLimits(long identityId, string factionTag)
         {
             if (identityId <= 0)
                 return false;
 
-            if (Config.DebugMode)
+            EnsureIdentityCacheInitialized();
+
+            var steamId = TryGetSteamId(identityId);
+            var inRegisteredIdentities = RegisteredIdentityIds.ContainsKey(identityId);
+
+            if (NonPlayerIdentityIds.ContainsKey(identityId))
+            {
+                LogIdentityClassification(identityId, factionTag, steamId, inRegisteredIdentities, false, "known-non-player");
+                return false;
+            }
+
+            if (PlayerIdentityIds.ContainsKey(identityId))
+            {
+                LogIdentityClassification(identityId, factionTag, steamId, inRegisteredIdentities, true, "known-player");
+                return true;
+            }
+
+            if (steamId != 0)
+            {
+                MarkPlayerIdentity(identityId);
+                LogIdentityClassification(identityId, factionTag, steamId, inRegisteredIdentities, true, "steam-id");
+                return true;
+            }
+
+            var player = TryGetActivePlayer(identityId);
+            if (player != null)
+            {
+                if (player.IsBot)
+                {
+                    MarkNonPlayerIdentity(identityId);
+                    LogIdentityClassification(identityId, factionTag, steamId, true, false, "active-bot");
+                    return false;
+                }
+
+                MarkPlayerIdentity(identityId);
+                LogIdentityClassification(identityId, factionTag, steamId, true, true, "active-player");
+                return true;
+            }
+
+            if (!inRegisteredIdentities && Session.IsGameThread)
+                inRegisteredIdentities = RefreshRegisteredIdentity(identityId);
+
+            LogIdentityClassification(identityId, factionTag, steamId, inRegisteredIdentities, false,
+                inRegisteredIdentities ? "registered-no-player" : "missing-identity");
+            return false;
+        }
+
+        private static void EnsureIdentityCacheInitialized()
+        {
+            if (_identityCacheInitialized || !Session.IsGameThread || Session.IsShuttingDown)
+                return;
+
+            InitializeIdentityCache();
+        }
+
+        private static void CacheCheckpointIdentities()
+        {
+            try
+            {
+                if (MyAPIGateway.Session == null)
+                    return;
+
+                var checkpoint = MyAPIGateway.Session.GetCheckpoint(MyAPIGateway.Session.Name);
+                if (checkpoint == null)
+                    return;
+
+                if (checkpoint.NonPlayerIdentities != null)
+                {
+                    foreach (long identityId in checkpoint.NonPlayerIdentities)
+                        MarkNonPlayerIdentity(identityId);
+                }
+
+                if (checkpoint.AllPlayersData != null && checkpoint.AllPlayersData.Dictionary != null)
+                {
+                    foreach (KeyValuePair<MyObjectBuilder_Checkpoint.PlayerId, MyObjectBuilder_Player> entry in checkpoint.AllPlayersData.Dictionary)
+                    {
+                        if (entry.Value != null)
+                            MarkPlayerIdentity(entry.Value.IdentityId);
+                    }
+                }
+
+                if (checkpoint.AllPlayers != null)
+                {
+                    foreach (MyObjectBuilder_Checkpoint.PlayerItem playerItem in checkpoint.AllPlayers)
+                    {
+                        if (playerItem.PlayerId > 0 && playerItem.SteamId != 0)
+                            MarkPlayerIdentity(playerItem.PlayerId);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Utils.Log("PerFactionManager::CacheCheckpointIdentities failed: " + ex.Message, 0);
+            }
+        }
+
+        private static void CacheRegisteredIdentities()
+        {
+            try
+            {
+                if (MyAPIGateway.Players == null)
+                    return;
+
+                var identities = new List<IMyIdentity>();
+                MyAPIGateway.Players.GetAllIdentites(identities);
+                foreach (IMyIdentity identity in identities)
+                {
+                    if (identity != null && identity.IdentityId > 0)
+                        RegisteredIdentityIds.TryAdd(identity.IdentityId, 0);
+                }
+            }
+            catch (Exception ex)
+            {
+                Utils.Log("PerFactionManager::CacheRegisteredIdentities failed: " + ex.Message, 0);
+            }
+        }
+
+        private static void CacheOnlinePlayers()
+        {
+            try
+            {
+                if (MyAPIGateway.Players == null)
+                    return;
+
+                var players = new List<IMyPlayer>();
+                MyAPIGateway.Players.GetPlayers(players);
+                foreach (IMyPlayer player in players)
+                {
+                    if (player == null || player.IdentityId <= 0)
+                        continue;
+
+                    if (player.IsBot)
+                        MarkNonPlayerIdentity(player.IdentityId);
+                    else
+                        MarkPlayerIdentity(player.IdentityId);
+                }
+            }
+            catch (Exception ex)
+            {
+                Utils.Log("PerFactionManager::CacheOnlinePlayers failed: " + ex.Message, 0);
+            }
+        }
+
+        private static bool RefreshRegisteredIdentity(long identityId)
+        {
+            if (identityId <= 0)
+                return false;
+
+            if (RegisteredIdentityIds.ContainsKey(identityId))
                 return true;
 
-            return MyAPIGateway.Players != null && MyAPIGateway.Players.TryGetSteamId(identityId) != 0;
+            try
+            {
+                if (MyAPIGateway.Players == null)
+                    return false;
+
+                var identities = new List<IMyIdentity>();
+                MyAPIGateway.Players.GetAllIdentites(identities, identity => identity != null && identity.IdentityId == identityId);
+                foreach (IMyIdentity identity in identities)
+                {
+                    if (identity == null || identity.IdentityId <= 0)
+                        continue;
+
+                    RegisteredIdentityIds.TryAdd(identity.IdentityId, 0);
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Utils.Log("PerFactionManager::RefreshRegisteredIdentity failed for " + identityId + ": " + ex.Message, 0);
+            }
+
+            return false;
+        }
+
+        private static ulong TryGetSteamId(long identityId)
+        {
+            try
+            {
+                return MyAPIGateway.Players != null ? MyAPIGateway.Players.TryGetSteamId(identityId) : 0;
+            }
+            catch (Exception ex)
+            {
+                Utils.Log("PerFactionManager::TryGetSteamId failed for " + identityId + ": " + ex.Message, 0);
+                return 0;
+            }
+        }
+
+        private static IMyPlayer TryGetActivePlayer(long identityId)
+        {
+            try
+            {
+                return MyAPIGateway.Players != null ? MyAPIGateway.Players.TryGetIdentityId(identityId) : null;
+            }
+            catch (Exception ex)
+            {
+                Utils.Log("PerFactionManager::TryGetActivePlayer failed for " + identityId + ": " + ex.Message, 0);
+                return null;
+            }
+        }
+
+        private static void MarkPlayerIdentity(long identityId)
+        {
+            if (identityId <= 0)
+                return;
+
+            PlayerIdentityIds.TryAdd(identityId, 0);
+            byte ignored;
+            NonPlayerIdentityIds.TryRemove(identityId, out ignored);
+        }
+
+        private static void MarkNonPlayerIdentity(long identityId)
+        {
+            if (identityId <= 0)
+                return;
+
+            if (!PlayerIdentityIds.ContainsKey(identityId))
+                NonPlayerIdentityIds.TryAdd(identityId, 0);
+        }
+
+        private static void LogIdentityClassification(long identityId, string factionTag, ulong steamId,
+            bool inRegisteredIdentities, bool counts, string reason)
+        {
+            if (!Config.DebugMode && counts)
+                return;
+
+            if (!LoggedIdentityClassifications.TryAdd(identityId, 0))
+                return;
+
+            Utils.Log("PerFactionManager::IdentityClassification: identityId=" + identityId +
+                      ", factionTag=" + (string.IsNullOrWhiteSpace(factionTag) ? "<none>" : factionTag) +
+                      ", steamId=" + steamId +
+                      ", inAllIdentities=" + inRegisteredIdentities +
+                      ", knownPlayer=" + PlayerIdentityIds.ContainsKey(identityId) +
+                      ", knownNonPlayer=" + NonPlayerIdentityIds.ContainsKey(identityId) +
+                      ", counts=" + counts +
+                      ", reason=" + reason, counts ? 3 : 1);
         }
 
         internal static bool HasFactionCoreLimit(ShipCore core)
@@ -265,6 +610,11 @@ namespace ShipCoreFramework
             }
 
             PerFactionCounts.Clear();
+            PlayerIdentityIds.Clear();
+            NonPlayerIdentityIds.Clear();
+            RegisteredIdentityIds.Clear();
+            LoggedIdentityClassifications.Clear();
+            _identityCacheInitialized = false;
         }
 
         internal static CoreCountEntry[] GetLocalCountsSnapshot()

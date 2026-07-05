@@ -78,6 +78,8 @@ namespace ShipCoreFramework
             
             MyAPIGateway.Session.OnSessionReady += SessionReady;
             MyAPIGateway.Session.Factions.FactionStateChanged += FactionStateChanged;
+            MyAPIGateway.Session.Factions.FactionCreated += FactionCreated;
+            MyAPIGateway.Session.Factions.FactionEdited += FactionEdited;
             MyAPIGateway.Utilities.MessageEnteredSender += Commands.OnChatCommand;
             if(IsServer)
             {
@@ -93,6 +95,8 @@ namespace ShipCoreFramework
             ThreadWork.CancelAll("Session unload");
             MyAPIGateway.Session.OnSessionReady -= SessionReady;
             MyAPIGateway.Session.Factions.FactionStateChanged -= FactionStateChanged;
+            MyAPIGateway.Session.Factions.FactionCreated -= FactionCreated;
+            MyAPIGateway.Session.Factions.FactionEdited -= FactionEdited;
             MyAPIGateway.Utilities.MessageEnteredSender -= Commands.OnChatCommand;
             MyAPIGateway.Multiplayer.UnregisterSecureMessageHandler(CommandsSyncId, Commands.ServerMessageHandler);
             MyExplosions.OnExplosion -= CubeGridModifiers.HandleLightningExplosions;
