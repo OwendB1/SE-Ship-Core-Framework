@@ -201,6 +201,15 @@ namespace ShipCoreFramework
             var steamId = TryGetSteamId(identityId);
             var inRegisteredIdentities = RegisteredIdentityIds.ContainsKey(identityId);
 
+            if (Config.DebugMode)
+            {
+                if (!inRegisteredIdentities && Session.IsGameThread)
+                    inRegisteredIdentities = RefreshRegisteredIdentity(identityId);
+
+                LogIdentityClassification(identityId, factionTag, steamId, inRegisteredIdentities, true, "debug-mode");
+                return true;
+            }
+
             if (NonPlayerIdentityIds.ContainsKey(identityId))
             {
                 LogIdentityClassification(identityId, factionTag, steamId, inRegisteredIdentities, false, "known-non-player");
