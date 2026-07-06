@@ -94,8 +94,13 @@ namespace ShipCoreFramework
             PunishModifiers = false;
             PunishSpeed = false;
             PunishLimitedBlocks = false;
+            ClearCoreRecoveryGrace("group deactivated", false);
+            BroadcastGroupCountdown(GetMinimumBlocksGateCountdownKey(), string.Empty, 0,
+                _minimumBlocksGateNotificationRecipients);
             _minimumBlocksLimitedBlockGateActive = false;
-            _nextMinimumBlocksGateCheckTick = 0;
+            _minimumBlocksGateActivationTick = 0;
+            _nextMinimumBlocksGateNotificationTick = 0;
+            _lastMinimumBlocksGateNotificationSeconds = -1;
             _pendingExternalLimitValidationTick = 0;
             ClearPublishedLimitSnapshots();
             InvalidateSpeedStateCache();

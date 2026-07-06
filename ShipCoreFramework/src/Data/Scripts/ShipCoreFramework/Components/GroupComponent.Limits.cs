@@ -41,9 +41,52 @@ namespace ShipCoreFramework
             return minBlocks > 0 && GroupBlocksCount < minBlocks;
         }
 
-        private void ScheduleMinimumBlocksGateRecheck()
+        private int GetMinimumBlocksGraceTicks()
         {
-            _nextMinimumBlocksGateCheckTick = Session.CurrentTick + LimitedBlockMinimumBlocksRecheckIntervalTicks;
+            return SecondsToTicks(Session.Config == null ? 30 : Session.Config.MinimumBlocksGraceSeconds);
+        }
+
+        private string GetMinimumBlocksGateCountdownKey()
+        {
+            return "minimum-blocks:" + GetRepresentativeGridId();
+        }
+
+        private bool ClearMinimumBlocksLimitedBlockGateState(string reason)
+        {
+            var changed = _minimumBlocksLimitedBlockGateActive || _minimumBlocksGateActivationTick != 0;
+            _minimumBlocksLimitedBlockGateActive = false;
+            _minimumBlocksGateActivationTick = 0;
+            _nextMinimumBlocksGateNotificationTick = 0;
+            _lastMinimumBlocksGateNotificationSeconds = -1;
+
+            if (changed)
+            {
+                BroadcastGroupCountdown(GetMinimumBlocksGateCountdownKey(), string.Empty, 0,
+                    _minimumBlocksGateNotificationRecipients);
+                Utils.Log("MinimumBlocksGate: cleared for group " + GetThreadWorkKey() +
+                          ". Reason: " + reason, 1);
+            }
+
+            return changed;
+        }
+
+        private void NotifyMinimumBlocksGateCountdown(bool force)
+        {
+            if (_minimumBlocksLimitedBlockGateActive || _minimumBlocksGateActivationTick == 0) return;
+
+            var remainingSeconds = TicksToCeilingSeconds(_minimumBlocksGateActivationTick - Session.CurrentTick);
+            if (remainingSeconds <= 0) return;
+
+            if (!force &&
+                Session.CurrentTick < _nextMinimumBlocksGateNotificationTick &&
+                remainingSeconds == _lastMinimumBlocksGateNotificationSeconds)
+                return;
+
+            _lastMinimumBlocksGateNotificationSeconds = remainingSeconds;
+            _nextMinimumBlocksGateNotificationTick = Session.CurrentTick +
+                                                     (remainingSeconds <= 10 ? TicksPerSecond : TicksPerSecond * 5);
+            BroadcastGroupCountdown(GetMinimumBlocksGateCountdownKey(), "Minimum block enforcement in",
+                remainingSeconds, _minimumBlocksGateNotificationRecipients);
         }
 
         private bool RefreshMinimumBlocksLimitedBlockGateState()
@@ -51,29 +94,46 @@ namespace ShipCoreFramework
             var minBlocks = ShipCore?.MinBlocks ?? -1;
             if (minBlocks <= 0)
             {
-                var changed = _minimumBlocksLimitedBlockGateActive || _nextMinimumBlocksGateCheckTick != 0;
-                _minimumBlocksLimitedBlockGateActive = false;
-                _nextMinimumBlocksGateCheckTick = 0;
-                return changed;
+                return ClearMinimumBlocksLimitedBlockGateState("minimum block requirement disabled");
             }
 
             if (IsBelowMinimumBlocksRequirement())
             {
-                var changed = !_minimumBlocksLimitedBlockGateActive;
-                _minimumBlocksLimitedBlockGateActive = true;
-                if (_nextMinimumBlocksGateCheckTick == 0 ||
-                    Session.CurrentTick >= _nextMinimumBlocksGateCheckTick)
-                    ScheduleMinimumBlocksGateRecheck();
+                var changed = false;
+                if (_minimumBlocksGateActivationTick == 0 && !_minimumBlocksLimitedBlockGateActive)
+                {
+                    var graceTicks = GetMinimumBlocksGraceTicks();
+                    _minimumBlocksGateActivationTick = Session.CurrentTick + graceTicks;
+                    _nextMinimumBlocksGateNotificationTick = 0;
+                    _lastMinimumBlocksGateNotificationSeconds = -1;
+                    changed = true;
+                    Utils.Log("MinimumBlocksGate: countdown started for group " + GetThreadWorkKey() +
+                              ". Blocks=" + GroupBlocksCount + "/" + minBlocks +
+                              ", activatesAtTick=" + _minimumBlocksGateActivationTick + ".", 1);
+                    NotifyMinimumBlocksGateCountdown(true);
+                }
+
+                if (_minimumBlocksGateActivationTick != 0 &&
+                    Session.CurrentTick < _minimumBlocksGateActivationTick)
+                {
+                    NotifyMinimumBlocksGateCountdown(false);
+                    return changed;
+                }
+
+                if (!_minimumBlocksLimitedBlockGateActive)
+                {
+                    _minimumBlocksLimitedBlockGateActive = true;
+                    BroadcastGroupCountdown(GetMinimumBlocksGateCountdownKey(), string.Empty, 0,
+                        _minimumBlocksGateNotificationRecipients);
+                    Utils.Log("MinimumBlocksGate: enforcement enabled for group " + GetThreadWorkKey() +
+                              ". Blocks=" + GroupBlocksCount + "/" + minBlocks + ".", 1);
+                    return true;
+                }
+
                 return changed;
             }
 
-            var wasActive = _minimumBlocksLimitedBlockGateActive;
-            _minimumBlocksLimitedBlockGateActive = false;
-            if (_nextMinimumBlocksGateCheckTick == 0 ||
-                Session.CurrentTick >= _nextMinimumBlocksGateCheckTick)
-                ScheduleMinimumBlocksGateRecheck();
-
-            return wasActive;
+            return ClearMinimumBlocksLimitedBlockGateState("minimum block requirement satisfied");
         }
 
         private bool IsMinimumBlocksLimitedBlockGateTriggered()
@@ -89,13 +149,18 @@ namespace ShipCoreFramework
         private void ClearCoreRecoveryGracePunishmentState()
         {
             var changed = PunishSpeed || PunishModifiers || PunishLimitedBlocks ||
-                          _minimumBlocksLimitedBlockGateActive || _nextMinimumBlocksGateCheckTick != 0;
+                          _minimumBlocksLimitedBlockGateActive || _minimumBlocksGateActivationTick != 0;
 
             PunishSpeed = false;
             PunishModifiers = false;
             PunishLimitedBlocks = false;
+            if (_minimumBlocksLimitedBlockGateActive || _minimumBlocksGateActivationTick != 0)
+                BroadcastGroupCountdown(GetMinimumBlocksGateCountdownKey(), string.Empty, 0,
+                    _minimumBlocksGateNotificationRecipients);
             _minimumBlocksLimitedBlockGateActive = false;
-            _nextMinimumBlocksGateCheckTick = 0;
+            _minimumBlocksGateActivationTick = 0;
+            _nextMinimumBlocksGateNotificationTick = 0;
+            _lastMinimumBlocksGateNotificationSeconds = -1;
             InvalidateSpeedStateCache();
             InvalidateModifierStateCache();
 
@@ -220,7 +285,7 @@ namespace ShipCoreFramework
 
             if (_closing || Deactivated || IsIgnoredGroup())
             {
-                _nextMinimumBlocksGateCheckTick = 0;
+                ClearMinimumBlocksLimitedBlockGateState("group closing, deactivated, or ignored");
                 PunishLimitedBlocks = false;
                 return;
             }

@@ -6,7 +6,6 @@ namespace ShipCoreFramework
 {
     internal partial class GroupComponent
     {
-        private const int LimitedBlockMinimumBlocksRecheckIntervalTicks = 10 * 60 * 60;
         private const int ExternalLimitValidationDelayTicks = 2 * 60;
 
         private readonly object _limitSnapshotLock = new object();
@@ -15,7 +14,10 @@ namespace ShipCoreFramework
         internal ConcurrentDictionary<BlockLimit, LimitBucket> Limits => _limits;
 
         private bool _minimumBlocksLimitedBlockGateActive;
-        private int _nextMinimumBlocksGateCheckTick;
+        private int _minimumBlocksGateActivationTick;
+        private int _nextMinimumBlocksGateNotificationTick;
+        private int _lastMinimumBlocksGateNotificationSeconds = -1;
+        private readonly HashSet<long> _minimumBlocksGateNotificationRecipients = new HashSet<long>();
         private int _pendingExternalLimitValidationTick;
         private int _limitGeneration;
         private int _cachedEffectiveMaxBlocks = -1;

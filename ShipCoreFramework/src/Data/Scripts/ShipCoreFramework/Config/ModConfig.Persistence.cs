@@ -57,7 +57,27 @@ namespace ShipCoreFramework
             FrictionSpeedValueMode = import.FrictionSpeedValueMode;
             BlockDirectionalPlacementOnSubgrids = import.BlockDirectionalPlacementOnSubgrids;
             AllowUnattachedUpgradeModules = import.AllowUnattachedUpgradeModules;
+            NoCoreGraceSeconds = ClampTimerSeconds(import.NoCoreGraceSeconds, 30, "NoCoreGraceSeconds");
+            MinimumBlocksGraceSeconds = ClampTimerSeconds(import.MinimumBlocksGraceSeconds, 30, "MinimumBlocksGraceSeconds");
             NoFlyZones = import.NoFlyZones ?? new System.Collections.Generic.List<Zones>();
+        }
+
+        private static int ClampTimerSeconds(int value, int fallback, string settingName)
+        {
+            if (value < 0)
+            {
+                Utils.Log(settingName + " validation failed - using default " + fallback, 1, "Config Validation");
+                return fallback;
+            }
+
+            const int maxTimerSeconds = 60 * 60;
+            if (value > maxTimerSeconds)
+            {
+                Utils.Log(settingName + " was above " + maxTimerSeconds + " seconds; clamping.", 1, "Config Validation");
+                return maxTimerSeconds;
+            }
+
+            return value;
         }
 
         private static void RemoveLegacySandboxSettings(bool showInChat)

@@ -185,7 +185,11 @@ namespace ShipCoreFramework
 
             _tick++;
             CurrentTick = _tick;
-            if (IsClient) CoreTypeLCDScript.RunFrameScrollUpdate();
+            if (IsClient)
+            {
+                CoreTypeLCDScript.RunFrameScrollUpdate();
+                NotificationInstance.RunCountdownTick();
+            }
             ThreadWork.FlushPendingWrites(ThreadWork.CountsCategory);
             ThreadWork.FlushPendingWrites(null, MaxQueuedStateWorkPerTick);
             foreach (KeyValuePair<IMyGridGroupData, GroupComponent> kvp in GroupDict)

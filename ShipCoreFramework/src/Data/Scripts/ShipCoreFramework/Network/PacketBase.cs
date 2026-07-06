@@ -14,6 +14,7 @@ namespace ShipCoreFramework
     [ProtoInclude(4000, typeof(PacketNotify))]
     [ProtoInclude(5000, typeof(PacketRequestConfig))]
     [ProtoInclude(6000, typeof(PacketSendConfig))]
+    [ProtoInclude(7000, typeof(PacketCountdown))]
     [ProtoContract]
     internal abstract class PacketBase
     {
@@ -157,6 +158,36 @@ namespace ShipCoreFramework
             // Runs on the client that received it
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
                 NotificationInstance.ShowNotification(Text, TimeMs, Font));
+        }
+    }
+
+    [ProtoContract]
+    internal class PacketCountdown : PacketBase
+    {
+        [ProtoMember(700)] internal string Key;
+        [ProtoMember(701)] internal string Text;
+        [ProtoMember(702)] internal int RemainingSeconds;
+        [ProtoMember(703)] internal string Font;
+
+        internal PacketCountdown() { } // for deserialization
+
+        internal PacketCountdown(string key, string text, int remainingSeconds, string font = "Red")
+        {
+            Key = key;
+            Text = text;
+            RemainingSeconds = remainingSeconds;
+            Font = font;
+        }
+
+        internal override void Received()
+        {
+            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+            {
+                if (RemainingSeconds <= 0)
+                    NotificationInstance.CancelCountdown(Key);
+                else
+                    NotificationInstance.StartCountdown(Key, Text, RemainingSeconds, Font);
+            });
         }
     }
 

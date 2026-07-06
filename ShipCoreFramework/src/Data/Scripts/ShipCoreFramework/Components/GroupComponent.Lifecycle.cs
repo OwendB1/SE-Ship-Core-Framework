@@ -110,7 +110,7 @@ namespace ShipCoreFramework
 
         private bool IsCoreRecoveryGraceActive()
         {
-            return _coreRecoveryGraceActive &&
+            return (_coreRecoveryGraceActive || _coreRecoveryGraceStartTick != 0) &&
                    !_missingCoreConfirmedAbsent &&
                    MainCoreComponent == null &&
                    !Deactivated &&
@@ -118,7 +118,7 @@ namespace ShipCoreFramework
                    !Session.IsShuttingDown;
         }
 
-        private void StartCoreRecoveryGrace(string reason)
+        private void ScheduleCoreRecoveryGrace(string reason)
         {
             if (_missingCoreConfirmedAbsent || MainCoreComponent != null || Deactivated || _closing)
                 return;
@@ -126,21 +126,110 @@ namespace ShipCoreFramework
             if (!HasPotentialCoreBlocksInGroup())
                 return;
 
-            if (!_coreRecoveryGraceActive)
-                Utils.Log("CoreRecoveryGrace: enabled for group " + GetThreadWorkKey() +
-                          ". Reason: " + reason, 1);
+            if (_coreRecoveryGraceActive || _coreRecoveryGraceStartTick != 0)
+                return;
+
+            _coreRecoveryGraceStartTick = Session.CurrentTick + CoreRecoveryGraceStartDelayTicks;
+            _nextCoreRecoveryGraceNotificationTick = 0;
+            _lastCoreRecoveryGraceNotificationSeconds = -1;
+            Utils.Log("CoreRecoveryGrace: transient no-core guard scheduled for group " + GetThreadWorkKey() +
+                      ". Countdown starts at tick " + _coreRecoveryGraceStartTick +
+                      ". Reason: " + reason, 1);
+        }
+
+        private void TryStartCoreRecoveryGraceCountdown(string reason)
+        {
+            if (_coreRecoveryGraceActive || _coreRecoveryGraceStartTick == 0) return;
+            if (Session.CurrentTick < _coreRecoveryGraceStartTick) return;
+
+            if (!HasPotentialCoreBlocksInGroup())
+            {
+                ClearCoreRecoveryGrace("core block absent before grace countdown", true);
+                ApplyNoCoreStateAfterGraceExpired();
+                return;
+            }
+
+            var graceTicks = SecondsToTicks(Session.Config == null ? 30 : Session.Config.NoCoreGraceSeconds);
+            if (graceTicks <= 0)
+            {
+                ClearCoreRecoveryGrace("no-core grace disabled", true);
+                ApplyNoCoreStateAfterGraceExpired();
+                return;
+            }
 
             _coreRecoveryGraceActive = true;
+            _coreRecoveryGraceStartTick = 0;
+            _coreRecoveryGraceExpireTick = Session.CurrentTick + graceTicks;
+            _nextCoreRecoveryGraceNotificationTick = 0;
+            _lastCoreRecoveryGraceNotificationSeconds = -1;
+
+            Utils.Log("CoreRecoveryGrace: countdown started for group " + GetThreadWorkKey() +
+                      ". Expires at tick " + _coreRecoveryGraceExpireTick +
+                      ". Reason: " + reason, 1);
+
+            NotifyCoreRecoveryGraceCountdown(true);
+        }
+
+        private void NotifyCoreRecoveryGraceCountdown(bool force)
+        {
+            if (!_coreRecoveryGraceActive || _coreRecoveryGraceExpireTick == 0) return;
+
+            var remainingSeconds = TicksToCeilingSeconds(_coreRecoveryGraceExpireTick - Session.CurrentTick);
+            if (remainingSeconds <= 0) return;
+
+            if (!force &&
+                Session.CurrentTick < _nextCoreRecoveryGraceNotificationTick &&
+                remainingSeconds == _lastCoreRecoveryGraceNotificationSeconds)
+                return;
+
+            _lastCoreRecoveryGraceNotificationSeconds = remainingSeconds;
+            _nextCoreRecoveryGraceNotificationTick = Session.CurrentTick +
+                                                     (remainingSeconds <= 10 ? TicksPerSecond : TicksPerSecond * 5);
+            BroadcastGroupCountdown(GetCoreRecoveryGraceCountdownKey(), "No core reset in", remainingSeconds,
+                _coreRecoveryGraceNotificationRecipients);
+        }
+
+        private string GetCoreRecoveryGraceCountdownKey()
+        {
+            return "no-core-grace:" + GetRepresentativeGridId();
+        }
+
+        private void ExpireCoreRecoveryGrace()
+        {
+            if (!_coreRecoveryGraceActive) return;
+
+            ClearCoreRecoveryGrace("no-core grace countdown expired", true);
+            ApplyNoCoreStateAfterGraceExpired();
+        }
+
+        private void ApplyNoCoreStateAfterGraceExpired()
+        {
+            if (_closing || Deactivated || MainCoreComponent != null || Session.IsShuttingDown) return;
+
+            Utils.Log("CoreRecoveryGrace: applying no-core state after grace for group " +
+                      GetThreadWorkKey() + ".", 1);
+            ClearMissingCoreRescan();
+            RefreshPunishmentState();
+            OnUpgradeModulesChanged();
         }
 
         private void ClearCoreRecoveryGrace(string reason, bool confirmedAbsent)
         {
-            var wasActive = _coreRecoveryGraceActive;
+            var wasActive = _coreRecoveryGraceActive || _coreRecoveryGraceStartTick != 0 ||
+                            _coreRecoveryGraceExpireTick != 0;
             _coreRecoveryGraceActive = false;
+            _coreRecoveryGraceStartTick = 0;
+            _coreRecoveryGraceExpireTick = 0;
+            _nextCoreRecoveryGraceNotificationTick = 0;
+            _lastCoreRecoveryGraceNotificationSeconds = -1;
             if (confirmedAbsent)
                 _missingCoreConfirmedAbsent = true;
             else if (MainCoreComponent != null)
                 _missingCoreConfirmedAbsent = false;
+
+            if (wasActive)
+                BroadcastGroupCountdown(GetCoreRecoveryGraceCountdownKey(), string.Empty, 0,
+                    _coreRecoveryGraceNotificationRecipients);
 
             if (wasActive || confirmedAbsent)
                 Utils.Log("CoreRecoveryGrace: cleared for group " + GetThreadWorkKey() +
@@ -429,11 +518,19 @@ namespace ShipCoreFramework
         internal void ScheduleMissingCoreRescan()
         {
             if (_closing || Deactivated || MainCoreComponent != null) return;
+            if (!HasPotentialCoreBlocksInGroup())
+            {
+                ClearCoreRecoveryGrace("no potential core blocks in group", true);
+                return;
+            }
+
+            _missingCoreConfirmedAbsent = false;
+            ScheduleCoreRecoveryGrace("missing main core rescan scheduled");
+
             if (_nextMissingCoreRescanTick != 0) return;
-            if (_missingCoreRescanAttempts >= MissingCoreRescanMaxAttempts) return;
+            if (_missingCoreRescanAttempts >= MissingCoreRescanMaxAttempts && !IsCoreRecoveryGraceActive()) return;
 
             _nextMissingCoreRescanTick = Session.CurrentTick + MissingCoreRescanInitialDelayTicks;
-            StartCoreRecoveryGrace("missing main core rescan scheduled");
         }
 
         internal void RunMissingCoreRescanTick()
@@ -448,6 +545,20 @@ namespace ShipCoreFramework
             {
                 ClearMissingCoreRescan();
                 return;
+            }
+
+            TryStartCoreRecoveryGraceCountdown("main core still missing after transient guard");
+            if (_missingCoreConfirmedAbsent)
+                return;
+
+            if (_coreRecoveryGraceActive)
+            {
+                NotifyCoreRecoveryGraceCountdown(false);
+                if (_coreRecoveryGraceExpireTick != 0 && Session.CurrentTick >= _coreRecoveryGraceExpireTick)
+                {
+                    ExpireCoreRecoveryGrace();
+                    return;
+                }
             }
 
             if (_nextMissingCoreRescanTick == 0 || Session.CurrentTick < _nextMissingCoreRescanTick)
@@ -474,6 +585,12 @@ namespace ShipCoreFramework
 
             if (_missingCoreRescanAttempts >= MissingCoreRescanMaxAttempts)
             {
+                if (IsCoreRecoveryGraceActive())
+                {
+                    _nextMissingCoreRescanTick = Session.CurrentTick + MissingCoreRescanRetryDelayTicks;
+                    return;
+                }
+
                 _nextMissingCoreRescanTick = 0;
                 if (foundCore)
                     Utils.Log("Missing core rescan found core blocks but none could become main for group " + GetThreadWorkKey(), 1);
