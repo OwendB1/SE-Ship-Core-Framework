@@ -257,6 +257,9 @@ namespace ShipCoreFramework
 
             Utils.ShowNotification(
                 $"Switching to new main core: {newMain.CoreBlock.CustomName}, old one was no longer functional!");
+            Utils.Log("EnsureWorkingMainCore: switching main core from " + currentMain.SubtypeId +
+                      " to " + newMain.SubtypeId + " for group " + GetThreadWorkKey() +
+                      " because the old main core is not working.", 1);
 
             currentMain.IsMainCore = false;
             MainCoreComponent = newMain;

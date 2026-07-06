@@ -57,6 +57,7 @@ namespace ShipCoreFramework
             if (!isIgnoredNpcGrid &&
                 PerFactionManager.TryGetMinFactionRankViolation(shipCoreConfig, rankFaction, rankOwnerId, out rankFailureReason))
             {
+                Utils.Log($"Core init rejected for {SubtypeId} on {CoreBlock.CubeGrid.CustomName}: {rankFailureReason}", 1);
                 Utils.ShowNotification(rankFailureReason, builder);
                 CoreBlock.SlimBlock.RemoveAndRefund();
                 return false;
@@ -72,6 +73,7 @@ namespace ShipCoreFramework
 
             if (CheckIfCoreOfOtherTypeExists())
             {
+                Utils.Log($"Core init rejected for {SubtypeId} on {CoreBlock.CubeGrid.CustomName}: other core type exists in mechanical group.", 1);
                 Utils.ShowNotification($"Other Core Type Exists In Mechanical Group: {CoreBlock.CubeGrid.CustomName}", builder);
                 CoreBlock.SlimBlock.RemoveAndRefund();
                 return false;
@@ -80,6 +82,7 @@ namespace ShipCoreFramework
             if (groupComponent.CoreDictionary.Count > groupComponent.ShipCore?.MaxBackupCores &&
                 groupComponent.ShipCore?.MaxBackupCores > 0)
             {
+                Utils.Log($"Core init rejected for {SubtypeId} on {CoreBlock.CubeGrid.CustomName}: backup core count {groupComponent.CoreDictionary.Count}/{groupComponent.ShipCore.MaxBackupCores}.", 1);
                 Utils.ShowNotification($"This core exceeds max number of backup cores: {CoreBlock.CubeGrid.CustomName}", builder);
                 CoreBlock.SlimBlock.RemoveAndRefund();
                 return false;
@@ -98,6 +101,7 @@ namespace ShipCoreFramework
                 }
                 else
                 {
+                    Utils.Log($"Core init rejected for {SubtypeId} on {CoreBlock.CubeGrid.CustomName}: builder {builder} is not friendly to owner.", 1);
                     Utils.ShowNotification("Cores can only be built by friendlies!", builder);
                     CoreBlock.SlimBlock.RemoveAndRefund();
                     return false;
@@ -113,6 +117,7 @@ namespace ShipCoreFramework
             else
             {
                 IsMainCore = false;
+                Utils.Log($"Core Initial: {SubtypeId} registered as backup core on {CoreBlock.CubeGrid.CustomName}.", 2);
             }
 
             if (!isIgnoredNpcGrid && _groupComponent.ShouldDeferOwnerLimitValidation(SubtypeId))
@@ -138,6 +143,7 @@ namespace ShipCoreFramework
                     return true;
                 }
 
+                Utils.Log($"Core init rejected for {SubtypeId} on {CoreBlock.CubeGrid.CustomName}: owner, faction, or manifest limits failed.", 1);
                 CoreBlock.SlimBlock.RemoveAndRefund();
                 _groupComponent.ResetCore();
                 return false;

@@ -87,7 +87,7 @@ namespace ShipCoreFramework
             }
 
             if (!IsRelevantFactionStateChange(action)) return;
-            Utils.Log($"FactionStateChanged: {action} from {fromFactionId} to {toFactionId} for faction {factionId} and player {playerId}");
+            Utils.Log($"FactionStateChanged: {action} from {fromFactionId} to {toFactionId} for faction {factionId} and player {playerId}", 1);
 
             if (action == MyFactionStateChange.RemoveFaction)
             {

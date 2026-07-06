@@ -62,6 +62,7 @@ namespace ShipCoreFramework
                     {
                         if (previousOwnerId != 0)
                         {
+                            Utils.Log($"OwnerId: Limit validation failed for new owner {ownerId}; reverting group {GetThreadWorkKey()} to previous owner {previousOwnerId}. FactionOk={isWithinFactionLimits}, PlayerOk={isWithinPlayerLimits}", 1);
                             var cube = MainCoreComponent?.CoreBlock as MyCubeBlock;
                             cube?.ChangeOwner(previousOwnerId, MyOwnershipShareModeEnum.Faction);
                             ownerId = previousOwnerId;
@@ -69,6 +70,7 @@ namespace ShipCoreFramework
                         }
                         else
                         {
+                            Utils.Log($"OwnerId: Limit validation failed for owner {ownerId} on group {GetThreadWorkKey()}; scheduling deferred validation. FactionOk={isWithinFactionLimits}, PlayerOk={isWithinPlayerLimits}", 1);
                             ScheduleExternalLimitValidation();
                         }
                     }

@@ -88,7 +88,7 @@ namespace ShipCoreFramework
             }
 
             if (punishments.Count > 0)
-                Utils.Log($"Action Taken against Grid{gridName} in NoFlyZone: {zone.Id}", 3);
+                Utils.Log($"NoFlyZone: applied {punishments.Count} punishments to grid {gridName} in zone {zone.Id}", 2);
         }
 
         private static List<PendingNoFlyPunishment> BuildPunishments(GroupComponent groupComponent, Zones zone, List<IMySlimBlock> blocks)

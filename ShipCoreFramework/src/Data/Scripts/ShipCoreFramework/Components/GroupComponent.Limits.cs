@@ -90,11 +90,24 @@ namespace ShipCoreFramework
         {
             if (Deactivated || IsIgnoredByAiOrFactionTagThreadSafe())
             {
+                var wasPunishing = PunishLimitedBlocks;
                 PunishLimitedBlocks = false;
+                if (wasPunishing)
+                    Utils.Log("RefreshLimitedBlockPunishmentState: cleared limited block punishment for ignored/deactivated group " +
+                              GetThreadWorkKey() + ".", 1);
                 return;
             }
 
+            var previous = PunishLimitedBlocks;
             PunishLimitedBlocks = IsMinimumBlocksLimitedBlockGateTriggered() || HasConnectedBlacklistingCoreGroup();
+            if (previous != PunishLimitedBlocks)
+            {
+                var reasons = GetLimitedBlockPunishmentGateDescriptions();
+                Utils.Log("RefreshLimitedBlockPunishmentState: " +
+                          (PunishLimitedBlocks ? "enabled" : "cleared") +
+                          " limited block punishment for group " + GetThreadWorkKey() +
+                          (reasons.Count == 0 ? "." : ". Reasons: " + string.Join("; ", reasons)), 1);
+            }
         }
 
         internal List<string> GetLimitedBlockPunishmentGateDescriptions()
@@ -124,6 +137,9 @@ namespace ShipCoreFramework
         {
             if (_closing) return;
             _pendingExternalLimitValidationTick = Session.CurrentTick + ExternalLimitValidationDelayTicks;
+            Utils.Log("ScheduleExternalLimitValidation: group=" + GetThreadWorkKey() +
+                      ", owner=" + _lastOwnerId +
+                      ", tick=" + _pendingExternalLimitValidationTick + ".", 2);
         }
 
         internal bool IsLimitPunishmentDeferred()
@@ -195,6 +211,8 @@ namespace ShipCoreFramework
 
             if (LimitsNexusSync.IsSettling)
             {
+                Utils.Log("RunExternalLimitValidationTick: Nexus settling, rescheduling validation for group " +
+                          GetThreadWorkKey() + ".", 2);
                 ScheduleExternalLimitValidation();
                 return;
             }
@@ -228,6 +246,8 @@ namespace ShipCoreFramework
             if (IsIgnoredNpcGroup()) return;
             if (ShouldDeferOwnerLimitValidation(subtypeId))
             {
+                Utils.Log("ExecuteExternalLimitValidation: owner unavailable for " + subtypeId +
+                          " on group " + GetThreadWorkKey() + "; rescheduling.", 2);
                 ScheduleExternalLimitValidation();
                 return;
             }
@@ -237,6 +257,9 @@ namespace ShipCoreFramework
                 PerManifestGroupManager.IsGroupWithinManifestLimits(subtypeId, OwnerId))
                 return;
 
+            Utils.Log("ExecuteExternalLimitValidation: removing core " + subtypeId +
+                      " from group " + GetThreadWorkKey() +
+                      " because owner, faction, or manifest limits failed.", 1);
             mainCore.CoreBlock.SlimBlock.RemoveAndRefund();
             ResetCore();
         }

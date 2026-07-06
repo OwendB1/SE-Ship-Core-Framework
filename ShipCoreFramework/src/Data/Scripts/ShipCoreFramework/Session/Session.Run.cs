@@ -31,6 +31,8 @@ namespace ShipCoreFramework
             var physicalGroups = new List<IMyGridGroupData>();
             MyAPIGateway.GridGroups.GetGridGroups(GridLinkTypeEnum.Mechanical, mechanicalGroups);
             MyAPIGateway.GridGroups.GetGridGroups(GridLinkTypeEnum.Physical, physicalGroups);
+            Utils.Log("BeforeStart: found " + mechanicalGroups.Count + " mechanical groups and " +
+                      physicalGroups.Count + " physical groups for initial scan.", 1);
 
             IsInitialGroupScan = true;
             try
@@ -61,6 +63,8 @@ namespace ShipCoreFramework
             
             Networking.Register();
             Config.LoadConfig(IsServer);
+            Utils.Log("LoadData: MpActive=" + MpActive + ", IsServer=" + IsServer +
+                      ", IsClient=" + IsClient + ", Dedicated=" + MyAPIGateway.Utilities.IsDedicated + ".", 1);
             _myNexusApi = new NexusAPI(OnNexusEnabled);
 
             if (IsServer)
@@ -84,13 +88,14 @@ namespace ShipCoreFramework
             if(IsServer)
             {
                 MyAPIGateway.Multiplayer.RegisterSecureMessageHandler(CommandsSyncId, Commands.ServerMessageHandler);
-                Utils.Log("Ship Cores: Awaiting Commands From Clients");
+                Utils.Log("Ship Cores: Awaiting Commands From Clients", 1);
             }
             if (IsServer) Config.SaveConfig();
         }
 
         protected override void UnloadData()
         {
+            Utils.Log("UnloadData: shutting down Ship Core Framework session.", 1);
             IsShuttingDown = true;
             ThreadWork.CancelAll("Session unload");
             MyAPIGateway.Session.OnSessionReady -= SessionReady;
@@ -133,6 +138,7 @@ namespace ShipCoreFramework
             }
             GroupDict.Clear();
             GameThreadId = 0;
+            Utils.Log("UnloadData: Ship Core Framework session unloaded.", 1);
         }
         
         private void OnNexusEnabled()

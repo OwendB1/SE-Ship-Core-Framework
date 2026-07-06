@@ -72,6 +72,9 @@ namespace ShipCoreFramework
 
             foreach (KeyValuePair<long, MyFactionMember> member in faction.Members)
                 TrackFactionIdentity(member.Key, faction.Tag);
+
+            Utils.Log("PerFactionManager::TrackFactionMembers: scanned faction " + faction.Tag +
+                      " (" + factionId + ") with " + faction.Members.Count + " members.", 2);
         }
 
         internal static void TrackFactionIdentity(long identityId, long factionId)
@@ -267,6 +270,8 @@ namespace ShipCoreFramework
                 if (MyAPIGateway.Session == null)
                     return;
 
+                int playerCountBefore = PlayerIdentityIds.Count;
+                int nonPlayerCountBefore = NonPlayerIdentityIds.Count;
                 var checkpoint = MyAPIGateway.Session.GetCheckpoint(MyAPIGateway.Session.Name);
                 if (checkpoint == null)
                     return;
@@ -294,10 +299,14 @@ namespace ShipCoreFramework
                             MarkPlayerIdentity(playerItem.PlayerId);
                     }
                 }
+
+                Utils.Log("PerFactionManager::CacheCheckpointIdentities: added " +
+                          (PlayerIdentityIds.Count - playerCountBefore) + " player identities and " +
+                          (NonPlayerIdentityIds.Count - nonPlayerCountBefore) + " non-player identities from checkpoint.", 2);
             }
             catch (Exception ex)
             {
-                Utils.Log("PerFactionManager::CacheCheckpointIdentities failed: " + ex.Message, 0);
+                Utils.Log("PerFactionManager::CacheCheckpointIdentities failed: " + ex.Message, 1);
             }
         }
 
@@ -308,6 +317,7 @@ namespace ShipCoreFramework
                 if (MyAPIGateway.Players == null)
                     return;
 
+                int registeredCountBefore = RegisteredIdentityIds.Count;
                 var identities = new List<IMyIdentity>();
                 MyAPIGateway.Players.GetAllIdentites(identities);
                 foreach (IMyIdentity identity in identities)
@@ -315,10 +325,13 @@ namespace ShipCoreFramework
                     if (identity != null && identity.IdentityId > 0)
                         RegisteredIdentityIds.TryAdd(identity.IdentityId, 0);
                 }
+
+                Utils.Log("PerFactionManager::CacheRegisteredIdentities: added " +
+                          (RegisteredIdentityIds.Count - registeredCountBefore) + " registered identities from GetAllIdentites.", 2);
             }
             catch (Exception ex)
             {
-                Utils.Log("PerFactionManager::CacheRegisteredIdentities failed: " + ex.Message, 0);
+                Utils.Log("PerFactionManager::CacheRegisteredIdentities failed: " + ex.Message, 1);
             }
         }
 
@@ -329,6 +342,8 @@ namespace ShipCoreFramework
                 if (MyAPIGateway.Players == null)
                     return;
 
+                int playerCountBefore = PlayerIdentityIds.Count;
+                int nonPlayerCountBefore = NonPlayerIdentityIds.Count;
                 var players = new List<IMyPlayer>();
                 MyAPIGateway.Players.GetPlayers(players);
                 foreach (IMyPlayer player in players)
@@ -341,10 +356,15 @@ namespace ShipCoreFramework
                     else
                         MarkPlayerIdentity(player.IdentityId);
                 }
+
+                Utils.Log("PerFactionManager::CacheOnlinePlayers: scanned " + players.Count +
+                          " online players, added " + (PlayerIdentityIds.Count - playerCountBefore) +
+                          " player identities and " + (NonPlayerIdentityIds.Count - nonPlayerCountBefore) +
+                          " non-player identities.", 2);
             }
             catch (Exception ex)
             {
-                Utils.Log("PerFactionManager::CacheOnlinePlayers failed: " + ex.Message, 0);
+                Utils.Log("PerFactionManager::CacheOnlinePlayers failed: " + ex.Message, 1);
             }
         }
 
@@ -374,7 +394,7 @@ namespace ShipCoreFramework
             }
             catch (Exception ex)
             {
-                Utils.Log("PerFactionManager::RefreshRegisteredIdentity failed for " + identityId + ": " + ex.Message, 0);
+                Utils.Log("PerFactionManager::RefreshRegisteredIdentity failed for " + identityId + ": " + ex.Message, 1);
             }
 
             return false;
@@ -388,7 +408,7 @@ namespace ShipCoreFramework
             }
             catch (Exception ex)
             {
-                Utils.Log("PerFactionManager::TryGetSteamId failed for " + identityId + ": " + ex.Message, 0);
+                Utils.Log("PerFactionManager::TryGetSteamId failed for " + identityId + ": " + ex.Message, 1);
                 return 0;
             }
         }
@@ -401,7 +421,7 @@ namespace ShipCoreFramework
             }
             catch (Exception ex)
             {
-                Utils.Log("PerFactionManager::TryGetActivePlayer failed for " + identityId + ": " + ex.Message, 0);
+                Utils.Log("PerFactionManager::TryGetActivePlayer failed for " + identityId + ": " + ex.Message, 1);
                 return null;
             }
         }
@@ -441,7 +461,7 @@ namespace ShipCoreFramework
                       ", knownPlayer=" + PlayerIdentityIds.ContainsKey(identityId) +
                       ", knownNonPlayer=" + NonPlayerIdentityIds.ContainsKey(identityId) +
                       ", counts=" + counts +
-                      ", reason=" + reason, counts ? 3 : 1);
+                      ", reason=" + reason, counts ? 2 : 1);
         }
 
         internal static bool HasFactionCoreLimit(ShipCore core)
