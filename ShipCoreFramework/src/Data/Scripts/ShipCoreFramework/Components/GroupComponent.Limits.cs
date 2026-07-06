@@ -336,6 +336,10 @@ namespace ShipCoreFramework
                 }
             }
 
+            if (pendingPunishments.Count > 0)
+                Utils.Log("EnforceGroupPunishment: queued " + pendingPunishments.Count +
+                          " block punishments for group " + GetThreadWorkKey() +
+                          ", forceShutOff=" + forceShutOffPunishment + ".", 1);
             ExecutePendingPunishments(pendingPunishments);
         }
 
@@ -399,7 +403,11 @@ namespace ShipCoreFramework
                 }
 
                 if (appliedPunishments > 0 && MyGroup != null)
+                {
+                    Utils.Log("ExecutePendingPunishments: applied " + appliedPunishments +
+                              " block punishments for group " + GetThreadWorkKey() + ".", 1);
                     ModAPI.BroadcastLimitsEnforced(representativeGridId, appliedPunishments);
+                }
             });
         }
 

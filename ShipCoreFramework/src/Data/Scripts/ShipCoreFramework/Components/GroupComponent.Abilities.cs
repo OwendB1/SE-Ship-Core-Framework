@@ -274,6 +274,8 @@ namespace ShipCoreFramework
 
         private void ApplyPunishmentFlags(GroupPunishmentFlags punishments)
         {
+            var previousPunishSpeed = PunishSpeed;
+            var previousPunishModifiers = PunishModifiers;
             var punishSpeed = (punishments & GroupPunishmentFlags.Speed) != 0;
             if (PunishSpeed != punishSpeed)
                 InvalidateSpeedStateCache();
@@ -284,6 +286,24 @@ namespace ShipCoreFramework
 
             PunishSpeed = punishSpeed;
             PunishModifiers = punishModifiers;
+
+            if (previousPunishSpeed != PunishSpeed)
+            {
+                var reasons = GetSpeedPunishmentGateDescriptions();
+                Utils.Log("ApplyPunishmentFlags: speed punishment " +
+                          (PunishSpeed ? "enabled" : "cleared") +
+                          " for group " + GetThreadWorkKey() +
+                          (reasons.Count == 0 ? "." : ". Reasons: " + string.Join("; ", reasons)), 1);
+            }
+
+            if (previousPunishModifiers != PunishModifiers)
+            {
+                var reasons = GetModifierPunishmentGateDescriptions();
+                Utils.Log("ApplyPunishmentFlags: modifier punishment " +
+                          (PunishModifiers ? "enabled" : "cleared") +
+                          " for group " + GetThreadWorkKey() +
+                          (reasons.Count == 0 ? "." : ". Reasons: " + string.Join("; ", reasons)), 1);
+            }
         }
 
         private GridDefenseModifiers GetCurrentDefenseModifiers()
