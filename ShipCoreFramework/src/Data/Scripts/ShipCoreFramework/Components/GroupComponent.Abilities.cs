@@ -42,6 +42,13 @@ namespace ShipCoreFramework
             var mainCoreChanged = EnsureWorkingMainCore();
             var previousPunishModifiers = PunishModifiers;
 
+            if (IsCoreRecoveryGraceActive())
+            {
+                ClearCoreRecoveryGracePunishmentState();
+                RefreshDefenseModifierCache();
+                return;
+            }
+
             RefreshLimitedBlockPunishmentState();
             RefreshPunishmentFlags();
             RefreshModifierStateCache();
@@ -51,6 +58,12 @@ namespace ShipCoreFramework
 
         internal void RefreshPunishmentFlags()
         {
+            if (IsCoreRecoveryGraceActive())
+            {
+                ClearCoreRecoveryGracePunishmentState();
+                return;
+            }
+
             if (Deactivated || IsIgnoredByAiOrFactionTagThreadSafe())
             {
                 PunishSpeed = false;
@@ -361,6 +374,13 @@ namespace ShipCoreFramework
 
         internal void ApplyModifiers(GridModifiers modifiers)
         {
+            if (IsCoreRecoveryGraceActive())
+            {
+                Utils.Log("ApplyModifiers: suppressed modifier application during core recovery grace for group " +
+                          GetThreadWorkKey() + ".", 2);
+                return;
+            }
+
             if (!Session.IsGameThread)
             {
                 var groupKey = GetThreadWorkKey();

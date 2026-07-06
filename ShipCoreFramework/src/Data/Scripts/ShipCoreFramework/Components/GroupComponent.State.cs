@@ -79,6 +79,8 @@ namespace ShipCoreFramework
         private string _registeredCoreLimitSubtypeId = string.Empty;
         private long _registeredCoreLimitOwnerId;
         private long _registeredCoreLimitFactionId = -1;
+        private bool _coreRecoveryGraceActive;
+        private bool _missingCoreConfirmedAbsent;
         private int _nextMissingCoreRescanTick;
         private int _missingCoreRescanAttempts;
         internal int LastSpeedStateUpdateTick = -1;

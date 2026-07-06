@@ -93,6 +93,61 @@ namespace ShipCoreFramework
             return coreBlocks.Count > 0;
         }
 
+        private bool HasPotentialCoreBlocksInGroup()
+        {
+            var coreBlocks = new List<IMySlimBlock>();
+            foreach (var grid in GridDictionary.Keys)
+            {
+                if (grid == null || grid.MarkedForClose || grid.Closed) continue;
+
+                coreBlocks.Clear();
+                ((IMyCubeGrid)grid).GetBlocks(coreBlocks, Utils.IsCoreBlock);
+                if (coreBlocks.Count > 0) return true;
+            }
+
+            return false;
+        }
+
+        private bool IsCoreRecoveryGraceActive()
+        {
+            return _coreRecoveryGraceActive &&
+                   !_missingCoreConfirmedAbsent &&
+                   MainCoreComponent == null &&
+                   !Deactivated &&
+                   !_closing &&
+                   !Session.IsShuttingDown;
+        }
+
+        private void StartCoreRecoveryGrace(string reason)
+        {
+            if (_missingCoreConfirmedAbsent || MainCoreComponent != null || Deactivated || _closing)
+                return;
+
+            if (!HasPotentialCoreBlocksInGroup())
+                return;
+
+            if (!_coreRecoveryGraceActive)
+                Utils.Log("CoreRecoveryGrace: enabled for group " + GetThreadWorkKey() +
+                          ". Reason: " + reason, 1);
+
+            _coreRecoveryGraceActive = true;
+        }
+
+        private void ClearCoreRecoveryGrace(string reason, bool confirmedAbsent)
+        {
+            var wasActive = _coreRecoveryGraceActive;
+            _coreRecoveryGraceActive = false;
+            if (confirmedAbsent)
+                _missingCoreConfirmedAbsent = true;
+            else if (MainCoreComponent != null)
+                _missingCoreConfirmedAbsent = false;
+
+            if (wasActive || confirmedAbsent)
+                Utils.Log("CoreRecoveryGrace: cleared for group " + GetThreadWorkKey() +
+                          ". ConfirmedAbsent=" + confirmedAbsent +
+                          ". Reason: " + reason, 1);
+        }
+
         internal void Activate(CoreComponent coreComponent)
         {
             if (Deactivated)
@@ -110,6 +165,7 @@ namespace ShipCoreFramework
             }
 
             MainCoreComponent = coreComponent;
+            ClearCoreRecoveryGrace("main core activated", false);
             InvalidateGameThreadStateCache(true);
             InvalidateModifierStateCache();
             IncrementLimitGeneration();
@@ -377,6 +433,7 @@ namespace ShipCoreFramework
             if (_missingCoreRescanAttempts >= MissingCoreRescanMaxAttempts) return;
 
             _nextMissingCoreRescanTick = Session.CurrentTick + MissingCoreRescanInitialDelayTicks;
+            StartCoreRecoveryGrace("missing main core rescan scheduled");
         }
 
         internal void RunMissingCoreRescanTick()
@@ -410,6 +467,7 @@ namespace ShipCoreFramework
             var foundCore = TryInitializeMissingCoreBlocks();
             if (MainCoreComponent != null)
             {
+                ClearCoreRecoveryGrace("main core found during rescan", false);
                 ClearMissingCoreRescan();
                 return;
             }
@@ -419,6 +477,9 @@ namespace ShipCoreFramework
                 _nextMissingCoreRescanTick = 0;
                 if (foundCore)
                     Utils.Log("Missing core rescan found core blocks but none could become main for group " + GetThreadWorkKey(), 1);
+                ClearCoreRecoveryGrace(foundCore
+                    ? "core blocks found but none could become main"
+                    : "missing core rescan attempts exhausted", true);
                 return;
             }
 

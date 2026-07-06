@@ -86,8 +86,36 @@ namespace ShipCoreFramework
             return $"Below minimum blocks ({GroupBlocksCount}/{ShipCore.MinBlocks})";
         }
 
+        private void ClearCoreRecoveryGracePunishmentState()
+        {
+            var changed = PunishSpeed || PunishModifiers || PunishLimitedBlocks ||
+                          _minimumBlocksLimitedBlockGateActive || _nextMinimumBlocksGateCheckTick != 0;
+
+            PunishSpeed = false;
+            PunishModifiers = false;
+            PunishLimitedBlocks = false;
+            _minimumBlocksLimitedBlockGateActive = false;
+            _nextMinimumBlocksGateCheckTick = 0;
+            InvalidateSpeedStateCache();
+            InvalidateModifierStateCache();
+
+            if (changed)
+                Utils.Log("CoreRecoveryGrace: cleared punishment state for group " +
+                          GetThreadWorkKey() + ".", 1);
+        }
+
         private void RefreshLimitedBlockPunishmentState()
         {
+            if (IsCoreRecoveryGraceActive())
+            {
+                var wasPunishing = PunishLimitedBlocks;
+                PunishLimitedBlocks = false;
+                if (wasPunishing)
+                    Utils.Log("RefreshLimitedBlockPunishmentState: cleared limited block punishment during core recovery grace for group " +
+                              GetThreadWorkKey() + ".", 1);
+                return;
+            }
+
             if (Deactivated || IsIgnoredByAiOrFactionTagThreadSafe())
             {
                 var wasPunishing = PunishLimitedBlocks;
@@ -125,7 +153,7 @@ namespace ShipCoreFramework
 
         internal bool ShouldForceLimitedBlocksOff()
         {
-            return !Deactivated && !IsIgnoredGroup() && PunishLimitedBlocks;
+            return !IsCoreRecoveryGraceActive() && !Deactivated && !IsIgnoredGroup() && PunishLimitedBlocks;
         }
 
         internal bool ShouldForceLimitedBlocksOff(BlockLimit limit)
@@ -184,6 +212,12 @@ namespace ShipCoreFramework
 
         internal void RunLimitedBlockPunishmentTick()
         {
+            if (IsCoreRecoveryGraceActive())
+            {
+                ClearCoreRecoveryGracePunishmentState();
+                return;
+            }
+
             if (_closing || Deactivated || IsIgnoredGroup())
             {
                 _nextMinimumBlocksGateCheckTick = 0;
@@ -267,6 +301,7 @@ namespace ShipCoreFramework
 
         private void EnforceGroupPunishment(bool forceShutOffPunishment = false)
         {
+            if (IsCoreRecoveryGraceActive()) return;
             if (Deactivated || IsIgnoredGroup()) return;
 
             if (Session.IsGameThread) RefreshPunishmentFlags();

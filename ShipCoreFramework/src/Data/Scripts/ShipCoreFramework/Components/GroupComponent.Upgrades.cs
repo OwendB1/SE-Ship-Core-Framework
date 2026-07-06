@@ -111,6 +111,18 @@ namespace ShipCoreFramework
         {
             RefreshUpgradeModules();
 
+            if (IsCoreRecoveryGraceActive())
+            {
+                ClearCoreRecoveryGracePunishmentState();
+                RefreshGridStateCache();
+                RefreshNoCoreDirectionLockReferenceCache();
+                DefenseValuesChanged();
+                QueueRecalculateAllLimits(false, false);
+                Utils.Log("RefreshGroupStateAndEnforce: skipped no-core enforcement during core recovery grace for group " +
+                          GetThreadWorkKey() + ".", 2);
+                return;
+            }
+
             if (Deactivated || IsIgnoredByAiOrFactionTagThreadSafe())
             {
                 ClearDeactivatedLimitState();
