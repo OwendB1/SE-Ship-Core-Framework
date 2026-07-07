@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using NexusModAPI;
 using Sandbox.Definitions;
 using Sandbox.Game;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.Components;
@@ -26,6 +27,7 @@ namespace ShipCoreFramework
             if (Config.SelectedNoCore == null) return;
             MyAPIGateway.GridGroups.OnGridGroupCreated += GridGroupsOnOnGridGroupCreated;
             MyAPIGateway.GridGroups.OnGridGroupDestroyed += GridGroupsOnOnGridGroupDestroyed;
+            MyCubeGrid.OnBlocksChangeFinishedGlobally += MyCubeGridOnBlocksChangeFinishedGlobally;
             
             var mechanicalGroups = new List<IMyGridGroupData>();
             var physicalGroups = new List<IMyGridGroupData>();
@@ -109,6 +111,7 @@ namespace ShipCoreFramework
             {
                 MyAPIGateway.GridGroups.OnGridGroupCreated -= GridGroupsOnOnGridGroupCreated;
                 MyAPIGateway.GridGroups.OnGridGroupDestroyed -= GridGroupsOnOnGridGroupDestroyed;
+                MyCubeGrid.OnBlocksChangeFinishedGlobally -= MyCubeGridOnBlocksChangeFinishedGlobally;
             }
             catch { /**/ }
 
