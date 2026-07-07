@@ -69,8 +69,7 @@ namespace NexusModAPI
             SendModMsgToServer = 5,
             SendModMsgToAllServers = 6
         }
-
-#pragma warning disable 0649
+        
         [ProtoContract]
         private class ServerDataMsgAPI
         {
@@ -93,6 +92,5 @@ namespace NexusModAPI
             [ProtoMember(30)]
             internal byte[] msgData;
         }
-#pragma warning restore 0649
     }
 }
