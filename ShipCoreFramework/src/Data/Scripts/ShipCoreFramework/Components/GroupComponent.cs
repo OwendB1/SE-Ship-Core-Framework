@@ -18,8 +18,20 @@ namespace ShipCoreFramework
         internal readonly ConcurrentDictionary<MyCubeGrid, GridComponent> GridDictionary =
             new ConcurrentDictionary<MyCubeGrid, GridComponent>();
 
-        internal Dictionary<IMyCubeBlock, CoreComponent> CoreDictionary =>
-            Utils.Flatten(GridDictionary.Values, component => component.CoreDictionary);
+        internal Dictionary<IMyCubeBlock, CoreComponent> CoreDictionary
+        {
+            get
+            {
+                var result = new Dictionary<IMyCubeBlock, CoreComponent>();
+                foreach (var gridComponent in GridDictionary.Values)
+                {
+                    foreach (var kvp in gridComponent.CoreDictionary)
+                        result[kvp.Key] = kvp.Value;
+                }
+
+                return result;
+            }
+        }
 
         private bool TryGetGridComponent(MyCubeGrid grid, out GridComponent component)
         {
@@ -33,7 +45,7 @@ namespace ShipCoreFramework
             GridDictionary.Clear();
         }
 
-        internal string GetThreadWorkKey()
+        internal string GetGroupKey()
         {
             return MyGroup != null ? MyGroup.GetHashCode().ToString() : GetRepresentativeGridId().ToString();
         }

@@ -53,9 +53,9 @@ namespace ShipCoreFramework
             {
                 if (!_hasBounds) return 0d;
 
-                float x = _max.X - _min.X;
-                float y = _max.Y - _min.Y;
-                float z = _max.Z - _min.Z;
+                var x = _max.X - _min.X;
+                var y = _max.Y - _min.Y;
+                var z = _max.Z - _min.Z;
                 if (x > y) Swap(ref x, ref y);
                 if (y > z) Swap(ref y, ref z);
                 if (x > y) Swap(ref x, ref y);
@@ -67,28 +67,28 @@ namespace ShipCoreFramework
         {
             if (vertices == null || indices == null) return;
 
-            for (int i = 0; i + 2 < indices.Length; i += 3)
+            for (var i = 0; i + 2 < indices.Length; i += 3)
             {
-                int localTriangle = i / 3;
+                var localTriangle = i / 3;
                 TriangleIndices.Add(triangleOffset + localTriangle);
 
-                int i0 = indices[i];
-                int i1 = indices[i + 1];
-                int i2 = indices[i + 2];
+                var i0 = indices[i];
+                var i1 = indices[i + 1];
+                var i2 = indices[i + 2];
 
                 if (i0 < 0 || i1 < 0 || i2 < 0 ||
                     i0 >= vertices.Length || i1 >= vertices.Length || i2 >= vertices.Length)
                     continue;
 
-                Vector3 a = vertices[i0];
-                Vector3 b = vertices[i1];
-                Vector3 c = vertices[i2];
+                var a = vertices[i0];
+                var b = vertices[i1];
+                var c = vertices[i2];
 
                 if (uvs != null && i0 < uvs.Length && i1 < uvs.Length && i2 < uvs.Length)
                 {
-                    Vector2 uvA = uvs[i0];
-                    Vector2 uvB = uvs[i1];
-                    Vector2 uvC = uvs[i2];
+                    var uvA = uvs[i0];
+                    var uvB = uvs[i1];
+                    var uvC = uvs[i2];
                     UvTriangles.Add(new ScfMinimalMwmUvTriangle(uvA, uvB, uvC));
                     AddVertexUv(i0, uvA);
                     AddVertexUv(i1, uvB);
@@ -146,7 +146,7 @@ namespace ShipCoreFramework
 
         private static void Swap(ref float a, ref float b)
         {
-            float t = a;
+            var t = a;
             a = b;
             b = t;
         }
@@ -193,7 +193,7 @@ namespace ShipCoreFramework
                 return false;
 
             lodPaths = new List<string>(model.Lods.Count);
-            for (int i = 0; i < model.Lods.Count; i++)
+            for (var i = 0; i < model.Lods.Count; i++)
             {
                 if (model.Lods[i] != null && !string.IsNullOrWhiteSpace(model.Lods[i].Path))
                     lodPaths.Add(model.Lods[i].Path);
@@ -207,17 +207,17 @@ namespace ShipCoreFramework
             model = null;
             if (reader == null || !reader.BaseStream.CanSeek) return false;
 
-            ScfMinimalMwmModel result = new ScfMinimalMwmModel();
+            var result = new ScfMinimalMwmModel();
             try
             {
-                string debugTag = reader.ReadString();
+                var debugTag = reader.ReadString();
                 if (!string.Equals(debugTag, "Debug", StringComparison.Ordinal)) return false;
 
-                string[] debugLines = ReadStringArray(reader);
+                var debugLines = ReadStringArray(reader);
                 result.Version = ReadVersion(debugLines);
                 if (result.Version < IndexedTagVersion) return false;
 
-                Dictionary<string, int> tags = ReadIndexDictionary(reader);
+                var tags = ReadIndexDictionary(reader);
 
                 int lodsOffset;
                 if (tags.TryGetValue("LODs", out lodsOffset))
@@ -244,7 +244,7 @@ namespace ShipCoreFramework
                 Vector2[] uvs = null;
                 if (tags.TryGetValue("TexCoords0", out texCoordsOffset))
                 {
-                    float patternScale = 1f;
+                    var patternScale = 1f;
                     if (tags.TryGetValue("PatternScale", out patternScaleOffset))
                         TryReadPatternScaleTag(reader, patternScaleOffset, out patternScale);
                     TryReadTexCoordsTag(reader, texCoordsOffset, patternScale, Vector2.Zero, out uvs);
@@ -266,9 +266,9 @@ namespace ShipCoreFramework
             const string prefix = "Version:";
             if (debugLines == null) return 0;
 
-            for (int i = 0; i < debugLines.Length; i++)
+            for (var i = 0; i < debugLines.Length; i++)
             {
-                string line = debugLines[i];
+                var line = debugLines[i];
                 if (line == null || !line.StartsWith(prefix, StringComparison.Ordinal)) continue;
 
                 int version;
@@ -280,18 +280,18 @@ namespace ShipCoreFramework
 
         private static string[] ReadStringArray(BinaryReader reader)
         {
-            int count = reader.ReadInt32();
-            string[] result = new string[count];
-            for (int i = 0; i < count; i++)
+            var count = reader.ReadInt32();
+            var result = new string[count];
+            for (var i = 0; i < count; i++)
                 result[i] = reader.ReadString();
             return result;
         }
 
         private static Dictionary<string, int> ReadIndexDictionary(BinaryReader reader)
         {
-            int count = reader.ReadInt32();
-            Dictionary<string, int> result = new Dictionary<string, int>(count, StringComparer.Ordinal);
-            for (int i = 0; i < count; i++)
+            var count = reader.ReadInt32();
+            var result = new Dictionary<string, int>(count, StringComparer.Ordinal);
+            for (var i = 0; i < count; i++)
                 result[reader.ReadString()] = reader.ReadInt32();
             return result;
         }
@@ -301,11 +301,11 @@ namespace ShipCoreFramework
             vertices = null;
             if (!SeekTag(reader, offset, "Vertices")) return false;
 
-            int count = reader.ReadInt32();
+            var count = reader.ReadInt32();
             vertices = new Vector3[count];
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
-                ulong packed = reader.ReadUInt64();
+                var packed = reader.ReadUInt64();
                 vertices[i] = new Vector3(
                     HalfToFloat((ushort)(packed & 0xffff)),
                     HalfToFloat((ushort)((packed >> 16) & 0xffff)),
@@ -323,12 +323,12 @@ namespace ShipCoreFramework
 
             if (Math.Abs(patternScale) < 1e-6f) patternScale = 1f;
 
-            int count = reader.ReadInt32();
+            var count = reader.ReadInt32();
             uvs = new Vector2[count];
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
-                uint packed = reader.ReadUInt32();
-                Vector2 vector = new Vector2(
+                var packed = reader.ReadUInt32();
+                var vector = new Vector2(
                     HalfToFloat((ushort)(packed & 0xffff)),
                     HalfToFloat((ushort)((packed >> 16) & 0xffff))) / patternScale + offsetUv;
                 uvs[i] = new Vector2(vector.X, 0f - vector.Y);
@@ -339,13 +339,13 @@ namespace ShipCoreFramework
         {
             if (lods == null || !SeekTag(reader, offset, "LODs")) return;
 
-            int count = reader.ReadInt32();
+            var count = reader.ReadInt32();
             if (count < 0) return;
 
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
-                float distance = reader.ReadSingle();
-                string path = reader.ReadString();
+                var distance = reader.ReadSingle();
+                var path = reader.ReadString();
                 SkipOptionalNullTerminator(reader);
 
                 if (!string.IsNullOrWhiteSpace(path))
@@ -363,10 +363,10 @@ namespace ShipCoreFramework
         {
             if (reader == null || !reader.BaseStream.CanSeek) return;
 
-            Stream stream = reader.BaseStream;
+            var stream = reader.BaseStream;
             if (stream.Position >= stream.Length) return;
 
-            long position = stream.Position;
+            var position = stream.Position;
             if (reader.ReadByte() != 0)
                 stream.Position = position;
         }
@@ -385,16 +385,16 @@ namespace ShipCoreFramework
         {
             if (!SeekTag(reader, offset, "MeshParts")) return;
 
-            int count = reader.ReadInt32();
-            int globalTriangleOffset = 0;
+            var count = reader.ReadInt32();
+            var globalTriangleOffset = 0;
 
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
                 reader.ReadInt32();
                 if (version < 1052001) reader.ReadInt32();
 
-                int[] indices = ReadIntArray(reader);
-                int partTriangleCount = indices != null ? indices.Length / 3 : 0;
+                var indices = ReadIntArray(reader);
+                var partTriangleCount = indices != null ? indices.Length / 3 : 0;
 
                 string material = null;
                 if (reader.ReadBoolean())
@@ -423,16 +423,16 @@ namespace ShipCoreFramework
 
         private static int[] ReadIntArray(BinaryReader reader)
         {
-            int count = reader.ReadInt32();
-            int[] result = new int[count];
-            for (int i = 0; i < count; i++)
+            var count = reader.ReadInt32();
+            var result = new int[count];
+            for (var i = 0; i < count; i++)
                 result[i] = reader.ReadInt32();
             return result;
         }
 
         private static string ReadMaterialDescriptor(BinaryReader reader, int version)
         {
-            string materialName = reader.ReadString();
+            var materialName = reader.ReadString();
             if (version < 1052002)
             {
                 reader.ReadString();
@@ -447,11 +447,11 @@ namespace ShipCoreFramework
 
             if (version < 1157001)
             {
-                for (int i = 0; i < 7; i++)
+                for (var i = 0; i < 7; i++)
                     reader.ReadSingle();
             }
 
-            string technique = version < 1052001 ? reader.ReadInt32().ToString() : reader.ReadString();
+            var technique = version < 1052001 ? reader.ReadInt32().ToString() : reader.ReadString();
             if (technique == "GLASS")
             {
                 if (version >= 1043001)
@@ -462,7 +462,7 @@ namespace ShipCoreFramework
                 }
                 else
                 {
-                    for (int i = 0; i < 4; i++)
+                    for (var i = 0; i < 4; i++)
                         reader.ReadSingle();
                 }
             }
@@ -472,8 +472,8 @@ namespace ShipCoreFramework
 
         private static void SkipStringDictionary(BinaryReader reader)
         {
-            int count = reader.ReadInt32();
-            for (int i = 0; i < count; i++)
+            var count = reader.ReadInt32();
+            for (var i = 0; i < count; i++)
             {
                 reader.ReadString();
                 reader.ReadString();
@@ -483,15 +483,15 @@ namespace ShipCoreFramework
         private static bool SeekTag(BinaryReader reader, int offset, string expectedTag)
         {
             reader.BaseStream.Position = offset;
-            string tag = reader.ReadString();
+            var tag = reader.ReadString();
             return string.Equals(tag, expectedTag, StringComparison.Ordinal);
         }
 
         private static float HalfToFloat(ushort value)
         {
-            float sign = (value & 0x8000) == 0 ? 1f : -1f;
-            int exponent = (value >> 10) & 0x1f;
-            int mantissa = value & 0x03ff;
+            var sign = (value & 0x8000) == 0 ? 1f : -1f;
+            var exponent = (value >> 10) & 0x1f;
+            var mantissa = value & 0x03ff;
 
             if (exponent == 0)
             {

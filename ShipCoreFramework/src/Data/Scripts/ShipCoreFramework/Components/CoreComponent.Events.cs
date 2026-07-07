@@ -1,4 +1,5 @@
 using System.Text;
+using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using IMyTerminalBlock = Sandbox.ModAPI.IMyTerminalBlock;
 
@@ -11,14 +12,7 @@ namespace ShipCoreFramework
             if (CoreBlock == null || _eventsAttached) return;
             if (!Session.IsGameThread)
             {
-                var blockId = CoreBlock.EntityId;
-                ThreadWork.Enqueue(ThreadWork.StateCategory, "core-events:" + blockId,
-                    "Attach core events " + blockId,
-                    () => CoreBlock != null &&
-                          !CoreBlock.MarkedForClose &&
-                          !CoreBlock.Closed &&
-                          !Session.IsShuttingDown,
-                    AttachBlockEvents);
+                MyAPIGateway.Utilities.InvokeOnGameThread(AttachBlockEvents);
                 return;
             }
 

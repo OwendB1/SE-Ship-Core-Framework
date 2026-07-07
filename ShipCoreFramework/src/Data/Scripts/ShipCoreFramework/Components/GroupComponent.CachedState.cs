@@ -135,11 +135,7 @@ namespace ShipCoreFramework
 
             if (!Session.IsGameThread)
             {
-                var groupKey = GetThreadWorkKey();
-                ThreadWork.Enqueue(ThreadWork.StateCategory, "direction-reference-refresh:" + groupKey,
-                    "No Core direction reference refresh for group " + groupKey,
-                    () => !_closing && !Session.IsShuttingDown,
-                    OnNoCoreDirectionReferencePropertiesChanged);
+                MyAPIGateway.Utilities.InvokeOnGameThread(OnNoCoreDirectionReferencePropertiesChanged);
                 return;
             }
 
@@ -317,9 +313,9 @@ namespace ShipCoreFramework
             MyCubeGrid fallbackGrid = null;
             var fallbackBlocks = -1;
 
-            foreach (KeyValuePair<MyCubeGrid, GridComponent> kvp in GridDictionary)
+            foreach (var kvp in GridDictionary)
             {
-                MyCubeGrid grid = kvp.Key;
+                var grid = kvp.Key;
                 if (grid == null || grid.MarkedForClose || grid.Closed) continue;
 
                 if (representativeGridId != 0L && grid.EntityId == representativeGridId)
@@ -367,13 +363,13 @@ namespace ShipCoreFramework
             if (mainGrid != null) return mainGrid;
 
             MyCubeGrid bestGrid = null;
-            int bestBlocks = -1;
-            foreach (KeyValuePair<MyCubeGrid, GridComponent> kvp in GridDictionary)
+            var bestBlocks = -1;
+            foreach (var kvp in GridDictionary)
             {
-                MyCubeGrid grid = kvp.Key;
+                var grid = kvp.Key;
                 if (grid == null || grid.MarkedForClose || grid.Closed) continue;
 
-                int blocks = grid.BlocksCount;
+                var blocks = grid.BlocksCount;
                 if (bestGrid == null || blocks > bestBlocks ||
                     blocks == bestBlocks && grid.EntityId < bestGrid.EntityId)
                 {
@@ -387,22 +383,22 @@ namespace ShipCoreFramework
 
         private void RefreshGridStateCache()
         {
-            int capacity = Math.Max(_cachedGridStates == null ? 0 : _cachedGridStates.Length,
+            var capacity = Math.Max(_cachedGridStates == null ? 0 : _cachedGridStates.Length,
                 DefaultGridStateCacheCapacity);
-            int groupPcu = 0;
-            long representativeGridId = 0L;
-            int representativeBlocks = -1;
-            List<MyCubeGrid> movableGrids = new List<MyCubeGrid>(capacity);
-            List<long> mechanicalGridIds = new List<long>(capacity);
-            List<CachedGridState> gridStates = new List<CachedGridState>(capacity);
+            var groupPcu = 0;
+            var representativeGridId = 0L;
+            var representativeBlocks = -1;
+            var movableGrids = new List<MyCubeGrid>(capacity);
+            var mechanicalGridIds = new List<long>(capacity);
+            var gridStates = new List<CachedGridState>(capacity);
 
-            MyCubeGrid mainGrid = MainCoreComponent?.GridComponent?.Grid;
+            var mainGrid = MainCoreComponent?.GridComponent?.Grid;
             if (mainGrid != null && !mainGrid.MarkedForClose && !mainGrid.Closed)
                 representativeGridId = mainGrid.EntityId;
 
-            foreach (KeyValuePair<MyCubeGrid, GridComponent> kvp in GridDictionary)
+            foreach (var kvp in GridDictionary)
             {
-                MyCubeGrid grid = kvp.Key;
+                var grid = kvp.Key;
                 if (grid == null || grid.MarkedForClose || grid.Closed) continue;
 
                 groupPcu += grid.BlocksPCU;
@@ -421,7 +417,7 @@ namespace ShipCoreFramework
                     movableGrids.Add(grid);
 
                 if (representativeGridId != 0) continue;
-                int blocks = grid.BlocksCount;
+                var blocks = grid.BlocksCount;
                 if (blocks > representativeBlocks || blocks == representativeBlocks && grid.EntityId < representativeGridId)
                 {
                     representativeBlocks = blocks;
@@ -441,9 +437,9 @@ namespace ShipCoreFramework
         private void RefreshMassCache()
         {
             MyCubeGrid referenceGrid = null;
-            foreach (KeyValuePair<MyCubeGrid, GridComponent> kvp in GridDictionary)
+            foreach (var kvp in GridDictionary)
             {
-                MyCubeGrid grid = kvp.Key;
+                var grid = kvp.Key;
                 if (grid == null || grid.MarkedForClose || grid.Closed || grid.Physics == null) continue;
 
                 referenceGrid = grid;

@@ -315,10 +315,10 @@ namespace ShipCoreFramework
             if (string.IsNullOrWhiteSpace(fileName) || MyAPIGateway.Utilities == null)
                 return false;
 
-            List<string> candidates = BuildModPathCandidates(fileName);
-            for (int i = 0; i < candidates.Count; i++)
+            var candidates = BuildModPathCandidates(fileName);
+            for (var i = 0; i < candidates.Count; i++)
             {
-                TextReader reader = TryOpenModTextFile(mod, candidates[i]);
+                var reader = TryOpenModTextFile(mod, candidates[i]);
                 if (reader == null) continue;
 
                 using (reader)
@@ -334,7 +334,7 @@ namespace ShipCoreFramework
         {
             try
             {
-                TextReader reader = MyAPIGateway.Utilities.ReadFileInModLocation(fileName, mod);
+                var reader = MyAPIGateway.Utilities.ReadFileInModLocation(fileName, mod);
                 if (reader != null) return reader;
             }
             catch
@@ -355,8 +355,8 @@ namespace ShipCoreFramework
 
         private static List<string> BuildModPathCandidates(string fileName)
         {
-            List<string> candidates = new List<string>();
-            string forward = fileName.Replace('\\', '/');
+            var candidates = new List<string>();
+            var forward = fileName.Replace('\\', '/');
             AddModPathCandidate(candidates, fileName);
             AddModPathCandidate(candidates, forward);
             AddModPathCandidate(candidates, fileName.Replace('/', '\\'));
@@ -377,12 +377,12 @@ namespace ShipCoreFramework
         {
             if (candidates == null || string.IsNullOrWhiteSpace(fileName)) return;
 
-            string normalized = fileName.Trim();
+            var normalized = fileName.Trim();
             while (normalized.StartsWith("/", StringComparison.Ordinal) ||
                    normalized.StartsWith("\\", StringComparison.Ordinal))
                 normalized = normalized.Substring(1);
 
-            for (int i = 0; i < candidates.Count; i++)
+            for (var i = 0; i < candidates.Count; i++)
                 if (string.Equals(candidates[i], normalized, StringComparison.Ordinal))
                     return;
 

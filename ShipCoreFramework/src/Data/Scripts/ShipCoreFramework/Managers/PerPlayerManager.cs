@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using Sandbox.ModAPI;
 
 namespace ShipCoreFramework
 {
@@ -12,8 +14,8 @@ namespace ShipCoreFramework
             internal int Count;
         }
 
-        private static readonly GameThreadWriteDictionary<CoreCountKey, int> PerPlayerCounts =
-            new GameThreadWriteDictionary<CoreCountKey, int>(null, ThreadWork.CountsCategory, "player-counts");
+        private static readonly ConcurrentDictionary<CoreCountKey, int> PerPlayerCounts =
+            new ConcurrentDictionary<CoreCountKey, int>();
 
         private static bool _suppressEvents;
 
@@ -42,7 +44,8 @@ namespace ShipCoreFramework
             if (ownerId <= 0 || string.IsNullOrWhiteSpace(coreType))
                 return 0;
 
-            var localCount = PerPlayerCounts.GetOrDefault(new CoreCountKey(ownerId, coreType), 0);
+            int localCount;
+            PerPlayerCounts.TryGetValue(new CoreCountKey(ownerId, coreType), out localCount);
             return localCount + LimitsNexusSync.GetRemotePlayerCount(ownerId, coreType);
         }
 
@@ -50,8 +53,7 @@ namespace ShipCoreFramework
         {
             if (!Session.IsGameThread)
             {
-                ThreadWork.Enqueue(ThreadWork.CountsCategory, string.Empty,
-                    "Add player core count", delegate { AddGridGroup(ownerId, coreType); });
+                MyAPIGateway.Utilities.InvokeOnGameThread(delegate { AddGridGroup(ownerId, coreType); });
                 return;
             }
 
@@ -68,15 +70,15 @@ namespace ShipCoreFramework
         {
             if (!Session.IsGameThread)
             {
-                ThreadWork.Enqueue(ThreadWork.CountsCategory, string.Empty,
-                    "Remove player core count", delegate { RemoveGridGroup(ownerId, coreType); });
+                MyAPIGateway.Utilities.InvokeOnGameThread(delegate { RemoveGridGroup(ownerId, coreType); });
                 return;
             }
 
             if (ownerId <= 0 || string.IsNullOrWhiteSpace(coreType)) return;
 
             var key = new CoreCountKey(ownerId, coreType);
-            var previous = PerPlayerCounts.GetOrDefault(key, 0);
+            int previous;
+            PerPlayerCounts.TryGetValue(key, out previous);
             if (previous <= 0) return;
 
             var count = PerPlayerCounts.AddOrUpdate(key, 0,
@@ -88,7 +90,7 @@ namespace ShipCoreFramework
         {
             if (!Session.IsGameThread)
             {
-                ThreadWork.Enqueue(ThreadWork.CountsCategory, "player-reset", "Reset player core counts", Reset);
+                MyAPIGateway.Utilities.InvokeOnGameThread(Reset);
                 return;
             }
 
@@ -97,7 +99,7 @@ namespace ShipCoreFramework
 
         internal static CoreCountEntry[] GetLocalCountsSnapshot()
         {
-            var snapshot = PerPlayerCounts.ToArraySnapshot();
+            var snapshot = PerPlayerCounts.ToArray();
             var result = new CoreCountEntry[snapshot.Length];
             for (var i = 0; i < snapshot.Length; i++)
             {

@@ -51,7 +51,7 @@ namespace ShipCoreFramework
             uv = Vector2.Zero;
             if (block == null) return false;
 
-            IMyEntity blockEntity = block as IMyEntity;
+            var blockEntity = block as IMyEntity;
             if (blockEntity == null || blockEntity.Model == null) return false;
 
             ScfMinimalMwmScreenAreaGeometry geometry;
@@ -93,7 +93,7 @@ namespace ShipCoreFramework
             localMatrix = Matrix.Identity;
             if (block == null) return false;
 
-            string localKey = BuildLocalMatrixCacheKey(block, surfaceIndex);
+            var localKey = BuildLocalMatrixCacheKey(block, surfaceIndex);
             if (!string.IsNullOrEmpty(localKey) && LocalMatrixCache.TryGetValue(localKey, out localMatrix))
                 return true;
 
@@ -101,7 +101,7 @@ namespace ShipCoreFramework
             if (!TryGetScreenAreaGeometry(block, surfaceIndex, out geometry))
                 return false;
 
-            IMyEntity blockEntity = block as IMyEntity;
+            var blockEntity = block as IMyEntity;
             if (blockEntity == null || blockEntity.Model == null)
                 return false;
 
@@ -118,7 +118,7 @@ namespace ShipCoreFramework
         {
             if (surface == null) return Vector2.Zero;
 
-            Vector2 offset = (surface.TextureSize - surface.SurfaceSize) * 0.5f;
+            var offset = (surface.TextureSize - surface.SurfaceSize) * 0.5f;
             return new Vector2(
                 offset.X + uv.X * surface.SurfaceSize.X,
                 offset.Y + uv.Y * surface.SurfaceSize.Y);
@@ -145,10 +145,10 @@ namespace ShipCoreFramework
                     out forward))
                 return false;
 
-            Vector2 rawCenter = GetScreenCenterRawUv(geometry);
+            var rawCenter = GetScreenCenterRawUv(geometry);
             if (!TryGetLocalPointAtRawUv(blockModel, geometry, rawCenter, out centerPoint))
             {
-                IMyTriangleVertexIndices triangle = blockModel.GetTriangle(geometry.TriangleIndices[bestTriangleIndex]);
+                var triangle = blockModel.GetTriangle(geometry.TriangleIndices[bestTriangleIndex]);
                 Vector3 aLocal;
                 Vector3 bLocal;
                 Vector3 cLocal;
@@ -182,7 +182,7 @@ namespace ShipCoreFramework
                 geometryTriangleIndex >= geometry.UvTriangles.Count)
                 return false;
 
-            IMyTriangleVertexIndices modelTriangle = blockModel.GetTriangle(geometry.TriangleIndices[geometryTriangleIndex]);
+            var modelTriangle = blockModel.GetTriangle(geometry.TriangleIndices[geometryTriangleIndex]);
             Vector3 p0;
             Vector3 p1;
             Vector3 p2;
@@ -194,22 +194,22 @@ namespace ShipCoreFramework
             if (!TryGetRuntimeTriangleUvs(geometry, modelTriangle.I0, modelTriangle.I1, modelTriangle.I2, out uv0,
                     out uv1, out uv2))
             {
-                ScfMinimalMwmUvTriangle fallback = geometry.UvTriangles[geometryTriangleIndex];
+                var fallback = geometry.UvTriangles[geometryTriangleIndex];
                 uv0 = fallback.A;
                 uv1 = fallback.B;
                 uv2 = fallback.C;
             }
 
-            Vector3 dp1 = p1 - p0;
-            Vector3 dp2 = p2 - p0;
-            Vector2 duv1 = uv1 - uv0;
-            Vector2 duv2 = uv2 - uv0;
-            float det = duv1.X * duv2.Y - duv1.Y * duv2.X;
+            var dp1 = p1 - p0;
+            var dp2 = p2 - p0;
+            var duv1 = uv1 - uv0;
+            var duv2 = uv2 - uv0;
+            var det = duv1.X * duv2.Y - duv1.Y * duv2.X;
             if (Math.Abs(det) <= 1e-10f) return false;
 
-            float invDet = 1f / det;
-            Vector3 dPdu = (dp1 * duv2.Y - dp2 * duv1.Y) * invDet;
-            Vector3 dPdv = (dp2 * duv1.X - dp1 * duv2.X) * invDet;
+            var invDet = 1f / det;
+            var dPdu = (dp1 * duv2.Y - dp2 * duv1.Y) * invDet;
+            var dPdv = (dp2 * duv1.X - dp1 * duv2.X) * invDet;
 
             right = dPdu;
             if (right.LengthSquared() <= 1e-12f) return false;
@@ -245,12 +245,12 @@ namespace ShipCoreFramework
             if (geometry == null || geometry.TriangleIndices == null || geometry.UvTriangles == null)
                 return false;
 
-            Vector2 centerRawUv = GetScreenCenterRawUv(geometry);
-            int count = Math.Min(geometry.TriangleIndices.Count, geometry.UvTriangles.Count);
-            double bestDistanceSq = double.MaxValue;
-            for (int i = 0; i < count; i++)
+            var centerRawUv = GetScreenCenterRawUv(geometry);
+            var count = Math.Min(geometry.TriangleIndices.Count, geometry.UvTriangles.Count);
+            var bestDistanceSq = double.MaxValue;
+            for (var i = 0; i < count; i++)
             {
-                ScfMinimalMwmUvTriangle uvTriangle = geometry.UvTriangles[i];
+                var uvTriangle = geometry.UvTriangles[i];
                 float u;
                 float v;
                 float w;
@@ -260,7 +260,7 @@ namespace ShipCoreFramework
                     return true;
                 }
 
-                double distanceSq = DistanceSquaredToUvTriangle(centerRawUv, uvTriangle);
+                var distanceSq = DistanceSquaredToUvTriangle(centerRawUv, uvTriangle);
                 if (distanceSq >= bestDistanceSq) continue;
 
                 bestDistanceSq = distanceSq;
@@ -280,22 +280,22 @@ namespace ShipCoreFramework
                 geometry.UvTriangles == null)
                 return false;
 
-            int count = Math.Min(geometry.TriangleIndices.Count, geometry.UvTriangles.Count);
-            int bestTriangleIndex = -1;
-            double bestDistanceSq = double.MaxValue;
-            float bestU = 0f;
-            float bestV = 0f;
-            float bestW = 0f;
+            var count = Math.Min(geometry.TriangleIndices.Count, geometry.UvTriangles.Count);
+            var bestTriangleIndex = -1;
+            var bestDistanceSq = double.MaxValue;
+            var bestU = 0f;
+            var bestV = 0f;
+            var bestW = 0f;
 
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
-                IMyTriangleVertexIndices triangle = blockModel.GetTriangle(geometry.TriangleIndices[i]);
+                var triangle = blockModel.GetTriangle(geometry.TriangleIndices[i]);
                 Vector2 uv0;
                 Vector2 uv1;
                 Vector2 uv2;
                 if (!TryGetRuntimeTriangleUvs(geometry, triangle.I0, triangle.I1, triangle.I2, out uv0, out uv1, out uv2))
                 {
-                    ScfMinimalMwmUvTriangle fallback = geometry.UvTriangles[i];
+                    var fallback = geometry.UvTriangles[i];
                     uv0 = fallback.A;
                     uv1 = fallback.B;
                     uv2 = fallback.C;
@@ -313,7 +313,7 @@ namespace ShipCoreFramework
                     break;
                 }
 
-                double distanceSq = DistanceSquaredToUvTriangle(rawUv, new ScfMinimalMwmUvTriangle(uv0, uv1, uv2));
+                var distanceSq = DistanceSquaredToUvTriangle(rawUv, new ScfMinimalMwmUvTriangle(uv0, uv1, uv2));
                 if (distanceSq >= bestDistanceSq) continue;
 
                 bestDistanceSq = distanceSq;
@@ -323,7 +323,7 @@ namespace ShipCoreFramework
 
             if (bestTriangleIndex < 0) return false;
 
-            IMyTriangleVertexIndices bestTriangle = blockModel.GetTriangle(geometry.TriangleIndices[bestTriangleIndex]);
+            var bestTriangle = blockModel.GetTriangle(geometry.TriangleIndices[bestTriangleIndex]);
             Vector3 aLocal;
             Vector3 bLocal;
             Vector3 cLocal;
@@ -335,16 +335,16 @@ namespace ShipCoreFramework
         private static void GetClosestUvBarycentric(Vector2 point, Vector2 a, Vector2 b, Vector2 c,
             out float u, out float v, out float w)
         {
-            Vector2 abPoint = ClosestPointOnUvSegment(point, a, b);
-            Vector2 bcPoint = ClosestPointOnUvSegment(point, b, c);
-            Vector2 caPoint = ClosestPointOnUvSegment(point, c, a);
-            float abDistance = Vector2.DistanceSquared(point, abPoint);
-            float bcDistance = Vector2.DistanceSquared(point, bcPoint);
-            float caDistance = Vector2.DistanceSquared(point, caPoint);
+            var abPoint = ClosestPointOnUvSegment(point, a, b);
+            var bcPoint = ClosestPointOnUvSegment(point, b, c);
+            var caPoint = ClosestPointOnUvSegment(point, c, a);
+            var abDistance = Vector2.DistanceSquared(point, abPoint);
+            var bcDistance = Vector2.DistanceSquared(point, bcPoint);
+            var caDistance = Vector2.DistanceSquared(point, caPoint);
 
             if (abDistance <= bcDistance && abDistance <= caDistance)
             {
-                float t = GetUvSegmentT(abPoint, a, b);
+                var t = GetUvSegmentT(abPoint, a, b);
                 u = 1f - t;
                 v = t;
                 w = 0f;
@@ -353,14 +353,14 @@ namespace ShipCoreFramework
 
             if (bcDistance <= caDistance)
             {
-                float t = GetUvSegmentT(bcPoint, b, c);
+                var t = GetUvSegmentT(bcPoint, b, c);
                 u = 0f;
                 v = 1f - t;
                 w = t;
                 return;
             }
 
-            float caT = GetUvSegmentT(caPoint, c, a);
+            var caT = GetUvSegmentT(caPoint, c, a);
             u = caT;
             v = 0f;
             w = 1f - caT;
@@ -368,18 +368,18 @@ namespace ShipCoreFramework
 
         private static Vector2 ClosestPointOnUvSegment(Vector2 point, Vector2 a, Vector2 b)
         {
-            Vector2 segment = b - a;
-            float lengthSq = segment.LengthSquared();
+            var segment = b - a;
+            var lengthSq = segment.LengthSquared();
             if (lengthSq <= 1e-12f) return a;
 
-            float t = MathHelper.Clamp(Vector2.Dot(point - a, segment) / lengthSq, 0f, 1f);
+            var t = MathHelper.Clamp(Vector2.Dot(point - a, segment) / lengthSq, 0f, 1f);
             return a + segment * t;
         }
 
         private static float GetUvSegmentT(Vector2 point, Vector2 a, Vector2 b)
         {
-            Vector2 segment = b - a;
-            float lengthSq = segment.LengthSquared();
+            var segment = b - a;
+            var lengthSq = segment.LengthSquared();
             if (lengthSq <= 1e-12f) return 0f;
 
             return MathHelper.Clamp(Vector2.Dot(point - a, segment) / lengthSq, 0f, 1f);
@@ -405,16 +405,16 @@ namespace ShipCoreFramework
             geometry = null;
             if (block == null) return false;
 
-            IMyEntity blockEntity = block as IMyEntity;
+            var blockEntity = block as IMyEntity;
             if (blockEntity == null || blockEntity.Model == null) return false;
 
-            string assetName = blockEntity.Model.AssetName;
+            var assetName = blockEntity.Model.AssetName;
             if (string.IsNullOrWhiteSpace(assetName)) return false;
 
-            List<string> materials = ResolveMaterialCandidates(block, surfaceIndex);
+            var materials = ResolveMaterialCandidates(block, surfaceIndex);
             if (materials.Count == 0) return false;
 
-            for (int i = 0; i < materials.Count; i++)
+            for (var i = 0; i < materials.Count; i++)
             {
                 if (TryGetScreenAreaGeometry(assetName, materials[i], out geometry))
                     return true;
@@ -425,8 +425,8 @@ namespace ShipCoreFramework
 
         private static List<string> ResolveMaterialCandidates(IMyCubeBlock block, int surfaceIndex)
         {
-            List<string> result = new List<string>();
-            MyFunctionalBlockDefinition definition = block != null
+            var result = new List<string>();
+            var definition = block != null
                 ? block.SlimBlock.BlockDefinition as MyFunctionalBlockDefinition
                 : null;
 
@@ -444,7 +444,7 @@ namespace ShipCoreFramework
         {
             if (materials == null || string.IsNullOrWhiteSpace(material)) return;
 
-            for (int i = 0; i < materials.Count; i++)
+            for (var i = 0; i < materials.Count; i++)
             {
                 if (string.Equals(materials[i], material, StringComparison.OrdinalIgnoreCase))
                     return;
@@ -465,7 +465,7 @@ namespace ShipCoreFramework
             geometry = null;
             if (string.IsNullOrWhiteSpace(assetName) || string.IsNullOrWhiteSpace(material)) return false;
 
-            string cacheKey = assetName + "|" + material;
+            var cacheKey = assetName + "|" + material;
             CachedScreenArea cached;
             if (Cache.TryGetValue(cacheKey, out cached))
             {
@@ -476,25 +476,25 @@ namespace ShipCoreFramework
             cached = new CachedScreenArea();
             Cache[cacheKey] = cached;
 
-            string modelPath = ToModelPath(assetName);
+            var modelPath = ToModelPath(assetName);
             if (string.IsNullOrWhiteSpace(modelPath))
             {
                 cached.LoadError = "could not normalize asset name to content path";
                 return false;
             }
 
-            string lodPath = modelPath;
+            var lodPath = modelPath;
             try
             {
-                using (BinaryReader model = OpenMwm(modelPath))
+                using (var model = OpenMwm(modelPath))
                 {
                     List<string> lods;
                     if (model != null && ScfMinimalMwmReader.TryReadLodPaths(model, out lods) && lods.Count > 0)
                     {
-                        string candidate = lods[0];
+                        var candidate = lods[0];
                         if (!candidate.EndsWith(".mwm", StringComparison.OrdinalIgnoreCase))
                             candidate += ".mwm";
-                        string normalized = ToModelPath(candidate);
+                        var normalized = ToModelPath(candidate);
                         if (!string.IsNullOrWhiteSpace(normalized))
                             lodPath = normalized;
                     }
@@ -505,7 +505,7 @@ namespace ShipCoreFramework
                 lodPath = modelPath;
             }
 
-            using (BinaryReader reader = OpenMwm(lodPath) ?? OpenMwm(modelPath))
+            using (var reader = OpenMwm(lodPath) ?? OpenMwm(modelPath))
             {
                 if (reader == null)
                 {
@@ -531,25 +531,25 @@ namespace ShipCoreFramework
         {
             if (string.IsNullOrWhiteSpace(content) || MyAPIGateway.Utilities == null) return null;
 
-            List<string> candidates = BuildContentPathCandidates(content);
+            var candidates = BuildContentPathCandidates(content);
             if (MyAPIGateway.Session != null && MyAPIGateway.Session.Mods != null)
             {
-                for (int i = 0; i < candidates.Count; i++)
+                for (var i = 0; i < candidates.Count; i++)
                 {
                     foreach (var mod in MyAPIGateway.Session.Mods)
                     {
-                        BinaryReader reader = TryOpenModMwm(candidates[i], mod);
+                        var reader = TryOpenModMwm(candidates[i], mod);
                         if (reader != null) return reader;
                     }
                 }
             }
 
-            for (int i = 0; i < candidates.Count; i++)
+            for (var i = 0; i < candidates.Count; i++)
             {
-                string candidate = candidates[i];
+                var candidate = candidates[i];
                 try
                 {
-                    BinaryReader reader = MyAPIGateway.Utilities.ReadBinaryFileInGameContent(candidate);
+                    var reader = MyAPIGateway.Utilities.ReadBinaryFileInGameContent(candidate);
                     if (reader != null) return reader;
                 }
                 catch
@@ -573,7 +573,7 @@ namespace ShipCoreFramework
         {
             try
             {
-                BinaryReader reader = MyAPIGateway.Utilities.ReadBinaryFileInModLocation(content, mod);
+                var reader = MyAPIGateway.Utilities.ReadBinaryFileInModLocation(content, mod);
                 if (reader != null) return reader;
             }
             catch
@@ -594,8 +594,8 @@ namespace ShipCoreFramework
 
         private static List<string> BuildContentPathCandidates(string content)
         {
-            List<string> candidates = new List<string>();
-            string forward = content.Replace('\\', '/');
+            var candidates = new List<string>();
+            var forward = content.Replace('\\', '/');
             AddContentPathCandidate(candidates, content);
             AddContentPathCandidate(candidates, forward);
             AddContentPathCandidate(candidates, content.Replace('/', '\\'));
@@ -616,12 +616,12 @@ namespace ShipCoreFramework
         {
             if (candidates == null || string.IsNullOrWhiteSpace(content)) return;
 
-            string normalized = content.Trim();
+            var normalized = content.Trim();
             while (normalized.StartsWith("/", StringComparison.Ordinal) ||
                    normalized.StartsWith("\\", StringComparison.Ordinal))
                 normalized = normalized.Substring(1);
 
-            for (int i = 0; i < candidates.Count; i++)
+            for (var i = 0; i < candidates.Count; i++)
                 if (string.Equals(candidates[i], normalized, StringComparison.Ordinal))
                     return;
 
@@ -632,10 +632,10 @@ namespace ShipCoreFramework
         {
             if (string.IsNullOrWhiteSpace(assetName)) return null;
 
-            string path = assetName.Replace('\\', '/');
+            var path = assetName.Replace('\\', '/');
             const string contentMarker = "/Content/";
 
-            int contentIndex = path.IndexOf(contentMarker, StringComparison.OrdinalIgnoreCase);
+            var contentIndex = path.IndexOf(contentMarker, StringComparison.OrdinalIgnoreCase);
             if (contentIndex >= 0)
                 path = path.Substring(contentIndex + contentMarker.Length);
 
@@ -645,7 +645,7 @@ namespace ShipCoreFramework
             if (path.StartsWith("244850/", StringComparison.OrdinalIgnoreCase))
             {
                 path = path.Substring("244850/".Length);
-                int slash = path.IndexOf("/", StringComparison.Ordinal);
+                var slash = path.IndexOf("/", StringComparison.Ordinal);
                 if (slash >= 0 && slash + 1 < path.Length)
                     path = path.Substring(slash + 1);
             }
@@ -653,7 +653,7 @@ namespace ShipCoreFramework
             if (!path.EndsWith(".mwm", StringComparison.OrdinalIgnoreCase))
                 return null;
 
-            int extensionIndex = path.LastIndexOf(".mwm", StringComparison.OrdinalIgnoreCase);
+            var extensionIndex = path.LastIndexOf(".mwm", StringComparison.OrdinalIgnoreCase);
             if (extensionIndex < 0) return null;
 
             return path.Substring(0, extensionIndex) + path.Substring(extensionIndex);
@@ -689,25 +689,25 @@ namespace ShipCoreFramework
                 geometry.UvTriangles == null)
                 return false;
 
-            double bestDistance = double.MaxValue;
-            Vector2 bestRawUv = Vector2.Zero;
-            bool hit = false;
-            int count = Math.Min(geometry.TriangleIndices.Count, geometry.UvTriangles.Count);
-            for (int i = 0; i < count; i++)
+            var bestDistance = double.MaxValue;
+            var bestRawUv = Vector2.Zero;
+            var hit = false;
+            var count = Math.Min(geometry.TriangleIndices.Count, geometry.UvTriangles.Count);
+            for (var i = 0; i < count; i++)
             {
-                int triangleIndex = geometry.TriangleIndices[i];
-                IMyTriangleVertexIndices t = blockModel.GetTriangle(triangleIndex);
+                var triangleIndex = geometry.TriangleIndices[i];
+                var t = blockModel.GetTriangle(triangleIndex);
 
                 Vector3 aLocal;
                 Vector3 bLocal;
                 Vector3 cLocal;
                 blockModel.GetVertex(t.I0, t.I1, t.I2, out aLocal, out bLocal, out cLocal);
 
-                Vector3D a = Vector3D.Transform((Vector3D)aLocal, worldMatrix);
-                Vector3D b = Vector3D.Transform((Vector3D)bLocal, worldMatrix);
-                Vector3D c = Vector3D.Transform((Vector3D)cLocal, worldMatrix);
+                var a = Vector3D.Transform((Vector3D)aLocal, worldMatrix);
+                var b = Vector3D.Transform((Vector3D)bLocal, worldMatrix);
+                var c = Vector3D.Transform((Vector3D)cLocal, worldMatrix);
 
-                Vector3D normal = Vector3D.Cross(b - a, c - a);
+                var normal = Vector3D.Cross(b - a, c - a);
                 if (Vector3D.Dot(normal, rayDirection) >= -1e-9) continue;
 
                 double distance;
@@ -718,10 +718,10 @@ namespace ShipCoreFramework
                 if (distance > maxDistance || distance >= bestDistance)
                     continue;
 
-                double w = 1d - u - v;
+                var w = 1d - u - v;
                 if (!TryGetRuntimeTriangleUv(geometry, t.I0, t.I1, t.I2, w, u, v, out bestRawUv))
                 {
-                    ScfMinimalMwmUvTriangle uvTriangle = geometry.UvTriangles[i];
+                    var uvTriangle = geometry.UvTriangles[i];
                     bestRawUv = uvTriangle.A * (float)w + uvTriangle.B * (float)u + uvTriangle.C * (float)v;
                 }
 
@@ -767,18 +767,18 @@ namespace ShipCoreFramework
             u = 0d;
             v = 0d;
 
-            Vector3D edge1 = b - a;
-            Vector3D edge2 = c - a;
-            Vector3D p = Vector3D.Cross(rayDirection, edge2);
-            double det = Vector3D.Dot(edge1, p);
+            var edge1 = b - a;
+            var edge2 = c - a;
+            var p = Vector3D.Cross(rayDirection, edge2);
+            var det = Vector3D.Dot(edge1, p);
             if (Math.Abs(det) < 1e-9) return false;
 
-            double invDet = 1d / det;
-            Vector3D t = rayOrigin - a;
+            var invDet = 1d / det;
+            var t = rayOrigin - a;
             u = Vector3D.Dot(t, p) * invDet;
             if (u < 0d || u > 1d) return false;
 
-            Vector3D q = Vector3D.Cross(t, edge1);
+            var q = Vector3D.Cross(t, edge1);
             v = Vector3D.Dot(rayDirection, q) * invDet;
             if (v < 0d || u + v > 1d) return false;
 
@@ -794,15 +794,15 @@ namespace ShipCoreFramework
             v = 0f;
             w = 0f;
 
-            Vector2 v0 = b - a;
-            Vector2 v1 = c - a;
-            Vector2 v2 = point - a;
-            float d00 = Vector2.Dot(v0, v0);
-            float d01 = Vector2.Dot(v0, v1);
-            float d11 = Vector2.Dot(v1, v1);
-            float d20 = Vector2.Dot(v2, v0);
-            float d21 = Vector2.Dot(v2, v1);
-            float denom = d00 * d11 - d01 * d01;
+            var v0 = b - a;
+            var v1 = c - a;
+            var v2 = point - a;
+            var d00 = Vector2.Dot(v0, v0);
+            var d01 = Vector2.Dot(v0, v1);
+            var d11 = Vector2.Dot(v1, v1);
+            var d20 = Vector2.Dot(v2, v0);
+            var d21 = Vector2.Dot(v2, v1);
+            var denom = d00 * d11 - d01 * d01;
             if (Math.Abs(denom) <= epsilon) return false;
 
             v = (d11 * d20 - d01 * d21) / denom;
@@ -828,12 +828,12 @@ namespace ShipCoreFramework
 
         private static double DistanceSquaredToUvSegment(Vector2 point, Vector2 a, Vector2 b)
         {
-            Vector2 segment = b - a;
-            float lengthSq = segment.LengthSquared();
+            var segment = b - a;
+            var lengthSq = segment.LengthSquared();
             if (lengthSq <= 1e-12f) return Vector2.DistanceSquared(point, a);
 
-            float t = MathHelper.Clamp(Vector2.Dot(point - a, segment) / lengthSq, 0f, 1f);
-            Vector2 closest = a + segment * t;
+            var t = MathHelper.Clamp(Vector2.Dot(point - a, segment) / lengthSq, 0f, 1f);
+            var closest = a + segment * t;
             return Vector2.DistanceSquared(point, closest);
         }
 

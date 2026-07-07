@@ -97,7 +97,6 @@ namespace ShipCoreFramework
         {
             Utils.Log("UnloadData: shutting down Ship Core Framework session.", 1);
             IsShuttingDown = true;
-            ThreadWork.CancelAll("Session unload");
             MyAPIGateway.Session.OnSessionReady -= SessionReady;
             MyAPIGateway.Session.Factions.FactionStateChanged -= FactionStateChanged;
             MyAPIGateway.Session.Factions.FactionCreated -= FactionCreated;
@@ -130,7 +129,6 @@ namespace ShipCoreFramework
             if (IsServer) Config.SaveConfig();
             Networking?.Unregister();
             Networking = null;
-            ThreadWork.Clear();
             
             foreach (var kvp in GroupDict)
             {
@@ -190,11 +188,9 @@ namespace ShipCoreFramework
                 CoreTypeLCDScript.RunFrameScrollUpdate();
                 NotificationInstance.RunCountdownTick();
             }
-            ThreadWork.FlushPendingWrites(ThreadWork.CountsCategory);
-            ThreadWork.FlushPendingWrites(null, MaxQueuedStateWorkPerTick);
-            foreach (KeyValuePair<IMyGridGroupData, GroupComponent> kvp in GroupDict)
+            foreach (var kvp in GroupDict)
             {
-                GroupComponent group = kvp.Value;
+                var group = kvp.Value;
                 if (group != null)
                 {
                     group.RefreshGameThreadStateCache();
@@ -204,14 +200,14 @@ namespace ShipCoreFramework
 
             RefreshMassCacheBatch();
             if (IsServer) LimitsNexusSync.RunPeriodicSnapshotTick();
-            bool runNfz = _tick % 10 == 0;
-            bool doPunish = _tick % 60 == 0;
+            var runNfz = _tick % 10 == 0;
+            var doPunish = _tick % 60 == 0;
 
             if (doPunish)
             {
-                foreach (KeyValuePair<IMyGridGroupData, GroupComponent> kvp in GroupDict)
+                foreach (var kvp in GroupDict)
                 {
-                    GroupComponent group = kvp.Value;
+                    var group = kvp.Value;
                     if (group != null)
                         group.RefreshPunishmentState();
                 }
@@ -237,13 +233,13 @@ namespace ShipCoreFramework
 
         private void RefreshMassCacheBatch()
         {
-            int index = 0;
-            int checkedGroups = 0;
-            int refreshedGroups = 0;
-            bool sawAnyGroup = false;
-            bool stoppedEarly = false;
+            var index = 0;
+            var checkedGroups = 0;
+            var refreshedGroups = 0;
+            var sawAnyGroup = false;
+            var stoppedEarly = false;
 
-            foreach (KeyValuePair<IMyGridGroupData, GroupComponent> kvp in GroupDict)
+            foreach (var kvp in GroupDict)
             {
                 sawAnyGroup = true;
                 if (index < _massCacheRefreshCursor)
@@ -254,7 +250,7 @@ namespace ShipCoreFramework
 
                 index++;
                 checkedGroups++;
-                GroupComponent group = kvp.Value;
+                var group = kvp.Value;
                 if (group != null && group.RefreshScheduledMassCache())
                     refreshedGroups++;
 

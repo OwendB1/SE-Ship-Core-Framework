@@ -5,6 +5,7 @@ using Sandbox.Game.Components;
 using Sandbox.Game.GameSystems.TextSurfaceScripts;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
+using VRage.Game.ModAPI.Ingame.Utilities;
 using VRage.Game.GUI.TextPanel;
 using VRageMath;
 using IngameCubeBlock = VRage.Game.ModAPI.Ingame.IMyCubeBlock;
@@ -48,11 +49,11 @@ namespace ShipCoreFramework
             new Dictionary<string, ScrollState>(StringComparer.Ordinal);
         private static readonly Dictionary<string, int> PendingWheelDeltas =
             new Dictionary<string, int>(StringComparer.Ordinal);
-        private static string ActiveScrollGroupKey;
-        private static int ActiveScrollGroupTick = -1;
-        private static int LastInputSampleTick = -1;
-        private static int LastWheelInputTick = -1;
-        private static int NextInstanceId;
+        private static string _activeScrollGroupKey;
+        private static int _activeScrollGroupTick = -1;
+        private static int _lastInputSampleTick = -1;
+        private static int _lastWheelInputTick = -1;
+        private static int _nextInstanceId;
 
         private readonly int _instanceId;
         private readonly IMyTerminalBlock _terminalBlock;
@@ -69,8 +70,8 @@ namespace ShipCoreFramework
         public CoreTypeLCDScript(IMyTextSurface surface, IngameCubeBlock block, Vector2 size) : base(surface, block, size)
         {
             _terminalBlock = (IMyTerminalBlock)block;
-            _cubeBlock = _terminalBlock as IMyCubeBlock;
-            _instanceId = ++NextInstanceId;
+            _cubeBlock = _terminalBlock;
+            _instanceId = ++_nextInstanceId;
             _terminalBlock.OnMarkForClose += BlockMarkedForClose;
             ReloadCustomDataSettings();
 
@@ -134,7 +135,7 @@ namespace ShipCoreFramework
 
         private void DrawDashboard()
         {
-            GroupComponent group = GroupComponent;
+            var group = GroupComponent;
             if (group == null || group.ShipCore == null)
             {
                 DrawMessage("No ship core data", "Grid group not ready yet.");
@@ -143,21 +144,21 @@ namespace ShipCoreFramework
 
             SpeedEnforcement.RefreshSpeedState(group);
 
-            PanelGroupLayout layout = BuildPanelGroupLayout();
-            bool hasCursorHit = UpdateCursorState(layout);
+            var layout = BuildPanelGroupLayout();
+            var hasCursorHit = UpdateCursorState(layout);
 
-            float configuredFontScale = _fontScale;
+            var configuredFontScale = _fontScale;
             _fontScale = configuredFontScale * layout.RenderScale;
             try
             {
-                CoreLcdSnapshot snapshot = BuildSnapshot(group, layout);
-                List<MySprite> sprites = new List<MySprite>(128);
+                var snapshot = BuildSnapshot(group, layout);
+                var sprites = new List<MySprite>(128);
                 Vector2 contentBottomRight;
                 RenderDashboardSprites(sprites, snapshot, layout.VirtualSize, out contentBottomRight);
 
-                float scrollOffset = UpdateManualScroll(layout, contentBottomRight.Y, hasCursorHit);
-                Vector2 scroll = new Vector2(0f, scrollOffset);
-                MySpriteDrawFrame frame = Surface.DrawFrame();
+                var scrollOffset = UpdateManualScroll(layout, contentBottomRight.Y, hasCursorHit);
+                var scroll = new Vector2(0f, scrollOffset);
+                var frame = Surface.DrawFrame();
                 Surface.ScriptBackgroundColor = Color.Black;
                 Surface.ScriptForegroundColor = Color.White;
                 EmitSprites(frame, layout, sprites, scroll);
@@ -176,15 +177,15 @@ namespace ShipCoreFramework
 
         private CoreLcdSnapshot BuildSnapshot(GroupComponent group, PanelGroupLayout layout)
         {
-            CoreLcdSnapshot snapshot = new CoreLcdSnapshot();
-            ShipCore core = group.ShipCore;
+            var snapshot = new CoreLcdSnapshot();
+            var core = group.ShipCore;
             snapshot.CoreName = string.IsNullOrWhiteSpace(core.UniqueName) ? core.SubtypeId : core.UniqueName;
             snapshot.PanelCount = layout.MemberCount;
 
-            bool punishModifiers = group.PunishModifiers;
-            bool punishSpeed = group.PunishSpeed;
-            bool deactivated = group.Deactivated;
-            bool punishLimitedBlocks = group.PunishLimitedBlocks;
+            var punishModifiers = group.PunishModifiers;
+            var punishSpeed = group.PunishSpeed;
+            var deactivated = group.Deactivated;
+            var punishLimitedBlocks = group.PunishLimitedBlocks;
 
             float speed;
             long speedSourceGridId;
@@ -194,45 +195,45 @@ namespace ShipCoreFramework
                 speedSourceGridId = group.SpeedSourceGroupGridId;
             }
 
-            string speedLabel = IsSpeedSourceInGroup(group, speedSourceGridId) ? "Max Speed" : "Max Speed*";
+            var speedLabel = IsSpeedSourceInGroup(group, speedSourceGridId) ? "Max Speed" : "Max Speed*";
             snapshot.Metrics.Add(new MetricRow(speedLabel, FormatDecimal(speed, "0.#") + " m/s", -1d, 0d, false));
 
             if (core.MaxBackupCores > 0)
             {
-                int backupCores = Math.Max(0, group.CoreDictionary.Count - 1);
-                bool fail = backupCores > core.MaxBackupCores;
+                var backupCores = Math.Max(0, group.CoreDictionary.Count - 1);
+                var fail = backupCores > core.MaxBackupCores;
                 snapshot.Metrics.Add(new MetricRow("Backup Cores", backupCores.ToString(CultureInfo.InvariantCulture),
                     core.MaxBackupCores, core.MaxBackupCores > 0 ? backupCores / (double)core.MaxBackupCores : 0d, fail));
             }
 
             if (core.MaxBlocks > 1)
             {
-                int maxBlocks = group.GetEffectiveMaxBlocks();
-                bool fail = group.GroupBlocksCount > maxBlocks;
+                var maxBlocks = group.GetEffectiveMaxBlocks();
+                var fail = group.GroupBlocksCount > maxBlocks;
                 snapshot.Metrics.Add(new MetricRow("Blocks", FormatInt(group.GroupBlocksCount), maxBlocks,
                     maxBlocks > 0 ? group.GroupBlocksCount / (double)maxBlocks : 0d, fail));
             }
 
             if (core.MinBlocks > 0)
             {
-                bool fail = group.GroupBlocksCount < core.MinBlocks;
-                double ratio = core.MinBlocks > 0 ? group.GroupBlocksCount / (double)core.MinBlocks : 0d;
+                var fail = group.GroupBlocksCount < core.MinBlocks;
+                var ratio = core.MinBlocks > 0 ? group.GroupBlocksCount / (double)core.MinBlocks : 0d;
                 snapshot.Metrics.Add(new MetricRow("Min Blocks", FormatInt(group.GroupBlocksCount), core.MinBlocks,
                     ratio, fail));
             }
 
             if (core.MaxMass > 1)
             {
-                float maxMass = group.GetEffectiveMaxMass();
-                bool fail = group.GroupMass > maxMass;
+                var maxMass = group.GetEffectiveMaxMass();
+                var fail = group.GroupMass > maxMass;
                 snapshot.Metrics.Add(new MetricRow("Mass", FormatMass(group.GroupMass), maxMass,
                     maxMass > 0f ? group.GroupMass / (double)maxMass : 0d, fail));
             }
 
             if (core.MaxPCU > 1)
             {
-                int maxPcu = group.GetEffectiveMaxPCU();
-                bool fail = group.GroupPCU > maxPcu;
+                var maxPcu = group.GetEffectiveMaxPCU();
+                var fail = group.GroupPCU > maxPcu;
                 snapshot.Metrics.Add(new MetricRow("PCU", FormatInt(group.GroupPCU), maxPcu,
                     maxPcu > 0 ? group.GroupPCU / (double)maxPcu : 0d, fail));
             }
@@ -244,39 +245,39 @@ namespace ShipCoreFramework
 
             if (core.BlockLimits != null)
             {
-                for (int i = 0; i < core.BlockLimits.Length; i++)
+                for (var i = 0; i < core.BlockLimits.Length; i++)
                 {
-                    BlockLimit limit = core.BlockLimits[i];
+                    var limit = core.BlockLimits[i];
                     if (limit == null) continue;
 
-                    double totalWeight = 0d;
+                    var totalWeight = 0d;
                     LimitBucket bucket;
                     if (group.Limits.TryGetValue(limit, out bucket))
                         totalWeight = bucket.TotalWeight;
 
                     double max = group.GetEffectiveMaxCount(limit);
-                    bool fail = totalWeight > max;
-                    double ratio = max > 0d ? totalWeight / max : 0d;
+                    var fail = totalWeight > max;
+                    var ratio = max > 0d ? totalWeight / max : 0d;
                     snapshot.Limits.Add(new LimitRow(limit.Name, totalWeight, max, ratio, limit.PunishmentType.ToString(), fail));
                 }
             }
 
             snapshot.Limits.Sort(delegate(LimitRow left, LimitRow right)
             {
-                int failCompare = right.Failing.CompareTo(left.Failing);
+                var failCompare = right.Failing.CompareTo(left.Failing);
                 if (failCompare != 0) return failCompare;
                 return right.Ratio.CompareTo(left.Ratio);
             });
 
-            List<ModifierNameValue> modifiers = group.Modifiers.GetModifierValues();
-            for (int i = 0; i < modifiers.Count; i++)
+            var modifiers = group.Modifiers.GetModifierValues();
+            for (var i = 0; i < modifiers.Count; i++)
                 snapshot.Modifiers.Add(new ModifierRow(modifiers[i].Name, modifiers[i].Value));
 
-            int warnings = 0;
-            for (int i = 0; i < snapshot.Metrics.Count; i++)
+            var warnings = 0;
+            for (var i = 0; i < snapshot.Metrics.Count; i++)
                 if (snapshot.Metrics[i].Failing)
                     warnings++;
-            for (int i = 0; i < snapshot.Limits.Count; i++)
+            for (var i = 0; i < snapshot.Limits.Count; i++)
                 if (snapshot.Limits[i].Failing)
                     warnings++;
             if (punishModifiers) warnings++;
@@ -305,12 +306,11 @@ namespace ShipCoreFramework
         private void RenderDashboardSprites(List<MySprite> sprites, CoreLcdSnapshot snapshot, Vector2 canvas,
             out Vector2 contentBottomRight)
         {
-            float scale = _fontScale;
-            float margin = 18f * scale;
-            float bodyScale = 0.58f * scale;
-            float smallScale = 0.48f * scale;
-            float titleScale = 0.82f * scale;
-            float y = 0f;
+            var scale = _fontScale;
+            var margin = 18f * scale;
+            var bodyScale = 0.58f * scale;
+            var smallScale = 0.48f * scale;
+            var titleScale = 0.82f * scale;
 
             AddRect(sprites, 0f, 0f, canvas.X, 58f * scale, Palette.Header);
             AddText(sprites, "SCF", new Vector2(margin, 13f * scale), Palette.Muted, 0.62f * scale);
@@ -322,20 +322,20 @@ namespace ShipCoreFramework
                 AddText(sprites, snapshot.PanelCount.ToString(CultureInfo.InvariantCulture) + " panels",
                     new Vector2(canvas.X - 216f * scale, 19f * scale), Palette.Muted, smallScale);
 
-            y = 74f * scale;
+            var y = 74f * scale;
             y = RenderMetricCards(sprites, snapshot, canvas, margin, y, bodyScale, smallScale);
             y += 12f * scale;
             y = RenderFlags(sprites, snapshot, canvas, margin, y, smallScale);
             y += 14f * scale;
 
-            bool showAll = IsPage("All") || IsPage("Auto") && canvas.X >= 900f;
-            bool showOverview = IsPage("Overview") || IsPage("Auto");
-            bool showLimits = showAll || showOverview || IsPage("Limits");
-            bool showModifiers = showAll || IsPage("Modifiers");
+            var showAll = IsPage("All") || IsPage("Auto") && canvas.X >= 900f;
+            var showOverview = IsPage("Overview") || IsPage("Auto");
+            var showLimits = showAll || showOverview || IsPage("Limits");
+            var showModifiers = showAll || IsPage("Modifiers");
 
             if (showLimits)
             {
-                int limitRows = showAll || IsPage("Limits") ? snapshot.Limits.Count : Math.Min(snapshot.Limits.Count, 8);
+                var limitRows = showAll || IsPage("Limits") ? snapshot.Limits.Count : Math.Min(snapshot.Limits.Count, 8);
                 y = RenderLimits(sprites, snapshot, canvas, margin, y, bodyScale, smallScale, limitRows);
                 y += 14f * scale;
             }
@@ -355,19 +355,19 @@ namespace ShipCoreFramework
         private float RenderMetricCards(List<MySprite> sprites, CoreLcdSnapshot snapshot, Vector2 canvas, float margin,
             float y, float bodyScale, float smallScale)
         {
-            int columns = canvas.X >= 980f ? 4 : canvas.X >= 560f ? 3 : 2;
-            float gap = 10f * _fontScale;
-            float cardW = (canvas.X - margin * 2f - gap * (columns - 1)) / columns;
-            float cardH = 78f * _fontScale;
+            var columns = canvas.X >= 980f ? 4 : canvas.X >= 560f ? 3 : 2;
+            var gap = 10f * _fontScale;
+            var cardW = (canvas.X - margin * 2f - gap * (columns - 1)) / columns;
+            var cardH = 78f * _fontScale;
 
-            for (int i = 0; i < snapshot.Metrics.Count; i++)
+            for (var i = 0; i < snapshot.Metrics.Count; i++)
             {
-                int col = i % columns;
-                int row = i / columns;
-                float x = margin + col * (cardW + gap);
-                float cardY = y + row * (cardH + gap);
-                MetricRow metric = snapshot.Metrics[i];
-                Color border = metric.Failing ? Palette.Red : Palette.Border;
+                var col = i % columns;
+                var row = i / columns;
+                var x = margin + col * (cardW + gap);
+                var cardY = y + row * (cardH + gap);
+                var metric = snapshot.Metrics[i];
+                var border = metric.Failing ? Palette.Red : Palette.Border;
 
                 AddRect(sprites, x, cardY, cardW, cardH, Palette.Panel);
                 AddRect(sprites, x, cardY, 3f * _fontScale, cardH, border);
@@ -381,21 +381,21 @@ namespace ShipCoreFramework
                 }
             }
 
-            int rows = (snapshot.Metrics.Count + columns - 1) / columns;
+            var rows = (snapshot.Metrics.Count + columns - 1) / columns;
             return y + rows * cardH + Math.Max(0, rows - 1) * gap;
         }
 
         private float RenderFlags(List<MySprite> sprites, CoreLcdSnapshot snapshot, Vector2 canvas, float margin, float y,
             float smallScale)
         {
-            float x = margin;
-            float pillH = 24f * _fontScale;
-            float gap = 8f * _fontScale;
-            for (int i = 0; i < snapshot.Flags.Count; i++)
+            var x = margin;
+            var pillH = 24f * _fontScale;
+            var gap = 8f * _fontScale;
+            for (var i = 0; i < snapshot.Flags.Count; i++)
             {
-                FlagRow flag = snapshot.Flags[i];
-                string text = flag.Name + ": " + (flag.Active ? "YES" : "NO");
-                float width = Math.Max(92f * _fontScale, TextUtils.GetTextWidth(text, smallScale) + 18f * _fontScale);
+                var flag = snapshot.Flags[i];
+                var text = flag.Name + ": " + (flag.Active ? "YES" : "NO");
+                var width = Math.Max(92f * _fontScale, TextUtils.GetTextWidth(text, smallScale) + 18f * _fontScale);
                 if (x + width > canvas.X - margin)
                 {
                     x = margin;
@@ -422,22 +422,22 @@ namespace ShipCoreFramework
                 return y + TextUtils.GetLineHeight(bodyScale);
             }
 
-            float nameW = Math.Max(120f * _fontScale, canvas.X * 0.34f);
-            float countW = 145f * _fontScale;
-            float punishW = Math.Max(110f * _fontScale, canvas.X - margin * 2f - nameW - countW - 130f * _fontScale);
-            float barW = Math.Max(70f * _fontScale, canvas.X - margin * 2f - nameW - countW - punishW - 16f * _fontScale);
-            float rowH = 28f * _fontScale;
-            int rows = Math.Min(rowLimit, snapshot.Limits.Count);
+            var nameW = Math.Max(120f * _fontScale, canvas.X * 0.34f);
+            var countW = 145f * _fontScale;
+            var punishW = Math.Max(110f * _fontScale, canvas.X - margin * 2f - nameW - countW - 130f * _fontScale);
+            var barW = Math.Max(70f * _fontScale, canvas.X - margin * 2f - nameW - countW - punishW - 16f * _fontScale);
+            var rowH = 28f * _fontScale;
+            var rows = Math.Min(rowLimit, snapshot.Limits.Count);
 
             AddText(sprites, "Limit", new Vector2(margin, y), Palette.Muted, smallScale);
             AddText(sprites, "Used", new Vector2(margin + nameW, y), Palette.Muted, smallScale);
             AddText(sprites, "Punishment", new Vector2(margin + nameW + countW + barW + 16f * _fontScale, y), Palette.Muted, smallScale);
             y += rowH;
 
-            for (int i = 0; i < rows; i++)
+            for (var i = 0; i < rows; i++)
             {
-                LimitRow row = snapshot.Limits[i];
-                Color rowColor = row.Failing ? Palette.Red : Color.White;
+                var row = snapshot.Limits[i];
+                var rowColor = row.Failing ? Palette.Red : Color.White;
                 AddRect(sprites, margin, y - 3f * _fontScale, canvas.X - margin * 2f, rowH, i % 2 == 0 ? Palette.RowA : Palette.RowB);
                 AddText(sprites, TrimToWidth(row.Name, nameW - 8f * _fontScale, smallScale), new Vector2(margin + 6f * _fontScale, y),
                     rowColor, smallScale);
@@ -465,19 +465,19 @@ namespace ShipCoreFramework
             AddSectionTitle(sprites, "Applied Modifiers", y, margin, bodyScale);
             y += 34f * _fontScale;
 
-            int columns = canvas.X >= 760f ? 3 : 2;
-            float gap = 10f * _fontScale;
-            float cellW = (canvas.X - margin * 2f - gap * (columns - 1)) / columns;
-            float rowH = 34f * _fontScale;
+            var columns = canvas.X >= 760f ? 3 : 2;
+            var gap = 10f * _fontScale;
+            var cellW = (canvas.X - margin * 2f - gap * (columns - 1)) / columns;
+            var rowH = 34f * _fontScale;
 
-            for (int i = 0; i < snapshot.Modifiers.Count; i++)
+            for (var i = 0; i < snapshot.Modifiers.Count; i++)
             {
-                int col = i % columns;
-                int row = i / columns;
-                float x = margin + col * (cellW + gap);
-                float cellY = y + row * rowH;
-                ModifierRow modifier = snapshot.Modifiers[i];
-                Color valueColor = Math.Abs(modifier.Value - 1f) > 0.001f ? Palette.Cyan : Color.White;
+                var col = i % columns;
+                var row = i / columns;
+                var x = margin + col * (cellW + gap);
+                var cellY = y + row * rowH;
+                var modifier = snapshot.Modifiers[i];
+                var valueColor = Math.Abs(modifier.Value - 1f) > 0.001f ? Palette.Cyan : Color.White;
 
                 AddRect(sprites, x, cellY, cellW, rowH - 5f * _fontScale, Palette.Panel);
                 AddText(sprites, TrimToWidth(modifier.Name, cellW - 64f * _fontScale, smallScale),
@@ -486,7 +486,7 @@ namespace ShipCoreFramework
                     new Vector2(x + cellW - 56f * _fontScale, cellY + 7f * _fontScale), valueColor, smallScale);
             }
 
-            int rows = (snapshot.Modifiers.Count + columns - 1) / columns;
+            var rows = (snapshot.Modifiers.Count + columns - 1) / columns;
             return y + rows * rowH;
         }
 
@@ -499,32 +499,32 @@ namespace ShipCoreFramework
         private PanelGroupLayout BuildPanelGroupLayout()
         {
             LcdSurfaceLayout current;
-            bool hasCurrentLayout = TryGetSurfaceLayout(out current);
-            float singleRenderScale = hasCurrentLayout ? GetPhysicalRenderScale(current.PixelsPerMeter) : 1f;
-            PanelGroupLayout single = PanelGroupLayout.Single(Surface.SurfaceSize, GetMemberKey(), singleRenderScale);
+            var hasCurrentLayout = TryGetSurfaceLayout(out current);
+            var singleRenderScale = hasCurrentLayout ? GetPhysicalRenderScale(current.PixelsPerMeter) : 1f;
+            var single = PanelGroupLayout.Single(Surface.SurfaceSize, GetMemberKey(), singleRenderScale);
             if (!_combinePanels || _cubeBlock == null || _cubeBlock.CubeGrid == null || !hasCurrentLayout)
                 return single;
 
-            List<CoreTypeLCDScript> scripts = new List<CoreTypeLCDScript>();
+            var scripts = new List<CoreTypeLCDScript>();
             lock (InstancesLock)
             {
-                for (int i = 0; i < Instances.Count; i++)
+                for (var i = 0; i < Instances.Count; i++)
                     scripts.Add(Instances[i]);
             }
 
-            List<LcdSurfaceLayout> candidates = new List<LcdSurfaceLayout>();
-            for (int i = 0; i < scripts.Count; i++)
+            var candidates = new List<LcdSurfaceLayout>();
+            for (var i = 0; i < scripts.Count; i++)
             {
-                CoreTypeLCDScript script = scripts[i];
+                var script = scripts[i];
                 if (script == null || !script.IsUsableForGroup(_page, _cubeBlock.CubeGrid.EntityId)) continue;
 
                 LcdSurfaceLayout layout;
                 if (!script.TryGetSurfaceLayout(out layout)) continue;
                 if (!IsSamePanelPlane(current, layout)) continue;
 
-                Vector3D delta = layout.Center - current.Center;
-                double x = Vector3D.Dot(delta, current.Right);
-                double y = -Vector3D.Dot(delta, current.Up);
+                var delta = layout.Center - current.Center;
+                var x = Vector3D.Dot(delta, current.Right);
+                var y = -Vector3D.Dot(delta, current.Up);
                 layout.Rect = new PanelRect(x - layout.WidthM * 0.5d, y - layout.HeightM * 0.5d,
                     x + layout.WidthM * 0.5d, y + layout.HeightM * 0.5d);
                 candidates.Add(layout);
@@ -535,8 +535,8 @@ namespace ShipCoreFramework
             if (candidates.Count > MaxCombinedPanelCandidates)
                 return single;
 
-            int currentIndex = -1;
-            for (int i = 0; i < candidates.Count; i++)
+            var currentIndex = -1;
+            for (var i = 0; i < candidates.Count; i++)
             {
                 if (candidates[i].Owner == this)
                 {
@@ -548,17 +548,17 @@ namespace ShipCoreFramework
             if (currentIndex < 0)
                 return single;
 
-            bool[] connected = new bool[candidates.Count];
+            var connected = new bool[candidates.Count];
             connected[currentIndex] = true;
             bool changed;
             do
             {
                 changed = false;
-                for (int i = 0; i < candidates.Count; i++)
+                for (var i = 0; i < candidates.Count; i++)
                 {
                     if (!connected[i]) continue;
 
-                    for (int j = 0; j < candidates.Count; j++)
+                    for (var j = 0; j < candidates.Count; j++)
                     {
                         if (connected[j]) continue;
                         if (!PanelRect.Touching(candidates[i].Rect, candidates[j].Rect, TouchToleranceMeters)) continue;
@@ -569,8 +569,8 @@ namespace ShipCoreFramework
             }
             while (changed);
 
-            List<LcdSurfaceLayout> members = new List<LcdSurfaceLayout>();
-            for (int i = 0; i < candidates.Count; i++)
+            var members = new List<LcdSurfaceLayout>();
+            for (var i = 0; i < candidates.Count; i++)
                 if (connected[i])
                     members.Add(candidates[i]);
 
@@ -579,14 +579,14 @@ namespace ShipCoreFramework
             if (members.Count > MaxCombinedPanelMembers)
                 return single;
 
-            double minX = double.MaxValue;
-            double minY = double.MaxValue;
-            double maxX = double.MinValue;
-            double maxY = double.MinValue;
-            double ppmTotal = 0d;
-            for (int i = 0; i < members.Count; i++)
+            var minX = double.MaxValue;
+            var minY = double.MaxValue;
+            var maxX = double.MinValue;
+            var maxY = double.MinValue;
+            var ppmTotal = 0d;
+            for (var i = 0; i < members.Count; i++)
             {
-                PanelRect rect = members[i].Rect;
+                var rect = members[i].Rect;
                 if (rect.MinX < minX) minX = rect.MinX;
                 if (rect.MinY < minY) minY = rect.MinY;
                 if (rect.MaxX > maxX) maxX = rect.MaxX;
@@ -594,19 +594,19 @@ namespace ShipCoreFramework
                 ppmTotal += members[i].PixelsPerMeter;
             }
 
-            double ppm = ppmTotal / members.Count;
+            var ppm = ppmTotal / members.Count;
             if (ppm <= 1d) return single;
 
             current.Rect = candidates[currentIndex].Rect;
-            float scaleX = (float)(current.PixelsPerMeterX / ppm);
-            float scaleY = (float)(current.PixelsPerMeterY / ppm);
-            Vector2 virtualSize = new Vector2((float)((maxX - minX) * ppm), (float)((maxY - minY) * ppm));
+            var scaleX = (float)(current.PixelsPerMeterX / ppm);
+            var scaleY = (float)(current.PixelsPerMeterY / ppm);
+            var virtualSize = new Vector2((float)((maxX - minX) * ppm), (float)((maxY - minY) * ppm));
             if (virtualSize.X <= 1f || virtualSize.Y <= 1f ||
                 virtualSize.X > MaxCombinedVirtualPixels || virtualSize.Y > MaxCombinedVirtualPixels)
                 return single;
 
-            Vector2 viewportMin = new Vector2((float)((current.Rect.MinX - minX) * ppm), (float)((current.Rect.MinY - minY) * ppm));
-            string key = BuildGroupKey(members);
+            var viewportMin = new Vector2((float)((current.Rect.MinX - minX) * ppm), (float)((current.Rect.MinY - minY) * ppm));
+            var key = BuildGroupKey(members);
             return new PanelGroupLayout(virtualSize, viewportMin, scaleX, scaleY, key, members.Count,
                 GetPhysicalRenderScale(ppm));
         }
@@ -621,7 +621,7 @@ namespace ShipCoreFramework
             double referencePixelsPerMeter = Surface.SurfaceSize.X / _cubeBlock.CubeGrid.GridSize;
             if (referencePixelsPerMeter <= 0d) return 1f;
 
-            double renderScale = pixelsPerMeter / referencePixelsPerMeter;
+            var renderScale = pixelsPerMeter / referencePixelsPerMeter;
             if (renderScale < MinPhysicalRenderScale) renderScale = MinPhysicalRenderScale;
             if (renderScale > MaxPhysicalRenderScale) renderScale = MaxPhysicalRenderScale;
             return (float)renderScale;
@@ -632,7 +632,7 @@ namespace ShipCoreFramework
             layout = null;
             if (_cubeBlock == null || Surface == null) return false;
 
-            int surfaceIndex = ResolveSurfaceIndex();
+            var surfaceIndex = ResolveSurfaceIndex();
             MatrixD worldMatrix;
             double widthM;
             double heightM;
@@ -644,15 +644,15 @@ namespace ShipCoreFramework
             if (widthM > MaxScreenAreaMeters || heightM > MaxScreenAreaMeters) return false;
             if (Surface.SurfaceSize.X <= 1f || Surface.SurfaceSize.Y <= 1f) return false;
 
-            double pixelsPerMeterX = Surface.SurfaceSize.X / widthM;
-            double pixelsPerMeterY = Surface.SurfaceSize.Y / heightM;
+            var pixelsPerMeterX = Surface.SurfaceSize.X / widthM;
+            var pixelsPerMeterY = Surface.SurfaceSize.Y / heightM;
             if (pixelsPerMeterX < MinScreenPixelsPerMeter || pixelsPerMeterX > MaxScreenPixelsPerMeter ||
                 pixelsPerMeterY < MinScreenPixelsPerMeter || pixelsPerMeterY > MaxScreenPixelsPerMeter)
                 return false;
 
-            Vector3D right = worldMatrix.Right;
-            Vector3D up = worldMatrix.Up;
-            Vector3D normal = worldMatrix.Forward;
+            var right = worldMatrix.Right;
+            var up = worldMatrix.Up;
+            var normal = worldMatrix.Forward;
             if (!Normalize(ref right) || !Normalize(ref up) || !Normalize(ref normal)) return false;
 
             layout = new LcdSurfaceLayout
@@ -688,7 +688,7 @@ namespace ShipCoreFramework
             if (Vector3D.Dot(current.Right, candidate.Right) < 0.996d) return false;
             if (Vector3D.Dot(current.Up, candidate.Up) < 0.996d) return false;
 
-            double planeDistance = Math.Abs(Vector3D.Dot(candidate.Center - current.Center, current.Normal));
+            var planeDistance = Math.Abs(Vector3D.Dot(candidate.Center - current.Center, current.Normal));
             return planeDistance <= SamePlaneToleranceMeters;
         }
 
@@ -701,8 +701,8 @@ namespace ShipCoreFramework
 
         private string BuildGroupKey(List<LcdSurfaceLayout> members)
         {
-            List<string> keys = new List<string>(members.Count);
-            for (int i = 0; i < members.Count; i++)
+            var keys = new List<string>(members.Count);
+            for (var i = 0; i < members.Count; i++)
                 keys.Add(members[i].MemberKey);
             keys.Sort(StringComparer.Ordinal);
             return string.Join("|", keys.ToArray());
@@ -710,7 +710,7 @@ namespace ShipCoreFramework
 
         private string GetMemberKey()
         {
-            long entityId = _cubeBlock != null ? _cubeBlock.EntityId : _instanceId;
+            var entityId = _cubeBlock != null ? _cubeBlock.EntityId : _instanceId;
             return entityId.ToString(CultureInfo.InvariantCulture) + "#" + ResolveSurfaceIndex().ToString(CultureInfo.InvariantCulture);
         }
 
@@ -724,7 +724,7 @@ namespace ShipCoreFramework
             {
                 foreach (var component in _cubeBlock.Components)
                 {
-                    IMyLcdSurfaceComponent lcdSurfaceComponent = component as IMyLcdSurfaceComponent;
+                    var lcdSurfaceComponent = component as IMyLcdSurfaceComponent;
                     if (lcdSurfaceComponent == null) continue;
 
                     _surfaceIndex = lcdSurfaceComponent.SelectedRotationIndex;
@@ -732,13 +732,13 @@ namespace ShipCoreFramework
                 }
             }
 
-            IngameTextSurfaceProvider provider = _terminalBlock as IngameTextSurfaceProvider;
+            var provider = _terminalBlock as IngameTextSurfaceProvider;
             if (provider == null || Surface == null) return _surfaceIndex;
 
-            string surfaceName = Surface.Name;
-            for (int i = 0; i < provider.SurfaceCount; i++)
+            var surfaceName = Surface.Name;
+            for (var i = 0; i < provider.SurfaceCount; i++)
             {
-                IngameTextSurface surface = provider.GetSurface(i);
+                var surface = provider.GetSurface(i);
                 if (surface == null) continue;
                 if (ReferenceEquals(surface, Surface) ||
                     string.Equals(surface.Name, surfaceName, StringComparison.Ordinal))
@@ -757,8 +757,8 @@ namespace ShipCoreFramework
                 MyAPIGateway.Session.Camera == null)
                 return false;
 
-            Vector3D origin = MyAPIGateway.Session.Camera.WorldMatrix.Translation;
-            Vector3D direction = MyAPIGateway.Session.Camera.WorldMatrix.Forward;
+            var origin = MyAPIGateway.Session.Camera.WorldMatrix.Translation;
+            var direction = MyAPIGateway.Session.Camera.WorldMatrix.Forward;
             if (Vector3D.DistanceSquared(origin, _cubeBlock.WorldMatrix.Translation) > 10000d)
                 return false;
 
@@ -767,12 +767,12 @@ namespace ShipCoreFramework
                     direction, out screenPoint))
                 return false;
 
-            Vector2 screenTopLeft = (Surface.TextureSize - Surface.SurfaceSize) * 0.5f;
-            Vector2 visible = screenPoint - screenTopLeft;
+            var screenTopLeft = (Surface.TextureSize - Surface.SurfaceSize) * 0.5f;
+            var visible = screenPoint - screenTopLeft;
             if (visible.X < 0f || visible.Y < 0f || visible.X > Surface.SurfaceSize.X || visible.Y > Surface.SurfaceSize.Y)
                 return false;
 
-            Vector2 virtualPoint = new Vector2(
+            var virtualPoint = new Vector2(
                 layout.ViewportMin.X + visible.X / Math.Max(0.001f, layout.ScaleX),
                 layout.ViewportMin.Y + visible.Y / Math.Max(0.001f, layout.ScaleY));
 
@@ -781,8 +781,8 @@ namespace ShipCoreFramework
                 Position = virtualPoint,
                 Tick = Session.CurrentTick
             };
-            ActiveScrollGroupKey = layout.GroupKey;
-            ActiveScrollGroupTick = Session.CurrentTick;
+            _activeScrollGroupKey = layout.GroupKey;
+            _activeScrollGroupTick = Session.CurrentTick;
 
             return true;
         }
@@ -793,9 +793,9 @@ namespace ShipCoreFramework
             if (!CursorStates.TryGetValue(layout.GroupKey, out state)) return;
             if (Session.CurrentTick - state.Tick > CursorTimeoutTicks) return;
 
-            List<MySprite> cursor = new List<MySprite>(6);
-            float r = 8f * _fontScale;
-            float thickness = 2f * _fontScale;
+            var cursor = new List<MySprite>(6);
+            var r = 8f * _fontScale;
+            var thickness = 2f * _fontScale;
             AddRect(cursor, state.Position.X - r, state.Position.Y - thickness * 0.5f, r * 2f, thickness, Palette.Cursor);
             AddRect(cursor, state.Position.X - thickness * 0.5f, state.Position.Y - r, thickness, r * 2f, Palette.Cursor);
             AddRect(cursor, state.Position.X - 2f * _fontScale, state.Position.Y - 2f * _fontScale,
@@ -805,20 +805,20 @@ namespace ShipCoreFramework
 
         private void EmitSprites(MySpriteDrawFrame frame, PanelGroupLayout layout, List<MySprite> sprites, Vector2 scroll)
         {
-            Vector2 screenTopLeft = (Surface.TextureSize - Surface.SurfaceSize) * 0.5f;
-            Vector2 clipMin = layout.ViewportMin;
-            Vector2 clipMax = layout.ViewportMin + new Vector2(
+            var screenTopLeft = (Surface.TextureSize - Surface.SurfaceSize) * 0.5f;
+            var clipMin = layout.ViewportMin;
+            var clipMax = layout.ViewportMin + new Vector2(
                 Surface.SurfaceSize.X / layout.ScaleX,
                 Surface.SurfaceSize.Y / layout.ScaleY);
 
-            for (int i = 0; i < sprites.Count; i++)
+            for (var i = 0; i < sprites.Count; i++)
             {
-                MySprite sprite = sprites[i];
+                var sprite = sprites[i];
                 if (sprite.Type == SpriteType.TEXTURE && sprite.Position.HasValue && sprite.Size.HasValue)
                 {
-                    Vector2 center = sprite.Position.Value;
+                    var center = sprite.Position.Value;
                     center.Y -= scroll.Y;
-                    Vector2 size = sprite.Size.Value;
+                    var size = sprite.Size.Value;
                     if (!ClipVirtualRect(ref center, ref size, clipMin, clipMax)) continue;
 
                     sprite.Position = new Vector2(
@@ -831,7 +831,7 @@ namespace ShipCoreFramework
 
                 if (sprite.Position.HasValue)
                 {
-                    Vector2 p = sprite.Position.Value;
+                    var p = sprite.Position.Value;
                     p.Y -= scroll.Y;
                     if (sprite.Type == SpriteType.TEXT && !IsVirtualTextVisible(p, clipMin, clipMax))
                         continue;
@@ -844,7 +844,7 @@ namespace ShipCoreFramework
 
                 if (sprite.Size.HasValue)
                 {
-                    Vector2 size = sprite.Size.Value;
+                    var size = sprite.Size.Value;
                     sprite.Size = new Vector2(size.X * layout.ScaleX, size.Y * layout.ScaleY);
                 }
 
@@ -859,10 +859,10 @@ namespace ShipCoreFramework
         {
             if (size.X <= 0f || size.Y <= 0f) return false;
 
-            float minX = center.X - size.X * 0.5f;
-            float maxX = center.X + size.X * 0.5f;
-            float minY = center.Y - size.Y * 0.5f;
-            float maxY = center.Y + size.Y * 0.5f;
+            var minX = center.X - size.X * 0.5f;
+            var maxX = center.X + size.X * 0.5f;
+            var minY = center.Y - size.Y * 0.5f;
+            var maxY = center.Y + size.Y * 0.5f;
 
             minX = Math.Max(minX, clipMin.X);
             maxX = Math.Min(maxX, clipMax.X);
@@ -888,20 +888,20 @@ namespace ShipCoreFramework
         {
             if (layout == null || string.IsNullOrEmpty(layout.GroupKey)) return 0f;
 
-            ScrollState state = GetScrollState(layout.GroupKey);
-            float maxScroll = Math.Max(0f, contentHeight - layout.VirtualSize.Y);
+            var state = GetScrollState(layout.GroupKey);
+            var maxScroll = Math.Max(0f, contentHeight - layout.VirtualSize.Y);
             if (maxScroll <= 0f)
             {
                 state.Offset = 0f;
                 return 0f;
             }
 
-            int wheelDelta = ConsumePendingWheelDelta(layout.GroupKey);
-            bool canScroll = hasCursorHit || IsGroupCursorActive(layout);
+            var wheelDelta = ConsumePendingWheelDelta(layout.GroupKey);
+            var canScroll = hasCursorHit || IsGroupCursorActive(layout);
             if (canScroll && wheelDelta != 0 && state.LastInputTick != Session.CurrentTick)
             {
-                float step = ManualScrollStepPixels * Math.Max(0.25f, _fontScale);
-                float steps = Math.Max(1f, Math.Abs(wheelDelta) / 120f);
+                var step = ManualScrollStepPixels * Math.Max(0.25f, _fontScale);
+                var steps = Math.Max(1f, Math.Abs(wheelDelta) / 120f);
                 state.Offset += wheelDelta > 0 ? -step * steps : step * steps;
                 state.LastInputTick = Session.CurrentTick;
             }
@@ -915,45 +915,45 @@ namespace ShipCoreFramework
             if (Session.CurrentTick - _lastDrawTick >= RedrawIntervalTicks)
                 return true;
 
-            return LastWheelInputTick == Session.CurrentTick;
+            return _lastWheelInputTick == Session.CurrentTick;
         }
 
         internal static void SampleScrollInput()
         {
-            if (LastInputSampleTick == Session.CurrentTick) return;
-            LastInputSampleTick = Session.CurrentTick;
+            if (_lastInputSampleTick == Session.CurrentTick) return;
+            _lastInputSampleTick = Session.CurrentTick;
 
             if (MyAPIGateway.Input == null) return;
-            if (string.IsNullOrEmpty(ActiveScrollGroupKey)) return;
-            if (Session.CurrentTick - ActiveScrollGroupTick > ScrollInputTimeoutTicks) return;
+            if (string.IsNullOrEmpty(_activeScrollGroupKey)) return;
+            if (Session.CurrentTick - _activeScrollGroupTick > ScrollInputTimeoutTicks) return;
 
-            int wheelDelta = MyAPIGateway.Input.DeltaMouseScrollWheelValue();
+            var wheelDelta = MyAPIGateway.Input.DeltaMouseScrollWheelValue();
             if (wheelDelta == 0) return;
 
             int pending;
-            PendingWheelDeltas.TryGetValue(ActiveScrollGroupKey, out pending);
-            PendingWheelDeltas[ActiveScrollGroupKey] = pending + wheelDelta;
-            LastWheelInputTick = Session.CurrentTick;
+            PendingWheelDeltas.TryGetValue(_activeScrollGroupKey, out pending);
+            PendingWheelDeltas[_activeScrollGroupKey] = pending + wheelDelta;
+            _lastWheelInputTick = Session.CurrentTick;
         }
 
         internal static void RunFrameScrollUpdate()
         {
             SampleScrollInput();
-            if (LastWheelInputTick != Session.CurrentTick) return;
-            if (string.IsNullOrEmpty(ActiveScrollGroupKey)) return;
+            if (_lastWheelInputTick != Session.CurrentTick) return;
+            if (string.IsNullOrEmpty(_activeScrollGroupKey)) return;
 
-            List<CoreTypeLCDScript> scripts = new List<CoreTypeLCDScript>();
+            var scripts = new List<CoreTypeLCDScript>();
             lock (InstancesLock)
             {
-                for (int i = 0; i < Instances.Count; i++)
+                for (var i = 0; i < Instances.Count; i++)
                     scripts.Add(Instances[i]);
             }
 
-            for (int i = 0; i < scripts.Count; i++)
+            for (var i = 0; i < scripts.Count; i++)
             {
-                CoreTypeLCDScript script = scripts[i];
+                var script = scripts[i];
                 if (script == null || script._disposed) continue;
-                if (!IsGroupKeyMember(ActiveScrollGroupKey, script.GetMemberKey())) continue;
+                if (!IsGroupKeyMember(_activeScrollGroupKey, script.GetMemberKey())) continue;
                 script.DrawFromFrameScrollUpdate();
             }
         }
@@ -1019,19 +1019,19 @@ namespace ShipCoreFramework
         {
             if (layout == null || contentHeight <= layout.VirtualSize.Y + 1f) return;
 
-            float maxScroll = Math.Max(1f, contentHeight - layout.VirtualSize.Y);
-            float trackTop = 66f * _fontScale;
-            float trackBottom = layout.VirtualSize.Y - 16f * _fontScale;
-            float trackHeight = trackBottom - trackTop;
+            var maxScroll = Math.Max(1f, contentHeight - layout.VirtualSize.Y);
+            var trackTop = 66f * _fontScale;
+            var trackBottom = layout.VirtualSize.Y - 16f * _fontScale;
+            var trackHeight = trackBottom - trackTop;
             if (trackHeight <= 20f) return;
 
-            float trackWidth = 4f * _fontScale;
-            float trackX = layout.VirtualSize.X - 10f * _fontScale;
-            float thumbHeight = Math.Max(18f * _fontScale, trackHeight * layout.VirtualSize.Y / contentHeight);
-            float thumbTravel = Math.Max(1f, trackHeight - thumbHeight);
-            float thumbTop = trackTop + thumbTravel * (scrollOffset / maxScroll);
+            var trackWidth = 4f * _fontScale;
+            var trackX = layout.VirtualSize.X - 10f * _fontScale;
+            var thumbHeight = Math.Max(18f * _fontScale, trackHeight * layout.VirtualSize.Y / contentHeight);
+            var thumbTravel = Math.Max(1f, trackHeight - thumbHeight);
+            var thumbTop = trackTop + thumbTravel * (scrollOffset / maxScroll);
 
-            List<MySprite> sprites = new List<MySprite>(2);
+            var sprites = new List<MySprite>(2);
             AddRect(sprites, trackX, trackTop, trackWidth, trackHeight, Palette.BarBack.Alpha(0.65f));
             AddRect(sprites, trackX - 1f * _fontScale, thumbTop, trackWidth + 2f * _fontScale, thumbHeight,
                 Palette.Muted.Alpha(0.9f));
@@ -1040,7 +1040,7 @@ namespace ShipCoreFramework
 
         private void AddText(List<MySprite> sprites, string text, Vector2 position, Color color, float scale)
         {
-            MySprite sprite = MySprite.CreateText(text ?? string.Empty, "Monospace", color, scale, TextAlignment.LEFT);
+            var sprite = MySprite.CreateText(text ?? string.Empty, "Monospace", color, scale, TextAlignment.LEFT);
             sprite.Position = position;
             sprites.Add(sprite);
         }
@@ -1062,8 +1062,8 @@ namespace ShipCoreFramework
         private void AddProgress(List<MySprite> sprites, float x, float y, float w, float h, double ratio, bool failing)
         {
             AddRect(sprites, x, y, w, h, Palette.BarBack);
-            double clamped = Math.Max(0d, Math.Min(1d, ratio));
-            Color color = failing ? Palette.Red : ratio >= 0.85d ? Palette.Amber : Palette.Green;
+            var clamped = Math.Max(0d, Math.Min(1d, ratio));
+            var color = failing ? Palette.Red : ratio >= 0.85d ? Palette.Amber : Palette.Green;
             AddRect(sprites, x, y, (float)(w * clamped), h, color);
             if (ratio > 1d)
                 AddRect(sprites, x + w - 3f * _fontScale, y - 2f * _fontScale, 3f * _fontScale, h + 4f * _fontScale,
@@ -1076,24 +1076,24 @@ namespace ShipCoreFramework
             if (TextUtils.GetTextWidth(text, scale) <= maxWidth) return text;
 
             const string suffix = "...";
-            int maxChars = Math.Max(1, (int)(maxWidth / (TextUtils.CharWidth * scale)) - suffix.Length);
+            var maxChars = Math.Max(1, (int)(maxWidth / (TextUtils.CharWidth * scale)) - suffix.Length);
             if (maxChars >= text.Length) return text;
             return text.Substring(0, maxChars) + suffix;
         }
 
         private void DrawMessage(string title, string body)
         {
-            MySpriteDrawFrame frame = Surface.DrawFrame();
-            Vector2 screenSize = Surface.SurfaceSize;
-            Vector2 screenTopLeft = (Surface.TextureSize - screenSize) * 0.5f;
+            var frame = Surface.DrawFrame();
+            var screenSize = Surface.SurfaceSize;
+            var screenTopLeft = (Surface.TextureSize - screenSize) * 0.5f;
             frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", Surface.TextureSize * 0.5f,
                 Surface.TextureSize, Palette.Background));
 
-            MySprite titleSprite = MySprite.CreateText(title, "Monospace", Color.White, 0.85f * _fontScale, TextAlignment.LEFT);
+            var titleSprite = MySprite.CreateText(title, "Monospace", Color.White, 0.85f * _fontScale, TextAlignment.LEFT);
             titleSprite.Position = screenTopLeft + new Vector2(18f * _fontScale, 18f * _fontScale);
             frame.Add(titleSprite);
 
-            MySprite bodySprite = MySprite.CreateText(body, "Monospace", Palette.Muted, 0.55f * _fontScale, TextAlignment.LEFT);
+            var bodySprite = MySprite.CreateText(body, "Monospace", Palette.Muted, 0.55f * _fontScale, TextAlignment.LEFT);
             bodySprite.Position = screenTopLeft + new Vector2(18f * _fontScale, 58f * _fontScale);
             frame.Add(bodySprite);
             frame.Dispose();
@@ -1106,90 +1106,20 @@ namespace ShipCoreFramework
             _showCursor = true;
             _page = "Auto";
 
-            string customData = _terminalBlock != null ? _terminalBlock.CustomData : null;
+            var customData = _terminalBlock != null ? _terminalBlock.CustomData : null;
             if (string.IsNullOrWhiteSpace(customData)) return;
 
-            string currentSection = null;
-            string[] lines = customData.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            for (int i = 0; i < lines.Length; i++)
-            {
-                string line = lines[i].Trim();
-                if (line.Length == 0 || line.StartsWith(";", StringComparison.Ordinal) ||
-                    line.StartsWith("#", StringComparison.Ordinal) || line.StartsWith("//", StringComparison.Ordinal))
-                    continue;
+            var ini = new MyIni();
+            MyIniParseResult parseResult;
+            if (!ini.TryParse(customData, out parseResult)) return;
 
-                if (line.StartsWith("[", StringComparison.Ordinal) && line.EndsWith("]", StringComparison.Ordinal))
-                {
-                    currentSection = line.Substring(1, line.Length - 2).Trim();
-                    continue;
-                }
+            _fontScale = MathHelper.Clamp(ini.Get(CustomDataSection, FontSizeKey).ToSingle(DefaultFontScale),
+                MinFontScale, MaxFontScale);
+            _combinePanels = ini.Get(CustomDataSection, CombinePanelsKey).ToBoolean(true);
+            _showCursor = ini.Get(CustomDataSection, ShowCursorKey).ToBoolean(true);
 
-                int separatorIndex = line.IndexOf('=');
-                if (separatorIndex < 0) separatorIndex = line.IndexOf(':');
-                if (separatorIndex <= 0) continue;
-                if (!string.Equals(currentSection, CustomDataSection, StringComparison.OrdinalIgnoreCase)) continue;
-
-                string key = line.Substring(0, separatorIndex).Trim();
-                string value = line.Substring(separatorIndex + 1).Trim();
-                ApplySetting(key, value);
-            }
-        }
-
-        private void ApplySetting(string key, string value)
-        {
-            if (string.Equals(key, FontSizeKey, StringComparison.OrdinalIgnoreCase))
-            {
-                float parsedValue;
-                if (float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out parsedValue) ||
-                    float.TryParse(value, NumberStyles.Float, CultureInfo.CurrentCulture, out parsedValue))
-                    _fontScale = MathHelper.Clamp(parsedValue, MinFontScale, MaxFontScale);
-                return;
-            }
-
-            if (string.Equals(key, CombinePanelsKey, StringComparison.OrdinalIgnoreCase))
-            {
-                bool parsed;
-                if (TryParseBool(value, out parsed)) _combinePanels = parsed;
-                return;
-            }
-
-            if (string.Equals(key, ShowCursorKey, StringComparison.OrdinalIgnoreCase))
-            {
-                bool parsed;
-                if (TryParseBool(value, out parsed)) _showCursor = parsed;
-                return;
-            }
-
-            if (string.Equals(key, PageKey, StringComparison.OrdinalIgnoreCase))
-            {
-                if (IsKnownPage(value)) _page = value.Trim();
-            }
-        }
-
-        private static bool TryParseBool(string value, out bool result)
-        {
-            result = false;
-            if (string.IsNullOrWhiteSpace(value)) return false;
-
-            if (bool.TryParse(value, out result)) return true;
-            string normalized = value.Trim();
-            if (string.Equals(normalized, "1", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(normalized, "yes", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(normalized, "on", StringComparison.OrdinalIgnoreCase))
-            {
-                result = true;
-                return true;
-            }
-
-            if (string.Equals(normalized, "0", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(normalized, "no", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(normalized, "off", StringComparison.OrdinalIgnoreCase))
-            {
-                result = false;
-                return true;
-            }
-
-            return false;
+            var page = ini.Get(CustomDataSection, PageKey).ToString("Auto").Trim();
+            if (IsKnownPage(page)) _page = page;
         }
 
         private bool IsPage(string page)
@@ -1250,14 +1180,14 @@ namespace ShipCoreFramework
 
             try
             {
-                MySpriteDrawFrame frame = Surface.DrawFrame();
-                Vector2 screenSize = Surface.SurfaceSize;
-                Vector2 screenCorner = (Surface.TextureSize - screenSize) * 0.5f;
+                var frame = Surface.DrawFrame();
+                var screenSize = Surface.SurfaceSize;
+                var screenCorner = (Surface.TextureSize - screenSize) * 0.5f;
 
                 frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", Surface.TextureSize * 0.5f,
                     Surface.TextureSize, Color.Black));
 
-                MySprite text = MySprite.CreateText(
+                var text = MySprite.CreateText(
                     "ERROR: " + e.Message + "\n" + e.StackTrace + "\n\nPlease send screenshot to mod author.\n" +
                     MyAPIGateway.Utilities.GamePaths.ModScopeName,
                     "White", Color.Red, 0.55f, TextAlignment.LEFT);

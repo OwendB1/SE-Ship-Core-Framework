@@ -53,11 +53,11 @@ namespace ShipCoreFramework
             if (Deactivated) return;
             if (!Session.IsGameThread)
             {
-                var groupKey = GetThreadWorkKey();
-                ThreadWork.Enqueue(ThreadWork.StateCategory, "deactivate:" + groupKey,
-                    "Deactivate group " + groupKey,
-                    () => !_closing && !Session.IsShuttingDown,
-                    delegate { Deactivate(reason); });
+                MyAPIGateway.Utilities.InvokeOnGameThread(delegate
+                {
+                    if (_closing || Session.IsShuttingDown) return;
+                    Deactivate(reason);
+                });
                 return;
             }
 

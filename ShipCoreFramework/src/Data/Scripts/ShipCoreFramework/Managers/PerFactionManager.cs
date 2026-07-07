@@ -17,8 +17,8 @@ namespace ShipCoreFramework
             internal int Count;
         }
 
-        private static readonly GameThreadWriteDictionary<CoreCountKey, int> PerFactionCounts =
-            new GameThreadWriteDictionary<CoreCountKey, int>(null, ThreadWork.CountsCategory, "faction-counts");
+        private static readonly ConcurrentDictionary<CoreCountKey, int> PerFactionCounts =
+            new ConcurrentDictionary<CoreCountKey, int>();
 
         private static readonly ConcurrentDictionary<long, byte> PlayerIdentityIds =
             new ConcurrentDictionary<long, byte>();
@@ -70,7 +70,7 @@ namespace ShipCoreFramework
             if (faction == null)
                 return;
 
-            foreach (KeyValuePair<long, MyFactionMember> member in faction.Members)
+            foreach (var member in faction.Members)
                 TrackFactionIdentity(member.Key, faction.Tag);
 
             Utils.Log("PerFactionManager::TrackFactionMembers: scanned faction " + faction.Tag +
@@ -136,8 +136,8 @@ namespace ShipCoreFramework
             if (owningFaction == null)
                 return 0;
 
-            int count = 0;
-            foreach (KeyValuePair<long, MyFactionMember> member in owningFaction.Members)
+            var count = 0;
+            foreach (var member in owningFaction.Members)
             {
                 if (ShouldCountTowardsPlayerLimits(member.Key, owningFaction.Tag))
                     count++;
@@ -159,7 +159,7 @@ namespace ShipCoreFramework
             if (owningFaction == null || ownerId <= 0)
                 return FactionRank.None;
 
-            foreach (KeyValuePair<long, MyFactionMember> member in owningFaction.Members)
+            foreach (var member in owningFaction.Members)
             {
                 if (member.Key != ownerId)
                     continue;
@@ -182,11 +182,11 @@ namespace ShipCoreFramework
             if (core == null || core.MinFactionRank == FactionRank.None)
                 return false;
 
-            FactionRank ownerRank = GetFactionRank(owningFaction, ownerId);
+            var ownerRank = GetFactionRank(owningFaction, ownerId);
             if (ownerRank >= core.MinFactionRank)
                 return false;
 
-            string coreName = string.IsNullOrWhiteSpace(core.UniqueName) ? core.SubtypeId : core.UniqueName;
+            var coreName = string.IsNullOrWhiteSpace(core.UniqueName) ? core.SubtypeId : core.UniqueName;
             reason = "Core " + coreName + " requires faction rank " + core.MinFactionRank + " or higher.";
             if (ownerRank == FactionRank.None)
                 reason += " Owner is not a faction member.";
@@ -270,21 +270,21 @@ namespace ShipCoreFramework
                 if (MyAPIGateway.Session == null)
                     return;
 
-                int playerCountBefore = PlayerIdentityIds.Count;
-                int nonPlayerCountBefore = NonPlayerIdentityIds.Count;
+                var playerCountBefore = PlayerIdentityIds.Count;
+                var nonPlayerCountBefore = NonPlayerIdentityIds.Count;
                 var checkpoint = MyAPIGateway.Session.GetCheckpoint(MyAPIGateway.Session.Name);
                 if (checkpoint == null)
                     return;
 
                 if (checkpoint.NonPlayerIdentities != null)
                 {
-                    foreach (long identityId in checkpoint.NonPlayerIdentities)
+                    foreach (var identityId in checkpoint.NonPlayerIdentities)
                         MarkNonPlayerIdentity(identityId);
                 }
 
                 if (checkpoint.AllPlayersData != null && checkpoint.AllPlayersData.Dictionary != null)
                 {
-                    foreach (KeyValuePair<MyObjectBuilder_Checkpoint.PlayerId, MyObjectBuilder_Player> entry in checkpoint.AllPlayersData.Dictionary)
+                    foreach (var entry in checkpoint.AllPlayersData.Dictionary)
                     {
                         if (entry.Value != null)
                             MarkPlayerIdentity(entry.Value.IdentityId);
@@ -293,7 +293,7 @@ namespace ShipCoreFramework
 
                 if (checkpoint.AllPlayers != null)
                 {
-                    foreach (MyObjectBuilder_Checkpoint.PlayerItem playerItem in checkpoint.AllPlayers)
+                    foreach (var playerItem in checkpoint.AllPlayers)
                     {
                         if (playerItem.PlayerId > 0 && playerItem.SteamId != 0)
                             MarkPlayerIdentity(playerItem.PlayerId);
@@ -317,10 +317,10 @@ namespace ShipCoreFramework
                 if (MyAPIGateway.Players == null)
                     return;
 
-                int registeredCountBefore = RegisteredIdentityIds.Count;
+                var registeredCountBefore = RegisteredIdentityIds.Count;
                 var identities = new List<IMyIdentity>();
                 MyAPIGateway.Players.GetAllIdentites(identities);
-                foreach (IMyIdentity identity in identities)
+                foreach (var identity in identities)
                 {
                     if (identity != null && identity.IdentityId > 0)
                         RegisteredIdentityIds.TryAdd(identity.IdentityId, 0);
@@ -342,11 +342,11 @@ namespace ShipCoreFramework
                 if (MyAPIGateway.Players == null)
                     return;
 
-                int playerCountBefore = PlayerIdentityIds.Count;
-                int nonPlayerCountBefore = NonPlayerIdentityIds.Count;
+                var playerCountBefore = PlayerIdentityIds.Count;
+                var nonPlayerCountBefore = NonPlayerIdentityIds.Count;
                 var players = new List<IMyPlayer>();
                 MyAPIGateway.Players.GetPlayers(players);
-                foreach (IMyPlayer player in players)
+                foreach (var player in players)
                 {
                     if (player == null || player.IdentityId <= 0)
                         continue;
@@ -383,7 +383,7 @@ namespace ShipCoreFramework
 
                 var identities = new List<IMyIdentity>();
                 MyAPIGateway.Players.GetAllIdentites(identities, identity => identity != null && identity.IdentityId == identityId);
-                foreach (IMyIdentity identity in identities)
+                foreach (var identity in identities)
                 {
                     if (identity == null || identity.IdentityId <= 0)
                         continue;
@@ -558,7 +558,8 @@ namespace ShipCoreFramework
             if (factionId <= 0 || string.IsNullOrWhiteSpace(coreType))
                 return 0;
 
-            var localCount = PerFactionCounts.GetOrDefault(new CoreCountKey(factionId, coreType), 0);
+            int localCount;
+            PerFactionCounts.TryGetValue(new CoreCountKey(factionId, coreType), out localCount);
             return localCount + LimitsNexusSync.GetRemoteFactionCount(factionId, coreType);
         }
 
@@ -572,8 +573,7 @@ namespace ShipCoreFramework
         {
             if (!Session.IsGameThread)
             {
-                ThreadWork.Enqueue(ThreadWork.CountsCategory, string.Empty,
-                    "Add faction core count", delegate { AddGridGroup(factionId, coreType); });
+                MyAPIGateway.Utilities.InvokeOnGameThread(delegate { AddGridGroup(factionId, coreType); });
                 return;
             }
 
@@ -595,15 +595,15 @@ namespace ShipCoreFramework
         {
             if (!Session.IsGameThread)
             {
-                ThreadWork.Enqueue(ThreadWork.CountsCategory, string.Empty,
-                    "Remove faction core count", delegate { RemoveGridGroup(factionId, coreType); });
+                MyAPIGateway.Utilities.InvokeOnGameThread(delegate { RemoveGridGroup(factionId, coreType); });
                 return;
             }
 
             if (factionId <= 0 || string.IsNullOrWhiteSpace(coreType)) return;
 
             var key = new CoreCountKey(factionId, coreType);
-            var previous = PerFactionCounts.GetOrDefault(key, 0);
+            int previous;
+            PerFactionCounts.TryGetValue(key, out previous);
             if (previous <= 0) return;
 
             var count = PerFactionCounts.AddOrUpdate(key, 0,
@@ -615,8 +615,7 @@ namespace ShipCoreFramework
         {
             if (!Session.IsGameThread)
             {
-                ThreadWork.Enqueue(ThreadWork.CountsCategory, "faction-remove:" + factionId,
-                    "Remove faction counts", delegate { RemoveFaction(factionId); });
+                MyAPIGateway.Utilities.InvokeOnGameThread(delegate { RemoveFaction(factionId); });
                 return;
             }
 
@@ -625,7 +624,7 @@ namespace ShipCoreFramework
             foreach (var entry in GetFactionCountsSnapshot(factionId).ToList())
             {
                 if (entry.Value <= 0) continue;
-                PerFactionCounts.Set(new CoreCountKey(factionId, entry.Key), 0);
+                PerFactionCounts[new CoreCountKey(factionId, entry.Key)] = 0;
                 if (!_suppressEvents) LimitsNexusSync.BroadcastFactionChange(new FactionChange { FactionId = factionId, CoreType = entry.Key, Count = 0 });
             }
         }
@@ -634,7 +633,7 @@ namespace ShipCoreFramework
         {
             if (!Session.IsGameThread)
             {
-                ThreadWork.Enqueue(ThreadWork.CountsCategory, "faction-reset", "Reset faction core counts", Reset);
+                MyAPIGateway.Utilities.InvokeOnGameThread(Reset);
                 return;
             }
 
@@ -648,7 +647,7 @@ namespace ShipCoreFramework
 
         internal static CoreCountEntry[] GetLocalCountsSnapshot()
         {
-            var snapshot = PerFactionCounts.ToArraySnapshot();
+            var snapshot = PerFactionCounts.ToArray();
             var result = new CoreCountEntry[snapshot.Length];
             for (var i = 0; i < snapshot.Length; i++)
             {

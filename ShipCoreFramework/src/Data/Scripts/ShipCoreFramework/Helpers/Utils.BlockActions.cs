@@ -17,18 +17,16 @@ namespace ShipCoreFramework
             if (!Session.IsGameThread)
             {
                 var capturedBlock = block;
-                var blockId = capturedBlock?.FatBlock?.EntityId ?? 0;
-                var coalesceKey = blockId == 0 ? string.Empty : "remove-refund:" + blockId;
-                ThreadWork.Enqueue(ThreadWork.StateCategory, coalesceKey,
-                    "Remove and refund block " + blockId,
-                    delegate
-                    {
-                        return capturedBlock?.CubeGrid != null &&
-                               !capturedBlock.CubeGrid.MarkedForClose &&
-                               !capturedBlock.CubeGrid.Closed &&
-                               !Session.IsShuttingDown;
-                    },
-                    delegate { RemoveAndRefund(capturedBlock); });
+                MyAPIGateway.Utilities.InvokeOnGameThread(delegate
+                {
+                    if (capturedBlock?.CubeGrid == null ||
+                        capturedBlock.CubeGrid.MarkedForClose ||
+                        capturedBlock.CubeGrid.Closed ||
+                        Session.IsShuttingDown)
+                        return;
+
+                    RemoveAndRefund(capturedBlock);
+                });
                 return;
             }
 

@@ -10,7 +10,6 @@ namespace ShipCoreFramework
     public partial class Session
     {
         private static NexusAPI _myNexusApi;
-        private const int MaxQueuedStateWorkPerTick = 64;
         private const int MaxMassCacheRefreshesPerTick = 4;
         private const int MaxMassCacheGroupsCheckedPerTick = 32;
         private bool _startedNexus;

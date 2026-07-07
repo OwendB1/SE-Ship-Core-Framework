@@ -22,11 +22,7 @@ namespace ShipCoreFramework
             if (_closing || Session.IsShuttingDown || IsInitializingGrids) return;
             if (!Session.IsGameThread)
             {
-                var groupKey = GetThreadWorkKey();
-                ThreadWork.Enqueue(ThreadWork.StateCategory, "punishment-refresh:" + groupKey,
-                    "Punishment state refresh for group " + groupKey,
-                    () => !_closing && !Session.IsShuttingDown,
-                    RefreshPunishmentState);
+                MyAPIGateway.Utilities.InvokeOnGameThread(RefreshPunishmentState);
                 return;
             }
 
@@ -271,7 +267,7 @@ namespace ShipCoreFramework
             Utils.ShowNotification(
                 $"Switching to new main core: {newMain.CoreBlock.CustomName}, old one was no longer functional!");
             Utils.Log("EnsureWorkingMainCore: switching main core from " + currentMain.SubtypeId +
-                      " to " + newMain.SubtypeId + " for group " + GetThreadWorkKey() +
+                      " to " + newMain.SubtypeId + " for group " + GetGroupKey() +
                       " because the old main core is not working.", 1);
 
             currentMain.IsMainCore = false;
@@ -305,7 +301,7 @@ namespace ShipCoreFramework
                 var reasons = GetSpeedPunishmentGateDescriptions();
                 Utils.Log("ApplyPunishmentFlags: speed punishment " +
                           (PunishSpeed ? "enabled" : "cleared") +
-                          " for group " + GetThreadWorkKey() +
+                          " for group " + GetGroupKey() +
                           (reasons.Count == 0 ? "." : ". Reasons: " + string.Join("; ", reasons)), 1);
             }
 
@@ -314,7 +310,7 @@ namespace ShipCoreFramework
                 var reasons = GetModifierPunishmentGateDescriptions();
                 Utils.Log("ApplyPunishmentFlags: modifier punishment " +
                           (PunishModifiers ? "enabled" : "cleared") +
-                          " for group " + GetThreadWorkKey() +
+                          " for group " + GetGroupKey() +
                           (reasons.Count == 0 ? "." : ". Reasons: " + string.Join("; ", reasons)), 1);
             }
         }
@@ -341,7 +337,7 @@ namespace ShipCoreFramework
             }
 
             var modifiers = GetCurrentDefenseModifiers();
-            foreach (var kvp in GridDictionary) CubeGridModifiers.DefenseModifiers.Set(kvp.Key.EntityId, modifiers);
+            foreach (var kvp in GridDictionary) CubeGridModifiers.DefenseModifiers[kvp.Key.EntityId] = modifiers;
         }
 
         internal void RemoveDefenseModifierCache(long gridEntityId)
@@ -377,17 +373,17 @@ namespace ShipCoreFramework
             if (IsCoreRecoveryGraceActive())
             {
                 Utils.Log("ApplyModifiers: suppressed modifier application during core recovery grace for group " +
-                          GetThreadWorkKey() + ".", 2);
+                          GetGroupKey() + ".", 2);
                 return;
             }
 
             if (!Session.IsGameThread)
             {
-                var groupKey = GetThreadWorkKey();
-                ThreadWork.Enqueue(ThreadWork.StateCategory, "apply-modifiers:" + groupKey,
-                    "Apply modifiers for group " + groupKey,
-                    delegate { return !_closing && !Session.IsShuttingDown; },
-                    delegate { ApplyModifiers(modifiers); });
+                MyAPIGateway.Utilities.InvokeOnGameThread(delegate
+                {
+                    if (_closing || Session.IsShuttingDown) return;
+                    ApplyModifiers(modifiers);
+                });
                 return;
             }
 
@@ -471,11 +467,11 @@ namespace ShipCoreFramework
                 return;
             }
 
-            var groupKey = GetThreadWorkKey();
-            ThreadWork.Enqueue(ThreadWork.StateCategory, "boost-deactivated:" + groupKey,
-                "Boost deactivated side effects for group " + groupKey,
-                delegate { return !_closing && !Session.IsShuttingDown; },
-                RunBoostDeactivatedSideEffects);
+            MyAPIGateway.Utilities.InvokeOnGameThread(delegate
+            {
+                if (_closing || Session.IsShuttingDown) return;
+                RunBoostDeactivatedSideEffects();
+            });
         }
 
         private void RunBoostDeactivatedSideEffects()
@@ -495,11 +491,11 @@ namespace ShipCoreFramework
                 return;
             }
 
-            var groupKey = GetThreadWorkKey();
-            ThreadWork.Enqueue(ThreadWork.StateCategory, "active-defense-deactivated:" + groupKey,
-                "Active defense deactivated side effects for group " + groupKey,
-                delegate { return !_closing && !Session.IsShuttingDown; },
-                RunActiveDefenseDeactivatedSideEffects);
+            MyAPIGateway.Utilities.InvokeOnGameThread(delegate
+            {
+                if (_closing || Session.IsShuttingDown) return;
+                RunActiveDefenseDeactivatedSideEffects();
+            });
         }
 
         private void RunActiveDefenseDeactivatedSideEffects()

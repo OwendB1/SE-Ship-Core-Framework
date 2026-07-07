@@ -59,7 +59,7 @@ namespace ShipCoreFramework
 
             SyncNoCoreLimitTracking();
             OnUpgradeModulesChanged();
-            Utils.Log("InitGrids: initialized group " + GetThreadWorkKey() + " with " +
+            Utils.Log("InitGrids: initialized group " + GetGroupKey() + " with " +
                       GridDictionary.Count + " grids, " + CoreDictionary.Count + " cores, main core " +
                       (MainCoreComponent == null ? "<none>" : MainCoreComponent.SubtypeId) + ".", 2);
             return true;
@@ -132,7 +132,7 @@ namespace ShipCoreFramework
             _coreRecoveryGraceStartTick = Session.CurrentTick + CoreRecoveryGraceStartDelayTicks;
             _nextCoreRecoveryGraceNotificationTick = 0;
             _lastCoreRecoveryGraceNotificationSeconds = -1;
-            Utils.Log("CoreRecoveryGrace: transient no-core guard scheduled for group " + GetThreadWorkKey() +
+            Utils.Log("CoreRecoveryGrace: transient no-core guard scheduled for group " + GetGroupKey() +
                       ". Countdown starts at tick " + _coreRecoveryGraceStartTick +
                       ". Reason: " + reason, 1);
         }
@@ -163,7 +163,7 @@ namespace ShipCoreFramework
             _nextCoreRecoveryGraceNotificationTick = 0;
             _lastCoreRecoveryGraceNotificationSeconds = -1;
 
-            Utils.Log("CoreRecoveryGrace: countdown started for group " + GetThreadWorkKey() +
+            Utils.Log("CoreRecoveryGrace: countdown started for group " + GetGroupKey() +
                       ". Expires at tick " + _coreRecoveryGraceExpireTick +
                       ". Reason: " + reason, 1);
 
@@ -207,7 +207,7 @@ namespace ShipCoreFramework
             if (_closing || Deactivated || MainCoreComponent != null || Session.IsShuttingDown) return;
 
             Utils.Log("CoreRecoveryGrace: applying no-core state after grace for group " +
-                      GetThreadWorkKey() + ".", 1);
+                      GetGroupKey() + ".", 1);
             ClearMissingCoreRescan();
             RefreshPunishmentState();
             OnUpgradeModulesChanged();
@@ -232,7 +232,7 @@ namespace ShipCoreFramework
                     _coreRecoveryGraceNotificationRecipients);
 
             if (wasActive || confirmedAbsent)
-                Utils.Log("CoreRecoveryGrace: cleared for group " + GetThreadWorkKey() +
+                Utils.Log("CoreRecoveryGrace: cleared for group " + GetGroupKey() +
                           ". ConfirmedAbsent=" + confirmedAbsent +
                           ". Reason: " + reason, 1);
         }
@@ -296,11 +296,7 @@ namespace ShipCoreFramework
             if (old == null) return;
             if (!Session.IsGameThread)
             {
-                var groupKey = GetThreadWorkKey();
-                ThreadWork.Enqueue(ThreadWork.StateCategory, "reset-core:" + groupKey,
-                    "Reset core for group " + groupKey,
-                    () => !_closing && !Session.IsShuttingDown,
-                    ResetCore);
+                MyAPIGateway.Utilities.InvokeOnGameThread(ResetCore);
                 return;
             }
 
@@ -423,7 +419,7 @@ namespace ShipCoreFramework
             if (newMain == null)
             {
                 Utils.Log("MainCoreLeftGroup: no replacement core found after " + oldType +
-                          " left group " + GetThreadWorkKey() + ".", 1);
+                          " left group " + GetGroupKey() + ".", 1);
                 UnregisterCoreLimitTracking();
                 ModAPI.BroadcastCoreDeactivated(GetRepresentativeGridId(), oldType, oldName);
                 ClearPublishedLimitSnapshots();
@@ -437,7 +433,7 @@ namespace ShipCoreFramework
                 MainCoreComponent = newMain;
                 MainCoreComponent.IsMainCore = true;
                 Utils.Log("MainCoreLeftGroup: switched main core from " + oldType + " to " +
-                          MainCoreComponent.SubtypeId + " for group " + GetThreadWorkKey() + ".", 1);
+                          MainCoreComponent.SubtypeId + " for group " + GetGroupKey() + ".", 1);
                 InvalidateGameThreadStateCache(true);
                 InvalidateModifierStateCache();
                 if (!string.Equals(oldType, MainCoreComponent.SubtypeId, StringComparison.OrdinalIgnoreCase))
@@ -474,7 +470,7 @@ namespace ShipCoreFramework
             if (newMain == null)
             {
                 Utils.Log("CoreRemoved: main core " + lost.SubtypeId +
-                          " removed with no replacement for group " + GetThreadWorkKey() + ".", 1);
+                          " removed with no replacement for group " + GetGroupKey() + ".", 1);
                 ResetCore();
             }
             else
@@ -482,7 +478,7 @@ namespace ShipCoreFramework
                 MainCoreComponent = newMain;
                 MainCoreComponent.IsMainCore = true;
                 Utils.Log("CoreRemoved: replaced main core " + lost.SubtypeId + " with " +
-                          MainCoreComponent.SubtypeId + " for group " + GetThreadWorkKey() + ".", 1);
+                          MainCoreComponent.SubtypeId + " for group " + GetGroupKey() + ".", 1);
                 InvalidateGameThreadStateCache(true);
                 InvalidateModifierStateCache();
                 if (!string.Equals(lost.SubtypeId, MainCoreComponent.SubtypeId, StringComparison.OrdinalIgnoreCase))
@@ -566,11 +562,7 @@ namespace ShipCoreFramework
 
             if (!Session.IsGameThread)
             {
-                var groupKey = GetThreadWorkKey();
-                ThreadWork.Enqueue(ThreadWork.StateCategory, "missing-core-rescan:" + groupKey,
-                    "Missing core rescan for group " + groupKey,
-                    () => !_closing && !Session.IsShuttingDown,
-                    RunMissingCoreRescanTick);
+                MyAPIGateway.Utilities.InvokeOnGameThread(RunMissingCoreRescanTick);
                 return;
             }
 
@@ -593,7 +585,7 @@ namespace ShipCoreFramework
 
                 _nextMissingCoreRescanTick = 0;
                 if (foundCore)
-                    Utils.Log("Missing core rescan found core blocks but none could become main for group " + GetThreadWorkKey(), 1);
+                    Utils.Log("Missing core rescan found core blocks but none could become main for group " + GetGroupKey(), 1);
                 ClearCoreRecoveryGrace(foundCore
                     ? "core blocks found but none could become main"
                     : "missing core rescan attempts exhausted", true);
@@ -698,7 +690,7 @@ namespace ShipCoreFramework
             PerManifestGroupManager.AddGridGroup(subtypeId);
 
             Utils.Log("RegisterNoCoreLimitTracking: subtype=" + subtypeId + ", owner=" + ownerId +
-                      ", faction=" + factionId + ", group=" + GetThreadWorkKey() + ".", 2);
+                      ", faction=" + factionId + ", group=" + GetGroupKey() + ".", 2);
 
             _registeredNoCoreLimitSubtypeId = subtypeId;
             _registeredNoCoreLimitOwnerId = ownerId;
@@ -719,7 +711,7 @@ namespace ShipCoreFramework
                 Utils.Log("UnregisterNoCoreLimitTracking: subtype=" + subtypeId +
                           ", owner=" + _registeredNoCoreLimitOwnerId +
                           ", faction=" + _registeredNoCoreLimitFactionId +
-                          ", group=" + GetThreadWorkKey() + ".", 2);
+                          ", group=" + GetGroupKey() + ".", 2);
             }
 
             _registeredNoCoreLimitSubtypeId = string.Empty;
@@ -753,7 +745,7 @@ namespace ShipCoreFramework
             PerManifestGroupManager.AddGridGroup(subtypeId);
 
             Utils.Log("RegisterCoreLimitTracking: subtype=" + subtypeId + ", owner=" + ownerId +
-                      ", faction=" + factionId + ", group=" + GetThreadWorkKey() + ".", 2);
+                      ", faction=" + factionId + ", group=" + GetGroupKey() + ".", 2);
 
             _registeredCoreLimitSubtypeId = subtypeId;
             _registeredCoreLimitOwnerId = ownerId;
@@ -774,7 +766,7 @@ namespace ShipCoreFramework
                 Utils.Log("UnregisterCoreLimitTracking: subtype=" + subtypeId +
                           ", owner=" + _registeredCoreLimitOwnerId +
                           ", faction=" + _registeredCoreLimitFactionId +
-                          ", group=" + GetThreadWorkKey() + ".", 2);
+                          ", group=" + GetGroupKey() + ".", 2);
             }
 
             _registeredCoreLimitSubtypeId = string.Empty;

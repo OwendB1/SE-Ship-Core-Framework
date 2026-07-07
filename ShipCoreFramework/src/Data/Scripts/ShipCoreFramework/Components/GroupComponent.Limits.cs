@@ -63,7 +63,7 @@ namespace ShipCoreFramework
             {
                 BroadcastGroupCountdown(GetMinimumBlocksGateCountdownKey(), string.Empty, 0,
                     _minimumBlocksGateNotificationRecipients);
-                Utils.Log("MinimumBlocksGate: cleared for group " + GetThreadWorkKey() +
+                Utils.Log("MinimumBlocksGate: cleared for group " + GetGroupKey() +
                           ". Reason: " + reason, 1);
             }
 
@@ -107,7 +107,7 @@ namespace ShipCoreFramework
                     _nextMinimumBlocksGateNotificationTick = 0;
                     _lastMinimumBlocksGateNotificationSeconds = -1;
                     changed = true;
-                    Utils.Log("MinimumBlocksGate: countdown started for group " + GetThreadWorkKey() +
+                    Utils.Log("MinimumBlocksGate: countdown started for group " + GetGroupKey() +
                               ". Blocks=" + GroupBlocksCount + "/" + minBlocks +
                               ", activatesAtTick=" + _minimumBlocksGateActivationTick + ".", 1);
                     NotifyMinimumBlocksGateCountdown(true);
@@ -125,7 +125,7 @@ namespace ShipCoreFramework
                     _minimumBlocksLimitedBlockGateActive = true;
                     BroadcastGroupCountdown(GetMinimumBlocksGateCountdownKey(), string.Empty, 0,
                         _minimumBlocksGateNotificationRecipients);
-                    Utils.Log("MinimumBlocksGate: enforcement enabled for group " + GetThreadWorkKey() +
+                    Utils.Log("MinimumBlocksGate: enforcement enabled for group " + GetGroupKey() +
                               ". Blocks=" + GroupBlocksCount + "/" + minBlocks + ".", 1);
                     return true;
                 }
@@ -166,7 +166,7 @@ namespace ShipCoreFramework
 
             if (changed)
                 Utils.Log("CoreRecoveryGrace: cleared punishment state for group " +
-                          GetThreadWorkKey() + ".", 1);
+                          GetGroupKey() + ".", 1);
         }
 
         private void RefreshLimitedBlockPunishmentState()
@@ -177,7 +177,7 @@ namespace ShipCoreFramework
                 PunishLimitedBlocks = false;
                 if (wasPunishing)
                     Utils.Log("RefreshLimitedBlockPunishmentState: cleared limited block punishment during core recovery grace for group " +
-                              GetThreadWorkKey() + ".", 1);
+                              GetGroupKey() + ".", 1);
                 return;
             }
 
@@ -187,7 +187,7 @@ namespace ShipCoreFramework
                 PunishLimitedBlocks = false;
                 if (wasPunishing)
                     Utils.Log("RefreshLimitedBlockPunishmentState: cleared limited block punishment for ignored/deactivated group " +
-                              GetThreadWorkKey() + ".", 1);
+                              GetGroupKey() + ".", 1);
                 return;
             }
 
@@ -198,7 +198,7 @@ namespace ShipCoreFramework
                 var reasons = GetLimitedBlockPunishmentGateDescriptions();
                 Utils.Log("RefreshLimitedBlockPunishmentState: " +
                           (PunishLimitedBlocks ? "enabled" : "cleared") +
-                          " limited block punishment for group " + GetThreadWorkKey() +
+                          " limited block punishment for group " + GetGroupKey() +
                           (reasons.Count == 0 ? "." : ". Reasons: " + string.Join("; ", reasons)), 1);
             }
         }
@@ -230,7 +230,7 @@ namespace ShipCoreFramework
         {
             if (_closing) return;
             _pendingExternalLimitValidationTick = Session.CurrentTick + ExternalLimitValidationDelayTicks;
-            Utils.Log("ScheduleExternalLimitValidation: group=" + GetThreadWorkKey() +
+            Utils.Log("ScheduleExternalLimitValidation: group=" + GetGroupKey() +
                       ", owner=" + _lastOwnerId +
                       ", tick=" + _pendingExternalLimitValidationTick + ".", 2);
         }
@@ -311,7 +311,7 @@ namespace ShipCoreFramework
             if (LimitsNexusSync.IsSettling)
             {
                 Utils.Log("RunExternalLimitValidationTick: Nexus settling, rescheduling validation for group " +
-                          GetThreadWorkKey() + ".", 2);
+                          GetGroupKey() + ".", 2);
                 ScheduleExternalLimitValidation();
                 return;
             }
@@ -324,12 +324,7 @@ namespace ShipCoreFramework
                 return;
             }
 
-            var representativeGridId = GetRepresentativeGridId();
-            var groupKey = GetThreadWorkKey();
-            ThreadWork.Enqueue(ThreadWork.ValidationCategory, "external-limit-validation:" + groupKey,
-                "External limit validation for group " + representativeGridId,
-                delegate { return !_closing && !Session.IsShuttingDown; },
-                ExecuteExternalLimitValidation);
+            MyAPIGateway.Utilities.InvokeOnGameThread(ExecuteExternalLimitValidation);
         }
 
         private void ExecuteExternalLimitValidation()
@@ -346,7 +341,7 @@ namespace ShipCoreFramework
             if (ShouldDeferOwnerLimitValidation(subtypeId))
             {
                 Utils.Log("ExecuteExternalLimitValidation: owner unavailable for " + subtypeId +
-                          " on group " + GetThreadWorkKey() + "; rescheduling.", 2);
+                          " on group " + GetGroupKey() + "; rescheduling.", 2);
                 ScheduleExternalLimitValidation();
                 return;
             }
@@ -357,7 +352,7 @@ namespace ShipCoreFramework
                 return;
 
             Utils.Log("ExecuteExternalLimitValidation: removing core " + subtypeId +
-                      " from group " + GetThreadWorkKey() +
+                      " from group " + GetGroupKey() +
                       " because owner, faction, or manifest limits failed.", 1);
             mainCore.CoreBlock.SlimBlock.RemoveAndRefund();
             ResetCore();
@@ -438,7 +433,7 @@ namespace ShipCoreFramework
 
             if (pendingPunishments.Count > 0)
                 Utils.Log("EnforceGroupPunishment: queued " + pendingPunishments.Count +
-                          " block punishments for group " + GetThreadWorkKey() +
+                          " block punishments for group " + GetGroupKey() +
                           ", forceShutOff=" + forceShutOffPunishment + ".", 1);
             ExecutePendingPunishments(pendingPunishments);
         }
@@ -505,7 +500,7 @@ namespace ShipCoreFramework
                 if (appliedPunishments > 0 && MyGroup != null)
                 {
                     Utils.Log("ExecutePendingPunishments: applied " + appliedPunishments +
-                              " block punishments for group " + GetThreadWorkKey() + ".", 1);
+                              " block punishments for group " + GetGroupKey() + ".", 1);
                     ModAPI.BroadcastLimitsEnforced(representativeGridId, appliedPunishments);
                 }
             });

@@ -81,16 +81,16 @@ namespace NexusModAPI
         internal class ModAPIMsg
         {
             [ProtoMember(10)]
-            internal byte fromServerID;
+            internal byte FromServerID;
 
             [ProtoMember(20)]
-            internal byte toServerID;
+            internal byte ToServerID;
 
             [ProtoMember(25)]
-            internal long targetModMessageID;
+            internal long TargetModMessageID;
 
             [ProtoMember(30)]
-            internal byte[] msgData;
+            internal byte[] MsgData;
         }
     }
 }

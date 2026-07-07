@@ -8,12 +8,12 @@ namespace ShipCoreFramework
     {
         internal bool ShouldCoreBecomeMain(CoreComponent candidate, bool candidatePersistedMain)
         {
-            CoreComponent current = MainCoreComponent;
+            var current = MainCoreComponent;
             if (!IsSelectableCore(candidate, false)) return false;
             if (current == null) return true;
             if (ReferenceEquals(candidate, current)) return false;
 
-            int comparison = CompareCoreCandidates(candidate, current, false);
+            var comparison = CompareCoreCandidates(candidate, current, false);
             if (comparison != 0) return comparison > 0;
 
             if (candidatePersistedMain && candidate.SubtypeId != current.SubtypeId)
@@ -25,7 +25,7 @@ namespace ShipCoreFramework
         private CoreComponent GetBestMainCoreCandidate(bool requireWorking)
         {
             CoreComponent best = null;
-            foreach (CoreComponent candidate in CoreDictionary.Values)
+            foreach (var candidate in CoreDictionary.Values)
             {
                 if (!IsSelectableCore(candidate, requireWorking)) continue;
                 if (CompareCoreCandidates(candidate, best, true) > 0)
@@ -38,7 +38,7 @@ namespace ShipCoreFramework
         private CoreComponent GetBestReplacementMainCoreCandidate(CoreComponent currentMain, bool requireWorking)
         {
             CoreComponent best = null;
-            foreach (CoreComponent candidate in CoreDictionary.Values)
+            foreach (var candidate in CoreDictionary.Values)
             {
                 if (ReferenceEquals(candidate, currentMain)) continue;
                 if (!IsSelectableCore(candidate, requireWorking)) continue;
@@ -55,7 +55,7 @@ namespace ShipCoreFramework
             if (left == null) return -1;
             if (right == null) return 1;
 
-            int blockCompare = GetCoreGridBlockCount(left).CompareTo(GetCoreGridBlockCount(right));
+            var blockCompare = GetCoreGridBlockCount(left).CompareTo(GetCoreGridBlockCount(right));
             if (blockCompare != 0) return blockCompare;
 
             if (!includeEntityTieBreaker) return 0;
@@ -71,11 +71,11 @@ namespace ShipCoreFramework
             if (left == null) return -1;
             if (right == null) return 1;
 
-            int priorityCompare = GetCoreSelectionPriority(left.ShipCore)
+            var priorityCompare = GetCoreSelectionPriority(left.ShipCore)
                 .CompareTo(GetCoreSelectionPriority(right.ShipCore));
             if (priorityCompare != 0) return priorityCompare;
 
-            int blockCompare = left.GroupBlocksCount.CompareTo(right.GroupBlocksCount);
+            var blockCompare = left.GroupBlocksCount.CompareTo(right.GroupBlocksCount);
             if (blockCompare != 0) return blockCompare;
 
             if (!includeRepresentativeTieBreaker) return 0;
@@ -91,7 +91,7 @@ namespace ShipCoreFramework
 
         private static bool IsSelectableCore(CoreComponent core, bool requireWorking)
         {
-            IMyFunctionalBlock block = core == null ? null : core.CoreBlock;
+            var block = core == null ? null : core.CoreBlock;
             if (block == null || block.MarkedForClose || block.Closed) return false;
             return !requireWorking || block.IsWorking;
         }
@@ -106,7 +106,7 @@ namespace ShipCoreFramework
             if (core == null) return 0;
             if (core.GridComponent != null) return core.GridComponent.BlockCount;
 
-            MyCubeGrid grid = core.CoreBlock == null ? null : core.CoreBlock.CubeGrid as MyCubeGrid;
+            var grid = core.CoreBlock == null ? null : core.CoreBlock.CubeGrid as MyCubeGrid;
             return grid == null ? 0 : grid.BlocksCount;
         }
 

@@ -128,7 +128,6 @@ namespace ShipCoreFramework
         internal static void BroadcastSnapshot()
         {
             if (!Ready) return;
-            if (Session.IsGameThread) ThreadWork.FlushPendingWrites(ThreadWork.CountsCategory);
             var env = new Envelope { Kind = EnvelopeKind.Snapshot, Payload = Serialize(BuildSnapshot()) };
             _nexus.SendModMsgToAllServers(Serialize(env), ChannelId);
         }
@@ -181,12 +180,12 @@ namespace ShipCoreFramework
             try
             {
                 var apiMsg = MyAPIGateway.Utilities.SerializeFromBinary<ModAPIMsg>((byte[])obj);
-                if (apiMsg.targetModMessageID != ChannelId) return;
-                if (apiMsg.toServerID != 0 && apiMsg.toServerID != _thisServerId) return;
-                if (apiMsg.fromServerID == _thisServerId) return;
+                if (apiMsg.TargetModMessageID != ChannelId) return;
+                if (apiMsg.ToServerID != 0 && apiMsg.ToServerID != _thisServerId) return;
+                if (apiMsg.FromServerID == _thisServerId) return;
 
                 MarkSyncActivity();
-                var env = Deserialize<Envelope>(apiMsg.msgData);
+                var env = Deserialize<Envelope>(apiMsg.MsgData);
                 if (env == null) return;
 
                 switch (env.Kind)
@@ -200,13 +199,13 @@ namespace ShipCoreFramework
                     case EnvelopeKind.Snapshot:
                         var state = Deserialize<LimitsState>(env.Payload);
                         if (state == null) return;
-                        ApplySnapshot(apiMsg.fromServerID, state);
+                        ApplySnapshot(apiMsg.FromServerID, state);
                         break;
 
                     case EnvelopeKind.Diff:
                         var diff = Deserialize<LimitsDiff>(env.Payload);
                         if (diff == null) return;
-                        ApplyDiff(apiMsg.fromServerID, diff);
+                        ApplyDiff(apiMsg.FromServerID, diff);
                         break;
                 }
             }

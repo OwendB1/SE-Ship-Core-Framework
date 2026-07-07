@@ -27,18 +27,14 @@ namespace ShipCoreFramework
                     return;
                 }
 
-                var blockId = CoreBlock?.EntityId ?? 0;
-                ThreadWork.Enqueue(ThreadWork.StateCategory, "core-state:" + blockId,
-                    "Persist core main state " + blockId,
-                    () => CoreBlock != null &&
-                          !CoreBlock.MarkedForClose &&
-                          !CoreBlock.Closed &&
-                          !Session.IsShuttingDown,
-                    delegate
-                    {
-                        SaveCoreState();
-                        CoreBlock.RefreshCustomInfo();
-                    });
+                MyAPIGateway.Utilities.InvokeOnGameThread(delegate
+                {
+                    if (CoreBlock == null || CoreBlock.MarkedForClose || CoreBlock.Closed || Session.IsShuttingDown)
+                        return;
+
+                    SaveCoreState();
+                    CoreBlock.RefreshCustomInfo();
+                });
             }
         }
     }

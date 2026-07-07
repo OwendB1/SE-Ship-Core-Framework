@@ -238,7 +238,7 @@ namespace ShipCoreFramework
                     Session.Config.LoadConfig(false);
                 }
 
-                ModConfig import = MyAPIGateway.Utilities.SerializeFromXML<ModConfig>(ConfigXml);
+                var import = MyAPIGateway.Utilities.SerializeFromXML<ModConfig>(ConfigXml);
                 if (import != null)
                 {
                     // Only world-level settings are serialized here, so copy them onto the already-loaded config instance.

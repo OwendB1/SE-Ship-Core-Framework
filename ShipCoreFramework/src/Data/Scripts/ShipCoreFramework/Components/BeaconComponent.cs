@@ -35,15 +35,12 @@ namespace ShipCoreFramework
             }
             else
             {
-                var beaconId = BeaconBlock.EntityId;
-                ThreadWork.Enqueue(ThreadWork.StateCategory, "beacon-sync:" + beaconId,
-                    "Initial beacon sync " + beaconId,
-                    () => IsBeaconAvailable() && !Session.IsShuttingDown,
-                    delegate
-                    {
-                        SyncForceBroadcast();
-                        _groupComponent.RefreshPunishmentState();
-                    });
+                MyAPIGateway.Utilities.InvokeOnGameThread(delegate
+                {
+                    if (!IsBeaconAvailable() || Session.IsShuttingDown) return;
+                    SyncForceBroadcast();
+                    _groupComponent.RefreshPunishmentState();
+                });
             }
             return true;
         }

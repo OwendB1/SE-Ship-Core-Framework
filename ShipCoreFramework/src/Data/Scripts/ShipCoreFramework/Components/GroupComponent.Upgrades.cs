@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Sandbox.ModAPI;
 
 namespace ShipCoreFramework
 {
@@ -87,11 +88,7 @@ namespace ShipCoreFramework
 
             if (!Session.IsGameThread)
             {
-                var groupKey = GetThreadWorkKey();
-                ThreadWork.Enqueue(ThreadWork.StateCategory, "upgrade-refresh:" + groupKey,
-                    "Upgrade/module refresh for group " + GetRepresentativeGridId(),
-                    () => !_closing && !Session.IsShuttingDown,
-                    OnUpgradeModulesChanged);
+                MyAPIGateway.Utilities.InvokeOnGameThread(OnUpgradeModulesChanged);
                 return;
             }
 
@@ -119,7 +116,7 @@ namespace ShipCoreFramework
                 DefenseValuesChanged();
                 QueueRecalculateAllLimits(false, false);
                 Utils.Log("RefreshGroupStateAndEnforce: skipped no-core enforcement during core recovery grace for group " +
-                          GetThreadWorkKey() + ".", 2);
+                          GetGroupKey() + ".", 2);
                 return;
             }
 

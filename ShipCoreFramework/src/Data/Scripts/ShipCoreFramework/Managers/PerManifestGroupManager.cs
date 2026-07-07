@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using Sandbox.ModAPI;
 
 namespace ShipCoreFramework
 {
@@ -18,8 +20,8 @@ namespace ShipCoreFramework
             internal int Count;
         }
 
-        private static readonly GameThreadWriteDictionary<string, int> PerManifestGroupCounts =
-            new GameThreadWriteDictionary<string, int>(StringComparer.OrdinalIgnoreCase, ThreadWork.CountsCategory, "manifest-group-counts");
+        private static readonly ConcurrentDictionary<string, int> PerManifestGroupCounts =
+            new ConcurrentDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
         private static bool _suppressEvents;
 
@@ -35,8 +37,9 @@ namespace ShipCoreFramework
             if (string.IsNullOrWhiteSpace(groupName))
                 return 0;
 
-            return PerManifestGroupCounts.GetOrDefault(groupName, 0) +
-                   LimitsNexusSync.GetRemoteManifestGroupCount(groupName);
+            int localCount;
+            PerManifestGroupCounts.TryGetValue(groupName, out localCount);
+            return localCount + LimitsNexusSync.GetRemoteManifestGroupCount(groupName);
         }
 
         internal static bool IsGroupWithinManifestLimits(string coreType, long ownerId)
@@ -70,8 +73,7 @@ namespace ShipCoreFramework
         {
             if (!Session.IsGameThread)
             {
-                ThreadWork.Enqueue(ThreadWork.CountsCategory, string.Empty,
-                    "Add manifest group counts", delegate { AddGridGroup(coreType); });
+                MyAPIGateway.Utilities.InvokeOnGameThread(delegate { AddGridGroup(coreType); });
                 return;
             }
 
@@ -98,8 +100,7 @@ namespace ShipCoreFramework
         {
             if (!Session.IsGameThread)
             {
-                ThreadWork.Enqueue(ThreadWork.CountsCategory, string.Empty,
-                    "Remove manifest group counts", delegate { RemoveGridGroup(coreType); });
+                MyAPIGateway.Utilities.InvokeOnGameThread(delegate { RemoveGridGroup(coreType); });
                 return;
             }
 
@@ -109,7 +110,8 @@ namespace ShipCoreFramework
 
             foreach (var group in GetManifestGroups(core))
             {
-                var previous = PerManifestGroupCounts.GetOrDefault(group.Name, 0);
+                int previous;
+                PerManifestGroupCounts.TryGetValue(group.Name, out previous);
                 if (previous <= 0)
                     continue;
 
@@ -130,19 +132,19 @@ namespace ShipCoreFramework
         {
             if (!Session.IsGameThread)
             {
-                ThreadWork.Enqueue(ThreadWork.CountsCategory, "manifest-reset", "Reset manifest group counts", Reset);
+                MyAPIGateway.Utilities.InvokeOnGameThread(Reset);
                 return;
             }
 
             PerManifestGroupCounts.Clear();
 
             foreach (var group in Config.ManifestCoreGroups.Where(group => group != null && !string.IsNullOrWhiteSpace(group.Name)))
-                PerManifestGroupCounts.Set(group.Name, 0);
+                PerManifestGroupCounts[group.Name] = 0;
         }
 
         internal static ManifestGroupCountEntry[] GetLocalCountsSnapshot()
         {
-            var snapshot = PerManifestGroupCounts.ToArraySnapshot();
+            var snapshot = PerManifestGroupCounts.ToArray();
             var result = new ManifestGroupCountEntry[snapshot.Length];
             for (var i = 0; i < snapshot.Length; i++)
             {

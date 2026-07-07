@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.Utils;
 using VRageMath;
@@ -53,11 +54,11 @@ namespace ShipCoreFramework
         {
             if (groupComponent == null || zone == null || gridEntityId == 0) return;
 
-            var groupKey = groupComponent.GetThreadWorkKey();
-            ThreadWork.Enqueue(ThreadWork.StateCategory, "nfz:" + groupKey + ":" + zone.Id + ":" + gridEntityId,
-                "No-fly zone punishment for grid " + gridEntityId,
-                delegate { return !Session.IsShuttingDown; },
-                delegate { ApplyNoFlyZonePunishment(groupComponent, zone, gridEntityId, gridName); });
+            MyAPIGateway.Utilities.InvokeOnGameThread(delegate
+            {
+                if (Session.IsShuttingDown) return;
+                ApplyNoFlyZonePunishment(groupComponent, zone, gridEntityId, gridName);
+            });
         }
 
         private static void ApplyNoFlyZonePunishment(GroupComponent groupComponent, Zones zone, long gridEntityId, string gridName)
