@@ -138,7 +138,6 @@ namespace ShipCoreFramework
 
             var faction = OwningFaction;
             if (faction == null) return false;
-            if (faction.IsEveryoneNpc()) return true;
             return Session.Config.IgnoredFactionTags != null &&
                    Session.Config.IgnoredFactionTags.Contains(faction.Tag);
         }

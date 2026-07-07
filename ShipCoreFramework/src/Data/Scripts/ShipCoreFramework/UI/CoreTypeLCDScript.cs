@@ -43,12 +43,9 @@ namespace ShipCoreFramework
 
         private static readonly object InstancesLock = new object();
         private static readonly List<CoreTypeLCDScript> Instances = new List<CoreTypeLCDScript>();
-        private static readonly Dictionary<string, CursorState> CursorStates =
-            new Dictionary<string, CursorState>(StringComparer.Ordinal);
-        private static readonly Dictionary<string, ScrollState> ScrollStates =
-            new Dictionary<string, ScrollState>(StringComparer.Ordinal);
-        private static readonly Dictionary<string, int> PendingWheelDeltas =
-            new Dictionary<string, int>(StringComparer.Ordinal);
+        private static readonly Dictionary<string, CursorState> CursorStates = new Dictionary<string, CursorState>(StringComparer.Ordinal);
+        private static readonly Dictionary<string, ScrollState> ScrollStates = new Dictionary<string, ScrollState>(StringComparer.Ordinal);
+        private static readonly Dictionary<string, int> PendingWheelDeltas = new Dictionary<string, int>(StringComparer.Ordinal);
         private static string _activeScrollGroupKey;
         private static int _activeScrollGroupTick = -1;
         private static int _lastInputSampleTick = -1;
