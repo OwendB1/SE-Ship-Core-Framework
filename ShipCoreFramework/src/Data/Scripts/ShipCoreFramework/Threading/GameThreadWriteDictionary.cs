@@ -10,16 +10,6 @@ namespace ShipCoreFramework
         private readonly string _category;
         private readonly string _name;
 
-        internal GameThreadWriteDictionary()
-            : this(null, null, null)
-        {
-        }
-
-        internal GameThreadWriteDictionary(IEqualityComparer<TKey> comparer)
-            : this(comparer, null, null)
-        {
-        }
-
         internal GameThreadWriteDictionary(IEqualityComparer<TKey> comparer, string category, string name)
         {
             _items = comparer == null
@@ -29,19 +19,9 @@ namespace ShipCoreFramework
             _name = name ?? "dictionary";
         }
 
-        internal int Count
-        {
-            get { return _items.Count; }
-        }
-
         internal bool TryGetValue(TKey key, out TValue value)
         {
             return _items.TryGetValue(key, out value);
-        }
-
-        internal bool ContainsKey(TKey key)
-        {
-            return _items.ContainsKey(key);
         }
 
         internal TValue GetOrDefault(TKey key, TValue defaultValue)
@@ -53,14 +33,6 @@ namespace ShipCoreFramework
         internal KeyValuePair<TKey, TValue>[] ToArraySnapshot()
         {
             return _items.ToArray();
-        }
-
-        internal TValue[] ValuesSnapshot()
-        {
-            var values = _items.Values;
-            var result = new TValue[values.Count];
-            values.CopyTo(result, 0);
-            return result;
         }
 
         internal void Set(TKey key, TValue value)
@@ -96,19 +68,6 @@ namespace ShipCoreFramework
         internal void Clear()
         {
             RunOrQueue("clear", default(TKey), delegate { _items.Clear(); });
-        }
-
-        internal void EnqueueBatch(string debugDescription, Action<ConcurrentDictionary<TKey, TValue>> apply)
-        {
-            if (apply == null) return;
-            if (Session.IsGameThread)
-            {
-                apply(_items);
-                return;
-            }
-
-            ThreadWork.Enqueue(_category, string.Empty, _name + " batch: " + debugDescription,
-                delegate { apply(_items); });
         }
 
         private void RunOrQueue(string operation, TKey key, Action apply)

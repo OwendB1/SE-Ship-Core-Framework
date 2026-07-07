@@ -1,6 +1,5 @@
 // app.js build v1013
 const state = {
-  schema: {},
   blockGroups: [],
   manifestGroups: [],
   shipCores: [],
@@ -531,24 +530,6 @@ function parseManifestXml(text) {
     crossConnectorPunishmentWhitelist,
     sourceFormat
   };
-}
-
-function parseModConfigCs(source) {
-  const classes = {};
-  const classRegex = /public\s+(?:partial\s+)?class\s+(\w+)\s*\{([\s\S]*?)\n\s*\}/g;
-  let classMatch;
-  while ((classMatch = classRegex.exec(source)) !== null) {
-    const className = classMatch[1];
-    const body = classMatch[2];
-    const fields = [];
-    const fieldRegex = /\[(XmlElement|XmlArray)\("([^"]+)"\)\](?:\s*\[XmlArrayItem\("([^"]+)"\)\])?\s*public\s+([^\s]+(?:\[\])?)\s+(\w+)/g;
-    let fieldMatch;
-    while ((fieldMatch = fieldRegex.exec(body)) !== null) {
-      fields.push({ xmlName: fieldMatch[2], type: fieldMatch[4], name: fieldMatch[5] });
-    }
-    if (fields.length) classes[className] = fields;
-  }
-  return classes;
 }
 
 function setImportStatus(lines) {
@@ -3458,13 +3439,7 @@ ids("loadUploadedXml").addEventListener("click", async () => {
   if (clearSavedDraftForImport) clearDraftFromStorage();
 });
 
-(async () => {
-  const response = await fetch("./assets/ModConfig.XmlModels.cs", { cache: "no-cache" });
-  const text = await response.text();
-  state.schema = parseModConfigCs(text);
-  ids("schemaPreview").textContent = JSON.stringify(state.schema, null, 2);
-  ids("parserStatus").textContent = `Loaded bundled ModConfig.XmlModels.cs and parsed ${Object.keys(state.schema).length} XML classes.`;
-
+(() => {
   if (restoreDraftFromStorage()) {
     renderEditors();
     generateXml();

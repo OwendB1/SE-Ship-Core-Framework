@@ -31,8 +31,6 @@ namespace ShipCoreFramework
             var work = new QueuedWrite
             {
                 Id = id,
-                CreatedTick = Session.CurrentTick,
-                CreatedThreadId = Environment.CurrentManagedThreadId,
                 Category = category ?? string.Empty,
                 CoalesceKey = coalesceKey ?? string.Empty,
                 DebugDescription = debugDescription ?? string.Empty,
@@ -111,67 +109,12 @@ namespace ShipCoreFramework
             }
         }
 
-        internal static QueuedWriteInfo[] SnapshotPendingWork()
-        {
-            var pending = PendingWrites.ToArray();
-            var result = new QueuedWriteInfo[pending.Length];
-            for (var i = 0; i < pending.Length; i++)
-            {
-                var work = pending[i];
-                if (work == null) continue;
-
-                result[i] = new QueuedWriteInfo
-                {
-                    Id = work.Id,
-                    CreatedTick = work.CreatedTick,
-                    CreatedThreadId = work.CreatedThreadId,
-                    Category = work.Category,
-                    CoalesceKey = work.CoalesceKey,
-                    DebugDescription = work.DebugDescription,
-                    Cancelled = work.Cancelled,
-                    CancelReason = work.CancelReason
-                };
-            }
-
-            return result;
-        }
-
-        internal static int CancelPendingWhere(Func<QueuedWriteInfo, bool> predicate, string reason)
-        {
-            if (predicate == null) return 0;
-
-            var count = 0;
-            foreach (var work in PendingWrites.ToArray())
-            {
-                if (work == null || work.Cancelled) continue;
-                var info = new QueuedWriteInfo
-                {
-                    Id = work.Id,
-                    CreatedTick = work.CreatedTick,
-                    CreatedThreadId = work.CreatedThreadId,
-                    Category = work.Category,
-                    CoalesceKey = work.CoalesceKey,
-                    DebugDescription = work.DebugDescription,
-                    Cancelled = work.Cancelled,
-                    CancelReason = work.CancelReason
-                };
-
-                if (!predicate(info)) continue;
-                work.Cancelled = true;
-                work.CancelReason = reason ?? string.Empty;
-                count++;
-            }
-
-            return count;
-        }
-
         internal static void CancelAll(string reason)
         {
             foreach (var work in PendingWrites.ToArray())
             {
                 if (work == null || work.Cancelled) continue;
                 work.Cancelled = true;
-                work.CancelReason = reason ?? string.Empty;
             }
         }
 
