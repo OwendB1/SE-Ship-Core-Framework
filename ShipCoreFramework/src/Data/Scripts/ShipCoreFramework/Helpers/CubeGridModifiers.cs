@@ -119,6 +119,9 @@ namespace ShipCoreFramework
                 }
             }
 
+            if (shipCore.PowerOverclockEnabled && groupComponent.IsPowerOverclockActive())
+                modifiers.PowerProducersOutput *= shipCore.PowerOverclockMultiplier;
+
             return modifiers;
         }
         

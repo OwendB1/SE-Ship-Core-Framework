@@ -3,11 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
+using VRage.Utils;
 
 namespace ShipCoreFramework
 {
     internal partial class GroupComponent
     {
+        private static readonly MyStringHash PowerOverclockDamageType =
+            MyStringHash.GetOrCompute("ShipCorePowerOverclock");
+
         [Flags]
         private enum GroupPunishmentFlags
         {
@@ -459,6 +463,76 @@ namespace ShipCoreFramework
             QueueActiveDefenseDeactivatedSideEffects();
         }
 
+        internal void RunPowerOverclockTimerTick()
+        {
+            var damageReactors = false;
+            var expired = false;
+            lock (_abilityStateLock)
+            {
+                if (_powerOverclockActive)
+                {
+                    _powerOverclockDurationTimer -= 1f;
+                    _powerOverclockDamageTimer -= 1f;
+                    if (_powerOverclockDamageTimer <= 0f)
+                    {
+                        _powerOverclockDamageTimer += 60f;
+                        damageReactors = Session.IsServer && !Deactivated && !PunishModifiers &&
+                                         ShipCore.PowerOverclockEnabled &&
+                                         ShipCore.PowerOverclockDamagePerSecond > 0f;
+                    }
+
+                    if (_powerOverclockDurationTimer <= 0f)
+                    {
+                        _powerOverclockActive = false;
+                        _powerOverclockCooldownTimer = ShipCore.PowerOverclockCooldown * 60f;
+                        expired = true;
+                    }
+                }
+                else if (_powerOverclockCooldownTimer > 0f)
+                {
+                    _powerOverclockCooldownTimer -= 1f;
+                    if (_powerOverclockCooldownTimer < 0f) _powerOverclockCooldownTimer = 0f;
+                }
+            }
+
+            if (!damageReactors && !expired) return;
+            QueuePowerOverclockSideEffects(damageReactors, expired);
+        }
+
+        private void QueuePowerOverclockSideEffects(bool damageReactors, bool expired)
+        {
+            MyAPIGateway.Utilities.InvokeOnGameThread(delegate
+            {
+                if (_closing || Session.IsShuttingDown) return;
+
+                if (damageReactors) DamagePowerOverclockReactors();
+                if (!expired) return;
+
+                InvalidateModifierStateCache();
+                RefreshModifierStateCache();
+                ApplyModifiers(Modifiers);
+                Utils.ShowNotification("Power Overclock Disengaged! Cooldown started.");
+            });
+        }
+
+        private void DamagePowerOverclockReactors()
+        {
+            if (!Session.IsServer) return;
+
+            var damage = ShipCore.PowerOverclockDamagePerSecond;
+            if (damage <= 0f) return;
+
+            foreach (var grid in GridDictionary.Values)
+            {
+                var blocksCopy = grid.GetBlocksCopy();
+                foreach (var block in blocksCopy)
+                {
+                    if (block?.FatBlock as IMyReactor != null)
+                        block.DoDamage(damage, PowerOverclockDamageType, true);
+                }
+            }
+        }
+
         private void QueueBoostDeactivatedSideEffects()
         {
             if (Session.IsGameThread)
@@ -589,6 +663,55 @@ namespace ShipCoreFramework
 
             if (MainCoreComponent?.GridComponent?.Grid != null)
                 ModAPI.BroadcastBoostActivated(MainCoreComponent.GridComponent.Grid.EntityId);
+        }
+
+        internal bool IsPowerOverclockActive()
+        {
+            lock (_abilityStateLock)
+            {
+                return _powerOverclockActive;
+            }
+        }
+
+        internal void ActivatePowerOverclock()
+        {
+            if (!ShipCore.PowerOverclockEnabled)
+            {
+                Utils.ShowNotification("Power overclock is not allowed on this grid!");
+                return;
+            }
+
+            string rejectedMessage = null;
+            lock (_abilityStateLock)
+            {
+                if (_powerOverclockActive)
+                {
+                    rejectedMessage = "Power Overclock Time Remaining:" +
+                                      (_powerOverclockDurationTimer / 60f).ToString("0.0");
+                }
+                else if (_powerOverclockCooldownTimer > 0f)
+                {
+                    rejectedMessage = "Power Overclock is cooling down! Cooldown Time:" +
+                                      (_powerOverclockCooldownTimer / 60f).ToString("0.0");
+                }
+                else
+                {
+                    _powerOverclockActive = true;
+                    _powerOverclockDurationTimer = ShipCore.PowerOverclockDuration * 60f;
+                    _powerOverclockDamageTimer = 60f;
+                }
+            }
+
+            if (rejectedMessage != null)
+            {
+                Utils.ShowNotification(rejectedMessage);
+                return;
+            }
+
+            InvalidateModifierStateCache();
+            RefreshModifierStateCache();
+            ApplyModifiers(Modifiers);
+            Utils.ShowNotification("Power Overclock Engaged!");
         }
 
         internal GridDefenseModifiers GetActiveDefenseModifiers()

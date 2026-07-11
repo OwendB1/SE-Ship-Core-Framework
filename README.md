@@ -19,7 +19,7 @@ This repository contains:
 - Weighted block limits with per-limit punishment types.
 - Capacity gates for blocks, PCU, mass, beacon requirement, mobility type, and faction size.
 - Speed enforcement with normal hard-cap mode or friction soft-cap mode.
-- Boost and active-defense abilities.
+- Boost, active-defense, and reactor power-overclock abilities.
 - Upgrade modules that modify grid stats, speed values, defense values, and block-limit counts.
 - No-fly zones with either full force-off or limit-specific punishment.
 - Connector-aware limit behavior:
@@ -318,6 +318,16 @@ Example absolute-speed curve with 20 m/s² from 100-200 m/s and 60 m/s² from 20
 | --- | --- | --- | --- |
 | `EnableActiveDefenseModifiers` | `bool` | Enables active-defense mode for the core. | When active, the runtime uses `ActiveDefenseModifiers`. |
 | `ActiveDefenseModifiers` | `GridDefenseModifiers` | Defense multipliers while active defense is running. | Uses the same nested tags as passive defense, including `Duration` and `Cooldown`. |
+
+### Power overclock fields
+
+| Tag | Type | Meaning | Notes |
+| --- | --- | --- | --- |
+| `PowerOverclockEnabled` | `bool` | Enables the core hotbar action. | Disabled by default. |
+| `PowerOverclockMultiplier` | `float` | Multiplies reactor output while active. | Applied after base and upgrade-module power modifiers. |
+| `PowerOverclockDuration` | `float` | Active duration in seconds. | Default `10`. |
+| `PowerOverclockCooldown` | `float` | Cooldown after expiry in seconds. | Default `60`. |
+| `PowerOverclockDamagePerSecond` | `float` | Integrity damage dealt to each affected reactor per active second. | `0` disables wear. |
 
 ### Block-limit fields (`<BlockLimits>`)
 

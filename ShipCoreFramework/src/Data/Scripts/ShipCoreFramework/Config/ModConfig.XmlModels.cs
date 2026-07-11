@@ -234,6 +234,21 @@ namespace ShipCoreFramework
         [XmlElement("ActiveDefenseModifiers")]
         public GridDefenseModifiers ActiveDefenseModifiers = new GridDefenseModifiers();
 
+        [XmlElement("PowerOverclockEnabled")]
+        public bool PowerOverclockEnabled;
+
+        [XmlElement("PowerOverclockMultiplier")]
+        public float PowerOverclockMultiplier = 1f;
+
+        [XmlElement("PowerOverclockDuration")]
+        public float PowerOverclockDuration = 10f;
+
+        [XmlElement("PowerOverclockCooldown")]
+        public float PowerOverclockCooldown = 60f;
+
+        [XmlElement("PowerOverclockDamagePerSecond")]
+        public float PowerOverclockDamagePerSecond;
+
         [XmlElement("BlockLimits")]
         public BlockLimit[] BlockLimits = Array.Empty<BlockLimit>();
 

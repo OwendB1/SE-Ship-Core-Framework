@@ -1,4 +1,4 @@
-// app.js build v1013
+// app.js build v1014
 const state = {
   blockGroups: [],
   manifestGroups: [],
@@ -709,6 +709,11 @@ function createDefaultCore() {
     coreSelectionPriority: 0,
     crossConnectorPunishmentWhitelisted: false,
     enableActiveDefenseModifiers: false,
+    powerOverclockEnabled: false,
+    powerOverclockMultiplier: 1,
+    powerOverclockDuration: 10,
+    powerOverclockCooldown: 60,
+    powerOverclockDamagePerSecond: 0,
     manifestGroups: [],
     manifestBlacklistedCoreSubtypeIds: [],
     allowedUpgradeModules: [],
@@ -1425,6 +1430,13 @@ function renderShipCores() {
         <button data-action="add-limit" data-c="${coreIndex}">Add Block Limit</button>
         <button data-action="add-core-upgrade-allowance" data-c="${coreIndex}">Add Allowed Upgrade Module</button>
       </div>
+      <div class="row wrap">
+        <label class="inline">PowerOverclockEnabled <input data-action="core-power-overclock-enabled" data-c="${coreIndex}" type="checkbox" ${core.powerOverclockEnabled ? "checked" : ""}/></label>
+        <label class="inline">Multiplier <input data-action="core-power-overclock-multiplier" data-c="${coreIndex}" class="small" type="number" step="0.01" value="${core.powerOverclockMultiplier}" /></label>
+        <label class="inline">Duration <input data-action="core-power-overclock-duration" data-c="${coreIndex}" class="small" type="number" step="0.1" value="${core.powerOverclockDuration}" /></label>
+        <label class="inline">Cooldown <input data-action="core-power-overclock-cooldown" data-c="${coreIndex}" class="small" type="number" step="0.1" value="${core.powerOverclockCooldown}" /></label>
+        <label class="inline">Damage/second <input data-action="core-power-overclock-damage" data-c="${coreIndex}" class="small" type="number" step="0.1" value="${core.powerOverclockDamagePerSecond}" /></label>
+      </div>
 
       ${isNoCore ? "" : `
       <h4>Manifest Groups</h4>
@@ -1681,6 +1693,11 @@ function parseCoreXml(text, originalFileName = "") {
     speedOverrideMode: textOf(coreNode, "SpeedOverrideMode") || "OnlyIfHeavier",
     speedOverridePriority: numberOf(coreNode, "SpeedOverridePriority", 0),
     enableActiveDefenseModifiers: boolOf(coreNode, "EnableActiveDefenseModifiers", false),
+    powerOverclockEnabled: boolOf(coreNode, "PowerOverclockEnabled", false),
+    powerOverclockMultiplier: numberOf(coreNode, "PowerOverclockMultiplier", 1),
+    powerOverclockDuration: numberOf(coreNode, "PowerOverclockDuration", 10),
+    powerOverclockCooldown: numberOf(coreNode, "PowerOverclockCooldown", 60),
+    powerOverclockDamagePerSecond: numberOf(coreNode, "PowerOverclockDamagePerSecond", 0),
     allowedUpgradeModules: qselAll(coreNode, "AllowedUpgradeModules").map((entryNode) => ({
       typeId: textOf(entryNode, "TypeId"),
       uniqueName: textOf(entryNode, "UniqueName"),
@@ -2271,7 +2288,7 @@ function generateXml(options = {}) {
   const namedManifestGroups = getNamedManifestGroups();
 
   const noCore = state.noCoreCore
-    ? `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(state.noCoreCore.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(state.noCoreCore.uniqueName)}</UniqueName>\n  <ForceBroadCast>${state.noCoreCore.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${state.noCoreCore.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(state.noCoreCore.mobilityType)}</MobilityType>\n  <MaxBlocks>${state.noCoreCore.maxBlocks}</MaxBlocks>\n  <MinBlocks>${state.noCoreCore.minBlocks}</MinBlocks>\n  <MaxMass>${state.noCoreCore.maxMass}</MaxMass>\n  <MaxPCU>${state.noCoreCore.maxPcu}</MaxPCU>\n  <MaxBackupCores>${state.noCoreCore.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${state.noCoreCore.maxPerPlayer}</MaxPerPlayer>\n  <MaxPerFaction>${state.noCoreCore.maxPerFaction}</MaxPerFaction>\n  <FactionPlayersNeededPerCore>${state.noCoreCore.factionPlayersNeededPerCore}</FactionPlayersNeededPerCore>${writeMinFactionRankXml(state.noCoreCore)}\n  <MinPlayers>${state.noCoreCore.minPerFaction}</MinPlayers>\n  <MaxPlayers>${state.noCoreCore.maxPlayers}</MaxPlayers>\n  <SpeedBoostEnabled>${state.noCoreCore.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(state.noCoreCore.speedLimitType)}</SpeedLimitType>\n  <SpeedOverrideMode>${escapeXml(state.noCoreCore.speedOverrideMode)}</SpeedOverrideMode>\n  <SpeedOverridePriority>${Number(state.noCoreCore.speedOverridePriority) || 0}</SpeedOverridePriority>\n  <EnableActiveDefenseModifiers>${state.noCoreCore.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeAllowedUpgradeModulesXml(state.noCoreCore.allowedUpgradeModules)}${state.noCoreCore.allowedUpgradeModules?.length ? "\n" : ""}${writeModifierXml("Modifiers", state.noCoreCore.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeSpeedModifiersXml(state.noCoreCore.speedModifiers)}\n${writeModifierXml("PassiveDefenseModifiers", state.noCoreCore.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", state.noCoreCore.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${state.noCoreCore.blockLimits
+    ? `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(state.noCoreCore.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(state.noCoreCore.uniqueName)}</UniqueName>\n  <ForceBroadCast>${state.noCoreCore.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${state.noCoreCore.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(state.noCoreCore.mobilityType)}</MobilityType>\n  <MaxBlocks>${state.noCoreCore.maxBlocks}</MaxBlocks>\n  <MinBlocks>${state.noCoreCore.minBlocks}</MinBlocks>\n  <MaxMass>${state.noCoreCore.maxMass}</MaxMass>\n  <MaxPCU>${state.noCoreCore.maxPcu}</MaxPCU>\n  <MaxBackupCores>${state.noCoreCore.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${state.noCoreCore.maxPerPlayer}</MaxPerPlayer>\n  <MaxPerFaction>${state.noCoreCore.maxPerFaction}</MaxPerFaction>\n  <FactionPlayersNeededPerCore>${state.noCoreCore.factionPlayersNeededPerCore}</FactionPlayersNeededPerCore>${writeMinFactionRankXml(state.noCoreCore)}\n  <MinPlayers>${state.noCoreCore.minPerFaction}</MinPlayers>\n  <MaxPlayers>${state.noCoreCore.maxPlayers}</MaxPlayers>\n  <SpeedBoostEnabled>${state.noCoreCore.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(state.noCoreCore.speedLimitType)}</SpeedLimitType>\n  <SpeedOverrideMode>${escapeXml(state.noCoreCore.speedOverrideMode)}</SpeedOverrideMode>\n  <SpeedOverridePriority>${Number(state.noCoreCore.speedOverridePriority) || 0}</SpeedOverridePriority>\n  <EnableActiveDefenseModifiers>${state.noCoreCore.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n  <PowerOverclockEnabled>${state.noCoreCore.powerOverclockEnabled}</PowerOverclockEnabled>\n  <PowerOverclockMultiplier>${state.noCoreCore.powerOverclockMultiplier}</PowerOverclockMultiplier>\n  <PowerOverclockDuration>${state.noCoreCore.powerOverclockDuration}</PowerOverclockDuration>\n  <PowerOverclockCooldown>${state.noCoreCore.powerOverclockCooldown}</PowerOverclockCooldown>\n  <PowerOverclockDamagePerSecond>${state.noCoreCore.powerOverclockDamagePerSecond}</PowerOverclockDamagePerSecond>\n${writeAllowedUpgradeModulesXml(state.noCoreCore.allowedUpgradeModules)}${state.noCoreCore.allowedUpgradeModules?.length ? "\n" : ""}${writeModifierXml("Modifiers", state.noCoreCore.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeSpeedModifiersXml(state.noCoreCore.speedModifiers)}\n${writeModifierXml("PassiveDefenseModifiers", state.noCoreCore.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", state.noCoreCore.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${state.noCoreCore.blockLimits
       .map((limit) => writeBlockLimitXml(limit))
       .join("\n")}\n</ShipCore>`
     : `${header}\n<ShipCore />`;
@@ -2295,7 +2312,7 @@ function generateXml(options = {}) {
     core,
     file: coreFilenames[coreIndex],
     outputPath: buildCoreOutputPath(core, coreFilenames[coreIndex]),
-    body: `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(core.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(core.uniqueName)}</UniqueName>\n  <ForceBroadCast>${core.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${core.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(core.mobilityType)}</MobilityType>\n  <MaxBlocks>${core.maxBlocks}</MaxBlocks>\n  <MinBlocks>${core.minBlocks}</MinBlocks>\n  <MaxMass>${core.maxMass}</MaxMass>\n  <MaxPCU>${core.maxPcu}</MaxPCU>\n  <MaxBackupCores>${core.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${core.maxPerPlayer}</MaxPerPlayer>\n  <MaxPerFaction>${core.maxPerFaction}</MaxPerFaction>\n  <FactionPlayersNeededPerCore>${core.factionPlayersNeededPerCore}</FactionPlayersNeededPerCore>${writeMinFactionRankXml(core)}\n  <MinPlayers>${core.minPerFaction}</MinPlayers>\n  <MaxPlayers>${core.maxPlayers}</MaxPlayers>\n  <SpeedBoostEnabled>${core.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(core.speedLimitType)}</SpeedLimitType>\n  <SpeedOverrideMode>${escapeXml(core.speedOverrideMode)}</SpeedOverrideMode>\n  <SpeedOverridePriority>${Number(core.speedOverridePriority) || 0}</SpeedOverridePriority>\n  <EnableActiveDefenseModifiers>${core.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n${writeAllowedUpgradeModulesXml(core.allowedUpgradeModules)}${core.allowedUpgradeModules?.length ? "\n" : ""}${writeModifierXml("Modifiers", core.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeSpeedModifiersXml(core.speedModifiers)}\n${writeModifierXml("PassiveDefenseModifiers", core.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", core.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${core.blockLimits
+    body: `${header}\n<ShipCore>\n  <SubtypeId>${escapeXml(core.subtypeId)}</SubtypeId>\n  <UniqueName>${escapeXml(core.uniqueName)}</UniqueName>\n  <ForceBroadCast>${core.forceBroadcast}</ForceBroadCast>\n  <ForceBroadCastRange>${core.forceBroadcastRange}</ForceBroadCastRange>\n  <MobilityType>${escapeXml(core.mobilityType)}</MobilityType>\n  <MaxBlocks>${core.maxBlocks}</MaxBlocks>\n  <MinBlocks>${core.minBlocks}</MinBlocks>\n  <MaxMass>${core.maxMass}</MaxMass>\n  <MaxPCU>${core.maxPcu}</MaxPCU>\n  <MaxBackupCores>${core.maxBackupCores}</MaxBackupCores>\n  <MaxPerPlayer>${core.maxPerPlayer}</MaxPerPlayer>\n  <MaxPerFaction>${core.maxPerFaction}</MaxPerFaction>\n  <FactionPlayersNeededPerCore>${core.factionPlayersNeededPerCore}</FactionPlayersNeededPerCore>${writeMinFactionRankXml(core)}\n  <MinPlayers>${core.minPerFaction}</MinPlayers>\n  <MaxPlayers>${core.maxPlayers}</MaxPlayers>\n  <SpeedBoostEnabled>${core.speedBoostEnabled}</SpeedBoostEnabled>\n  <SpeedLimitType>${escapeXml(core.speedLimitType)}</SpeedLimitType>\n  <SpeedOverrideMode>${escapeXml(core.speedOverrideMode)}</SpeedOverrideMode>\n  <SpeedOverridePriority>${Number(core.speedOverridePriority) || 0}</SpeedOverridePriority>\n  <EnableActiveDefenseModifiers>${core.enableActiveDefenseModifiers}</EnableActiveDefenseModifiers>\n  <PowerOverclockEnabled>${core.powerOverclockEnabled}</PowerOverclockEnabled>\n  <PowerOverclockMultiplier>${core.powerOverclockMultiplier}</PowerOverclockMultiplier>\n  <PowerOverclockDuration>${core.powerOverclockDuration}</PowerOverclockDuration>\n  <PowerOverclockCooldown>${core.powerOverclockCooldown}</PowerOverclockCooldown>\n  <PowerOverclockDamagePerSecond>${core.powerOverclockDamagePerSecond}</PowerOverclockDamagePerSecond>\n${writeAllowedUpgradeModulesXml(core.allowedUpgradeModules)}${core.allowedUpgradeModules?.length ? "\n" : ""}${writeModifierXml("Modifiers", core.modifiers, DEFAULT_GRID_MODIFIERS)}\n${writeSpeedModifiersXml(core.speedModifiers)}\n${writeModifierXml("PassiveDefenseModifiers", core.passiveDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${writeModifierXml("ActiveDefenseModifiers", core.activeDefenseModifiers, DEFAULT_DEFENSE_MODIFIERS)}\n${core.blockLimits
       .map((limit) => writeBlockLimitXml(limit))
       .join("\n")}\n</ShipCore>`
   }));
@@ -2776,6 +2793,11 @@ document.addEventListener("change", (event) => {
     renderShipCores();
   }
   if (action === "core-enable-active-defense" && inputElement) selectedCore.enableActiveDefenseModifiers = inputElement.checked;
+  if (action === "core-power-overclock-enabled" && inputElement) selectedCore.powerOverclockEnabled = inputElement.checked;
+  if (action === "core-power-overclock-multiplier") selectedCore.powerOverclockMultiplier = Number(target.value || 0);
+  if (action === "core-power-overclock-duration") selectedCore.powerOverclockDuration = Number(target.value || 0);
+  if (action === "core-power-overclock-cooldown") selectedCore.powerOverclockCooldown = Number(target.value || 0);
+  if (action === "core-power-overclock-damage") selectedCore.powerOverclockDamagePerSecond = Number(target.value || 0);
   if (action === "core-speed-limit-type" && selectElement) selectedCore.speedLimitType = selectElement.value;
   if (action === "core-speed-override-mode" && selectElement) selectedCore.speedOverrideMode = selectElement.value;
   if (action === "core-min-faction-rank" && selectElement) selectedCore.minFactionRank = normalizeFactionRank(selectElement.value);

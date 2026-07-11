@@ -41,16 +41,23 @@ namespace ShipCoreFramework
         
         internal override void Received()
         {
-            Utils.Log($"Received action from {SenderSteamId}: {ActionData.IsBoost}");
+            Utils.Log($"Received action from {SenderSteamId}: {ActionData.Action}");
             GroupComponent group;
             if (!Utils.TryFindByGridId(ActionData.CubegridEntityId, out group)) return;
-            if (ActionData.IsBoost)
+            switch (ActionData.Action)
             {
-                group.ActivateBoost();
-            }
-            else
-            {
-                group.ActivateDefense();
+                case CoreActionType.Boost:
+                    group.ActivateBoost();
+                    break;
+                case CoreActionType.Defense:
+                    group.ActivateDefense();
+                    break;
+                case CoreActionType.PowerOverclock:
+                    group.ActivatePowerOverclock();
+                    break;
+                default:
+                    Utils.Log($"Ignored unknown core action: {ActionData.Action}", 1);
+                    break;
             }
         }
     }
@@ -258,13 +265,20 @@ namespace ShipCoreFramework
         }
     }
     
+    internal enum CoreActionType
+    {
+        Defense = 0,
+        Boost = 1,
+        PowerOverclock = 2
+    }
+
     [ProtoContract]
     internal struct ButtonAction
     {
         [ProtoMember(1)]
         internal long CubegridEntityId;
         [ProtoMember(2)]
-        internal bool IsBoost;
+        internal CoreActionType Action;
     }
 
     [ProtoContract]

@@ -66,6 +66,10 @@ namespace ShipCoreFramework
         private bool _activeDefenseEnabled;
         private float _activeDefenseCooldownTimer;
         private float _activeDefenseDurationTimer;
+        private bool _powerOverclockActive;
+        private float _powerOverclockCooldownTimer;
+        private float _powerOverclockDurationTimer;
+        private float _powerOverclockDamageTimer;
         private int _groupBlocksCount;
 
         private bool _closing;

@@ -14,6 +14,7 @@ namespace ShipCoreFramework
         private static IMyTerminalControlCheckbox _mainCoreCheckbox;
         private static IMyTerminalAction _boostAction;
         private static IMyTerminalAction _defenseAction;
+        private static IMyTerminalAction _powerOverclockAction;
         
         internal static void RegisterOnce()
         {
@@ -124,7 +125,7 @@ namespace ShipCoreFramework
                     return;
                 }
                 
-                Session.Networking.SendToServer(new PacketAction{ActionData = new ButtonAction {CubegridEntityId = b.CubeGrid.EntityId, IsBoost = true }});
+                Session.Networking.SendToServer(new PacketAction{ActionData = new ButtonAction {CubegridEntityId = b.CubeGrid.EntityId, Action = CoreActionType.Boost }});
             };
 
             _defenseAction = MyAPIGateway.TerminalControls.CreateAction<IMyTerminalBlock>("ShipCore_ActivateDefense");
@@ -149,7 +150,31 @@ namespace ShipCoreFramework
                     Utils.ShowChatMessage("Could not trigger defense, main grid group match was not found??");
                     return;
                 }
-                Session.Networking.SendToServer(new PacketAction{ActionData = new ButtonAction {CubegridEntityId = b.CubeGrid.EntityId, IsBoost = false }});
+                Session.Networking.SendToServer(new PacketAction{ActionData = new ButtonAction {CubegridEntityId = b.CubeGrid.EntityId, Action = CoreActionType.Defense }});
+            };
+
+            _powerOverclockAction = MyAPIGateway.TerminalControls.CreateAction<IMyTerminalBlock>("ShipCore_ActivatePowerOverclock");
+            _powerOverclockAction.Name = new StringBuilder("Activate Power Overclock");
+            _powerOverclockAction.Icon = @"Textures\BoostButton_Sad_Static.png";
+            _powerOverclockAction.ValidForGroups = false;
+
+            _powerOverclockAction.Enabled = delegate(IMyTerminalBlock b)
+            {
+                if (!Utils.IsCoreBlock(b as IMyFunctionalBlock)) return false;
+                var groupComp = b.GetGroupComponent();
+                return groupComp != null && (groupComp.MainCoreComponent?.IsMainCore ?? false);
+            };
+
+            _powerOverclockAction.Action = b =>
+            {
+                var groupComp = b.GetGroupComponent();
+                if (groupComp == null)
+                {
+                    Utils.ShowChatMessage("Could not trigger power overclock, main grid group match was not found??");
+                    return;
+                }
+
+                Session.Networking.SendToServer(new PacketAction{ActionData = new ButtonAction {CubegridEntityId = b.CubeGrid.EntityId, Action = CoreActionType.PowerOverclock }});
             };
         }
 
@@ -162,11 +187,12 @@ namespace ShipCoreFramework
 
         private static void CustomActionGetter(IMyTerminalBlock block, List<IMyTerminalAction> actions)
         {
-            if (actions == null || _boostAction == null || _defenseAction == null) return;
+            if (actions == null || _boostAction == null || _defenseAction == null || _powerOverclockAction == null) return;
 
             var isCoreBlock = Utils.IsCoreBlock(block as IMyFunctionalBlock);
             ToggleMember(actions, _boostAction, isCoreBlock);
             ToggleMember(actions, _defenseAction, isCoreBlock);
+            ToggleMember(actions, _powerOverclockAction, isCoreBlock);
         }
 
         private static void ToggleMember<T>(List<T> list, T member, bool shouldBePresent)

@@ -224,6 +224,7 @@ namespace ShipCoreFramework
                     kvp.Value.UpdateDeactivationState();
                     kvp.Value.RunBoostTimerTick();
                     kvp.Value.RunActiveDefenseTimerTick();
+                    kvp.Value.RunPowerOverclockTimerTick();
                     kvp.Value.RunLimitedBlockPunishmentTick();
                     kvp.Value.RunExternalLimitValidationTick();
                     SpeedEnforcement.EnforceSpeedLimit(kvp.Value, speedBatch);
