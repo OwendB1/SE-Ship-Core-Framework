@@ -47,6 +47,7 @@ namespace ShipCoreFramework
         internal float PostBoostRampCap = -1f;
 
         private readonly object _connectedGroupsLock = new object();
+        private bool _connectorNetworkRefreshQueued;
         private readonly object _abilityStateLock = new object();
         internal readonly object SpeedStateLock = new object();
         private IMyGridGroupData _trackedPhysicalGroup;

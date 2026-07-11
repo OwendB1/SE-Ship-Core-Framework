@@ -1,0 +1,86 @@
+{
+  "generated_at": "2026-07-11T10:50:05.437166+00:00",
+  "nodes": {
+    "helpers_cubegridmodifiers_cubegridmodifiers": {
+      "code_fingerprint": "80a5f7364f712e2ad409727776c28b7a27db3e732b5100d7f173701c94dcac74",
+      "label": "CubeGridModifiers",
+      "last": "2026-07-10T12:44:41.140798+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-10T12:44:41.140798+00:00",
+          "outcome": "useful",
+          "q": "Use $ponytail and $caveman and implement this feature."
+        }
+      ],
+      "score": 0.978958312,
+      "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Helpers/CubeGridModifiers.cs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "helpers_noflyzoneenforcement_noflyzoneenforcement": {
+      "code_fingerprint": "a0621e696188faea09e62b53176e663f8da232df1d3dd73d9c4094f0a1e5736f",
+      "label": "NoFlyZoneEnforcement",
+      "last": "2026-06-25T21:30:27.460509+00:00",
+      "provenance": [
+        {
+          "date": "2026-06-25T21:30:27.460509+00:00",
+          "outcome": "useful",
+          "q": "Why does GroupComponent connect Speed Rules to many runtime rule communities?"
+        }
+      ],
+      "score": 0.698092433,
+      "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Helpers/NoFlyZoneEnforcement.cs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "helpers_speedenforcement_speedenforcement": {
+      "code_fingerprint": "fd9d9b713d1e24089d6db13c42666cb6ca80d9808e39bbd7cc571087033f4f7e",
+      "label": "SpeedEnforcement",
+      "last": "2026-06-25T21:30:27.460509+00:00",
+      "provenance": [
+        {
+          "date": "2026-06-25T21:30:27.460509+00:00",
+          "outcome": "useful",
+          "q": "Why does GroupComponent connect Speed Rules to many runtime rule communities?"
+        }
+      ],
+      "score": 0.698092433,
+      "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Helpers/SpeedEnforcement.cs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "network_packetbase_packetbase": {
+      "code_fingerprint": "d1a93657d1418bcd3c8975f22969dcc668b2b0a11c02a7279a055fa0ab84c746",
+      "label": "PacketBase",
+      "last": "2026-07-10T12:44:41.140798+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-10T12:44:41.140798+00:00",
+          "outcome": "useful",
+          "q": "Use $ponytail and $caveman and implement this feature."
+        }
+      ],
+      "score": 0.978958312,
+      "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Network/PacketBase.cs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "ui_coreterminalcontrols_coreterminalcontrols": {
+      "code_fingerprint": "7e3a39800db500044f04e8a98cbccfafe2c05d27c763bb22c120c15f4ee1f096",
+      "label": "CoreTerminalControls",
+      "last": "2026-07-10T12:44:41.140798+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-10T12:44:41.140798+00:00",
+          "outcome": "useful",
+          "q": "Use $ponytail and $caveman and implement this feature."
+        }
+      ],
+      "score": 0.978958312,
+      "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/UI/CoreTerminalControls.cs",
+      "status": "tentative",
+      "uses": 1
+    }
+  },
+  "version": 1
+}

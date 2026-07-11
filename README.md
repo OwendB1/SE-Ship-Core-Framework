@@ -128,7 +128,8 @@ Repeated `<ShipCore>` entries under `<CoreManifest>`.
 
 Blacklist behavior:
 
-- Only applies when two core groups are connector-linked.
+- Applies across all core groups in the same transitive connector network.
+- Connector traversal uses actual connected connector pairs, including trading-enabled connectors.
 - The higher `CoreSelectionPriority` group is treated as the blacklisting side.
 - If priorities match, the bigger group by block count is treated as the blacklisting side.
 - The winning group's main core checks its blacklist against the losing group's main core `SubtypeId`.

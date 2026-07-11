@@ -45,17 +45,24 @@ namespace ShipCoreFramework
             group.OnGridRemoved += gComp.OnGridRemoved;
 
             if (!IsInitialGroupScan)
+            {
                 RefreshPhysicalGroupLinkagesForGrids(tempGridList);
+                gComp.QueueConnectorNetworkRefresh();
+            }
         }
 
         private static void MyCubeGridOnBlocksChangeFinishedGlobally(MyCubeGrid removedFrom, MyCubeGrid addedTo)
         {
             if (IsShuttingDown) return;
-            if (!IsGameThread)
-            {
-                MyAPIGateway.Utilities.InvokeOnGameThread(() => MyCubeGridOnBlocksChangeFinishedGlobally(removedFrom, addedTo));
-                return;
-            }
+
+            // Split grids enter the scene after this event. Defer until both mechanical groups exist.
+            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+                RebuildMechanicalGroupsAfterBlockTransfer(removedFrom, addedTo));
+        }
+
+        private static void RebuildMechanicalGroupsAfterBlockTransfer(MyCubeGrid removedFrom, MyCubeGrid addedTo)
+        {
+            if (IsShuttingDown) return;
 
             var groups = new HashSet<IMyGridGroupData>();
             AddMechanicalGroupForGrid(groups, removedFrom);

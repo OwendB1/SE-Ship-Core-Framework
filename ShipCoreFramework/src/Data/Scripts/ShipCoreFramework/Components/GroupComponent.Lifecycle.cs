@@ -284,6 +284,7 @@ namespace ShipCoreFramework
             {
                 if (_closing) return;
                 OnUpgradeModulesChanged();
+                QueueConnectorNetworkRefresh();
 
                 if (wasInactive)
                     ModAPI.BroadcastCoreActivated(GetRepresentativeGridId(), ShipCore.SubtypeId, ShipCore.UniqueName);
@@ -323,6 +324,7 @@ namespace ShipCoreFramework
 
             if (_closing || !Session.HasStarted || Session.IsShuttingDown) return;
             OnUpgradeModulesChanged();
+            QueueConnectorNetworkRefresh();
         }
 
         internal void OnGridAdded(IMyGridGroupData addedTo, IMyCubeGrid grid, IMyGridGroupData removedFrom)
@@ -353,6 +355,7 @@ namespace ShipCoreFramework
                 if (grid.MarkedForClose || grid.Closed) return;
 
                 OnUpgradeModulesChanged();
+                QueueConnectorNetworkRefresh();
                 Session.RefreshPhysicalGroupLinkagesForGrid(grid);
                 ModAPI.BroadcastGridAddedToGroup(grid.EntityId);
             });
@@ -392,6 +395,7 @@ namespace ShipCoreFramework
             RebuildConnectorPunishmentLinks();
             RefreshPunishmentState();
             QueueRecalculateAllLimits(true, ShouldForceLimitedBlocksOff());
+            QueueConnectorNetworkRefresh();
             Session.RefreshPhysicalGroupLinkagesForGrid(grid);
             Session.RefreshPhysicalGroupLinkagesForGrids(GridDictionary.Keys);
             ModAPI.BroadcastGridRemovedFromGroup(grid.EntityId, GetRepresentativeGridId());
@@ -412,6 +416,7 @@ namespace ShipCoreFramework
             {
                 SyncBeaconComponents();
                 OnUpgradeModulesChanged();
+                QueueConnectorNetworkRefresh();
                 return;
             }
 
@@ -447,6 +452,7 @@ namespace ShipCoreFramework
 
             if (_closing || !Session.HasStarted || Session.IsShuttingDown) return;
             OnUpgradeModulesChanged();
+            QueueConnectorNetworkRefresh();
         }
 
         internal void CoreRemoved(CoreComponent lost)
@@ -463,6 +469,7 @@ namespace ShipCoreFramework
                 Session.MarkPhysicalSpeedClusterSourceDirty(this);
                 SyncBeaconComponents();
                 OnUpgradeModulesChanged();
+                QueueConnectorNetworkRefresh();
                 return;
             }
 
@@ -490,6 +497,7 @@ namespace ShipCoreFramework
             }
 
             OnUpgradeModulesChanged();
+            QueueConnectorNetworkRefresh();
         }
 
         internal void SyncBeaconComponents()
@@ -509,6 +517,7 @@ namespace ShipCoreFramework
             if (MainCoreComponent == null)
                 ScheduleMissingCoreRescan();
             OnUpgradeModulesChanged();
+            QueueConnectorNetworkRefresh();
         }
 
         internal void ScheduleMissingCoreRescan()
