@@ -63,8 +63,7 @@ namespace ShipCoreFramework
     /// (<see cref="GroupComponent.ResolveFacing"/>) as live enforcement so predictions match reality.
     ///
     /// Accepts a batch of proposed blocks so multi-block placements (line/plane runs, mirror copies)
-    /// can be evaluated as one aggregate. NOTE: the client can only reliably populate the single
-    /// primary block today (see plan, "multi-block placement").
+    /// can be evaluated as one aggregate. The client currently populates only the primary block.
     ///
     /// Count/cap reads are lock-guarded, but the direction path touches live game objects
     /// (<see cref="GroupComponent.GetDirectionLockReferenceBlock"/> and its WorldMatrix), so
@@ -211,9 +210,9 @@ namespace ShipCoreFramework
             if (referenceBlock == null) return;
 
             var referenceMatrix = referenceBlock.WorldMatrix;
-            // Mirrors GroupComponent.IsValidDirection's subgrid branch: on a cross-grid placement the
-            // rule is config-gated, not orientation-based.
-            var subgridAllowed = Session.Config == null || !Session.Config.BlockDirectionalPlacementOnSubgrids;
+            // Cross-grid placement is config-gated, not orientation-based. Matches the null-config
+            // handling of GroupComponent.IsValidDirection's subgrid branch (null config -> not allowed).
+            var subgridAllowed = Session.Config != null && !Session.Config.BlockDirectionalPlacementOnSubgrids;
 
             for (var i = 0; i < proposed.Count; i++)
             {

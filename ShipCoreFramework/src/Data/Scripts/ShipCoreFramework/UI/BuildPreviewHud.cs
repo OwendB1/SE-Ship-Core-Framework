@@ -40,9 +40,7 @@ namespace ShipCoreFramework
         // Directional indicator sizing. Icon size is driven by camera distance (not block size)
         // so it keeps a constant apparent size regardless of how large the block is.
         private const double IconScreenFactor = 0.03d;   // world half-size per metre of camera distance
-        // Arrows render on a plane this fraction of the way from the camera to the block, so they
-        // sit in front of it and surrounding geometry (reliable "on top" without depth-ignore,
-        // which mod-added transparent materials don't honor).
+        // Arrows render this fraction of the way from the camera to the block (see materials below).
         private const double ClusterDistanceFraction = 0.35d;
         private const double ClusterDistanceMin = 0.5d;
         private const double ClusterDistanceMax = 6.0d;
@@ -52,10 +50,9 @@ namespace ShipCoreFramework
 
         private const BlendTypeEnum Blend = BlendTypeEnum.PostPP;
 
-        // Reuse the game's rotation-gizmo arrow textures via custom materials
-        // (Data/TransparentMaterials.sbc). IgnoreDepth=true there is only a belt-and-suspenders for
-        // geometry closer than the cluster plane; the near-camera placement (see Draw) is what
-        // actually keeps them on top - mod-added transparent materials don't reliably honor IgnoreDepth.
+        // Custom materials in Data/TransparentMaterials.sbc, pointing at the game's rotation-gizmo
+        // arrow textures. Their IgnoreDepth is unreliable for mod materials, so the near-camera
+        // cluster placement (see Draw) is what actually keeps the arrows drawn over geometry.
         private readonly MyStringId _matArrowGreen = MyStringId.GetOrCompute("SCF_ArrowGreen");
         private readonly MyStringId _matArrowRed = MyStringId.GetOrCompute("SCF_ArrowRed");
         private readonly MyStringId _matArrowBlue = MyStringId.GetOrCompute("SCF_ArrowBlue");
@@ -197,8 +194,6 @@ namespace ShipCoreFramework
             }
 
             // Refresh the box transform every frame so the panel/box/arrows track the moving preview.
-            // GetBuildBoundingBox is safe while the builder is activated (this is how Build Info
-            // positions its held-block overlay).
             var box = builder.GetBuildBoundingBox();
             _boxCenter = box.Center;
             box.GetCorners(_corners, 0);
@@ -236,12 +231,9 @@ namespace ShipCoreFramework
 
         private void Recompute(GroupComponent group, MyCubeBlockDefinition def, MatrixD orientation, IMyCubeGrid grid)
         {
-            // Title after the governing config (active core name, or the SelectedNoCore config name).
             var configName = group.ShipCore?.UniqueName;
             _panelTitle = (string.IsNullOrWhiteSpace(configName) ? "Ship Core" : configName) + " Limits";
 
-            // Core-orientation hint: placing a core on a grid that has none yet. The core establishes
-            // the grid's forward/up reference frame, so show those axes to aid deliberate placement.
             // Qualify the mod's static Session - the MySessionComponentBase.Session property shadows it.
             var modConfig = ShipCoreFramework.Session.Config;
             _drawCoreOrientation = _fullHud
@@ -254,13 +246,9 @@ namespace ShipCoreFramework
                 _coreUp = orientation.Up;
             }
 
-            // Mirror exactly what turns OFF on-placement enforcement (which is what this preview
-            // mirrors), per GridComponent.BlockAddedInternal:
-            //  - the group is Deactivated (AI/faction-ignored groups deactivate and clear limits), or
-            //  - the builder (here, the local player) is an admin exempt from limits (ignore-PCU),
-            //    whose placements bail out before any limit is applied.
-            // NOT group.IsIgnoredGroup(): that is also true for unowned grids (OwnerId == 0), which
-            // ARE still enforced on placement, so it produced false "waived" readouts on no-core grids.
+            // Match what turns OFF on-placement enforcement (per GridComponent.BlockAddedInternal): the
+            // group is Deactivated, or the local player is an admin exempt from limits. Deliberately NOT
+            // group.IsIgnoredGroup(), which is also true for unowned grids that are still enforced.
             var localExempt = LocalPlayerIsLimitExempt();
             _limitsWaived = group.Deactivated || localExempt;
 
