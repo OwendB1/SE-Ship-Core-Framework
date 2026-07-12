@@ -130,8 +130,11 @@ namespace ShipCoreFramework
             // Directional constraints: evaluate each proposed block's facing relative to the core.
             AddDirectionResults(group, proposed, results);
 
-            // Grid-wide hard caps. Only meaningful with an active core; no-core (SelectedNoCore)
-            // hard caps are handled when the preview HUD wires no-core grids (see plan phase 4).
+            // Grid-wide hard caps (MaxBlocks / PCU / Mass). group.ShipCore resolves to the active
+            // core's config, or to SelectedNoCore for a coreless grid - it is never null (falls back
+            // to the built-in default no-core config). Both define hard caps, so these evaluate for
+            // cored and no-core grids alike, matching live enforcement in GridComponent. The guard is
+            // pure null-safety - do NOT narrow it to MainCoreComponent != null, that breaks no-core.
             if (group.ShipCore != null)
             {
                 var totalBlocks = 0;

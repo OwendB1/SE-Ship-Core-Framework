@@ -32,6 +32,7 @@ namespace ShipCoreFramework
         private const int HudStateFull = 1;
         private const int RecomputeIntervalTicks = 6; // limit re-evaluation cadence (~10x/sec)
         private const double ScreenGapX = 0.015d; // horizontal gap between block edge and text
+        private const double HardCapDisplayFraction = 0.8d; // show a grid-wide hard cap once projected usage hits this fraction
         private const string PassColor = "120,220,120";
         private const string FailColor = "255,90,90";
         private const string TitleColor = "180,200,255";
@@ -86,6 +87,14 @@ namespace ShipCoreFramework
         private bool _hasViolation;
         private bool _drawIndicators;
         private readonly List<DirectionIndicator> _indicators = new List<DirectionIndicator>();
+
+        // Panel title reflects the governing config: "<core name> Limits" for an active core, or the
+        // SelectedNoCore config's name for a coreless grid.
+        private string _panelTitle = "Ship Core Limits";
+        // When the group is deactivated or ignored the live engine enforces nothing; the preview
+        // then shows a "limits waived" note instead of pass/fail, and draws no box/arrows.
+        private bool _limitsWaived;
+        private string _waivedReason = string.Empty;
 
         private int _tick;
         private int _nextRecomputeTick;
@@ -220,11 +229,26 @@ namespace ShipCoreFramework
 
         private void Recompute(GroupComponent group, MyCubeBlockDefinition def, MatrixD orientation, IMyCubeGrid grid)
         {
+            // Title after the governing config (active core name, or the SelectedNoCore config name).
+            var configName = group.ShipCore?.UniqueName;
+            _panelTitle = (string.IsNullOrWhiteSpace(configName) ? "Ship Core" : configName) + " Limits";
+
+            // Mirror exactly what turns OFF on-placement enforcement (which is what this preview
+            // mirrors), per GridComponent.BlockAddedInternal:
+            //  - the group is Deactivated (AI/faction-ignored groups deactivate and clear limits), or
+            //  - the builder (here, the local player) is an admin exempt from limits (ignore-PCU),
+            //    whose placements bail out before any limit is applied.
+            // NOT group.IsIgnoredGroup(): that is also true for unowned grids (OwnerId == 0), which
+            // ARE still enforced on placement, so it produced false "waived" readouts on no-core grids.
+            var localExempt = LocalPlayerIsLimitExempt();
+            _limitsWaived = group.Deactivated || localExempt;
+
             var proposed = new ProposedBlock
             {
                 Key = new BlockKey(Utils.GetBlockTypeId(def.Id), Utils.GetBlockSubtypeId(def.Id)),
                 Count = 1,
                 Pcu = def.PCU,
+                Mass = ComputeBlockMass(def),
                 Orientation = orientation,
                 TargetGrid = grid
             };
@@ -232,6 +256,12 @@ namespace ShipCoreFramework
             _results = LimitEvaluation.Evaluate(group, proposed);
 
             _hasViolation = false;
+            if (_limitsWaived)
+            {
+                _waivedReason = group.Deactivated ? "core deactivated" : "admin exempt";
+                return; // no violation box while waived
+            }
+
             for (var i = 0; i < _results.Count; i++)
             {
                 if (_results[i].Pass) continue;
@@ -240,13 +270,43 @@ namespace ShipCoreFramework
             }
         }
 
+        // True when the local player (the builder) is an admin exempt from limits (ignore-PCU) - the
+        // same check GridComponent.BlockAddedInternal uses to bypass enforcement for their placements.
+        private static bool LocalPlayerIsLimitExempt()
+        {
+            var session = MyAPIGateway.Session;
+            var player = session?.Player;
+            if (player == null) return false;
+
+            var steamId = player.SteamUserId;
+            return session.IsUserAdmin(steamId) && session.IsUserIgnorePCULimit(steamId);
+        }
+
+        // The block's physical mass, summed from its build components (what the game uses for grid
+        // mass). Approximates the added mass for a bare placement; the live cap uses real physics
+        // mass (incl. cargo). Zero when unknown, which makes LimitEvaluation skip the MaxMass cap.
+        private static float ComputeBlockMass(MyCubeBlockDefinition def)
+        {
+            var mass = 0f;
+            var components = def?.Components;
+            if (components == null) return mass;
+
+            for (var i = 0; i < components.Length; i++)
+            {
+                var component = components[i];
+                if (component.Definition != null) mass += component.Definition.Mass * component.Count;
+            }
+
+            return mass;
+        }
+
         // For each violated directional limit, record the current and required world facings so
         // Draw() can render the red/green/rotation arrow triad.
         private void UpdateIndicators(GroupComponent group)
         {
             _indicators.Clear();
             _drawIndicators = false;
-            if (!_fullHud || _results == null) return; // arrows only on the Full HUD
+            if (!_fullHud || _limitsWaived || _results == null) return; // arrows only on the Full HUD, never while waived
 
             IMyCubeBlock referenceBlock = null;
             for (var i = 0; i < _results.Count; i++)
@@ -290,8 +350,10 @@ namespace ShipCoreFramework
         private void Render()
         {
             // Panel/fallback only on the Full HUD, and only when there's something worth showing.
-            // (The violation box is handled in Draw so it can also appear on the Minimal HUD.)
-            if (!_fullHud || _results == null || !HasDisplayableResults())
+            // While waived we still show the panel (title + waived note) so the player understands
+            // why nothing is being enforced. (The violation box is handled in Draw so it can also
+            // appear on the Minimal HUD.)
+            if (!_fullHud || (!_limitsWaived && (_results == null || !HasDisplayableResults())))
             {
                 HidePanel();
                 return;
@@ -311,12 +373,18 @@ namespace ShipCoreFramework
             return false;
         }
 
-        // Grid-wide hard caps are only shown when failing; per-type and directional limits always.
+        // Grid-wide hard caps stay hidden until the projected usage nears the cap, so common caps
+        // (blocks/PCU/mass, which apply to nearly every block) don't clutter the panel constantly.
+        // They surface once projected usage reaches HardCapDisplayFraction of the cap, and always
+        // when over. Per-type and directional limits are always shown.
         private static bool IsDisplayable(LimitCheckResult result)
         {
             if (result.Kind == LimitCheckKind.MaxBlocks || result.Kind == LimitCheckKind.MaxPcu
                 || result.Kind == LimitCheckKind.MaxMass)
-                return !result.Pass;
+            {
+                if (!result.Pass) return true;
+                return result.Max > 0d && result.Current + result.Added >= result.Max * HardCapDisplayFraction;
+            }
 
             return true;
         }
@@ -364,7 +432,13 @@ namespace ShipCoreFramework
         {
             // Text HUD API has no closing tag; a <color=...> persists until the next one.
             _sb.Clear();
-            _sb.Append("<color=").Append(TitleColor).Append(">Ship Core Limits\n");
+            _sb.Append("<color=").Append(TitleColor).Append('>').Append(_panelTitle).Append('\n');
+
+            if (_limitsWaived)
+            {
+                _sb.Append("<color=").Append(PassColor).Append(">Limits waived (").Append(_waivedReason).Append(')');
+                return;
+            }
 
             for (var i = 0; i < _results.Count; i++)
             {
@@ -532,6 +606,17 @@ namespace ShipCoreFramework
         {
             // Degraded mode when Text HUD API isn't installed: a single-line screen notification.
             _sb.Clear();
+
+            if (_limitsWaived)
+            {
+                if (_fallback == null)
+                    _fallback = MyAPIGateway.Utilities.CreateNotification(string.Empty, 1000, "White");
+                _fallback.Text = _panelTitle + ": limits waived (" + _waivedReason + ")";
+                _fallback.Font = "White";
+                _fallback.Show();
+                return;
+            }
+
             var anyFail = false;
             for (var i = 0; i < _results.Count; i++)
             {
