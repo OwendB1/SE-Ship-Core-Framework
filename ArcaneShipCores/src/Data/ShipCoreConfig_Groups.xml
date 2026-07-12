@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-16"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <ArrayOfBlockGroup>
   <!--weaponry-->
   <BlockGroup>
@@ -445,6 +445,10 @@
     <BlockTypes>
       <TypeId>Warhead</TypeId>
       <SubtypeId>LargeWarhead</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>Warhead</TypeId>
       <SubtypeId>SmallWarhead</SubtypeId>
       <CountWeight>1</CountWeight>
     </BlockTypes>
@@ -455,6 +459,10 @@
     <BlockTypes>
       <TypeId>Decoy</TypeId>
       <SubtypeId>LargeDecoy</SubtypeId>
+      <CountWeight>1</CountWeight>
+    </BlockTypes>
+    <BlockTypes>
+      <TypeId>Decoy</TypeId>
       <SubtypeId>SmallDecoy</SubtypeId>
       <CountWeight>1</CountWeight>
     </BlockTypes>
@@ -608,22 +616,22 @@
   <BlockGroup>
     <Name>ProgrammableBlocks</Name>
     <BlockTypes>
-      <TypeId>MyProgrammableBlock</TypeId>
+      <TypeId>ProgrammableBlock</TypeId>
       <SubtypeId>LargeProgrammableBlock</SubtypeId>
       <CountWeight>1</CountWeight>
     </BlockTypes>
     <BlockTypes>
-      <TypeId>MyProgrammableBlock</TypeId>
+      <TypeId>ProgrammableBlock</TypeId>
       <SubtypeId>LargeProgrammableBlockReskin</SubtypeId>
       <CountWeight>1</CountWeight>
     </BlockTypes>
     <BlockTypes>
-      <TypeId>MyProgrammableBlock</TypeId>
+      <TypeId>ProgrammableBlock</TypeId>
       <SubtypeId>SmallProgrammableBlock</SubtypeId>
       <CountWeight>1</CountWeight>
     </BlockTypes>
     <BlockTypes>
-      <TypeId>MyProgrammableBlock</TypeId>
+      <TypeId>ProgrammableBlock</TypeId>
       <SubtypeId>SmallProgrammableBlockReskin</SubtypeId>
       <CountWeight>1</CountWeight>
     </BlockTypes>

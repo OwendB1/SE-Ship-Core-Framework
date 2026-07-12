@@ -2,25 +2,21 @@
 <ShipCore>
   <SubtypeId>Extractor_Core</SubtypeId>
   <UniqueName>Extractor Grid Class</UniqueName>
+  <MaxBackupCores>1</MaxBackupCores>
   <ForceBroadCast>true</ForceBroadCast>
   <ForceBroadCastRange>5000</ForceBroadCastRange>
   <MobilityType>Both</MobilityType>
   <MaxBlocks>5000</MaxBlocks>
+  <MinBlocks>800</MinBlocks>
   <MaxMass>7000000</MaxMass>
   <MaxPCU>60000</MaxPCU>
   <MaxPerFaction>-1</MaxPerFaction>
   <MaxPerPlayer>2</MaxPerPlayer>
   <MinPlayers>3</MinPlayers>
-  <AllowedUpgradeModules><SubtypeId>GridCore_Module_Combat</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
   <AllowedUpgradeModules><SubtypeId>GridCore_Module_Economy</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
   <AllowedUpgradeModules><SubtypeId>GridCore_Module_Handling</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
   <AllowedUpgradeModules><SubtypeId>GridCore_Module_Harvester</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
   <AllowedUpgradeModules><SubtypeId>GridCore_Module_OverDrive</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
-  <AllowedUpgradeModules><SubtypeId>SG_GridCore_Module_Combat</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
-  <AllowedUpgradeModules><SubtypeId>SG_GridCore_Module_Economy</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
-  <AllowedUpgradeModules><SubtypeId>SG_GridCore_Module_Handling</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
-  <AllowedUpgradeModules><SubtypeId>SG_GridCore_Module_Harvester</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
-  <AllowedUpgradeModules><SubtypeId>SG_GridCore_Module_OverDrive</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
   <Modifiers>
     <AssemblerSpeed>0</AssemblerSpeed>
     <DrillHarvestMultiplier>6</DrillHarvestMultiplier>
@@ -33,6 +29,11 @@
     <ThrusterForce>1.5</ThrusterForce>
   </Modifiers>
   <SpeedBoostEnabled>true</SpeedBoostEnabled>
+  <PowerOverclockEnabled>true</PowerOverclockEnabled>
+  <PowerOverclockMultiplier>1.5</PowerOverclockMultiplier>
+  <PowerOverclockDuration>20</PowerOverclockDuration>
+  <PowerOverclockCooldown>120</PowerOverclockCooldown>
+  <PowerOverclockDamagePerSecond>5</PowerOverclockDamagePerSecond>
   <SpeedLimitType>Friction</SpeedLimitType>
   <SpeedModifiers>
     <MaxSpeed>0.6</MaxSpeed>
@@ -113,4 +114,10 @@
     <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>Delete</PunishmentType>
   </BlockLimits>
+  <BlockLimits><Name>No Assemblers</Name><BlockGroups>Assemblers</BlockGroups><MaxCount>0</MaxCount><PunishmentType>ShutOff</PunishmentType></BlockLimits>
+  <BlockLimits><Name>Refineries</Name><BlockGroups>Refineries</BlockGroups><MaxCount>2</MaxCount><PunishmentType>ShutOff</PunishmentType></BlockLimits>
+  <BlockLimits><Name>Large Cargo</Name><BlockGroups>LargeCargoContainers</BlockGroups><MaxCount>8</MaxCount><PunishmentType>Delete</PunishmentType></BlockLimits>
+  <BlockLimits><Name>Jump Drives</Name><BlockGroups>VanillaJumpDrives</BlockGroups><MaxCount>1</MaxCount><PunishmentType>ShutOff</PunishmentType></BlockLimits>
+  <BlockLimits><Name>Gyros</Name><BlockGroups>Gyros</BlockGroups><MaxCount>30</MaxCount><PunishmentType>ShutOff</PunishmentType></BlockLimits>
+  <BlockLimits><Name>No Safe Zone</Name><BlockGroups>SafeZone</BlockGroups><MaxCount>0</MaxCount><PunishmentType>ShutOff</PunishmentType></BlockLimits>
 </ShipCore>

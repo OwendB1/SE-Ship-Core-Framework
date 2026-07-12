@@ -2,10 +2,12 @@
 <ShipCore>
   <SubtypeId>Outpost_Core</SubtypeId>
   <UniqueName>Outpost Station Class</UniqueName>
+  <MaxBackupCores>1</MaxBackupCores>
   <ForceBroadCast>true</ForceBroadCast>
   <ForceBroadCastRange>10000</ForceBroadCastRange>
   <MobilityType>Static</MobilityType>
   <MaxBlocks>10000</MaxBlocks>
+  <MinBlocks>1000</MinBlocks>
   <MaxMass>15000000</MaxMass>
   <MaxPCU>60000</MaxPCU>
   <MaxPerFaction>-1</MaxPerFaction>
@@ -13,14 +15,6 @@
   <MinPlayers>-1</MinPlayers>
   <AllowedUpgradeModules><SubtypeId>GridCore_Module_Combat</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
   <AllowedUpgradeModules><SubtypeId>GridCore_Module_Economy</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
-  <AllowedUpgradeModules><SubtypeId>GridCore_Module_Handling</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
-  <AllowedUpgradeModules><SubtypeId>GridCore_Module_Harvester</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
-  <AllowedUpgradeModules><SubtypeId>GridCore_Module_OverDrive</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
-  <AllowedUpgradeModules><SubtypeId>SG_GridCore_Module_Combat</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
-  <AllowedUpgradeModules><SubtypeId>SG_GridCore_Module_Economy</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
-  <AllowedUpgradeModules><SubtypeId>SG_GridCore_Module_Handling</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
-  <AllowedUpgradeModules><SubtypeId>SG_GridCore_Module_Harvester</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
-  <AllowedUpgradeModules><SubtypeId>SG_GridCore_Module_OverDrive</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
   <Modifiers>
     <AssemblerSpeed>1</AssemblerSpeed>
     <DrillHarvestMultiplier>1</DrillHarvestMultiplier>
@@ -91,4 +85,12 @@
     <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>Delete</PunishmentType>
   </BlockLimits>
+  <BlockLimits><Name>Assemblers</Name><BlockGroups>Assemblers</BlockGroups><MaxCount>2</MaxCount><PunishmentType>ShutOff</PunishmentType></BlockLimits>
+  <BlockLimits><Name>Refineries</Name><BlockGroups>Refineries</BlockGroups><MaxCount>2</MaxCount><PunishmentType>ShutOff</PunishmentType></BlockLimits>
+  <BlockLimits><Name>Large Cargo</Name><BlockGroups>LargeCargoContainers</BlockGroups><MaxCount>10</MaxCount><PunishmentType>Delete</PunishmentType></BlockLimits>
+  <BlockLimits><Name>Welders</Name><BlockGroups>Welders</BlockGroups><MaxCount>4</MaxCount><PunishmentType>ShutOff</PunishmentType></BlockLimits>
+  <BlockLimits><Name>Grinders</Name><BlockGroups>Grinders</BlockGroups><MaxCount>2</MaxCount><PunishmentType>ShutOff</PunishmentType></BlockLimits>
+  <BlockLimits><Name>No Safe Zone</Name><BlockGroups>SafeZone</BlockGroups><MaxCount>0</MaxCount><PunishmentType>ShutOff</PunishmentType></BlockLimits>
+  <BlockLimits><Name>Programmable Blocks</Name><BlockGroups>ProgrammableBlocks</BlockGroups><MaxCount>4</MaxCount><PunishmentType>ShutOff</PunishmentType></BlockLimits>
+  <BlockLimits><Name>No Jump Drives</Name><BlockGroups>VanillaJumpDrives</BlockGroups><MaxCount>0</MaxCount><PunishmentType>ShutOff</PunishmentType></BlockLimits>
 </ShipCore>

@@ -2,51 +2,111 @@
 <CoreManifest>
   <ShipCore>
     <Filename>Data\Cores\Combat Grids\Frigate_Core.xml</Filename>
+    <CoreSelectionPriority>20</CoreSelectionPriority>
   </ShipCore>
   <ShipCore>
     <Filename>Data\Cores\Combat Grids\Cruiser_Core.xml</Filename>
+    <CoreSelectionPriority>40</CoreSelectionPriority>
+    <BlacklistedCoreSubtypeId>Interceptor_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Fighter_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Gunship_Core</BlacklistedCoreSubtypeId>
   </ShipCore>
   <ShipCore>
     <Filename>Data\Cores\Combat Grids\Destroyer_Core.xml</Filename>
+    <CoreSelectionPriority>30</CoreSelectionPriority>
   </ShipCore>
   <ShipCore>
     <Filename>Data\Cores\Combat Grids\Battleship_Core.xml</Filename>
+    <CoreSelectionPriority>50</CoreSelectionPriority>
+    <BlacklistedCoreSubtypeId>Interceptor_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Fighter_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Gunship_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Frigate_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Destroyer_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Cruiser_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Courier_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Extractor_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Harvester_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Utility_Core</BlacklistedCoreSubtypeId>
   </ShipCore>
 
   <ShipCore>
     <Filename>Data\Cores\Combat Grids\Interceptor_Core.xml</Filename>
+    <CoreSelectionPriority>10</CoreSelectionPriority>
   </ShipCore>
   <ShipCore>
     <Filename>Data\Cores\Combat Grids\Fighter_Core.xml</Filename>
+    <CoreSelectionPriority>10</CoreSelectionPriority>
   </ShipCore>
   <ShipCore>
     <Filename>Data\Cores\Combat Grids\Gunship_Core.xml</Filename>
+    <CoreSelectionPriority>15</CoreSelectionPriority>
   </ShipCore>
 
   <ShipCore>
     <Filename>Data\Cores\Stations\Citadel_Core.xml</Filename>
-    <CoreSelectionPriority>100</CoreSelectionPriority>
+    <CoreSelectionPriority>120</CoreSelectionPriority>
+    <BlacklistedCoreSubtypeId>Outpost_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Stronghold_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Interceptor_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Fighter_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Gunship_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Frigate_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Destroyer_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Cruiser_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Battleship_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Courier_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Extractor_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Harvester_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Utility_Core</BlacklistedCoreSubtypeId>
   </ShipCore>
   <ShipCore>
     <Filename>Data\Cores\Stations\Outpost_Core.xml</Filename>
     <CoreSelectionPriority>100</CoreSelectionPriority>
+    <BlacklistedCoreSubtypeId>Interceptor_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Fighter_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Gunship_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Frigate_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Destroyer_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Cruiser_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Battleship_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Courier_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Extractor_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Harvester_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Utility_Core</BlacklistedCoreSubtypeId>
   </ShipCore>
   <ShipCore>
     <Filename>Data\Cores\Stations\Stronghold_Core.xml</Filename>
-    <CoreSelectionPriority>100</CoreSelectionPriority>
+    <CoreSelectionPriority>110</CoreSelectionPriority>
+    <BlacklistedCoreSubtypeId>Outpost_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Interceptor_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Fighter_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Gunship_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Frigate_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Destroyer_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Cruiser_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Battleship_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Courier_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Extractor_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Harvester_Core</BlacklistedCoreSubtypeId>
+    <BlacklistedCoreSubtypeId>Utility_Core</BlacklistedCoreSubtypeId>
   </ShipCore>
 
   <ShipCore>
     <Filename>Data\Cores\Utility Ships\Courier_Core.xml</Filename>
+    <CoreSelectionPriority>12</CoreSelectionPriority>
   </ShipCore>
   <ShipCore>
     <Filename>Data\Cores\Utility Ships\Extractor_Core.xml</Filename>
+    <CoreSelectionPriority>16</CoreSelectionPriority>
   </ShipCore>
   <ShipCore>
     <Filename>Data\Cores\Utility Ships\Harvester_Core.xml</Filename>
+    <CoreSelectionPriority>18</CoreSelectionPriority>
   </ShipCore>
   <ShipCore>
     <Filename>Data\Cores\Utility Ships\Utility_Core.xml</Filename>
+    <CoreSelectionPriority>14</CoreSelectionPriority>
   </ShipCore>
 
   <ShipCore>

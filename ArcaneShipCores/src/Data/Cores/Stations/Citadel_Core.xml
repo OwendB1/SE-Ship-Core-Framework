@@ -2,25 +2,20 @@
 <ShipCore>
   <SubtypeId>Citadel_Core</SubtypeId>
   <UniqueName>Citadel Station Class</UniqueName>
+  <MaxBackupCores>3</MaxBackupCores>
   <ForceBroadCast>true</ForceBroadCast>
   <ForceBroadCastRange>200000</ForceBroadCastRange>
   <MobilityType>Static</MobilityType>
   <MaxBlocks>30000</MaxBlocks>
+  <MinBlocks>8000</MinBlocks>
   <MaxMass>80000000</MaxMass>
   <MaxPCU>120000</MaxPCU>
   <MaxPerFaction>1</MaxPerFaction>
+  <MinFactionRank>Founder</MinFactionRank>
   <MaxPerPlayer>-1</MaxPerPlayer>
   <MinPlayers>10</MinPlayers>
   <AllowedUpgradeModules><SubtypeId>GridCore_Module_Combat</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
   <AllowedUpgradeModules><SubtypeId>GridCore_Module_Economy</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
-  <AllowedUpgradeModules><SubtypeId>GridCore_Module_Handling</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
-  <AllowedUpgradeModules><SubtypeId>GridCore_Module_Harvester</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
-  <AllowedUpgradeModules><SubtypeId>GridCore_Module_OverDrive</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
-  <AllowedUpgradeModules><SubtypeId>SG_GridCore_Module_Combat</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
-  <AllowedUpgradeModules><SubtypeId>SG_GridCore_Module_Economy</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
-  <AllowedUpgradeModules><SubtypeId>SG_GridCore_Module_Handling</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
-  <AllowedUpgradeModules><SubtypeId>SG_GridCore_Module_Harvester</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
-  <AllowedUpgradeModules><SubtypeId>SG_GridCore_Module_OverDrive</SubtypeId><MaxCount>1</MaxCount></AllowedUpgradeModules>
   <Modifiers>
     <AssemblerSpeed>10</AssemblerSpeed>
     <DrillHarvestMultiplier>1</DrillHarvestMultiplier>
@@ -33,6 +28,11 @@
     <ThrusterForce>0.1</ThrusterForce>
   </Modifiers>
   <SpeedBoostEnabled>false</SpeedBoostEnabled>
+  <PowerOverclockEnabled>true</PowerOverclockEnabled>
+  <PowerOverclockMultiplier>2</PowerOverclockMultiplier>
+  <PowerOverclockDuration>60</PowerOverclockDuration>
+  <PowerOverclockCooldown>300</PowerOverclockCooldown>
+  <PowerOverclockDamagePerSecond>15</PowerOverclockDamagePerSecond>
   <SpeedLimitType>Normal</SpeedLimitType>
   <SpeedModifiers>
     <MaxSpeed>0.9</MaxSpeed>
@@ -91,4 +91,12 @@
     <PunishByNoFlyZone>true</PunishByNoFlyZone>
     <PunishmentType>Delete</PunishmentType>
   </BlockLimits>
+  <BlockLimits><Name>Assemblers</Name><BlockGroups>Assemblers</BlockGroups><MaxCount>12</MaxCount><PunishmentType>ShutOff</PunishmentType></BlockLimits>
+  <BlockLimits><Name>Refineries</Name><BlockGroups>Refineries</BlockGroups><MaxCount>12</MaxCount><PunishmentType>ShutOff</PunishmentType></BlockLimits>
+  <BlockLimits><Name>Large Cargo</Name><BlockGroups>LargeCargoContainers</BlockGroups><MaxCount>40</MaxCount><PunishmentType>Delete</PunishmentType></BlockLimits>
+  <BlockLimits><Name>Welders</Name><BlockGroups>Welders</BlockGroups><MaxCount>12</MaxCount><PunishmentType>ShutOff</PunishmentType></BlockLimits>
+  <BlockLimits><Name>Grinders</Name><BlockGroups>Grinders</BlockGroups><MaxCount>6</MaxCount><PunishmentType>ShutOff</PunishmentType></BlockLimits>
+  <BlockLimits><Name>Safe Zone</Name><BlockGroups>SafeZone</BlockGroups><MaxCount>1</MaxCount><PunishmentType>ShutOff</PunishmentType></BlockLimits>
+  <BlockLimits><Name>Programmable Blocks</Name><BlockGroups>ProgrammableBlocks</BlockGroups><MaxCount>16</MaxCount><PunishmentType>ShutOff</PunishmentType></BlockLimits>
+  <BlockLimits><Name>No Jump Drives</Name><BlockGroups>VanillaJumpDrives</BlockGroups><MaxCount>0</MaxCount><PunishmentType>ShutOff</PunishmentType></BlockLimits>
 </ShipCore>
