@@ -23,6 +23,8 @@ namespace ShipCoreFramework
     /// <see cref="Mass"/> are optional; when zero the matching hard-cap dimension is
     /// skipped. <see cref="Orientation"/> is the block's world orientation; when null
     /// directional constraints are skipped (e.g. <see cref="ModAPI.IsBlockAllowed"/>).
+    /// <see cref="TargetGrid"/> is the grid the block would be placed on, used to mirror
+    /// the enforcement path's cross-grid directional rule.
     /// </summary>
     internal struct ProposedBlock
     {
@@ -31,6 +33,7 @@ namespace ShipCoreFramework
         internal float Pcu;
         internal float Mass;
         internal MatrixD? Orientation;
+        internal IMyCubeGrid TargetGrid;
     }
 
     /// <summary>
@@ -50,18 +53,23 @@ namespace ShipCoreFramework
         // Direction dimension only:
         internal DirectionType Facing;                 // which way the block currently faces (rel. to core)
         internal List<DirectionType> AllowedDirections; // permitted facings (rel. to core)
+        internal bool SubgridBlocked;                  // failing because the target is a subgrid, not orientation
     }
 
     /// <summary>
-    /// Shared, side-effect-free limit evaluation used by both the server enforcement
-    /// path (via <see cref="ModAPI.IsBlockAllowed"/>) and the client build-preview HUD.
-    /// Reuses the same buckets, weights and effective maxima as live enforcement so
-    /// predictions always match what actually happens.
+    /// Shared, side-effect-free limit evaluation used by both the server enforcement path (via
+    /// <see cref="ModAPI.IsBlockAllowed"/> / <see cref="WouldExceedCountLimits"/>) and the client
+    /// build-preview HUD. Reuses the same buckets, weights, effective maxima and directional rule
+    /// (<see cref="GroupComponent.ResolveFacing"/>) as live enforcement so predictions match reality.
     ///
-    /// Accepts a batch of proposed blocks so multi-block placements (line/plane runs,
-    /// mirror copies) can be evaluated as one aggregate. NOTE: the client can only
-    /// reliably populate the single primary block today; line/plane counts and mirror
-    /// copies are not exposed by the public API (see plan, "multi-block placement").
+    /// Accepts a batch of proposed blocks so multi-block placements (line/plane runs, mirror copies)
+    /// can be evaluated as one aggregate. NOTE: the client can only reliably populate the single
+    /// primary block today (see plan, "multi-block placement").
+    ///
+    /// Count/cap reads are lock-guarded, but the direction path touches live game objects
+    /// (<see cref="GroupComponent.GetDirectionLockReferenceBlock"/> and its WorldMatrix), so
+    /// <see cref="Evaluate"/> must run on the game thread whenever proposed blocks carry an
+    /// orientation. The count-only paths are safe on or off the game thread.
     /// </summary>
     internal static class LimitEvaluation
     {
@@ -74,8 +82,7 @@ namespace ShipCoreFramework
         /// <summary>
         /// Evaluates a batch of proposed blocks against <paramref name="group"/>'s active limits.
         /// Count-based limits and hard caps are summed across the batch; directional constraints
-        /// are evaluated per block. Returns one result per relevant limit/cap. Safe to call on or
-        /// off the game thread.
+        /// are evaluated per block. Returns one result per relevant limit/cap.
         /// </summary>
         internal static List<LimitCheckResult> Evaluate(GroupComponent group, IReadOnlyList<ProposedBlock> proposed)
         {
@@ -161,17 +168,56 @@ namespace ShipCoreFramework
             return results;
         }
 
+        /// <summary>
+        /// Allocation-free predicate: would adding <paramref name="count"/> of <paramref name="key"/>
+        /// exceed any per-block-type limit? Shares the same buckets and effective maxima as
+        /// <see cref="Evaluate"/>, so it agrees with the full evaluation and with enforcement, without
+        /// building the presentation model. Used by <see cref="ModAPI.IsBlockAllowed"/>.
+        /// </summary>
+        internal static bool WouldExceedCountLimits(GroupComponent group, BlockKey key, int count)
+        {
+            if (group == null) return false;
+
+            var normalized = NormalizeCount(count);
+            foreach (var kvp in group.Limits)
+            {
+                var limit = kvp.Key;
+                var bucket = kvp.Value;
+                if (limit == null || bucket == null) continue;
+
+                var weight = limit.GetWeight(key);
+                if (weight <= 0d) continue;
+
+                double current;
+                lock (bucket.BucketLock)
+                {
+                    current = bucket.TotalWeight;
+                }
+
+                if (current + weight * normalized > group.GetEffectiveMaxCount(limit))
+                    return true;
+            }
+
+            return false;
+        }
+
         private static void AddDirectionResults(GroupComponent group, IReadOnlyList<ProposedBlock> proposed,
             List<LimitCheckResult> results)
         {
             var referenceBlock = group.GetDirectionLockReferenceBlock();
             if (referenceBlock == null) return;
 
+            var referenceMatrix = referenceBlock.WorldMatrix;
+            // Mirrors GroupComponent.IsValidDirection's subgrid branch: on a cross-grid placement the
+            // rule is config-gated, not orientation-based.
+            var subgridAllowed = Session.Config == null || !Session.Config.BlockDirectionalPlacementOnSubgrids;
+
             for (var i = 0; i < proposed.Count; i++)
             {
                 var block = proposed[i];
                 if (!block.Orientation.HasValue) continue;
-                var blockWorld = block.Orientation.Value;
+
+                var onSubgrid = block.TargetGrid != null && referenceBlock.CubeGrid != block.TargetGrid;
 
                 foreach (var kvp in group.Limits)
                 {
@@ -181,7 +227,23 @@ namespace ShipCoreFramework
                     var matched = limit.GetMatchingBlockType(block.Key);
                     if (matched == null) continue;
 
-                    var facing = ComputeFacing(referenceBlock, blockWorld, matched.PrimaryDirection);
+                    if (onSubgrid)
+                    {
+                        if (subgridAllowed) continue; // allowed on subgrids -> nothing to flag
+                        results.Add(new LimitCheckResult
+                        {
+                            Kind = LimitCheckKind.Direction,
+                            Name = limit.Name,
+                            Limit = limit,
+                            Pass = false,
+                            SubgridBlocked = true,
+                            AllowedDirections = limit.AllowedDirections
+                        });
+                        continue;
+                    }
+
+                    var primaryAxis = AxisOf(block.Orientation.Value, matched.PrimaryDirection);
+                    var facing = GroupComponent.ResolveFacing(referenceMatrix.Forward, referenceMatrix.Up, primaryAxis);
                     results.Add(new LimitCheckResult
                     {
                         Kind = LimitCheckKind.Direction,
@@ -196,65 +258,24 @@ namespace ShipCoreFramework
         }
 
         /// <summary>
-        /// Which of the reference block's six directions the proposed block's primary axis
-        /// points along. Mirrors GroupComponent.IsValidDirection but in world space, so it
-        /// works from the build gizmo's orientation (which has no IMySlimBlock yet).
-        /// </summary>
-        private static DirectionType ComputeFacing(IMyCubeBlock referenceBlock, MatrixD blockWorld,
-            DirectionType primaryDirection)
-        {
-            var refM = referenceBlock.WorldMatrix;
-            var axis = PrimaryAxisWorld(blockWorld, primaryDirection);
-
-            var bestDir = DirectionType.Forward;
-            var bestDot = Vector3D.Dot(axis, refM.Forward);
-            Consider(axis, refM.Backward, DirectionType.Backward, ref bestDir, ref bestDot);
-            Consider(axis, refM.Left, DirectionType.Left, ref bestDir, ref bestDot);
-            Consider(axis, refM.Right, DirectionType.Right, ref bestDir, ref bestDot);
-            Consider(axis, refM.Up, DirectionType.Up, ref bestDir, ref bestDot);
-            Consider(axis, refM.Down, DirectionType.Down, ref bestDir, ref bestDot);
-            return bestDir;
-        }
-
-        private static void Consider(Vector3D axis, Vector3D candidate, DirectionType type, ref DirectionType bestDir,
-            ref double bestDot)
-        {
-            var dot = Vector3D.Dot(axis, candidate);
-            if (dot > bestDot)
-            {
-                bestDot = dot;
-                bestDir = type;
-            }
-        }
-
-        private static Vector3D PrimaryAxisWorld(MatrixD blockWorld, DirectionType primaryDirection)
-        {
-            switch (primaryDirection)
-            {
-                case DirectionType.Backward: return blockWorld.Backward;
-                case DirectionType.Up: return blockWorld.Up;
-                case DirectionType.Down: return blockWorld.Down;
-                case DirectionType.Left: return blockWorld.Left;
-                case DirectionType.Right: return blockWorld.Right;
-                default: return blockWorld.Forward;
-            }
-        }
-
-        /// <summary>
-        /// The world-space unit vector a given allowed <see cref="DirectionType"/> points along,
-        /// relative to the reference (core/cockpit) block. Used by the HUD to draw corrective arrows.
+        /// The world-space unit vector a given <see cref="DirectionType"/> points along, relative to
+        /// the reference (core/cockpit) block. Used by the HUD to draw corrective arrows.
         /// </summary>
         internal static Vector3D DirectionToWorld(IMyCubeBlock referenceBlock, DirectionType direction)
         {
-            var refM = referenceBlock.WorldMatrix;
+            return AxisOf(referenceBlock.WorldMatrix, direction);
+        }
+
+        private static Vector3D AxisOf(MatrixD matrix, DirectionType direction)
+        {
             switch (direction)
             {
-                case DirectionType.Backward: return refM.Backward;
-                case DirectionType.Up: return refM.Up;
-                case DirectionType.Down: return refM.Down;
-                case DirectionType.Left: return refM.Left;
-                case DirectionType.Right: return refM.Right;
-                default: return refM.Forward;
+                case DirectionType.Backward: return matrix.Backward;
+                case DirectionType.Up: return matrix.Up;
+                case DirectionType.Down: return matrix.Down;
+                case DirectionType.Left: return matrix.Left;
+                case DirectionType.Right: return matrix.Right;
+                default: return matrix.Forward;
             }
         }
 

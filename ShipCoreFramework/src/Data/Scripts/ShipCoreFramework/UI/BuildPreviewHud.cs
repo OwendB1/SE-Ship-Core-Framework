@@ -30,6 +30,7 @@ namespace ShipCoreFramework
     {
         private const int HudStateOff = 0;         // Session.Config.HudState: 0=Off, 1=Full, 2=Minimal
         private const int HudStateFull = 1;
+        private const int RecomputeIntervalTicks = 6; // limit re-evaluation cadence (~10x/sec)
         private const double ScreenGapX = 0.015d; // horizontal gap between block edge and text
         private const string PassColor = "120,220,120";
         private const string FailColor = "255,90,90";
@@ -50,8 +51,10 @@ namespace ShipCoreFramework
 
         private const BlendTypeEnum Blend = BlendTypeEnum.PostPP;
 
-        // Custom IgnoreDepth=true materials (see Data/TransparentMaterials.sbc) so the arrows
-        // draw over all geometry like the real rotation gizmo.
+        // Reuse the game's rotation-gizmo arrow textures via custom materials
+        // (Data/TransparentMaterials.sbc). IgnoreDepth=true there is only a belt-and-suspenders for
+        // geometry closer than the cluster plane; the near-camera placement (see Draw) is what
+        // actually keeps them on top - mod-added transparent materials don't reliably honor IgnoreDepth.
         private readonly MyStringId _matArrowGreen = MyStringId.GetOrCompute("SCF_ArrowGreen");
         private readonly MyStringId _matArrowRed = MyStringId.GetOrCompute("SCF_ArrowRed");
         private readonly MyStringId _matRotationLeft = MyStringId.GetOrCompute("SCF_ArrowLeftBlue");
@@ -83,6 +86,12 @@ namespace ShipCoreFramework
         private bool _hasViolation;
         private bool _drawIndicators;
         private readonly List<DirectionIndicator> _indicators = new List<DirectionIndicator>();
+
+        private int _tick;
+        private int _nextRecomputeTick;
+        private long _lastGridId;
+        private string _lastBlockId = string.Empty;
+        private MatrixD _lastOrientation;
 
         private readonly StringBuilder _sb = new StringBuilder();
 
@@ -122,6 +131,8 @@ namespace ShipCoreFramework
         public override void UpdateAfterSimulation()
         {
             if (!_isClient) return;
+
+            _tick++;
 
             try
             {
@@ -169,8 +180,9 @@ namespace ShipCoreFramework
                 return;
             }
 
-            // Previewed block bounding box (world). GetBuildBoundingBox is safe while the
-            // builder is activated (this is how Build Info positions its held-block overlay).
+            // Refresh the box transform every frame so the panel/box/arrows track the moving preview.
+            // GetBuildBoundingBox is safe while the builder is activated (this is how Build Info
+            // positions its held-block overlay).
             var box = builder.GetBuildBoundingBox();
             _boxCenter = box.Center;
             box.GetCorners(_corners, 0);
@@ -179,20 +191,42 @@ namespace ShipCoreFramework
             _boxWorld = orientation;
             _boxWorld.Translation = box.Center;
 
-            Recompute(group, def, orientation);
-            UpdateIndicators(group);
+            // But throttle the (allocating) limit evaluation: bucket totals and caps can't change
+            // from player input while hovering; block rotation is the one input that affects facing,
+            // and the orientation check catches it immediately.
+            var blockId = def.Id.TypeId + "/" + def.Id.SubtypeName;
+            var changed = grid.EntityId != _lastGridId
+                          || !string.Equals(blockId, _lastBlockId, StringComparison.Ordinal)
+                          || OrientationChanged(orientation);
+            if (changed || _tick >= _nextRecomputeTick)
+            {
+                _lastGridId = grid.EntityId;
+                _lastBlockId = blockId;
+                _lastOrientation = orientation;
+                _nextRecomputeTick = _tick + RecomputeIntervalTicks;
+                Recompute(group, def, orientation, grid);
+                UpdateIndicators(group);
+            }
+
             Render();
         }
 
-        private void Recompute(GroupComponent group, MyCubeBlockDefinition def, MatrixD orientation)
+        private bool OrientationChanged(MatrixD orientation)
+        {
+            // Block rotations are 90-degree steps, so any real change is large.
+            return Vector3D.Dot(orientation.Forward, _lastOrientation.Forward) < 0.9999d
+                   || Vector3D.Dot(orientation.Up, _lastOrientation.Up) < 0.9999d;
+        }
+
+        private void Recompute(GroupComponent group, MyCubeBlockDefinition def, MatrixD orientation, IMyCubeGrid grid)
         {
             var proposed = new ProposedBlock
             {
-                Key = new BlockKey(Convert.ToString(def.Id.TypeId).Replace("MyObjectBuilder_", string.Empty),
-                    Convert.ToString(def.Id.SubtypeId)),
+                Key = new BlockKey(Utils.GetBlockTypeId(def.Id), Utils.GetBlockSubtypeId(def.Id)),
                 Count = 1,
                 Pcu = def.PCU,
-                Orientation = orientation
+                Orientation = orientation,
+                TargetGrid = grid
             };
 
             _results = LimitEvaluation.Evaluate(group, proposed);
@@ -218,8 +252,9 @@ namespace ShipCoreFramework
             for (var i = 0; i < _results.Count; i++)
             {
                 var result = _results[i];
-                if (result.Kind != LimitCheckKind.Direction || result.Pass || result.AllowedDirections == null)
-                    continue;
+                if (result.Kind != LimitCheckKind.Direction || result.Pass || result.SubgridBlocked
+                    || result.AllowedDirections == null)
+                    continue; // no corrective arrow for subgrid-blocked (rotating wouldn't help)
 
                 if (referenceBlock == null) referenceBlock = group.GetDirectionLockReferenceBlock();
                 if (referenceBlock == null) break;
@@ -345,6 +380,12 @@ namespace ShipCoreFramework
         {
             if (result.Kind == LimitCheckKind.Direction)
             {
+                if (result.SubgridBlocked)
+                {
+                    _sb.Append(result.Name).Append(": not allowed on subgrid");
+                    return;
+                }
+
                 _sb.Append(result.Name).Append(": ").Append(result.Facing.ToString());
                 if (!result.Pass)
                 {
