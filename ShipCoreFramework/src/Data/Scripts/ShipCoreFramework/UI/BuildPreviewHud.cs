@@ -58,6 +58,7 @@ namespace ShipCoreFramework
         // actually keeps them on top - mod-added transparent materials don't reliably honor IgnoreDepth.
         private readonly MyStringId _matArrowGreen = MyStringId.GetOrCompute("SCF_ArrowGreen");
         private readonly MyStringId _matArrowRed = MyStringId.GetOrCompute("SCF_ArrowRed");
+        private readonly MyStringId _matArrowBlue = MyStringId.GetOrCompute("SCF_ArrowBlue");
         private readonly MyStringId _matRotationLeft = MyStringId.GetOrCompute("SCF_ArrowLeftBlue");
         private readonly MyStringId _matRotationRight = MyStringId.GetOrCompute("SCF_ArrowRightBlue");
         private readonly MyStringId _matViolationBox = MyStringId.GetOrCompute("SquareFullColor");
@@ -87,6 +88,12 @@ namespace ShipCoreFramework
         private bool _hasViolation;
         private bool _drawIndicators;
         private readonly List<DirectionIndicator> _indicators = new List<DirectionIndicator>();
+
+        // When placing the first core on a coreless grid, show its forward (green) and up (blue) so
+        // the player can deliberately set the grid's reference frame for directional limits.
+        private bool _drawCoreOrientation;
+        private Vector3D _coreForward;
+        private Vector3D _coreUp;
 
         // Panel title reflects the governing config: "<core name> Limits" for an active core, or the
         // SelectedNoCore config's name for a coreless grid.
@@ -232,6 +239,20 @@ namespace ShipCoreFramework
             // Title after the governing config (active core name, or the SelectedNoCore config name).
             var configName = group.ShipCore?.UniqueName;
             _panelTitle = (string.IsNullOrWhiteSpace(configName) ? "Ship Core" : configName) + " Limits";
+
+            // Core-orientation hint: placing a core on a grid that has none yet. The core establishes
+            // the grid's forward/up reference frame, so show those axes to aid deliberate placement.
+            // Qualify the mod's static Session - the MySessionComponentBase.Session property shadows it.
+            var modConfig = ShipCoreFramework.Session.Config;
+            _drawCoreOrientation = _fullHud
+                                   && modConfig != null
+                                   && modConfig.IsValidCoreType(def.Id.SubtypeName)
+                                   && group.CoreDictionary.Count == 0;
+            if (_drawCoreOrientation)
+            {
+                _coreForward = orientation.Forward;
+                _coreUp = orientation.Up;
+            }
 
             // Mirror exactly what turns OFF on-placement enforcement (which is what this preview
             // mirrors), per GridComponent.BlockAddedInternal:
@@ -483,7 +504,7 @@ namespace ShipCoreFramework
 
         public override void Draw()
         {
-            if (!_isClient || (!_drawIndicators && !_hasViolation)) return;
+            if (!_isClient || (!_drawIndicators && !_hasViolation && !_drawCoreOrientation)) return;
 
             try
             {
@@ -497,7 +518,7 @@ namespace ShipCoreFramework
 
                 if (_hasViolation) DrawViolationBox();
 
-                if (!_drawIndicators) return;
+                if (!_drawIndicators && !_drawCoreOrientation) return;
 
                 var distance = toBlock.Length();
                 if (distance < 1e-3d) return;
@@ -511,6 +532,12 @@ namespace ShipCoreFramework
 
                 for (var i = 0; i < _indicators.Count; i++)
                     DrawIndicator(_indicators[i], clusterPos, view.Forward, view.Up, iconHalfSize);
+
+                if (_drawCoreOrientation)
+                {
+                    DrawArrow(_matArrowGreen, _coreForward, clusterPos, view.Forward, view.Up, iconHalfSize); // forward
+                    DrawArrow(_matArrowBlue, _coreUp, clusterPos, view.Forward, view.Up, iconHalfSize);       // up
+                }
             }
             catch (Exception ex)
             {
@@ -641,6 +668,7 @@ namespace ShipCoreFramework
         {
             _drawIndicators = false;
             _hasViolation = false;
+            _drawCoreOrientation = false;
             HidePanel();
         }
 
