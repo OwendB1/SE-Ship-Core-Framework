@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.ModAPI;
+using VRage.Game;
 using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
@@ -50,9 +51,19 @@ namespace ShipCoreFramework
             return IsTrackedUpgradeModuleBlock(block?.FatBlock as IMyFunctionalBlock);
         }
 
+        internal static string GetBlockTypeId(MyDefinitionId definitionId)
+        {
+            return Convert.ToString(definitionId.TypeId).Replace("MyObjectBuilder_", "");
+        }
+
+        internal static string GetBlockSubtypeId(MyDefinitionId definitionId)
+        {
+            return Convert.ToString(definitionId.SubtypeId);
+        }
+
         internal static string GetBlockTypeId(IMySlimBlock block)
         {
-            return Convert.ToString(block.BlockDefinition.Id.TypeId).Replace("MyObjectBuilder_", "");
+            return GetBlockTypeId(block.BlockDefinition.Id);
         }
 
         internal static string GetBlockTypeId(IMyCubeBlock block)

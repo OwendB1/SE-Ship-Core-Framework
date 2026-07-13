@@ -1537,28 +1537,10 @@ namespace ShipCoreFramework
                 if (!Session.GroupDict.TryGetValue(groupData, out groupComponent))
                     return true;
 
+                // Per-block-type limits only (this API's contract), evaluated against the
+                // upgrade-module-adjusted effective max instead of raw MaxCount. Allocation-free.
                 var blockKey = new BlockKey(typeId, subtypeId ?? string.Empty);
-
-                foreach (var kvp in groupComponent.Limits)
-                {
-                    var limit = kvp.Key;
-                    var bucket = kvp.Value;
-                    if (limit == null || bucket == null) continue;
-
-                    var weight = limit.GetWeight(blockKey);
-                    if (weight <= 0) continue;
-
-                    double totalWeight;
-                    lock (bucket.BucketLock)
-                    {
-                        totalWeight = bucket.TotalWeight;
-                    }
-
-                    if (totalWeight + (weight * count) > limit.MaxCount)
-                        return false;
-                }
-
-                return true;
+                return !LimitEvaluation.WouldExceedCountLimits(groupComponent, blockKey, count);
             }
             catch (Exception ex)
             {

@@ -231,13 +231,18 @@ namespace ShipCoreFramework
                 }
             }
 
+            // Only blocks that fully passed placement are in _blocks (and thus were counted via
+            // OnBlockAddedToGroup). A rejected block still fires BlockRemoved when it's whacked, so
+            // gate the count decrement on prior tracking to keep GroupBlocksCount in sync - otherwise
+            // rejecting a placement drops the block count by one below its real value.
+            bool wasTracked;
             lock (_blocksLock)
             {
-                _blocks.Remove(block);
+                wasTracked = _blocks.Remove(block);
             }
 
             if (shipController != null) UntrackShipController(shipController);
-            groupComponent.OnBlockRemovedFromGroup();
+            if (wasTracked) groupComponent.OnBlockRemovedFromGroup();
 
             if (functionalBlock != null && value == null) functionalBlock.EnabledChanged -= FuncBlockOnEnabledChanged;
             if (shipController != null) shipController.PropertiesChanged -= ShipControllerOnPropertiesChanged;
