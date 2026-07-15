@@ -32,7 +32,7 @@ namespace ShipCoreFramework
         /// Increment when you add functionality in a backwards compatible way.
         /// Minor version changes remain compatible as long as the major version matches.
         /// </summary>
-        public const int API_MINOR = 9;
+        public const int API_MINOR = 10;
 
         /// <summary>
         /// Encoded API version (Major.Minor) packed into a single int.
@@ -294,6 +294,12 @@ namespace ShipCoreFramework
         /// </summary>
         public const int IsGroupDeactivated = 39;
 
+        /// <summary>
+        /// Gets the full effective framework configuration (serialized).
+        /// Signature: object -> byte[] (ModConfigData), arg ignored.
+        /// </summary>
+        public const int GetFullConfig_Binary = 40;
+
         // Optional: Field getters for "no parsing" access (primitives only).
         // These can be handy if a consumer only needs a single field and wants to avoid deserializing a full DTO.
         public const int GetGridCore_SubtypeId = 100;   // IMyCubeGrid -> string
@@ -351,6 +357,13 @@ namespace ShipCoreFramework
         [ProtoMember(33)] public int CoreSelectionPriority;
         [ProtoMember(34)] public bool CrossConnectorPunishmentWhitelisted;
         [ProtoMember(35)] public FactionRankData MinFactionRank;
+        [ProtoMember(36)] public SpeedOverrideModeData SpeedOverrideMode = SpeedOverrideModeData.OnlyIfHeavier;
+        [ProtoMember(37)] public int SpeedOverridePriority;
+        [ProtoMember(38)] public bool PowerOverclockEnabled;
+        [ProtoMember(39)] public float PowerOverclockMultiplier = 1f;
+        [ProtoMember(40)] public float PowerOverclockDuration = 10f;
+        [ProtoMember(41)] public float PowerOverclockCooldown = 60f;
+        [ProtoMember(42)] public float PowerOverclockDamagePerSecond;
     }
 
     [ProtoContract]
@@ -385,6 +398,9 @@ namespace ShipCoreFramework
         [ProtoMember(16)] public ShipCoreData SelectedNoCore;
         [ProtoMember(17)] public BlockGroupData[] BlockGroups = Array.Empty<BlockGroupData>();
         [ProtoMember(18)] public bool BlockDirectionalPlacementOnSubgrids = true;
+        [ProtoMember(19)] public bool AllowUnattachedUpgradeModules;
+        [ProtoMember(20)] public int NoCoreGraceSeconds = 30;
+        [ProtoMember(21)] public int MinimumBlocksGraceSeconds = 30;
     }
 
     [ProtoContract]
@@ -430,6 +446,7 @@ namespace ShipCoreFramework
         [ProtoMember(3)] public UpgradeStatModifierData[] Modifiers = Array.Empty<UpgradeStatModifierData>();
         [ProtoMember(4)] public BlockLimitModifierData[] BlockLimitModifiers = Array.Empty<BlockLimitModifierData>();
         [ProtoMember(5)] public string TypeId;
+        [ProtoMember(6)] public CapacityModifierData[] CapacityModifiers = Array.Empty<CapacityModifierData>();
     }
 
     [ProtoContract]
@@ -444,6 +461,14 @@ namespace ShipCoreFramework
     public class BlockLimitModifierData
     {
         [ProtoMember(1)] public string BlockLimitName;
+        [ProtoMember(2)] public float Value;
+        [ProtoMember(3)] public UpgradeModifierOperationData ModifierType;
+    }
+
+    [ProtoContract]
+    public class CapacityModifierData
+    {
+        [ProtoMember(1)] public string Stat;
         [ProtoMember(2)] public float Value;
         [ProtoMember(3)] public UpgradeModifierOperationData ModifierType;
     }
@@ -593,6 +618,14 @@ namespace ShipCoreFramework
     {
         Normal = 0,
         Friction = 1
+    }
+
+    public enum SpeedOverrideModeData
+    {
+        None = 0,
+        OnlyIfHeavier = 1,
+        Priority = 2,
+        Any = 3
     }
 
     public enum MassTypeModeData

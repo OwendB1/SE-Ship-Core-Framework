@@ -69,7 +69,7 @@ The full, up-to-date method surface is intentionally maintained in the sample cl
 - `ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/API/SCF_ModAPIClient.cs`
 
 Common calls include:
-- Core/config: `GetGridCore(...)`, `GetCoreBySubtypeId(...)`, `GetAllCoreConfigs()`, `GetNoCoreConfig()`
+- Core/config: `GetGridCore(...)`, `GetCoreBySubtypeId(...)`, `GetAllCoreConfigs()`, `GetNoCoreConfig()`, `GetFullConfig()`
 - Limits: `GetBlockLimitsStatus(...)`, `IsBlockAllowed(...)`
 - Modifiers/speed: `GetGridModifiers(...)`, `GetMaxSpeed(...)`, `IsBoostActive(...)`, `GetSpeedModifiers(...)`
 - Boost tuning: `GetBoostResistance(...)`, `GetBaseMaxSpeed(...)`, `GetBoostDuration(...)`, `GetBoostCooldown(...)`
@@ -129,6 +129,7 @@ For convenience, the client also exposes “resolved” variants that attempt to
 - **Wait for readiness**: only call methods after `IsReady == true`.
 - **Avoid “core drift”**: don’t scan for core beacons yourself; use `GetGridCore(...)`/`GetGridCoreSubtypeId(...)` (or react to `CoreActivated`/`CoreDeactivated`) so your mod stays consistent with the framework.
 - **No-core handling**: grids without a core use the NoCore config; use `GetNoCoreConfig()` if you need the default values.
+- **Full config snapshots**: `GetFullConfig()` returns the current effective config as `ModConfigData`; request it after `IsReady` becomes true.
 - **Group volatility**: logical groups can change due to connectors/rotors/pistons/splits; prefer entityId-based overloads and event-driven updates.
 
 ## Support

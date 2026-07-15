@@ -367,6 +367,15 @@ namespace ShipCoreFramework
         }
 
         /// <summary>
+        /// Gets a snapshot of the full effective framework configuration.
+        /// </summary>
+        public ModConfigData GetFullConfig()
+        {
+            var bytes = (byte[])Invoke(ApiMethodId.GetFullConfig_Binary, null);
+            return bytes == null ? null : MyAPIGateway.Utilities.SerializeFromBinary<ModConfigData>(bytes);
+        }
+
+        /// <summary>
         /// Optional primitive getter: grid core subtypeId without DTO deserialization.
         /// </summary>
         public string GetGridCoreSubtypeId(IMyCubeGrid grid)

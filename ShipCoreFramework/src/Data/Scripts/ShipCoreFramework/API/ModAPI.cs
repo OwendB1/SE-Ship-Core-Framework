@@ -219,6 +219,9 @@ namespace ShipCoreFramework
                 case ApiMethodId.IsGroupDeactivated:
                     return arg => IsGroupDeactivated(arg as long? ?? 0);
 
+                case ApiMethodId.GetFullConfig_Binary:
+                    return _ => MyAPIGateway.Utilities.SerializeToBinary(GetFullConfig());
+
                 // Optional primitive getters:
                 case ApiMethodId.GetGridCore_SubtypeId:
                     return arg =>
@@ -920,6 +923,10 @@ namespace ShipCoreFramework
                     CoreSelectionPriority = 0,
                     CrossConnectorPunishmentWhitelisted = false,
                     MinFactionRank = FactionRankData.None,
+                    SpeedOverrideMode = SpeedOverrideModeData.OnlyIfHeavier,
+                    PowerOverclockMultiplier = 1f,
+                    PowerOverclockDuration = 10f,
+                    PowerOverclockCooldown = 60f,
                     MaxBackupCores = -1,
                     AllowedUpgradeModules = Array.Empty<UpgradeModuleAllowanceData>(),
                     SpeedLimitTypeData = SpeedLimitTypeData.Normal,
@@ -987,8 +994,15 @@ namespace ShipCoreFramework
                 Modifiers = ConvertToGridModifiersData(core.Modifiers),
                 PassiveDefenseModifiers = ConvertToDefenseModifiersData(core.PassiveDefenseModifiers),
                 SpeedBoostEnabled = core.SpeedBoostEnabled,
+                SpeedOverrideMode = (SpeedOverrideModeData)(int)core.SpeedOverrideMode,
+                SpeedOverridePriority = core.SpeedOverridePriority,
                 EnableActiveDefenseModifiers = core.EnableActiveDefenseModifiers,
                 ActiveDefenseModifiers = ConvertToDefenseModifiersData(core.ActiveDefenseModifiers),
+                PowerOverclockEnabled = core.PowerOverclockEnabled,
+                PowerOverclockMultiplier = core.PowerOverclockMultiplier,
+                PowerOverclockDuration = core.PowerOverclockDuration,
+                PowerOverclockCooldown = core.PowerOverclockCooldown,
+                PowerOverclockDamagePerSecond = core.PowerOverclockDamagePerSecond,
                 DynamicBoostEnabled = false,
                 SpeedModifiers = ConvertToSpeedModifiersData(core.SpeedModifiers),
                 IsDeactivated = isDeactivated
@@ -1002,6 +1016,8 @@ namespace ShipCoreFramework
                 return new ModConfigData
                 {
                     BlockDirectionalPlacementOnSubgrids = true,
+                    NoCoreGraceSeconds = 30,
+                    MinimumBlocksGraceSeconds = 30,
                     IgnoredFactionTags = Array.Empty<string>(),
                     NoFlyZones = Array.Empty<NoFlyZoneData>(),
                     NoCoreConfigs = Array.Empty<ShipCoreData>(),
@@ -1028,6 +1044,9 @@ namespace ShipCoreFramework
                 MassTypeMode = (MassTypeModeData)(int)config.MassTypeMode,
                 FrictionSpeedValueMode = (FrictionSpeedValueModeData)(int)config.FrictionSpeedValueMode,
                 BlockDirectionalPlacementOnSubgrids = config.BlockDirectionalPlacementOnSubgrids,
+                AllowUnattachedUpgradeModules = config.AllowUnattachedUpgradeModules,
+                NoCoreGraceSeconds = config.NoCoreGraceSeconds,
+                MinimumBlocksGraceSeconds = config.MinimumBlocksGraceSeconds,
                 NoFlyZones = config.NoFlyZones
                     .Where(zone => zone != null)
                     .Select(ConvertToNoFlyZoneData)
@@ -1137,7 +1156,8 @@ namespace ShipCoreFramework
                     SubtypeId = string.Empty,
                     UniqueName = string.Empty,
                     Modifiers = Array.Empty<UpgradeStatModifierData>(),
-                    BlockLimitModifiers = Array.Empty<BlockLimitModifierData>()
+                    BlockLimitModifiers = Array.Empty<BlockLimitModifierData>(),
+                    CapacityModifiers = Array.Empty<CapacityModifierData>()
                 };
             }
 
@@ -1153,6 +1173,10 @@ namespace ShipCoreFramework
                 BlockLimitModifiers = (module.BlockLimitModifiers ?? Array.Empty<BlockLimitModifier>())
                     .Where(modifier => modifier != null)
                     .Select(ConvertToBlockLimitModifierData)
+                    .ToArray(),
+                CapacityModifiers = (module.CapacityModifiers ?? Array.Empty<CapacityModifier>())
+                    .Where(modifier => modifier != null)
+                    .Select(ConvertToCapacityModifierData)
                     .ToArray()
             };
         }
@@ -1188,6 +1212,24 @@ namespace ShipCoreFramework
             return new BlockLimitModifierData
             {
                 BlockLimitName = modifier.BlockLimitName ?? string.Empty,
+                Value = modifier.Value,
+                ModifierType = (UpgradeModifierOperationData)(int)modifier.ModifierType
+            };
+        }
+
+        private static CapacityModifierData ConvertToCapacityModifierData(CapacityModifier modifier)
+        {
+            if (modifier == null)
+            {
+                return new CapacityModifierData
+                {
+                    Stat = string.Empty
+                };
+            }
+
+            return new CapacityModifierData
+            {
+                Stat = modifier.Stat ?? string.Empty,
                 Value = modifier.Value,
                 ModifierType = (UpgradeModifierOperationData)(int)modifier.ModifierType
             };
@@ -1459,6 +1501,22 @@ namespace ShipCoreFramework
             {
                 Utils.Log($"ModAPI.GetAllCoreConfigs: Exception - {ex}");
                 return new List<ShipCoreData>();
+            }
+        }
+
+        /// <summary>
+        /// Gets a snapshot of the full effective framework configuration.
+        /// </summary>
+        public static ModConfigData GetFullConfig()
+        {
+            try
+            {
+                return ConvertToModConfigData(Session.Config);
+            }
+            catch (Exception ex)
+            {
+                Utils.Log($"ModAPI.GetFullConfig: Exception - {ex}");
+                return null;
             }
         }
 
