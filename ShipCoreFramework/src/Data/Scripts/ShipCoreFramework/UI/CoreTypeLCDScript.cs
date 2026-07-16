@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using Sandbox.Definitions;
 using Sandbox.Game.Components;
 using Sandbox.Game.GameSystems.TextSurfaceScripts;
 using Sandbox.ModAPI;
@@ -38,7 +39,8 @@ namespace ShipCoreFramework
         private const double MinScreenPixelsPerMeter = 16d;
         private const double MaxScreenPixelsPerMeter = 8192d;
         private const double MaxScreenAreaMeters = 8d;
-        private const float MinPhysicalRenderScale = 0.25f;
+        private const float BaselineLcdTextureResolution = 512f;
+        private const float MinPhysicalRenderScale = 0.5f;
         private const float MaxPhysicalRenderScale = 1.5f;
 
         private static readonly object InstancesLock = new object();
@@ -144,32 +146,23 @@ namespace ShipCoreFramework
             var layout = BuildPanelGroupLayout();
             var hasCursorHit = UpdateCursorState(layout);
 
-            var configuredFontScale = _fontScale;
-            _fontScale = configuredFontScale * layout.RenderScale;
-            try
-            {
-                var snapshot = BuildSnapshot(group, layout);
-                var sprites = new List<MySprite>(128);
-                Vector2 contentBottomRight;
-                RenderDashboardSprites(sprites, snapshot, layout.VirtualSize, out contentBottomRight);
+            var snapshot = BuildSnapshot(group, layout);
+            var sprites = new List<MySprite>(128);
+            Vector2 contentBottomRight;
+            RenderDashboardSprites(sprites, snapshot, layout.VirtualSize, out contentBottomRight);
 
-                var scrollOffset = UpdateManualScroll(layout, contentBottomRight.Y, hasCursorHit);
-                var scroll = new Vector2(0f, scrollOffset);
-                var frame = Surface.DrawFrame();
-                Surface.ScriptBackgroundColor = Color.Black;
-                Surface.ScriptForegroundColor = Color.White;
-                EmitSprites(frame, layout, sprites, scroll);
-                RenderScrollIndicator(frame, layout, contentBottomRight.Y, scrollOffset);
+            var scrollOffset = UpdateManualScroll(layout, contentBottomRight.Y, hasCursorHit);
+            var scroll = new Vector2(0f, scrollOffset);
+            var frame = Surface.DrawFrame();
+            Surface.ScriptBackgroundColor = Color.Black;
+            Surface.ScriptForegroundColor = Color.White;
+            EmitSprites(frame, layout, sprites, scroll);
+            RenderScrollIndicator(frame, layout, contentBottomRight.Y, scrollOffset);
 
-                if (_showCursor)
-                    RenderCursor(frame, layout);
+            if (_showCursor)
+                RenderCursor(frame, layout);
 
-                frame.Dispose();
-            }
-            finally
-            {
-                _fontScale = configuredFontScale;
-            }
+            frame.Dispose();
         }
 
         private CoreLcdSnapshot BuildSnapshot(GroupComponent group, PanelGroupLayout layout)
@@ -497,7 +490,7 @@ namespace ShipCoreFramework
         {
             LcdSurfaceLayout current;
             var hasCurrentLayout = TryGetSurfaceLayout(out current);
-            var singleRenderScale = hasCurrentLayout ? GetPhysicalRenderScale(current.PixelsPerMeter) : 1f;
+            var singleRenderScale = GetPhysicalRenderScale(hasCurrentLayout ? current.PixelsPerMeter : 0d);
             var single = PanelGroupLayout.Single(Surface.SurfaceSize, GetMemberKey(), singleRenderScale);
             if (!_combinePanels || _cubeBlock == null || _cubeBlock.CubeGrid == null || !hasCurrentLayout)
                 return single;
@@ -598,30 +591,62 @@ namespace ShipCoreFramework
             var scaleX = (float)(current.PixelsPerMeterX / ppm);
             var scaleY = (float)(current.PixelsPerMeterY / ppm);
             var virtualSize = new Vector2((float)((maxX - minX) * ppm), (float)((maxY - minY) * ppm));
+            var renderScale = GetPhysicalRenderScale(ppm);
             if (virtualSize.X <= 1f || virtualSize.Y <= 1f ||
-                virtualSize.X > MaxCombinedVirtualPixels || virtualSize.Y > MaxCombinedVirtualPixels)
+                virtualSize.X / renderScale > MaxCombinedVirtualPixels ||
+                virtualSize.Y / renderScale > MaxCombinedVirtualPixels)
                 return single;
 
             var viewportMin = new Vector2((float)((current.Rect.MinX - minX) * ppm), (float)((current.Rect.MinY - minY) * ppm));
             var key = BuildGroupKey(members);
-            return new PanelGroupLayout(virtualSize, viewportMin, scaleX, scaleY, key, members.Count,
-                GetPhysicalRenderScale(ppm));
+            return new PanelGroupLayout(virtualSize, viewportMin, scaleX, scaleY, key, members.Count, renderScale);
         }
 
         private float GetPhysicalRenderScale(double pixelsPerMeter)
         {
+            float definitionScale;
+            if (TryGetDefinitionRenderScale(out definitionScale))
+                return definitionScale;
+
             if (pixelsPerMeter <= 0d || Surface == null || _cubeBlock == null || _cubeBlock.CubeGrid == null)
                 return 1f;
-            if (Surface.SurfaceSize.X <= 1f || _cubeBlock.CubeGrid.GridSize <= 0.01f)
+            if (Surface.TextureSize.X <= 1f || Surface.TextureSize.Y <= 1f ||
+                _cubeBlock.CubeGrid.GridSize <= 0.01f)
                 return 1f;
 
-            double referencePixelsPerMeter = Surface.SurfaceSize.X / _cubeBlock.CubeGrid.GridSize;
+            double referencePixelsPerMeter = Math.Min(Surface.TextureSize.X, Surface.TextureSize.Y) /
+                                             _cubeBlock.CubeGrid.GridSize;
             if (referencePixelsPerMeter <= 0d) return 1f;
 
             var renderScale = pixelsPerMeter / referencePixelsPerMeter;
             if (renderScale < MinPhysicalRenderScale) renderScale = MinPhysicalRenderScale;
             if (renderScale > MaxPhysicalRenderScale) renderScale = MaxPhysicalRenderScale;
             return (float)renderScale;
+        }
+
+        private bool TryGetDefinitionRenderScale(out float renderScale)
+        {
+            renderScale = 1f;
+            if (!(_cubeBlock is IMyTextPanel) || Surface == null || _cubeBlock.SlimBlock == null)
+                return false;
+
+            var definition = _cubeBlock.SlimBlock.BlockDefinition as MyFunctionalBlockDefinition;
+            var surfaceIndex = ResolveSurfaceIndex();
+            if (definition == null || definition.ScreenAreas == null || surfaceIndex < 0 ||
+                surfaceIndex >= definition.ScreenAreas.Count)
+                return false;
+
+            var area = definition.ScreenAreas[surfaceIndex];
+            if (area == null || area.TextureResolution <= 0 || area.ScreenWidth <= 0 || area.ScreenHeight <= 0)
+                return false;
+
+            var scaleX = Surface.SurfaceSize.X / (area.TextureResolution * (float)area.ScreenWidth);
+            var scaleY = Surface.SurfaceSize.Y / (area.TextureResolution * (float)area.ScreenHeight);
+            renderScale = Math.Min(scaleX, scaleY);
+            renderScale = Math.Max(MinPhysicalRenderScale, Math.Min(MaxPhysicalRenderScale, renderScale));
+            renderScale *= area.TextureResolution / BaselineLcdTextureResolution;
+            renderScale = Math.Max(MinPhysicalRenderScale, Math.Min(MaxPhysicalRenderScale, renderScale));
+            return true;
         }
 
         private bool TryGetSurfaceLayout(out LcdSurfaceLayout layout)
@@ -1326,19 +1351,18 @@ namespace ShipCoreFramework
             internal readonly float TextScale;
             internal readonly string GroupKey;
             internal readonly int MemberCount;
-            internal readonly float RenderScale;
 
             internal PanelGroupLayout(Vector2 virtualSize, Vector2 viewportMin, float scaleX, float scaleY, string groupKey,
                 int memberCount, float renderScale)
             {
-                VirtualSize = virtualSize;
-                ViewportMin = viewportMin;
-                ScaleX = Math.Max(0.001f, scaleX);
-                ScaleY = Math.Max(0.001f, scaleY);
+                renderScale = Math.Max(MinPhysicalRenderScale, Math.Min(MaxPhysicalRenderScale, renderScale));
+                VirtualSize = virtualSize / renderScale;
+                ViewportMin = viewportMin / renderScale;
+                ScaleX = Math.Max(0.001f, scaleX * renderScale);
+                ScaleY = Math.Max(0.001f, scaleY * renderScale);
                 TextScale = Math.Min(ScaleX, ScaleY);
                 GroupKey = groupKey;
                 MemberCount = memberCount;
-                RenderScale = Math.Max(MinPhysicalRenderScale, Math.Min(MaxPhysicalRenderScale, renderScale));
             }
 
             internal static PanelGroupLayout Single(Vector2 size, string key, float renderScale)

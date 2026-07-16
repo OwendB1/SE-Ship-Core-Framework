@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using NexusModAPI;
+using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
@@ -20,6 +21,10 @@ namespace ShipCoreFramework
             "Missile", "LargeCalibreShell", "MediumCalibreShell", "LargeCaliber", "AutocannonShell",
             "LargeRailgunSlug", "SmallRailgunSlug", "SmallCaliber", "PistolCaliber", "Shrapnel"
         };
+        private const string HighResolutionLcdSubtype = "LargeLCDPanel3x3";
+        private const int HighResolutionLcdTextureSize = 1024;
+        private static int _originalLcdTextureSize = -1;
+        private static readonly List<int> OriginalLcdScreenAreaTextureSizes = new List<int>();
 
         public override void BeforeStart()
         {
@@ -62,6 +67,9 @@ namespace ShipCoreFramework
             MpActive = MyAPIGateway.Multiplayer.MultiplayerActive;
             IsServer = (MpActive && MyAPIGateway.Multiplayer.IsServer) || !MpActive;
             IsClient = (MpActive && !MyAPIGateway.Utilities.IsDedicated) || !MpActive;
+
+            if (IsClient)
+                ApplyHighResolutionLcdDefinition();
             
             Networking.Register();
             Config.LoadConfig(IsServer);
@@ -118,6 +126,7 @@ namespace ShipCoreFramework
             UntrackAllPhysicalGridGroups();
 
             RevertAmmoSpeedAdjustments();
+            RevertHighResolutionLcdDefinition();
             CoreTerminalControls.Unregister();
             
             LimitsNexusSync.Stop();
@@ -304,6 +313,60 @@ namespace ShipCoreFramework
             }
 
             AppliedSpeedDifferential = newDifferential;
+        }
+
+        private static void ApplyHighResolutionLcdDefinition()
+        {
+            if (_originalLcdTextureSize >= 0 || MyDefinitionManager.Static == null)
+                return;
+
+            var definition = MyDefinitionManager.Static.GetCubeBlockDefinition(
+                new MyDefinitionId(typeof(MyObjectBuilder_TextPanel), HighResolutionLcdSubtype)) as MyTextPanelDefinition;
+            if (definition == null)
+                return;
+
+            _originalLcdTextureSize = definition.TextureResolution;
+            definition.TextureResolution = Math.Max(definition.TextureResolution, HighResolutionLcdTextureSize);
+
+            OriginalLcdScreenAreaTextureSizes.Clear();
+            if (definition.ScreenAreas == null)
+                return;
+
+            for (var i = 0; i < definition.ScreenAreas.Count; i++)
+            {
+                var area = definition.ScreenAreas[i];
+                OriginalLcdScreenAreaTextureSizes.Add(area.TextureResolution);
+                area.TextureResolution = Math.Max(area.TextureResolution, HighResolutionLcdTextureSize);
+            }
+        }
+
+        private static void RevertHighResolutionLcdDefinition()
+        {
+            if (_originalLcdTextureSize < 0)
+                return;
+
+            var definition = MyDefinitionManager.Static != null
+                ? MyDefinitionManager.Static.GetCubeBlockDefinition(
+                    new MyDefinitionId(typeof(MyObjectBuilder_TextPanel), HighResolutionLcdSubtype)) as MyTextPanelDefinition
+                : null;
+            if (definition != null)
+            {
+                if (definition.TextureResolution == HighResolutionLcdTextureSize)
+                    definition.TextureResolution = _originalLcdTextureSize;
+
+                if (definition.ScreenAreas != null)
+                {
+                    var count = Math.Min(definition.ScreenAreas.Count, OriginalLcdScreenAreaTextureSizes.Count);
+                    for (var i = 0; i < count; i++)
+                    {
+                        if (definition.ScreenAreas[i].TextureResolution == HighResolutionLcdTextureSize)
+                            definition.ScreenAreas[i].TextureResolution = OriginalLcdScreenAreaTextureSizes[i];
+                    }
+                }
+            }
+
+            _originalLcdTextureSize = -1;
+            OriginalLcdScreenAreaTextureSizes.Clear();
         }
 
         private static void RevertAmmoSpeedAdjustments()
