@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using NexusModAPI;
-using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
@@ -21,10 +20,10 @@ namespace ShipCoreFramework
             "Missile", "LargeCalibreShell", "MediumCalibreShell", "LargeCaliber", "AutocannonShell",
             "LargeRailgunSlug", "SmallRailgunSlug", "SmallCaliber", "PistolCaliber", "Shrapnel"
         };
-        private const string HighResolutionLcdSubtype = "LargeLCDPanel3x3";
+        private const int MinimumScaledLcdBlockSpan = 3;
         private const int HighResolutionLcdTextureSize = 1024;
-        private static int _originalLcdTextureSize = -1;
-        private static readonly List<int> OriginalLcdScreenAreaTextureSizes = new List<int>();
+        private static readonly List<LcdDefinitionTextureState> OriginalLcdTextureStates =
+            new List<LcdDefinitionTextureState>();
 
         public override void BeforeStart()
         {
@@ -69,7 +68,7 @@ namespace ShipCoreFramework
             IsClient = (MpActive && !MyAPIGateway.Utilities.IsDedicated) || !MpActive;
 
             if (IsClient)
-                ApplyHighResolutionLcdDefinition();
+                ApplyHighResolutionLcdDefinitions();
             
             Networking.Register();
             Config.LoadConfig(IsServer);
@@ -126,7 +125,7 @@ namespace ShipCoreFramework
             UntrackAllPhysicalGridGroups();
 
             RevertAmmoSpeedAdjustments();
-            RevertHighResolutionLcdDefinition();
+            RevertHighResolutionLcdDefinitions();
             CoreTerminalControls.Unregister();
             
             LimitsNexusSync.Stop();
@@ -315,58 +314,76 @@ namespace ShipCoreFramework
             AppliedSpeedDifferential = newDifferential;
         }
 
-        private static void ApplyHighResolutionLcdDefinition()
+        private static void ApplyHighResolutionLcdDefinitions()
         {
-            if (_originalLcdTextureSize >= 0 || MyDefinitionManager.Static == null)
+            if (OriginalLcdTextureStates.Count > 0 || MyDefinitionManager.Static == null)
                 return;
 
-            var definition = MyDefinitionManager.Static.GetCubeBlockDefinition(
-                new MyDefinitionId(typeof(MyObjectBuilder_TextPanel), HighResolutionLcdSubtype)) as MyTextPanelDefinition;
-            if (definition == null)
-                return;
-
-            _originalLcdTextureSize = definition.TextureResolution;
-            definition.TextureResolution = Math.Max(definition.TextureResolution, HighResolutionLcdTextureSize);
-
-            OriginalLcdScreenAreaTextureSizes.Clear();
-            if (definition.ScreenAreas == null)
-                return;
-
-            for (var i = 0; i < definition.ScreenAreas.Count; i++)
+            foreach (var definition in MyDefinitionManager.Static.GetAllDefinitions<MyTextPanelDefinition>())
             {
-                var area = definition.ScreenAreas[i];
-                OriginalLcdScreenAreaTextureSizes.Add(area.TextureResolution);
-                area.TextureResolution = Math.Max(area.TextureResolution, HighResolutionLcdTextureSize);
+                if (definition == null || definition.ScreenAreas == null || definition.ScreenAreas.Count == 0)
+                    continue;
+                if (definition.CubeSize != MyCubeSize.Large ||
+                    Math.Max(definition.Size.X, Math.Max(definition.Size.Y, definition.Size.Z)) < MinimumScaledLcdBlockSpan)
+                    continue;
+
+                var state = new LcdDefinitionTextureState(definition);
+                OriginalLcdTextureStates.Add(state);
+                definition.TextureResolution = Math.Max(definition.TextureResolution, HighResolutionLcdTextureSize);
+
+                for (var i = 0; i < definition.ScreenAreas.Count; i++)
+                {
+                    var area = definition.ScreenAreas[i];
+                    if (area != null)
+                        area.TextureResolution = Math.Max(area.TextureResolution, HighResolutionLcdTextureSize);
+                }
             }
         }
 
-        private static void RevertHighResolutionLcdDefinition()
+        private static void RevertHighResolutionLcdDefinitions()
         {
-            if (_originalLcdTextureSize < 0)
-                return;
-
-            var definition = MyDefinitionManager.Static != null
-                ? MyDefinitionManager.Static.GetCubeBlockDefinition(
-                    new MyDefinitionId(typeof(MyObjectBuilder_TextPanel), HighResolutionLcdSubtype)) as MyTextPanelDefinition
-                : null;
-            if (definition != null)
+            for (var stateIndex = 0; stateIndex < OriginalLcdTextureStates.Count; stateIndex++)
             {
+                var state = OriginalLcdTextureStates[stateIndex];
+                var definition = state.Definition;
+                if (definition == null)
+                    continue;
+
                 if (definition.TextureResolution == HighResolutionLcdTextureSize)
-                    definition.TextureResolution = _originalLcdTextureSize;
+                    definition.TextureResolution = state.TextureResolution;
 
                 if (definition.ScreenAreas != null)
                 {
-                    var count = Math.Min(definition.ScreenAreas.Count, OriginalLcdScreenAreaTextureSizes.Count);
+                    var count = Math.Min(definition.ScreenAreas.Count, state.ScreenAreaTextureResolutions.Length);
                     for (var i = 0; i < count; i++)
                     {
-                        if (definition.ScreenAreas[i].TextureResolution == HighResolutionLcdTextureSize)
-                            definition.ScreenAreas[i].TextureResolution = OriginalLcdScreenAreaTextureSizes[i];
+                        var area = definition.ScreenAreas[i];
+                        if (area != null && area.TextureResolution == HighResolutionLcdTextureSize)
+                            area.TextureResolution = state.ScreenAreaTextureResolutions[i];
                     }
                 }
             }
 
-            _originalLcdTextureSize = -1;
-            OriginalLcdScreenAreaTextureSizes.Clear();
+            OriginalLcdTextureStates.Clear();
+        }
+
+        private sealed class LcdDefinitionTextureState
+        {
+            internal readonly MyTextPanelDefinition Definition;
+            internal readonly int TextureResolution;
+            internal readonly int[] ScreenAreaTextureResolutions;
+
+            internal LcdDefinitionTextureState(MyTextPanelDefinition definition)
+            {
+                Definition = definition;
+                TextureResolution = definition.TextureResolution;
+                ScreenAreaTextureResolutions = new int[definition.ScreenAreas.Count];
+                for (var i = 0; i < definition.ScreenAreas.Count; i++)
+                {
+                    var area = definition.ScreenAreas[i];
+                    ScreenAreaTextureResolutions[i] = area != null ? area.TextureResolution : 0;
+                }
+            }
         }
 
         private static void RevertAmmoSpeedAdjustments()
