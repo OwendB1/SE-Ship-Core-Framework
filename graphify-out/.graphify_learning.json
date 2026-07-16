@@ -1,6 +1,86 @@
 {
-  "generated_at": "2026-07-11T10:50:05.437166+00:00",
+  "generated_at": "2026-07-16T21:20:21.703326+00:00",
   "nodes": {
+    "api_apidata_modconfigdata": {
+      "code_fingerprint": "16ff7f6bab00bbb0ac361d79bfb69d93d0a26adf898983517eed028fe74da66a",
+      "label": "ModConfigData",
+      "last": "2026-07-15T16:00:40.508340+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-15T16:00:40.508340+00:00",
+          "outcome": "useful",
+          "q": "I see that SCF mod API is currently lacking the ability for other mods to request the full config through the mod API. Could you add that?"
+        }
+      ],
+      "score": 0.972160562,
+      "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/API/ApiData.cs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "api_modapi_modapi": {
+      "code_fingerprint": "222a0f99cbdf8f8e8dc691299a783a833e3e80ac05643c5fcbdc294316a66915",
+      "label": "ModAPI",
+      "last": "2026-07-15T16:00:40.508340+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-15T16:00:40.508340+00:00",
+          "outcome": "useful",
+          "q": "I see that SCF mod API is currently lacking the ability for other mods to request the full config through the mod API. Could you add that?"
+        }
+      ],
+      "score": 0.972160562,
+      "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/API/ModAPI.cs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "api_scf_modapiclient_shipcoreframeworkclient": {
+      "code_fingerprint": "c55cbec9bfa272c16542d8a608de9c641d58d17c081e2c3b7c7a987386ad98ef",
+      "label": "ShipCoreFrameworkClient",
+      "last": "2026-07-15T16:00:40.508340+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-15T16:00:40.508340+00:00",
+          "outcome": "useful",
+          "q": "I see that SCF mod API is currently lacking the ability for other mods to request the full config through the mod API. Could you add that?"
+        }
+      ],
+      "score": 0.972160562,
+      "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/API/SCF_ModAPIClient.cs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "components_groupcomponent_connectors": {
+      "code_fingerprint": "4c82fe1c99ea8b80f6879e1661520bd9bae9aa0141ee3d0f8f7ca5b48ce104b1",
+      "label": "GroupComponent.Connectors.cs",
+      "last": "2026-07-11T10:51:16.862781+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-11T10:51:16.862781+00:00",
+          "outcome": "useful",
+          "q": "Can we make it so connector blacklist checks through all connected connectors by diffing the mechanically linked group against the logically linked group and then based off that decide the priority across multiple gridgroups? Come up with a plan for this. Use $ponytail and other relevant skills."
+        }
+      ],
+      "score": 0.881951533,
+      "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Components/GroupComponent.Connectors.cs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "components_groupcomponent_coreselection": {
+      "code_fingerprint": "8105d01e1a9a982d754a508f8e6cc738322660042c131bc4344ddf90328dfde0",
+      "label": "GroupComponent.CoreSelection.cs",
+      "last": "2026-07-11T10:51:16.862781+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-11T10:51:16.862781+00:00",
+          "outcome": "useful",
+          "q": "Can we make it so connector blacklist checks through all connected connectors by diffing the mechanically linked group against the logically linked group and then based off that decide the priority across multiple gridgroups? Come up with a plan for this. Use $ponytail and other relevant skills."
+        }
+      ],
+      "score": 0.881951533,
+      "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Components/GroupComponent.CoreSelection.cs",
+      "status": "tentative",
+      "uses": 1
+    },
     "helpers_cubegridmodifiers_cubegridmodifiers": {
       "code_fingerprint": "80a5f7364f712e2ad409727776c28b7a27db3e732b5100d7f173701c94dcac74",
       "label": "CubeGridModifiers",
@@ -12,7 +92,7 @@
           "q": "Use $ponytail and $caveman and implement this feature."
         }
       ],
-      "score": 0.978958312,
+      "score": 0.863377293,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Helpers/CubeGridModifiers.cs",
       "status": "tentative",
       "uses": 1
@@ -28,7 +108,7 @@
           "q": "Why does GroupComponent connect Speed Rules to many runtime rule communities?"
         }
       ],
-      "score": 0.698092433,
+      "score": 0.615671931,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Helpers/NoFlyZoneEnforcement.cs",
       "status": "tentative",
       "uses": 1
@@ -44,8 +124,24 @@
           "q": "Why does GroupComponent connect Speed Rules to many runtime rule communities?"
         }
       ],
-      "score": 0.698092433,
+      "score": 0.615671931,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Helpers/SpeedEnforcement.cs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "helpers_textutils_textutils": {
+      "code_fingerprint": "d5a895bfaa55243e4b1695411910bf4eec17b3705d33ed6dda017ce54309e4b4",
+      "label": "TextUtils",
+      "last": "2026-07-16T21:02:11.920934+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-16T21:02:11.920934+00:00",
+          "outcome": "useful",
+          "q": "The text is super unclear now. Is there a way to make it sharper? I also think that 1/3 render scale is a bit too much"
+        }
+      ],
+      "score": 0.999708615,
+      "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Helpers/TextUtils.cs",
       "status": "tentative",
       "uses": 1
     },
@@ -60,7 +156,7 @@
           "q": "Use $ponytail and $caveman and implement this feature."
         }
       ],
-      "score": 0.978958312,
+      "score": 0.863377293,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Network/PacketBase.cs",
       "status": "tentative",
       "uses": 1
@@ -76,10 +172,43 @@
           "q": "Use $ponytail and $caveman and implement this feature."
         }
       ],
-      "score": 0.978958312,
+      "score": 0.863377293,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/UI/CoreTerminalControls.cs",
       "status": "tentative",
       "uses": 1
+    },
+    "ui_coretypelcdscript_coretypelcdscript": {
+      "code_fingerprint": "c7d19031e0c5a4f1d046d16de356cc4ee506cb56602cc4c6dd244beebab2d17e",
+      "label": "CoreTypeLCDScript",
+      "last": "2026-07-16T21:17:09.799058+00:00",
+      "neg": 1,
+      "provenance": [
+        {
+          "date": "2026-07-16T21:17:09.799058+00:00",
+          "outcome": "useful",
+          "q": "Add proper true extra sharpness"
+        },
+        {
+          "date": "2026-07-16T21:02:11.920934+00:00",
+          "outcome": "useful",
+          "q": "The text is super unclear now. Is there a way to make it sharper? I also think that 1/3 render scale is a bit too much"
+        },
+        {
+          "date": "2026-07-16T20:58:49.685689+00:00",
+          "outcome": "corrected",
+          "q": "Still not scaling"
+        },
+        {
+          "date": "2026-07-16T20:51:35.341308+00:00",
+          "outcome": "useful",
+          "q": "I think we forgot to implement the LCD scaling that we were planning to add. The 3x3 massively zooms in because the relative scale of the layout/pixels is not kept."
+        }
+      ],
+      "score": 1.999541193,
+      "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/UI/CoreTypeLCDScript.cs",
+      "status": "contested",
+      "uses": 3,
+      "verdict": "useful"
     }
   },
   "version": 1
