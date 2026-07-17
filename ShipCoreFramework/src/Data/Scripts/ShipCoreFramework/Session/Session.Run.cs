@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using NexusModAPI;
+using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
@@ -20,8 +21,11 @@ namespace ShipCoreFramework
             "Missile", "LargeCalibreShell", "MediumCalibreShell", "LargeCaliber", "AutocannonShell",
             "LargeRailgunSlug", "SmallRailgunSlug", "SmallCaliber", "PistolCaliber", "Shrapnel"
         };
-        private const int MinimumScaledLcdBlockSpan = 3;
         private const int HighResolutionLcdTextureSize = 1024;
+        private static readonly string[] HighResolutionLcdSubtypes =
+        {
+            "LargeLCDPanel3x3", "LargeLCDPanel5x3", "LargeLCDPanel5x5"
+        };
         private static readonly List<LcdDefinitionTextureState> OriginalLcdTextureStates =
             new List<LcdDefinitionTextureState>();
 
@@ -67,11 +71,20 @@ namespace ShipCoreFramework
             IsServer = (MpActive && MyAPIGateway.Multiplayer.IsServer) || !MpActive;
             IsClient = (MpActive && !MyAPIGateway.Utilities.IsDedicated) || !MpActive;
 
-            if (IsClient)
-                ApplyHighResolutionLcdDefinitions();
-            
             Networking.Register();
             Config.LoadConfig(IsServer);
+            if (IsClient)
+            {
+                try
+                {
+                    ApplyHighResolutionLcdDefinitions();
+                }
+                catch (Exception e)
+                {
+                    Utils.Log("High-resolution LCD setup skipped: " + e.Message, 1);
+                }
+            }
+
             Utils.Log("LoadData: MpActive=" + MpActive + ", IsServer=" + IsServer +
                       ", IsClient=" + IsClient + ", Dedicated=" + MyAPIGateway.Utilities.IsDedicated + ".", 1);
             _myNexusApi = new NexusAPI(OnNexusEnabled);
@@ -319,12 +332,25 @@ namespace ShipCoreFramework
             if (OriginalLcdTextureStates.Count > 0 || MyDefinitionManager.Static == null)
                 return;
 
-            foreach (var definition in MyDefinitionManager.Static.GetAllDefinitions<MyTextPanelDefinition>())
+            for (var subtypeIndex = 0; subtypeIndex < HighResolutionLcdSubtypes.Length; subtypeIndex++)
             {
-                if (definition == null || definition.ScreenAreas == null || definition.ScreenAreas.Count == 0)
+                MyCubeBlockDefinition cubeDefinition;
+                try
+                {
+                    var id = new MyDefinitionId(typeof(MyObjectBuilder_TextPanel),
+                        HighResolutionLcdSubtypes[subtypeIndex]);
+                    if (!MyDefinitionManager.Static.TryGetCubeBlockDefinition(id, out cubeDefinition))
+                        continue;
+                }
+                catch (Exception e)
+                {
+                    Utils.Log("LCD definition lookup failed for " + HighResolutionLcdSubtypes[subtypeIndex] +
+                              ": " + e.Message, 1);
                     continue;
-                if (definition.CubeSize != MyCubeSize.Large ||
-                    Math.Max(definition.Size.X, Math.Max(definition.Size.Y, definition.Size.Z)) < MinimumScaledLcdBlockSpan)
+                }
+
+                var definition = cubeDefinition as MyTextPanelDefinition;
+                if (definition == null || definition.ScreenAreas == null || definition.ScreenAreas.Count == 0)
                     continue;
 
                 var state = new LcdDefinitionTextureState(definition);
