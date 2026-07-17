@@ -115,6 +115,12 @@ jobs:
 
           cp "$PROFILE_FILE" "$STAGING/modinfo.sbmi"
 
+          THUMBNAIL_FILE="$STAGING/thumb.png"
+          if [ ! -f "$THUMBNAIL_FILE" ]; then
+            echo "Expected Workshop thumbnail not found: $THUMBNAIL_FILE"
+            exit 1
+          fi
+
           WORKSHOP_ID="$(PROFILE_FILE="$PROFILE_FILE" python3 -c 'import xml.etree.ElementTree as ET, os; root = ET.parse(os.environ["PROFILE_FILE"]).getroot(); ids = root.findall(".//WorkshopIds/WorkshopId/Id"); print(((ids[0].text or "").strip()) if ids else "")')"
 
           if [ -z "$WORKSHOP_ID" ] || [ "$WORKSHOP_ID" = "0" ]; then
@@ -124,6 +130,7 @@ jobs:
 
           echo "WORKSHOP_ID=$WORKSHOP_ID" >> "$GITHUB_ENV"
           echo "STAGING_DIR=$STAGING" >> "$GITHUB_ENV"
+          echo "PREVIEW_FILE=$THUMBNAIL_FILE" >> "$GITHUB_ENV"
 
       - name: Setup SteamCMD
         if: ${{ steps.matrix_gate.outputs.should_upload == 'true' }}
@@ -144,6 +151,7 @@ jobs:
             "appid" "244850"
             "publishedfileid" "${WORKSHOP_ID}"
             "contentfolder" "${STAGING_DIR}"
+            "previewfile" "${PREVIEW_FILE}"
             "changenote" "GitHub Actions build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA})"
           }
           EOF
