@@ -155,6 +155,8 @@ namespace ShipCoreFramework
                 (old != null && !HasAccess(sender, old.CoreBlock))) return;
             if (!ReferenceEquals(old, newMain))
                 group.Activate(newMain);
+
+            if (!ReferenceEquals(group.MainCoreComponent, newMain)) return;
             
             var players = new List<IMyPlayer>();
             MyAPIGateway.Players.GetPlayers(players);
