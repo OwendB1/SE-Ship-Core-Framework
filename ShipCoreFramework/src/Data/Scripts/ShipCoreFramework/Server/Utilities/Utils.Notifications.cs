@@ -1,7 +1,5 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using Sandbox.Game;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.ModAPI;
@@ -41,44 +39,6 @@ namespace ShipCoreFramework
             });
 
             Log(msg, 3);
-        }
-
-        internal static void ShowChatMessage(string msg, string tooltip = "[Ship Cores]", long playerEntityId = 0, int logPriority = 0)
-        {
-            Log(msg, logPriority);
-            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
-            {
-                var userId = playerEntityId == 0 ? MyAPIGateway.Session.LocalHumanPlayer?.IdentityId : playerEntityId;
-                if (userId != null) MyVisualScriptLogicProvider.SendChatMessage(msg, tooltip, (long)userId);
-            });
-        }
-
-        internal static void Log(string msg, int logPriority = 0, string tooltip = "Ship Cores")
-        {
-            var config = Session.Config;
-            if (config != null && logPriority <= config.LogLevel)
-                MyLog.Default.WriteLine($"[{tooltip}]: {msg}");
-            
-            try 
-            {   
-                if (config == null) return;
-                if (logPriority <= config.ClientOutputLogLevel && config.DebugMode)
-                    MyAPIGateway.Utilities.InvokeOnGameThread(() =>
-                    {
-                        try
-                        {
-                            MyAPIGateway.Utilities.ShowMessage($"[{tooltip}={logPriority}]: ", msg);
-                        }
-                        catch (Exception)
-                        {
-                            // Ignore client output failures during startup/shutdown.
-                        }
-                    });
-            }
-            catch (Exception)
-            {
-                // Ignore client output failures during startup/shutdown.
-            }
         }
     }
 }
