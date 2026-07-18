@@ -62,7 +62,7 @@ namespace ShipCoreFramework
                 {
                     foreach (var m in attachedR.Select(kv => kv.Value.Block).Where(m => m != null))
                     {
-                        var ups = new List<MyUpgradeModuleInfo>(); 
+                        var ups = new List<MyUpgradeModuleInfo>();
                         m.FillUpgradeList(ups);
                         if (ups.Count == 0) continue;
                         foreach (var up in ups)
@@ -85,7 +85,7 @@ namespace ShipCoreFramework
                         }
                     }
                 }
-                
+
                 var prodValue = (baseSpeed * modifiers.RefineSpeed) + (prodSum * modifiers.RefineSpeed) - baseSpeed;
                 var yieldValue = (baseYield * modifiers.RefineEfficiency) + (effSum * modifiers.RefineEfficiency);
                 refinery.UpgradeValues["Productivity"] = prodValue;
@@ -104,7 +104,7 @@ namespace ShipCoreFramework
                 {
                     foreach (var m in attachedA.Select(kv => kv.Value.Block).Where(m => m != null))
                     {
-                        var ups = new List<MyUpgradeModuleInfo>(); 
+                        var ups = new List<MyUpgradeModuleInfo>();
                         m.FillUpgradeList(ups);
                         if (ups.Count == 0) continue;
                         //I (Blue) need to fix this line:
@@ -117,12 +117,12 @@ namespace ShipCoreFramework
                                 {prodSum += up.Modifier;}
                                 else
                                 {prodSum *= up.Modifier;}
-                                
+
                             }
                         }
                     }
                 }
-                
+
                 var prodValue = baseSpeed * modifiers.AssemblerSpeed + prodSum * modifiers.AssemblerSpeed - baseSpeed;
                 assembler.UpgradeValues["Productivity"] = prodValue;
             }
@@ -138,8 +138,8 @@ namespace ShipCoreFramework
             {
                 drill.DrillHarvestMultiplier = modifiers.DrillHarvestMultiplier;
             }
-            
+
         }
-        
+
     }
 }
