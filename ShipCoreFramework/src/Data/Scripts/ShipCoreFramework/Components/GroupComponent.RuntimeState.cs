@@ -309,6 +309,12 @@ namespace ShipCoreFramework
         internal void ClearRuntimeState()
         {
             if (Session.IsServer || !_runtimeStateReceived) return;
+            var previousCoreBlockId = _runtimeMainCoreBlockId;
+            var previousCoreSubtypeId = _runtimeCoreSubtypeId;
+            var previousBoostActive = BoostEnabled;
+            var previousDefenseActive = _activeDefenseEnabled;
+            var previousGridIds = _cachedMechanicalGridIds ?? Array.Empty<long>();
+            var previousRepresentativeGridId = GetCachedRepresentativeGridId();
             _runtimeStateReceived = false;
             _runtimeCoreSubtypeId = string.Empty;
             _runtimeOwnerId = 0;
@@ -363,6 +369,27 @@ namespace ShipCoreFramework
             MinimumFrictionSpeedModifierOverride = -1f;
             MaximumFrictionSpeedModifierOverride = -1f;
             ApplyModifiers(_cachedActiveGridModifiers);
+            BroadcastRuntimeStateCleared(previousCoreBlockId, previousCoreSubtypeId,
+                previousBoostActive, previousDefenseActive, previousGridIds,
+                previousRepresentativeGridId);
+        }
+
+        private static void BroadcastRuntimeStateCleared(long previousCoreBlockId,
+            string previousCoreSubtypeId, bool previousBoostActive, bool previousDefenseActive,
+            long[] previousGridIds, long previousRepresentativeGridId)
+        {
+            var eventGridId = previousRepresentativeGridId;
+            if (eventGridId == 0 && previousGridIds.Length > 0) eventGridId = previousGridIds[0];
+            if (previousCoreBlockId != 0)
+            {
+                var oldCore = Session.Config.GetShipCoreByTypeId(previousCoreSubtypeId);
+                ModAPI.BroadcastCoreDeactivated(eventGridId, previousCoreSubtypeId,
+                    oldCore == null ? previousCoreSubtypeId : oldCore.UniqueName);
+            }
+            if (previousBoostActive) ModAPI.BroadcastBoostDeactivated(eventGridId);
+            if (previousDefenseActive) ModAPI.BroadcastActiveDefenseDeactivated(eventGridId);
+            for (var i = 0; i < previousGridIds.Length; i++)
+                ModAPI.BroadcastGridRemovedFromGroup(previousGridIds[i], eventGridId);
         }
 
         private static bool SameModifiers(GridModifiers left, GridModifiers right)
