@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Text;
 using Sandbox.Game;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
@@ -10,49 +9,8 @@ using VRageMath;
 
 namespace ShipCoreFramework
 {
-    internal static class Commands
+    internal static partial class Commands
     {
-        private const int MaxCommandPayloadBytes = 4096;
-
-        public static void ServerMessageHandler(ushort id, byte[] data, ulong sender, bool fromServer)
-        {
-            if (!Session.IsServer || fromServer || id != Session.CommandsSyncId || sender == 0 ||
-                data == null || data.Length == 0 || data.Length > MaxCommandPayloadBytes)
-                return;
-
-            var playerId = Utils.GetPlayerIdFromSteamId(sender);
-            if (playerId == 0) return;
-
-            var message = Encoding.UTF8.GetString(data);
-            if (!IsCoreCommand(message)) return;
-
-            Utils.Log($"Server: Command received from {sender}: {message}");
-            CommandSwitch(playerId, message);
-        }
-        
-        public static void OnChatCommand(ulong sender,string messageText, ref bool sendToOthers)
-        {
-            if (!IsCoreCommand(messageText)) return;
-
-            sendToOthers = false;
-            if (!Session.IsServer)
-            {
-                if (IsLocalReadOnlyCommand(messageText))
-                    CommandSwitch(MyAPIGateway.Session.Player.IdentityId, messageText);
-                else
-                    ForwardToServer(messageText);
-                return;
-            }
-
-            CommandSwitch(MyAPIGateway.Session.Player.IdentityId, messageText);
-        }
-        
-        private static void ForwardToServer(string message)
-        {
-            var bytes = Encoding.UTF8.GetBytes(message);
-            MyAPIGateway.Multiplayer.SendMessageToServer(Session.CommandsSyncId, bytes);
-        }
-
         private static bool IsCoreCommand(string messageText)
         {
             const string commandPrefix = "/core";
