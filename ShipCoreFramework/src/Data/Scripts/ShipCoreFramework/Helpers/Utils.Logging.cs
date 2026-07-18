@@ -56,13 +56,13 @@ namespace ShipCoreFramework
         internal static void Log(string msg, int logPriority = 0, string tooltip = "Ship Cores")
         {
             var config = Session.Config;
-            if (config != null && logPriority >= config.LogLevel)
+            if (config != null && logPriority <= config.LogLevel)
                 MyLog.Default.WriteLine($"[{tooltip}]: {msg}");
             
             try 
             {   
                 if (config == null) return;
-                if (logPriority >= config.ClientOutputLogLevel && config.DebugMode)
+                if (logPriority <= config.ClientOutputLogLevel && config.DebugMode)
                     MyAPIGateway.Utilities.InvokeOnGameThread(() =>
                     {
                         try

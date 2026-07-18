@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using ProtoBuf;
 using Sandbox.ModAPI;
 using VRage;
@@ -15,6 +16,7 @@ namespace NexusModAPI
         private Action _onEnabled;
         private Func<object, object> _sendModMsgToServer;
         private Func<object, object> _sendModMsgToAllServers;
+        private Func<object, object> _getAllOnlineServers;
 
         public NexusAPI(Action onEnabled = null)
         {
@@ -27,6 +29,7 @@ namespace NexusModAPI
             Enabled = false;
             _sendModMsgToServer = null;
             _sendModMsgToAllServers = null;
+            _getAllOnlineServers = null;
             _onEnabled = null;
             MyAPIGateway.Utilities.UnregisterMessageHandler(MessageId, ReceiveData);
         }
@@ -43,6 +46,13 @@ namespace NexusModAPI
                    (bool)_sendModMsgToAllServers(MyTuple.Create(data, modChannelId));
         }
 
+        public List<byte> GetAllOnlineServers()
+        {
+            return Enabled && _getAllOnlineServers != null
+                ? (List<byte>)_getAllOnlineServers(null)
+                : null;
+        }
+
         private void ReceiveData(object obj)
         {
             try
@@ -52,6 +62,7 @@ namespace NexusModAPI
 
                 _sendModMsgToServer = getMethod((int)Methods.SendModMsgToServer);
                 _sendModMsgToAllServers = getMethod((int)Methods.SendModMsgToAllServers);
+                _getAllOnlineServers = getMethod((int)Methods.GetAllOnlineServers);
 
                 var serverData = MyAPIGateway.Utilities.SerializeFromBinary<ServerDataMsgAPI>(data.Item1);
                 CurrentServerID = serverData.ThisServerID;
@@ -67,7 +78,8 @@ namespace NexusModAPI
         private enum Methods
         {
             SendModMsgToServer = 5,
-            SendModMsgToAllServers = 6
+            SendModMsgToAllServers = 6,
+            GetAllOnlineServers = 7
         }
         
         [ProtoContract]

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NexusModAPI;
@@ -11,6 +12,7 @@ namespace ShipCoreFramework
     {
         private const long ChannelId = 9876543210L;
         private const int SyncSettlingWindowTicks = 5 * 60;
+        private const int SnapshotResponseTimeoutTicks = 5 * 60;
         private const int PeriodicSnapshotIntervalTicks = 2 * 60 * 60;
 
         private static NexusAPI _nexus;
@@ -18,8 +20,18 @@ namespace ShipCoreFramework
         private static byte _thisServerId;
         private static int _syncSettledAfterTick;
         private static int _nextPeriodicSnapshotTick;
-        private static readonly Dictionary<byte, LimitsState> RemoteStates = new Dictionary<byte, LimitsState>();
+        private static long _localEpoch;
+        private static long _localRevision;
+        private static long _nextValidationRequestId;
+        private static long _activeValidationRequestId;
+        private static int _validationRequestTick;
+        private static int _nextValidationWarningTick;
+        private static readonly HashSet<byte> ValidationExpectedServers = new HashSet<byte>();
+        private static readonly HashSet<byte> ValidationResponseServers = new HashSet<byte>();
+        private static readonly Dictionary<byte, RemoteServerState> RemoteStates =
+            new Dictionary<byte, RemoteServerState>();
         private static readonly object RemoteStatesLock = new object();
+        private static readonly object LocalRevisionLock = new object();
 
         internal static void Start(NexusAPI nexus)
         {
@@ -27,6 +39,9 @@ namespace ShipCoreFramework
             _nexus = nexus;
             if (_nexus == null || !_nexus.Enabled) return;
             _thisServerId = _nexus.CurrentServerID;
+            _localEpoch = DateTime.UtcNow.Ticks ^ ((long)_thisServerId << 48);
+            _localRevision = 0;
+            _nextValidationWarningTick = 0;
 
             MyAPIGateway.Utilities.RegisterMessageHandler(ChannelId, OnMessage);
 
@@ -41,16 +56,101 @@ namespace ShipCoreFramework
         {
             if (!_started) return;
             _started = false;
-            lock (RemoteStatesLock) RemoteStates.Clear();
+            lock (RemoteStatesLock)
+            {
+                RemoteStates.Clear();
+                ClearValidationRound();
+            }
             try { MyAPIGateway.Utilities.UnregisterMessageHandler(ChannelId, OnMessage); } catch { /**/ }
         }
 
-        private static bool Ready => _started && _nexus != null && _nexus.Enabled;
+        internal static bool Ready => _started && _nexus != null && _nexus.Enabled;
+        internal static byte CurrentServerId => _thisServerId;
         internal static bool IsSettling => Ready && Session.CurrentTick <= _syncSettledAfterTick;
         internal static void NotifyLocalGridClose()
         {
             if (!Ready) return;
             MarkSyncActivity();
+        }
+
+        internal static void InvalidateFreshValidationState()
+        {
+            lock (RemoteStatesLock) ClearValidationRound();
+        }
+
+        internal static bool TryGetFreshValidationState(out string waitReason)
+        {
+            waitReason = string.Empty;
+            if (!Ready) return true;
+
+            List<byte> onlineServers;
+            try
+            {
+                onlineServers = _nexus.GetAllOnlineServers();
+            }
+            catch (Exception e)
+            {
+                waitReason = "Nexus online-server query failed: " + e.Message;
+                LogValidationWarning(waitReason);
+                return false;
+            }
+
+            if (onlineServers == null)
+            {
+                waitReason = "Nexus did not provide online-server state";
+                LogValidationWarning(waitReason);
+                return false;
+            }
+
+            var expectedServers = new HashSet<byte>(onlineServers.Where(id => id != 0 && id != _thisServerId));
+            long requestId;
+            lock (RemoteStatesLock)
+            {
+                foreach (var serverId in RemoteStates.Keys.Where(id => !expectedServers.Contains(id)).ToList())
+                    RemoteStates.Remove(serverId);
+
+                if (expectedServers.Count == 0)
+                {
+                    ClearValidationRound();
+                    return true;
+                }
+
+                if (_activeValidationRequestId != 0 && ValidationExpectedServers.SetEquals(expectedServers))
+                {
+                    if (ValidationExpectedServers.All(ValidationResponseServers.Contains) &&
+                        Session.CurrentTick - _validationRequestTick < SnapshotResponseTimeoutTicks)
+                        return true;
+
+                    if (Session.CurrentTick - _validationRequestTick < SnapshotResponseTimeoutTicks)
+                    {
+                        waitReason = "waiting for Nexus servers " + string.Join(",", ValidationExpectedServers
+                            .Where(id => !ValidationResponseServers.Contains(id))
+                            .OrderBy(id => id));
+                        return false;
+                    }
+                }
+
+                requestId = ++_nextValidationRequestId;
+                if (requestId <= 0)
+                {
+                    _nextValidationRequestId = 1;
+                    requestId = 1;
+                }
+
+                _activeValidationRequestId = requestId;
+                _validationRequestTick = Session.CurrentTick;
+                ValidationExpectedServers.Clear();
+                ValidationExpectedServers.UnionWith(expectedServers);
+                ValidationResponseServers.Clear();
+            }
+
+            var request = new SnapshotRequest { RequestId = requestId };
+            var envelope = new Envelope { Kind = EnvelopeKind.SnapshotRequest, Payload = Serialize(request) };
+            _nexus.SendModMsgToAllServers(Serialize(envelope), ChannelId);
+            waitReason = "requested fresh Nexus snapshot round " + requestId;
+            Utils.Log("LimitsNexusSync: " + waitReason + " from servers " +
+                      string.Join(",", expectedServers.OrderBy(id => id)) + ".", 1);
+            return false;
         }
 
         internal static int GetRemoteFactionCount(long factionId, string coreType)
@@ -60,8 +160,9 @@ namespace ShipCoreFramework
             lock (RemoteStatesLock)
             {
                 var total = 0;
-                foreach (var state in RemoteStates.Values)
+                foreach (var remote in RemoteStates.Values)
                 {
+                    var state = remote.State;
                     var faction = state.Factions.FirstOrDefault(f => f.FactionId == factionId);
                     if (faction == null) continue;
 
@@ -80,8 +181,9 @@ namespace ShipCoreFramework
             lock (RemoteStatesLock)
             {
                 var total = 0;
-                foreach (var state in RemoteStates.Values)
+                foreach (var remote in RemoteStates.Values)
                 {
+                    var state = remote.State;
                     var player = state.Players.FirstOrDefault(p => p.PlayerId == playerId);
                     if (player == null) continue;
 
@@ -93,6 +195,28 @@ namespace ShipCoreFramework
             }
         }
 
+        internal static string DescribeRemotePlayerCounts(long playerId, string coreType)
+        {
+            if (!Ready || playerId <= 0 || string.IsNullOrWhiteSpace(coreType)) return "none";
+
+            lock (RemoteStatesLock)
+            {
+                var values = new List<string>();
+                foreach (var pair in RemoteStates.OrderBy(pair => pair.Key))
+                {
+                    var player = pair.Value.State.Players.FirstOrDefault(p => p.PlayerId == playerId);
+                    var core = player == null
+                        ? null
+                        : player.Cores.FirstOrDefault(c => c.CoreType == coreType);
+                    values.Add(pair.Key + "=" + (core == null ? 0 : core.Count) +
+                               "@" + pair.Value.HighestRevision +
+                               "/age=" + Math.Max(0, Session.CurrentTick - pair.Value.LastUpdatedTick));
+                }
+
+                return values.Count == 0 ? "none" : string.Join(",", values);
+            }
+        }
+
         internal static int GetRemoteManifestGroupCount(string groupName)
         {
             if (!Ready || string.IsNullOrWhiteSpace(groupName)) return 0;
@@ -100,8 +224,9 @@ namespace ShipCoreFramework
             lock (RemoteStatesLock)
             {
                 var total = 0;
-                foreach (var state in RemoteStates.Values)
+                foreach (var remote in RemoteStates.Values)
                 {
+                    var state = remote.State;
                     var group = state.ManifestGroups.FirstOrDefault(g => g.GroupName == groupName);
                     if (group != null) total += group.Count;
                 }
@@ -128,7 +253,7 @@ namespace ShipCoreFramework
         internal static void BroadcastSnapshot()
         {
             if (!Ready) return;
-            var env = new Envelope { Kind = EnvelopeKind.Snapshot, Payload = Serialize(BuildSnapshot()) };
+            var env = new Envelope { Kind = EnvelopeKind.Snapshot, Payload = Serialize(BuildSnapshot(0)) };
             _nexus.SendModMsgToAllServers(Serialize(env), ChannelId);
         }
 
@@ -154,7 +279,9 @@ namespace ShipCoreFramework
                 Player = playerId.HasValue ? new TargetPlayer { Id = playerId.Value } : null,
                 CoreType = coreType,
                 ManifestGroupName = manifestGroupName,
-                Count = count < 0 ? 0 : count
+                Count = count < 0 ? 0 : count,
+                Epoch = _localEpoch,
+                Revision = NextLocalRevision()
             };
 
             var env = new Envelope { Kind = EnvelopeKind.Diff, Payload = Serialize(diff) };
@@ -163,15 +290,15 @@ namespace ShipCoreFramework
 
         private static void BroadcastHello()
         {
-            var hello = new Hello { ServerId = _thisServerId };
+            var hello = new Hello { Epoch = _localEpoch };
             var env = new Envelope { Kind = EnvelopeKind.Hello, Payload = Serialize(hello) };
             _nexus.SendModMsgToAllServers(Serialize(env), ChannelId);
         }
 
-        private static void SendSnapshotTo(byte targetServer)
+        private static void SendSnapshotTo(byte targetServer, long requestId = 0)
         {
             if (!Ready) return;
-            var env = new Envelope { Kind = EnvelopeKind.Snapshot, Payload = Serialize(BuildSnapshot()) };
+            var env = new Envelope { Kind = EnvelopeKind.Snapshot, Payload = Serialize(BuildSnapshot(requestId)) };
             _nexus.SendModMsgToServer(Serialize(env), ChannelId, targetServer);
         }
 
@@ -193,13 +320,15 @@ namespace ShipCoreFramework
                     case EnvelopeKind.Hello:
                         var hello = Deserialize<Hello>(env.Payload);
                         if (hello == null) return;
-                        SendSnapshotTo(hello.ServerId);
+                        ApplyHello(apiMsg.FromServerID, hello);
+                        QueueSnapshotTo(apiMsg.FromServerID, 0);
                         break;
 
                     case EnvelopeKind.Snapshot:
                         var state = Deserialize<LimitsState>(env.Payload);
                         if (state == null) return;
-                        ApplySnapshot(apiMsg.FromServerID, state);
+                        if (ApplySnapshot(apiMsg.FromServerID, state))
+                            RegisterValidationResponse(apiMsg.FromServerID, state.RequestId);
                         break;
 
                     case EnvelopeKind.Diff:
@@ -207,9 +336,23 @@ namespace ShipCoreFramework
                         if (diff == null) return;
                         ApplyDiff(apiMsg.FromServerID, diff);
                         break;
+
+                    case EnvelopeKind.SnapshotRequest:
+                        var request = Deserialize<SnapshotRequest>(env.Payload);
+                        if (request == null || request.RequestId <= 0) return;
+                        QueueSnapshotTo(apiMsg.FromServerID, request.RequestId);
+                        break;
                 }
             }
-            catch { /**/ }
+            catch (Exception e)
+            {
+                Utils.Log("LimitsNexusSync: failed to process Nexus message: " + e.Message, 1);
+            }
+        }
+
+        private static void QueueSnapshotTo(byte targetServer, long requestId)
+        {
+            MyAPIGateway.Utilities.InvokeOnGameThread(delegate { SendSnapshotTo(targetServer, requestId); });
         }
 
         private static void MarkSyncActivity()
@@ -217,9 +360,14 @@ namespace ShipCoreFramework
             _syncSettledAfterTick = Session.CurrentTick + SyncSettlingWindowTicks;
         }
 
-        private static LimitsState BuildSnapshot()
+        private static LimitsState BuildSnapshot(long requestId)
         {
-            var s = new LimitsState();
+            var s = new LimitsState
+            {
+                Epoch = _localEpoch,
+                Revision = GetLocalRevision(),
+                RequestId = requestId
+            };
 
             var factions = new Dictionary<long, FactionEntry>();
             foreach (var count in PerFactionManager.GetLocalCountsSnapshot())
@@ -255,13 +403,22 @@ namespace ShipCoreFramework
             return s;
         }
 
-        private static void ApplySnapshot(byte sourceServerId, LimitsState state)
+        private static bool ApplySnapshot(byte sourceServerId, LimitsState state)
         {
-            if (sourceServerId == 0 || sourceServerId == _thisServerId) return;
+            if (sourceServerId == 0 || sourceServerId == _thisServerId) return false;
 
             lock (RemoteStatesLock)
             {
-                RemoteStates[sourceServerId] = state;
+                RemoteServerState remote;
+                if (!TryGetRemoteState(sourceServerId, state.Epoch, out remote)) return false;
+                if (state.Revision < remote.HighestRevision) return false;
+
+                remote.State = state;
+                remote.SnapshotRevision = state.Revision;
+                remote.HighestRevision = state.Revision;
+                remote.LastUpdatedTick = Session.CurrentTick;
+                remote.EntryRevisions.Clear();
+                return true;
             }
         }
 
@@ -271,21 +428,19 @@ namespace ShipCoreFramework
 
             lock (RemoteStatesLock)
             {
-                LimitsState state;
-                if (!RemoteStates.TryGetValue(sourceServerId, out state))
-                {
-                    state = new LimitsState();
-                    RemoteStates[sourceServerId] = state;
-                }
-
-                ApplyDiffToState(state, diff);
+                RemoteServerState remote;
+                if (!TryGetRemoteState(sourceServerId, diff.Epoch, out remote)) return;
+                ApplyDiffToState(remote, diff);
             }
         }
 
-        private static void ApplyDiffToState(LimitsState state, LimitsDiff diff)
+        private static void ApplyDiffToState(RemoteServerState remote, LimitsDiff diff)
         {
+            var state = remote.State;
             if (diff.Faction != null)
             {
+                var key = "F|" + diff.Faction.Id + "|" + diff.CoreType;
+                if (!CanApplyDiff(remote, key, diff.Revision)) return;
                 var faction = state.Factions.FirstOrDefault(f => f.FactionId == diff.Faction.Id);
                 if (faction == null)
                 {
@@ -298,6 +453,8 @@ namespace ShipCoreFramework
 
             if (diff.Player != null)
             {
+                var key = "P|" + diff.Player.Id + "|" + diff.CoreType;
+                if (!CanApplyDiff(remote, key, diff.Revision)) return;
                 var player = state.Players.FirstOrDefault(p => p.PlayerId == diff.Player.Id);
                 if (player == null)
                 {
@@ -310,6 +467,8 @@ namespace ShipCoreFramework
 
             if (!string.IsNullOrEmpty(diff.ManifestGroupName))
             {
+                var key = "M|" + diff.ManifestGroupName;
+                if (!CanApplyDiff(remote, key, diff.Revision)) return;
                 var group = state.ManifestGroups.FirstOrDefault(g => g.GroupName == diff.ManifestGroupName);
                 if (group == null)
                 {
@@ -319,6 +478,102 @@ namespace ShipCoreFramework
 
                 group.Count = diff.Count < 0 ? 0 : diff.Count;
             }
+        }
+
+        private static void ApplyHello(byte sourceServerId, Hello hello)
+        {
+            if (sourceServerId == 0 || sourceServerId == _thisServerId || hello.Epoch == 0) return;
+
+            lock (RemoteStatesLock)
+            {
+                RemoteServerState remote;
+                TryGetRemoteState(sourceServerId, hello.Epoch, out remote);
+            }
+        }
+
+        private static bool TryGetRemoteState(byte sourceServerId, long epoch, out RemoteServerState remote)
+        {
+            if (epoch <= 0)
+            {
+                remote = null;
+                return false;
+            }
+
+            if (!RemoteStates.TryGetValue(sourceServerId, out remote))
+            {
+                remote = new RemoteServerState(epoch);
+                RemoteStates[sourceServerId] = remote;
+                return true;
+            }
+
+            if (epoch != remote.Epoch)
+            {
+                if (remote.RetiredEpochs.Contains(epoch)) return false;
+
+                var replacement = new RemoteServerState(epoch);
+                replacement.RetiredEpochs.UnionWith(remote.RetiredEpochs);
+                replacement.RetiredEpochs.Add(remote.Epoch);
+                RemoteStates[sourceServerId] = replacement;
+                remote = replacement;
+                return true;
+            }
+
+            return true;
+        }
+
+        private static bool CanApplyDiff(RemoteServerState remote, string key, long revision)
+        {
+            if (revision <= remote.SnapshotRevision) return false;
+
+            long currentRevision;
+            if (remote.EntryRevisions.TryGetValue(key, out currentRevision) && revision <= currentRevision)
+                return false;
+
+            remote.EntryRevisions[key] = revision;
+            if (revision > remote.HighestRevision) remote.HighestRevision = revision;
+            remote.LastUpdatedTick = Session.CurrentTick;
+            return true;
+        }
+
+        private static void RegisterValidationResponse(byte sourceServerId, long requestId)
+        {
+            lock (RemoteStatesLock)
+            {
+                if (requestId <= 0 || requestId != _activeValidationRequestId ||
+                    !ValidationExpectedServers.Contains(sourceServerId))
+                    return;
+
+                ValidationResponseServers.Add(sourceServerId);
+                Utils.Log("LimitsNexusSync: fresh snapshot round " + _activeValidationRequestId +
+                          " received from server " +
+                          sourceServerId + " (" + ValidationResponseServers.Count + "/" +
+                          ValidationExpectedServers.Count + ").", 2);
+            }
+        }
+
+        private static void ClearValidationRound()
+        {
+            _activeValidationRequestId = 0;
+            _validationRequestTick = 0;
+            ValidationExpectedServers.Clear();
+            ValidationResponseServers.Clear();
+        }
+
+        private static void LogValidationWarning(string message)
+        {
+            if (Session.CurrentTick < _nextValidationWarningTick) return;
+            _nextValidationWarningTick = Session.CurrentTick + 60 * 60;
+            Utils.Log("LimitsNexusSync: " + message + "; destructive limit validation remains deferred.", 1);
+        }
+
+        private static long NextLocalRevision()
+        {
+            lock (LocalRevisionLock) return ++_localRevision;
+        }
+
+        private static long GetLocalRevision()
+        {
+            lock (LocalRevisionLock) return _localRevision;
         }
 
         private static void SetCoreCount(List<CoreEntry> cores, string coreType, int count)
@@ -349,13 +604,20 @@ namespace ShipCoreFramework
         {
             Hello = 1,
             Snapshot = 2,
-            Diff = 3
+            Diff = 3,
+            SnapshotRequest = 4
         }
 
         [ProtoContract]
         private class Hello
         {
-            [ProtoMember(1)] internal byte ServerId { get; set; }
+            [ProtoMember(1)] internal long Epoch { get; set; }
+        }
+
+        [ProtoContract]
+        private class SnapshotRequest
+        {
+            [ProtoMember(1)] internal long RequestId { get; set; }
         }
 
         [ProtoContract]
@@ -364,6 +626,9 @@ namespace ShipCoreFramework
             [ProtoMember(1)] internal List<FactionEntry> Factions { get; } = new List<FactionEntry>();
             [ProtoMember(2)] internal List<PlayerEntry> Players { get; } = new List<PlayerEntry>();
             [ProtoMember(3)] internal List<ManifestGroupEntry> ManifestGroups { get; } = new List<ManifestGroupEntry>();
+            [ProtoMember(4)] internal long Epoch { get; set; }
+            [ProtoMember(5)] internal long Revision { get; set; }
+            [ProtoMember(6)] internal long RequestId { get; set; }
         }
 
         [ProtoContract]
@@ -402,6 +667,25 @@ namespace ShipCoreFramework
             [ProtoMember(3)] internal string CoreType { get; set; }
             [ProtoMember(4)] internal int Count { get; set; }
             [ProtoMember(5)] internal string ManifestGroupName { get; set; }
+            [ProtoMember(6)] internal long Epoch { get; set; }
+            [ProtoMember(7)] internal long Revision { get; set; }
+        }
+
+        private class RemoteServerState
+        {
+            internal long Epoch;
+            internal long SnapshotRevision;
+            internal long HighestRevision;
+            internal int LastUpdatedTick;
+            internal LimitsState State;
+            internal readonly Dictionary<string, long> EntryRevisions = new Dictionary<string, long>();
+            internal readonly HashSet<long> RetiredEpochs = new HashSet<long>();
+
+            internal RemoteServerState(long epoch)
+            {
+                Epoch = epoch;
+                State = new LimitsState { Epoch = epoch };
+            }
         }
 
         [ProtoContract]

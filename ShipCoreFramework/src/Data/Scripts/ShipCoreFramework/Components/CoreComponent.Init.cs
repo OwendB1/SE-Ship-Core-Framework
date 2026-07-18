@@ -130,14 +130,17 @@ namespace ShipCoreFramework
             }
 
             if (!isIgnoredNpcGrid &&
-                (!PerFactionManager.IsGroupWithinFactionLimits(_groupComponent.OwningFaction, _groupComponent.OwnerId, SubtypeId)
-                 || !PerPlayerManager.IsGroupWithinPlayerLimits(_groupComponent.OwnerId, SubtypeId)
-                 || !PerManifestGroupManager.IsGroupWithinManifestLimits(SubtypeId, _groupComponent.OwnerId)))
+                (!PerFactionManager.IsGroupWithinFactionLimits(_groupComponent.OwningFaction, _groupComponent.OwnerId,
+                     SubtypeId, !LimitsNexusSync.Ready)
+                 || !PerPlayerManager.IsGroupWithinPlayerLimits(_groupComponent.OwnerId, SubtypeId,
+                     !LimitsNexusSync.Ready)
+                 || !PerManifestGroupManager.IsGroupWithinManifestLimits(SubtypeId, _groupComponent.OwnerId,
+                     !LimitsNexusSync.Ready)))
             {
-                if (LimitsNexusSync.IsSettling)
+                if (LimitsNexusSync.Ready)
                 {
-                    _groupComponent.ScheduleExternalLimitValidation();
-                    Utils.Log($"Deferring core limit validation for {SubtypeId} on {CoreBlock.CubeGrid.CustomName} while Nexus sync is settling.", 1);
+                    _groupComponent.BeginNexusLimitValidation();
+                    Utils.Log($"Deferring core limit validation for {SubtypeId} on {CoreBlock.CubeGrid.CustomName} until fresh Nexus state is confirmed.", 1);
                     AttachBlockEvents();
                     _groupComponent.DefenseValuesChanged();
                     return true;

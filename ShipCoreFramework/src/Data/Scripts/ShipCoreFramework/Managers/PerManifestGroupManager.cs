@@ -42,11 +42,12 @@ namespace ShipCoreFramework
             return localCount + LimitsNexusSync.GetRemoteManifestGroupCount(groupName);
         }
 
-        internal static bool IsGroupWithinManifestLimits(string coreType, long ownerId)
+        internal static bool IsGroupWithinManifestLimits(string coreType, long ownerId, bool notify = true)
         {
             if (!Config.IsValidCoreType(coreType))
             {
-                Utils.ShowChatMessage($"PerManifestGroupManager::IsGroupWithinManifestLimits: Unknown core type id {coreType}", playerEntityId: ownerId);
+                if (notify)
+                    Utils.ShowChatMessage($"PerManifestGroupManager::IsGroupWithinManifestLimits: Unknown core type id {coreType}", playerEntityId: ownerId);
                 return false;
             }
 
@@ -60,9 +61,10 @@ namespace ShipCoreFramework
                 if (currentCount <= group.MaxCount)
                     continue;
 
-                Utils.ShowChatMessage(
-                    $"Manifest group limit reached, you already have {currentCount - 1}/{group.MaxCount} cores built in {group.Name}.",
-                    playerEntityId: ownerId);
+                if (notify)
+                    Utils.ShowChatMessage(
+                        $"Manifest group limit reached, you already have {currentCount - 1}/{group.MaxCount} cores built in {group.Name}.",
+                        playerEntityId: ownerId);
                 return false;
             }
 

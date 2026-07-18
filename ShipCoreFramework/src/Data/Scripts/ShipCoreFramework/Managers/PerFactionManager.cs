@@ -497,7 +497,8 @@ namespace ShipCoreFramework
             return Math.Min(fixedLimit, playerScaledLimit);
         }
 
-        internal static bool IsGroupWithinFactionLimits(IMyFaction owningFaction, long ownerId, string coreType)
+        internal static bool IsGroupWithinFactionLimits(IMyFaction owningFaction, long ownerId, string coreType,
+            bool notify = true)
         {
             var factionId = owningFaction?.FactionId ?? -1;
             if (!Config.IsValidCoreType(coreType))
@@ -514,7 +515,8 @@ namespace ShipCoreFramework
 
             if (factionId == -1 && (minNeededPlayers > 0 || requiresFaction))
             {
-                Utils.ShowChatMessage($"Player is not in Faction [OwningPlayer:{ownerId}] and therefore cannot build faction limited core: {coreType}", playerEntityId: ownerId);
+                if (notify)
+                    Utils.ShowChatMessage($"Player is not in Faction [OwningPlayer:{ownerId}] and therefore cannot build faction limited core: {coreType}", playerEntityId: ownerId);
                 return false;
             }
 
@@ -524,14 +526,16 @@ namespace ShipCoreFramework
 
             if (factionMemberCount < minNeededPlayers)
             {
-                Utils.ShowChatMessage($"{factionMemberCount}/{minNeededPlayers} players needed to build: {coreType}", playerEntityId: ownerId);
+                if (notify)
+                    Utils.ShowChatMessage($"{factionMemberCount}/{minNeededPlayers} players needed to build: {coreType}", playerEntityId: ownerId);
                 return false;
             }
 
             if (maxAllowedPlayers > 0 && playerCount > maxAllowedPlayers)
             {
-                Utils.ShowChatMessage(
-                    $"{playerCount}/{maxAllowedPlayers} players exceeds the allowed faction size for: {coreType}", playerEntityId: ownerId);
+                if (notify)
+                    Utils.ShowChatMessage(
+                        $"{playerCount}/{maxAllowedPlayers} players exceeds the allowed faction size for: {coreType}", playerEntityId: ownerId);
                 return false;
             }
 
@@ -541,7 +545,8 @@ namespace ShipCoreFramework
             if (currentCount <= maxAllowedGrids) return true;
             if (playerScaledLimit == 0)
             {
-                Utils.ShowChatMessage($"{playerCount}/{core.FactionPlayersNeededPerCore} faction players needed per {coreType}.", playerEntityId: ownerId);
+                if (notify)
+                    Utils.ShowChatMessage($"{playerCount}/{core.FactionPlayersNeededPerCore} faction players needed per {coreType}.", playerEntityId: ownerId);
                 return false;
             }
 
@@ -549,7 +554,7 @@ namespace ShipCoreFramework
             if (playerScaledLimit >= 0)
                 message += $" Player-scaled cap: {playerCount} players -> {playerScaledLimit} allowed (1 per {core.FactionPlayersNeededPerCore} players).";
 
-            Utils.ShowChatMessage(message, playerEntityId: ownerId);
+            if (notify) Utils.ShowChatMessage(message, playerEntityId: ownerId);
             return false;
         }
 

@@ -78,8 +78,8 @@ Root tag: `<ModConfig>`
 | `SelectedNoCoreUniqueName` | `string` | Chooses which loaded no-core profile becomes the active fallback profile. | Must match a loaded no-core `UniqueName`. |
 | `DebugMode` | `bool` | Enables debug-oriented behavior. | Also changes some player-count checks to count identities more aggressively. |
 | `CombatLogging` | `bool` | Enables combat logging behavior exposed by the framework. | Runtime toggle also exists through commands. |
-| `LOG_LEVEL` | `int` | Server/framework log verbosity. | Default in code is `2`. |
-| `CLIENT_OUTPUT_LOG_LEVEL` | `int` | Client-side log verbosity. | Default in code is `2`. |
+| `LOG_LEVEL` | `int` | Server/framework log verbosity. | `0` = essential only, `3` = debug; default is `2`. |
+| `CLIENT_OUTPUT_LOG_LEVEL` | `int` | Client-side log verbosity. | `0` = essential only, `3` = debug; default is `2`. |
 | `MaxPossibleSpeedMetersPerSecond` | `float` | World top-speed baseline in m/s. | Core `SpeedModifiers.MaxSpeed` and `MaxBoost` multiply against this value. |
 | `MassTypeMode` | `Dry` or `Wet` | Chooses which grid mass reading is used for `MaxMass`. | `Dry` ignores inventory/fuel mass; `Wet` includes it. |
 | `FrictionSpeedValueMode` | `Modifier` or `Absolute` | Chooses how friction min/max speed fields are interpreted. | In `Modifier` mode they scale against world max speed; in `Absolute` mode they are m/s values. |

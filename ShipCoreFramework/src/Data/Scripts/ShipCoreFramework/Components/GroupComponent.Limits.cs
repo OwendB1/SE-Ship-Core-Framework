@@ -235,6 +235,35 @@ namespace ShipCoreFramework
                       ", tick=" + _pendingExternalLimitValidationTick + ".", 2);
         }
 
+        internal void BeginNexusLimitValidation()
+        {
+            if (_closing) return;
+            _pendingNexusLimitValidation = true;
+            _nexusLimitFailureConfirmations = 0;
+            ScheduleNexusLimitValidation(true);
+        }
+
+        private void ScheduleNexusLimitValidation(bool restartGrace)
+        {
+            if (_closing) return;
+            _pendingNexusLimitValidation = true;
+            if (restartGrace) LimitsNexusSync.InvalidateFreshValidationState();
+            _pendingExternalLimitValidationTick = Session.CurrentTick +
+                                                  (restartGrace
+                                                      ? NexusLimitValidationGraceTicks
+                                                      : ExternalLimitValidationDelayTicks);
+            Utils.Log("ScheduleNexusLimitValidation: group=" + GetGroupKey() +
+                      ", confirmation=" + _nexusLimitFailureConfirmations +
+                      ", tick=" + _pendingExternalLimitValidationTick + ".", 1);
+        }
+
+        private void ClearExternalLimitValidation()
+        {
+            _pendingExternalLimitValidationTick = 0;
+            _pendingNexusLimitValidation = false;
+            _nexusLimitFailureConfirmations = 0;
+        }
+
         internal bool IsLimitPunishmentDeferred()
         {
             return IsInitializingGrids;
@@ -301,14 +330,14 @@ namespace ShipCoreFramework
         {
             if (_closing)
             {
-                _pendingExternalLimitValidationTick = 0;
+                ClearExternalLimitValidation();
                 return;
             }
 
             if (_pendingExternalLimitValidationTick == 0 || Session.CurrentTick < _pendingExternalLimitValidationTick)
                 return;
 
-            if (LimitsNexusSync.IsSettling)
+            if (!_pendingNexusLimitValidation && LimitsNexusSync.IsSettling)
             {
                 Utils.Log("RunExternalLimitValidationTick: Nexus settling, rescheduling validation for group " +
                           GetGroupKey() + ".", 2);
@@ -342,20 +371,75 @@ namespace ShipCoreFramework
             {
                 Utils.Log("ExecuteExternalLimitValidation: owner unavailable for " + subtypeId +
                           " on group " + GetGroupKey() + "; rescheduling.", 2);
-                ScheduleExternalLimitValidation();
+                if (_pendingNexusLimitValidation)
+                    ScheduleNexusLimitValidation(false);
+                else
+                    ScheduleExternalLimitValidation();
                 return;
             }
 
-            if (PerFactionManager.IsGroupWithinFactionLimits(OwningFaction, OwnerId, subtypeId) &&
-                PerPlayerManager.IsGroupWithinPlayerLimits(OwnerId, subtypeId) &&
-                PerManifestGroupManager.IsGroupWithinManifestLimits(subtypeId, OwnerId))
+            if (_pendingNexusLimitValidation)
+            {
+                string waitReason;
+                if (!LimitsNexusSync.TryGetFreshValidationState(out waitReason))
+                {
+                    Utils.Log("ExecuteExternalLimitValidation: group " + GetGroupKey() + " is " +
+                              waitReason + "; keeping core and retrying.", 3);
+                    ScheduleNexusLimitValidation(false);
+                    return;
+                }
+            }
+
+            var notify = !_pendingNexusLimitValidation || _nexusLimitFailureConfirmations > 0;
+            var factionOk = PerFactionManager.IsGroupWithinFactionLimits(OwningFaction, OwnerId, subtypeId, notify);
+            var playerOk = PerPlayerManager.IsGroupWithinPlayerLimits(OwnerId, subtypeId, notify);
+            var manifestOk = PerManifestGroupManager.IsGroupWithinManifestLimits(subtypeId, OwnerId, notify);
+            if (factionOk && playerOk && manifestOk)
+            {
+                ClearExternalLimitValidation();
                 return;
+            }
+
+            LogExternalLimitFailure(subtypeId, factionOk, playerOk, manifestOk);
+
+            if (_pendingNexusLimitValidation && _nexusLimitFailureConfirmations == 0)
+            {
+                _nexusLimitFailureConfirmations = 1;
+                Utils.Log("ExecuteExternalLimitValidation: first fresh failure for " + subtypeId +
+                          " on group " + GetGroupKey() + "; requiring a second fresh Nexus round.", 1);
+                ScheduleNexusLimitValidation(true);
+                return;
+            }
 
             Utils.Log("ExecuteExternalLimitValidation: removing core " + subtypeId +
                       " from group " + GetGroupKey() +
                       " because owner, faction, or manifest limits failed.", 1);
+            ClearExternalLimitValidation();
             mainCore.CoreBlock.SlimBlock.RemoveAndRefund();
             ResetCore();
+        }
+
+        private void LogExternalLimitFailure(string subtypeId, bool factionOk, bool playerOk, bool manifestOk)
+        {
+            var ownerId = OwnerId;
+            var remotePlayerCount = LimitsNexusSync.GetRemotePlayerCount(ownerId, subtypeId);
+            var totalPlayerCount = PerPlayerManager.GetCurrentCount(ownerId, subtypeId);
+            var localPlayerCount = totalPlayerCount - remotePlayerCount;
+            var core = Session.Config.GetShipCoreByTypeId(subtypeId);
+            var maxPerPlayer = core == null ? -1 : core.MaxPerPlayer;
+
+            Utils.Log("ExternalLimitFailure: server=" + LimitsNexusSync.CurrentServerId +
+                      ", group=" + GetGroupKey() +
+                      ", owner=" + ownerId +
+                      ", core=" + subtypeId +
+                      ", playerLocal=" + localPlayerCount +
+                      ", playerRemote=" + remotePlayerCount +
+                      ", playerTotal=" + totalPlayerCount +
+                      ", maxPerPlayer=" + maxPerPlayer +
+                      ", remoteByServer=" + LimitsNexusSync.DescribeRemotePlayerCounts(ownerId, subtypeId) +
+                      ", factionOk=" + factionOk +
+                      ", playerOk=" + playerOk +
+                      ", manifestOk=" + manifestOk + ".", 1);
         }
         
 

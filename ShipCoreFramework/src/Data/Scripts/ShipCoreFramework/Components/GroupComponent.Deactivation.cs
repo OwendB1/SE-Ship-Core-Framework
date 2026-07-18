@@ -102,6 +102,8 @@ namespace ShipCoreFramework
             _nextMinimumBlocksGateNotificationTick = 0;
             _lastMinimumBlocksGateNotificationSeconds = -1;
             _pendingExternalLimitValidationTick = 0;
+            _pendingNexusLimitValidation = false;
+            _nexusLimitFailureConfirmations = 0;
             ClearPublishedLimitSnapshots();
             InvalidateSpeedStateCache();
             ClearDefenseModifierCache();
