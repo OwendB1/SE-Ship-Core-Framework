@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using ProtoBuf;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.Entity;
@@ -7,20 +6,9 @@ using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
 {
-    [ProtoContract]
-    internal class PacketAction : PacketBase
+    internal partial class PacketAction
     {
-        internal override PacketDirection Direction { get { return PacketDirection.ClientToServer; } }
-
-        [ProtoMember(100)]
-        internal ButtonAction ActionData;
-        internal PacketAction() { } // Empty constructor required for deserialization
-        internal PacketAction(ButtonAction actionData)
-        {
-            this.ActionData = actionData;
-        }
-
-        internal override void Received()
+        partial void ReceiveOnServer()
         {
             IMyPlayer sender;
             if (!TryGetSender(out sender)) return;
@@ -28,8 +16,9 @@ namespace ShipCoreFramework
             Utils.Log($"Received action from {SenderSteamId}: {ActionData.Action}");
             GroupComponent group;
             if (!Utils.TryFindByGridId(ActionData.CubegridEntityId, out group)) return;
-            var mainCore = group.MainCoreComponent;
+            CoreComponent mainCore = group.MainCoreComponent;
             if (mainCore == null || !HasAccess(sender, mainCore.CoreBlock)) return;
+
             switch (ActionData.Action)
             {
                 case CoreActionType.Boost:
@@ -48,21 +37,9 @@ namespace ShipCoreFramework
         }
     }
 
-    [ProtoContract]
-    internal class PacketSetMainCore : PacketBase
+    internal partial class PacketSetMainCore
     {
-        internal override PacketDirection Direction { get { return PacketDirection.ClientToServer; } }
-
-        [ProtoMember(200)]
-        internal SetMainCoreAction ActionData;
-
-        internal PacketSetMainCore() { } // for deserialization
-        internal PacketSetMainCore(SetMainCoreAction actionData)
-        {
-            this.ActionData = actionData;
-        }
-
-        internal override void Received()
+        partial void ReceiveOnServer()
         {
             IMyPlayer sender;
             if (!TryGetSender(out sender)) return;
@@ -70,51 +47,47 @@ namespace ShipCoreFramework
             GroupComponent group;
             if (!Utils.TryFindByGridId(ActionData.CubegridEntityId, out group)) return;
 
-            MyEntity ent;
-            if (!MyEntities.TryGetEntityById(ActionData.BlockEntityId, out ent))
-                return;
+            MyEntity entity;
+            if (!MyEntities.TryGetEntityById(ActionData.BlockEntityId, out entity)) return;
 
-            var block = ent as MyCubeBlock;
-            if (block == null)
-                return;
+            MyCubeBlock block = entity as MyCubeBlock;
+            if (block == null) return;
 
             CoreComponent newMain;
-            if (!group.CoreDictionary.TryGetValue(block, out newMain))
-                return;
+            if (!group.CoreDictionary.TryGetValue(block, out newMain)) return;
 
-            var old = group.MainCoreComponent;
+            CoreComponent oldMain = group.MainCoreComponent;
             if (!HasAccess(sender, newMain.CoreBlock) ||
-                (old != null && !HasAccess(sender, old.CoreBlock))) return;
-            if (!ReferenceEquals(old, newMain))
-                group.Activate(newMain);
+                (oldMain != null && !HasAccess(sender, oldMain.CoreBlock))) return;
 
+            if (!ReferenceEquals(oldMain, newMain))
+                group.Activate(newMain);
             if (!ReferenceEquals(group.MainCoreComponent, newMain)) return;
 
-            var players = new List<IMyPlayer>();
+            List<IMyPlayer> players = new List<IMyPlayer>();
             MyAPIGateway.Players.GetPlayers(players);
-            var sync = new PacketSetMainCoreSync(new SetMainCoreAction {
+            PacketSetMainCoreSync sync = new PacketSetMainCoreSync(new SetMainCoreAction
+            {
                 CubegridEntityId = ActionData.CubegridEntityId,
                 BlockEntityId = ActionData.BlockEntityId
             });
-            foreach (var p in players) Session.Networking.SendToPlayer(sync, p.SteamUserId);
+            foreach (IMyPlayer player in players)
+                Session.Networking.SendToPlayer(sync, player.SteamUserId);
         }
     }
-    [ProtoContract]
-    internal class PacketRequestConfig : PacketBase
+
+    internal partial class PacketRequestConfig
     {
-        internal override PacketDirection Direction { get { return PacketDirection.ClientToServer; } }
-
-        internal PacketRequestConfig() { } // for deserialization
-
-        internal override void Received()
+        partial void ReceiveOnServer()
         {
             if (!MyAPIGateway.Multiplayer.IsServer) return;
+
             IMyPlayer sender;
             if (!TryGetSender(out sender)) return;
             if (!Session.CanServeConfigRequest(SenderSteamId)) return;
 
-            var response = new PacketSendConfig(MyAPIGateway.Utilities.SerializeToXML(Session.Config));
-
+            PacketSendConfig response = new PacketSendConfig(
+                MyAPIGateway.Utilities.SerializeToXML(Session.Config));
             Session.Networking.SendToPlayer(response, SenderSteamId);
         }
     }

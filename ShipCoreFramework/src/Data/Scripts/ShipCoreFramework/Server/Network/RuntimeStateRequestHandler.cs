@@ -1,14 +1,10 @@
-using ProtoBuf;
 using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
 {
-    [ProtoContract]
-    internal sealed class PacketRequestRuntimeState : PacketBase
+    internal sealed partial class PacketRequestRuntimeState
     {
-        internal override PacketDirection Direction { get { return PacketDirection.ClientToServer; } }
-
-        internal override void Received()
+        partial void ReceiveOnServer()
         {
             IMyPlayer sender;
             if (!TryGetSender(out sender)) return;

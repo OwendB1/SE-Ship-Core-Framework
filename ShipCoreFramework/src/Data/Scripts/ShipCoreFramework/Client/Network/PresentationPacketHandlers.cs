@@ -1,93 +1,49 @@
 using System;
-using ProtoBuf;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.Entity;
 
 namespace ShipCoreFramework
 {
-    [ProtoContract]
-    internal class PacketSetMainCoreSync : PacketBase
+    internal partial class PacketSetMainCoreSync
     {
-        internal override PacketDirection Direction { get { return PacketDirection.ServerToClient; } }
-
-        [ProtoMember(300)]
-        internal SetMainCoreAction ActionData;
-
-        internal PacketSetMainCoreSync() { } // for deserialization
-        internal PacketSetMainCoreSync(SetMainCoreAction actionData)
-        {
-            this.ActionData = actionData;
-        }
-
-        internal override void Received()
+        partial void ReceiveOnClient()
         {
             GroupComponent group;
             if (!Utils.TryFindByGridId(ActionData.CubegridEntityId, out group)) return;
 
-            MyEntity ent;
-            if (!MyEntities.TryGetEntityById(ActionData.BlockEntityId, out ent))
-                return;
+            MyEntity entity;
+            if (!MyEntities.TryGetEntityById(ActionData.BlockEntityId, out entity)) return;
 
-            var block = ent as MyCubeBlock;
-            if (block == null)
-                return;
+            MyCubeBlock block = entity as MyCubeBlock;
+            if (block == null) return;
 
-            foreach (var kv in group.CoreDictionary)
+            foreach (var pair in group.CoreDictionary)
             {
-                var isMain = kv.Key == block;
-                kv.Value.IsMainCore = isMain;
-                if (isMain) group.MainCoreComponent = kv.Value;
+                bool isMain = pair.Key == block;
+                pair.Value.IsMainCore = isMain;
+                if (isMain) group.MainCoreComponent = pair.Value;
             }
 
             group.SyncBeaconComponents();
         }
     }
 
-    [ProtoContract]
-    internal class PacketNotify : PacketBase {
-        internal override PacketDirection Direction { get { return PacketDirection.ServerToClient; } }
-
-        [ProtoMember(400)] internal string Text;
-        [ProtoMember(401)] internal int TimeMs;
-        [ProtoMember(402)] internal string Font;
-
-        internal PacketNotify() {}  // for deserialization
-        internal PacketNotify(string text, int timeMs = 2000, string font = "Red") {
-            Text = text; TimeMs = timeMs; Font = font;
-        }
-
-        internal override void Received() {
+    internal partial class PacketNotify
+    {
+        partial void ReceiveOnClient()
+        {
             Text = Cap(Text, 2048);
             Font = Cap(Font, 32);
             TimeMs = Math.Max(0, Math.Min(TimeMs, 60000));
-            // Runs on the client that received it
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
                 NotificationInstance.ShowNotification(Text, TimeMs, Font));
         }
     }
 
-    [ProtoContract]
-    internal class PacketCountdown : PacketBase
+    internal partial class PacketCountdown
     {
-        internal override PacketDirection Direction { get { return PacketDirection.ServerToClient; } }
-
-        [ProtoMember(700)] internal string Key;
-        [ProtoMember(701)] internal string Text;
-        [ProtoMember(702)] internal int RemainingSeconds;
-        [ProtoMember(703)] internal string Font;
-
-        internal PacketCountdown() { } // for deserialization
-
-        internal PacketCountdown(string key, string text, int remainingSeconds, string font = "Red")
-        {
-            Key = key;
-            Text = text;
-            RemainingSeconds = remainingSeconds;
-            Font = font;
-        }
-
-        internal override void Received()
+        partial void ReceiveOnClient()
         {
             Key = Cap(Key, 128);
             Text = Cap(Text, 2048);
@@ -102,26 +58,14 @@ namespace ShipCoreFramework
             });
         }
     }
-    [ProtoContract]
-    internal class PacketSendConfig : PacketBase
+
+    internal partial class PacketSendConfig
     {
         private const int MaxConfigCharacters = 1024 * 1024;
-        internal override PacketDirection Direction { get { return PacketDirection.ServerToClient; } }
 
-        [ProtoMember(1)]
-        internal string ConfigXml;
-
-        internal PacketSendConfig() { } // for deserialization
-
-        internal PacketSendConfig(string configXml)
+        partial void ReceiveOnClient()
         {
-            ConfigXml = configXml;
-        }
-
-        internal override void Received()
-        {
-            if (Session.IsShuttingDown)
-                return;
+            if (Session.IsShuttingDown) return;
 
             try
             {
@@ -142,12 +86,9 @@ namespace ShipCoreFramework
                     Session.Config.LoadConfig(false);
                 }
 
-                var import = MyAPIGateway.Utilities.SerializeFromXML<ModConfig>(ConfigXml);
+                ModConfig import = MyAPIGateway.Utilities.SerializeFromXML<ModConfig>(ConfigXml);
                 if (import != null)
-                {
-                    // Only world-level settings are serialized here, so copy them onto the already-loaded config instance.
                     Session.Config.ApplyWorldSettingsFrom(import);
-                }
 
                 Session.Config.EnsurePersistedWorldSettings();
                 Session.Config.ResolveSelectedNoCore();
@@ -156,9 +97,9 @@ namespace ShipCoreFramework
                 ModAPI.BroadcastConfigReceived();
                 Session.RequestRuntimeState();
             }
-            catch (Exception e)
+            catch (Exception exception)
             {
-                Utils.Log($"Config sync failed: {e}", 2, "Config Sync");
+                Utils.Log($"Config sync failed: {exception}", 2, "Config Sync");
             }
         }
     }
