@@ -8,7 +8,7 @@ Ship Core Framework is compiled as one Space Engineers mod assembly, but its sou
 | --- | --- |
 | `Client/` | Presentation, local input, replicated-state consumption, and client-bound packet handlers. |
 | `Server/` | Rule evaluation, world mutation, persistence, enforcement, authoritative snapshots, and client-to-server packet handlers. |
-| `Shared/` | Wire contracts and immutable data transferred between roles. |
+| `Shared/` | Wire contracts, observer state, and role-neutral coordinators/helpers used by both roles. |
 | `Session/` | Session lifecycle and grid-group observation, with role hooks under `Session/Client` and `Session/Server`. |
 | `Config/` | Shared configuration models and mod-asset loading, with world persistence under `Config/Server`. |
 | `API/` | The external mod API contract and shared read surface, with authoritative mutations under `API/Server`. |
