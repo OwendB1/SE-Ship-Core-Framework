@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 
@@ -9,11 +8,6 @@ namespace ShipCoreFramework
         private const int ExternalLimitValidationDelayTicks = 2 * 60;
         private const int NexusLimitValidationGraceTicks = 5 * 60;
         private const int RuntimeLimitEventHistorySize = 64;
-
-        private readonly object _limitSnapshotLock = new object();
-        private ConcurrentDictionary<BlockLimit, LimitBucket> _limits = new ConcurrentDictionary<BlockLimit, LimitBucket>();
-
-        internal ConcurrentDictionary<BlockLimit, LimitBucket> Limits => _limits;
 
         private bool _minimumBlocksLimitedBlockGateActive;
         private int _minimumBlocksGateActivationTick;
@@ -30,10 +24,6 @@ namespace ShipCoreFramework
         private readonly object _runtimeLimitEventLock = new object();
         private readonly Queue<RuntimeLimitEnforcementEvent> _runtimeLimitEnforcementEvents =
             new Queue<RuntimeLimitEnforcementEvent>();
-        private int _cachedEffectiveMaxBlocks = -1;
-        private int _cachedEffectiveMaxPCU = -1;
-        private float _cachedEffectiveMaxMass = -1f;
-        private Dictionary<BlockLimit, float> _cachedEffectiveMaxCounts = new Dictionary<BlockLimit, float>();
 
         private int GetLimitGeneration()
         {
@@ -78,11 +68,6 @@ namespace ShipCoreFramework
                 lastBlocksPunished = Interlocked.CompareExchange(ref _lastBlocksPunished, 0, 0);
                 return _runtimeLimitEnforcementEvents.ToArray();
             }
-        }
-
-        private void PublishLimitsSnapshot(ConcurrentDictionary<BlockLimit, LimitBucket> limits)
-        {
-            Interlocked.Exchange(ref _limits, limits ?? new ConcurrentDictionary<BlockLimit, LimitBucket>());
         }
 
         private void ClearPublishedLimitSnapshots()

@@ -17,15 +17,6 @@ namespace ShipCoreFramework
             }
         }
 
-        internal bool GetFrictionEnforcementEnabled()
-        {
-            lock (SpeedStateLock)
-            {
-                var shipCore = ShipCore;
-                return shipCore != null && shipCore.SpeedLimitType == SpeedLimitType.Friction && FrictionEnforcementEnabled;
-            }
-        }
-
         internal void SetFrictionMaximumDecelerationOverride(float value)
         {
             lock (SpeedStateLock)
@@ -33,14 +24,6 @@ namespace ShipCoreFramework
                 FrictionMaximumDecelerationOverride = value;
                 InvalidateSpeedStateCache();
                 Session.MarkRuntimeStateDirty(this);
-            }
-        }
-
-        internal float GetFrictionMaximumDecelerationOverride()
-        {
-            lock (SpeedStateLock)
-            {
-                return FrictionMaximumDecelerationOverride;
             }
         }
 
@@ -54,14 +37,6 @@ namespace ShipCoreFramework
             }
         }
 
-        internal float GetMinimumFrictionSpeedAbsoluteOverride()
-        {
-            lock (SpeedStateLock)
-            {
-                return MinimumFrictionSpeedAbsoluteOverride;
-            }
-        }
-
         internal void SetMaximumFrictionSpeedAbsoluteOverride(float value)
         {
             lock (SpeedStateLock)
@@ -69,14 +44,6 @@ namespace ShipCoreFramework
                 MaximumFrictionSpeedAbsoluteOverride = value;
                 InvalidateSpeedStateCache();
                 Session.MarkRuntimeStateDirty(this);
-            }
-        }
-
-        internal float GetMaximumFrictionSpeedAbsoluteOverride()
-        {
-            lock (SpeedStateLock)
-            {
-                return MaximumFrictionSpeedAbsoluteOverride;
             }
         }
 
@@ -90,14 +57,6 @@ namespace ShipCoreFramework
             }
         }
 
-        internal float GetMinimumFrictionSpeedModifierOverride()
-        {
-            lock (SpeedStateLock)
-            {
-                return MinimumFrictionSpeedModifierOverride;
-            }
-        }
-
         internal void SetMaximumFrictionSpeedModifierOverride(float value)
         {
             lock (SpeedStateLock)
@@ -105,14 +64,6 @@ namespace ShipCoreFramework
                 MaximumFrictionSpeedModifierOverride = value;
                 InvalidateSpeedStateCache();
                 Session.MarkRuntimeStateDirty(this);
-            }
-        }
-
-        internal float GetMaximumFrictionSpeedModifierOverride()
-        {
-            lock (SpeedStateLock)
-            {
-                return MaximumFrictionSpeedModifierOverride;
             }
         }
     }
