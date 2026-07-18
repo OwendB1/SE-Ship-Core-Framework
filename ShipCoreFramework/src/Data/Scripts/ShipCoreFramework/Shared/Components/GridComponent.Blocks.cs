@@ -1,7 +1,5 @@
 using System.Collections.Generic;
-using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
-using IMyTerminalBlock = Sandbox.ModAPI.IMyTerminalBlock;
 
 namespace ShipCoreFramework
 {
@@ -65,14 +63,6 @@ namespace ShipCoreFramework
             }
 
             RemoveBlockAuthoritative(block, groupComponent);
-        }
-
-        private void ShipControllerOnPropertiesChanged(IMyTerminalBlock obj)
-        {
-            var groupComponent = GroupComponent;
-            if (groupComponent == null || groupComponent.MainCoreComponent != null) return;
-
-            groupComponent.OnNoCoreDirectionReferencePropertiesChanged();
         }
     }
 }

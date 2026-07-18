@@ -13,6 +13,10 @@ namespace ShipCoreFramework
             if (functionalBlock != null)
                 functionalBlock.EnabledChanged -= FuncBlockOnEnabledChanged;
 
+            var shipController = functionalBlock as IMyShipController;
+            if (shipController != null)
+                shipController.PropertiesChanged -= ShipControllerOnPropertiesChanged;
+
             var connector = fatBlock as IMyShipConnector;
             if (connector == null) return;
 
@@ -23,6 +27,8 @@ namespace ShipCoreFramework
 
         private void CleanAuthoritativeState()
         {
+            lock (_shipControllersLock)
+                _shipControllers.Clear();
             _trackedConnectorIds.Clear();
             PublishLimitsSnapshot(null);
 

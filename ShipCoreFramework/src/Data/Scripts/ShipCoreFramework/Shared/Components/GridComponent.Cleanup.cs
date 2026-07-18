@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
@@ -24,16 +23,7 @@ namespace ShipCoreFramework
 
             foreach (var block in blocksCopy)
             {
-                var fatBlock = block?.FatBlock;
-                var shipController = fatBlock as IMyShipController;
-                if (shipController != null) shipController.PropertiesChanged -= ShipControllerOnPropertiesChanged;
-
                 if (Session.IsServer) DetachAuthoritativeBlockEvents(block);
-            }
-
-            lock (_shipControllersLock)
-            {
-                _shipControllers.Clear();
             }
 
             if (Session.IsServer) CleanAuthoritativeState();

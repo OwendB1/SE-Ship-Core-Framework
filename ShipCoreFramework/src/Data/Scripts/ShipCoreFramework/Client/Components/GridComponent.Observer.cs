@@ -11,7 +11,6 @@ namespace ShipCoreFramework
             if (IsTrackedBlock(block)) return false;
 
             var functionalBlock = block.FatBlock as IMyFunctionalBlock;
-            var shipController = functionalBlock as IMyShipController;
             if (Utils.IsCoreBlock(functionalBlock))
             {
                 CoreComponent existingCore;
@@ -31,12 +30,6 @@ namespace ShipCoreFramework
             var terminalBlock = functionalBlock as IMyTerminalBlock;
             if (terminalBlock != null && groupComponent.HasRuntimeState)
                 CubeGridModifiers.ApplyModifiers(terminalBlock, groupComponent.Modifiers);
-            if (shipController != null)
-            {
-                TrackShipController(shipController);
-                shipController.PropertiesChanged += ShipControllerOnPropertiesChanged;
-            }
-
             groupComponent.ObserveClientBlockCount(1);
             return true;
         }
@@ -52,13 +45,6 @@ namespace ShipCoreFramework
 
             bool wasTracked;
             lock (_blocksLock) wasTracked = _blocks.Remove(block);
-
-            var shipController = functionalBlock as IMyShipController;
-            if (shipController != null)
-            {
-                UntrackShipController(shipController);
-                shipController.PropertiesChanged -= ShipControllerOnPropertiesChanged;
-            }
 
             if (wasTracked) groupComponent.ObserveClientBlockCount(-1);
         }
