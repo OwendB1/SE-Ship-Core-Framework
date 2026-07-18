@@ -25,7 +25,6 @@ namespace ShipCoreFramework
                 if (isMain) group.MainCoreComponent = pair.Value;
             }
 
-            group.SyncBeaconComponents();
         }
     }
 
