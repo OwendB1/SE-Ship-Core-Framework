@@ -110,7 +110,10 @@ namespace ShipCoreFramework
                 ManifestCounts = manifestCounts.ToArray(),
                 SpeedPunishmentReasons = GetSpeedPunishmentGateDescriptions().ToArray(),
                 ModifierPunishmentReasons = GetModifierPunishmentGateDescriptions().ToArray(),
-                LimitedBlockPunishmentReasons = GetLimitedBlockPunishmentGateDescriptions().ToArray()
+                LimitedBlockPunishmentReasons = GetLimitedBlockPunishmentGateDescriptions().ToArray(),
+                LimitRevision = Interlocked.CompareExchange(ref _publishedLimitRevision, 0, 0),
+                LimitEnforcementRevision = Interlocked.CompareExchange(ref _limitEnforcementRevision, 0, 0),
+                LastBlocksPunished = Interlocked.CompareExchange(ref _lastBlocksPunished, 0, 0)
             };
         }
 
@@ -120,9 +123,11 @@ namespace ShipCoreFramework
 
             var nextModifiers = FromRuntimeData(state.Modifiers);
             var modifiersChanged = !_runtimeStateReceived || !SameModifiers(_cachedActiveGridModifiers, nextModifiers);
+            if (_runtimeStateReceived) BroadcastRuntimeStateChanges(state);
             _runtimeStateReceived = true;
             _runtimeCoreSubtypeId = state.CoreSubtypeId ?? string.Empty;
             _runtimeOwnerId = state.OwnerId;
+            _runtimeMainCoreBlockId = state.MainCoreBlockId;
             _runtimeCoreCount = state.CoreCount;
             _runtimePlayerCoreCount = state.PlayerCoreCount;
             _runtimeFactionCoreCount = state.FactionCoreCount;
@@ -137,6 +142,8 @@ namespace ShipCoreFramework
             _runtimeSpeedPunishmentReasons = state.SpeedPunishmentReasons ?? Array.Empty<string>();
             _runtimeModifierPunishmentReasons = state.ModifierPunishmentReasons ?? Array.Empty<string>();
             _runtimeLimitedBlockPunishmentReasons = state.LimitedBlockPunishmentReasons ?? Array.Empty<string>();
+            _runtimeLimitRevision = state.LimitRevision;
+            _runtimeLimitEnforcementRevision = state.LimitEnforcementRevision;
             _lastOwnerId = state.OwnerId;
             Deactivated = state.Deactivated;
             PunishModifiers = state.PunishModifiers;
@@ -193,6 +200,49 @@ namespace ShipCoreFramework
             if (modifiersChanged) ApplyModifiers(_cachedActiveGridModifiers);
         }
 
+        private void BroadcastRuntimeStateChanges(GroupRuntimeState state)
+        {
+            var eventGridId = state.RepresentativeGridId == 0 ? state.GroupId : state.RepresentativeGridId;
+            if (_runtimeMainCoreBlockId != state.MainCoreBlockId)
+            {
+                if (_runtimeMainCoreBlockId != 0)
+                {
+                    var oldCore = Session.Config.GetShipCoreByTypeId(_runtimeCoreSubtypeId);
+                    ModAPI.BroadcastCoreDeactivated(eventGridId, _runtimeCoreSubtypeId,
+                        oldCore == null ? _runtimeCoreSubtypeId : oldCore.UniqueName);
+                }
+                if (state.MainCoreBlockId != 0)
+                {
+                    var newCore = Session.Config.GetShipCoreByTypeId(state.CoreSubtypeId ?? string.Empty);
+                    ModAPI.BroadcastCoreActivated(eventGridId, state.CoreSubtypeId,
+                        newCore == null ? state.CoreSubtypeId : newCore.UniqueName);
+                }
+            }
+
+            if (BoostEnabled != state.BoostActive)
+            {
+                if (state.BoostActive) ModAPI.BroadcastBoostActivated(eventGridId);
+                else ModAPI.BroadcastBoostDeactivated(eventGridId);
+            }
+            if (_activeDefenseEnabled != state.ActiveDefense)
+            {
+                if (state.ActiveDefense) ModAPI.BroadcastActiveDefenseActivated(eventGridId);
+                else ModAPI.BroadcastActiveDefenseDeactivated(eventGridId);
+            }
+
+            var oldGridIds = new HashSet<long>(_cachedMechanicalGridIds ?? Array.Empty<long>());
+            var newGridIds = new HashSet<long>(state.GridIds ?? Array.Empty<long>());
+            foreach (var gridId in newGridIds)
+                if (!oldGridIds.Contains(gridId)) ModAPI.BroadcastGridAddedToGroup(gridId);
+            foreach (var gridId in oldGridIds)
+                if (!newGridIds.Contains(gridId)) ModAPI.BroadcastGridRemovedFromGroup(gridId, eventGridId);
+
+            if (state.LimitRevision > _runtimeLimitRevision)
+                ModAPI.BroadcastLimitsRecalculated(eventGridId);
+            if (state.LimitEnforcementRevision > _runtimeLimitEnforcementRevision)
+                ModAPI.BroadcastLimitsEnforced(eventGridId, state.LastBlocksPunished);
+        }
+
         internal void ClearRuntimeState()
         {
             if (Session.IsServer || !_runtimeStateReceived) return;
@@ -206,6 +256,9 @@ namespace ShipCoreFramework
             _runtimeSpeedPunishmentReasons = Array.Empty<string>();
             _runtimeModifierPunishmentReasons = Array.Empty<string>();
             _runtimeLimitedBlockPunishmentReasons = Array.Empty<string>();
+            _runtimeMainCoreBlockId = 0;
+            _runtimeLimitRevision = 0;
+            _runtimeLimitEnforcementRevision = 0;
             Deactivated = false;
             PunishModifiers = false;
             PunishSpeed = false;

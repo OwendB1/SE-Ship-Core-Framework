@@ -72,6 +72,9 @@ namespace ShipCoreFramework
         [ProtoMember(47)] internal string[] SpeedPunishmentReasons = Array.Empty<string>();
         [ProtoMember(48)] internal string[] ModifierPunishmentReasons = Array.Empty<string>();
         [ProtoMember(49)] internal string[] LimitedBlockPunishmentReasons = Array.Empty<string>();
+        [ProtoMember(50)] internal int LimitRevision;
+        [ProtoMember(51)] internal int LimitEnforcementRevision;
+        [ProtoMember(52)] internal int LastBlocksPunished;
     }
 
     internal static class RuntimeStateStore

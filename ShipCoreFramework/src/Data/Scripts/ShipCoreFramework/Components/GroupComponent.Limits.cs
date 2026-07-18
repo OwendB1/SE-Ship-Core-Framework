@@ -588,6 +588,7 @@ namespace ShipCoreFramework
 
                 if (appliedPunishments > 0 && MyGroup != null)
                 {
+                    MarkLimitsEnforced(appliedPunishments);
                     Utils.Log("ExecutePendingPunishments: applied " + appliedPunishments +
                               " block punishments for group " + GetGroupKey() + ".", 1);
                     ModAPI.BroadcastLimitsEnforced(representativeGridId, appliedPunishments);
@@ -765,6 +766,7 @@ namespace ShipCoreFramework
                         snapshot.GridComponent.PublishLimitsSnapshot(snapshot.Limits);
 
                 PublishLimitsSnapshot(groupLimits);
+                MarkLimitsPublished();
             }
 
             if (MyGroup != null)

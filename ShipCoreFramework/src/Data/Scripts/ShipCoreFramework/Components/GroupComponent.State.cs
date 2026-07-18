@@ -81,6 +81,9 @@ namespace ShipCoreFramework
         private string[] _runtimeSpeedPunishmentReasons = Array.Empty<string>();
         private string[] _runtimeModifierPunishmentReasons = Array.Empty<string>();
         private string[] _runtimeLimitedBlockPunishmentReasons = Array.Empty<string>();
+        private long _runtimeMainCoreBlockId;
+        private int _runtimeLimitRevision;
+        private int _runtimeLimitEnforcementRevision;
 
         internal int CoreCount => !Session.IsServer && _runtimeStateReceived
             ? _runtimeCoreCount

@@ -23,6 +23,9 @@ namespace ShipCoreFramework
         private bool _pendingNexusLimitValidation;
         private int _nexusLimitFailureConfirmations;
         private int _limitGeneration;
+        private int _publishedLimitRevision;
+        private int _limitEnforcementRevision;
+        private int _lastBlocksPunished;
         private int _cachedEffectiveMaxBlocks = -1;
         private int _cachedEffectiveMaxPCU = -1;
         private float _cachedEffectiveMaxMass = -1f;
@@ -39,6 +42,17 @@ namespace ShipCoreFramework
             {
                 Interlocked.Increment(ref _limitGeneration);
             }
+        }
+
+        private void MarkLimitsPublished()
+        {
+            Interlocked.Increment(ref _publishedLimitRevision);
+        }
+
+        private void MarkLimitsEnforced(int blocksPunished)
+        {
+            Interlocked.Exchange(ref _lastBlocksPunished, blocksPunished);
+            Interlocked.Increment(ref _limitEnforcementRevision);
         }
 
         private void PublishLimitsSnapshot(ConcurrentDictionary<BlockLimit, LimitBucket> limits)
