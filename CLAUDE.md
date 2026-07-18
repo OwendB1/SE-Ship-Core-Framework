@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Ownership**: Exclusive rights belong to Blues-Hailfire and ODB-Tech. Not for redistribution or Steam Workshop uploading.
 
-**Main branch**: `v3-framework`
+**Main branch**: `main`
 
 ## Building and Testing
 
