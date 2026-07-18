@@ -79,6 +79,8 @@ namespace ShipCoreFramework
 
         internal List<string> GetSpeedPunishmentGateDescriptions()
         {
+            if (!Session.IsServer && _runtimeStateReceived)
+                return new List<string>(_runtimeSpeedPunishmentReasons);
             var speedReasons = new List<string>();
             CollectTriggeredPunishmentGates(speedReasons, null);
             return speedReasons;
@@ -86,6 +88,8 @@ namespace ShipCoreFramework
 
         internal List<string> GetModifierPunishmentGateDescriptions()
         {
+            if (!Session.IsServer && _runtimeStateReceived)
+                return new List<string>(_runtimeModifierPunishmentReasons);
             var modifierReasons = new List<string>();
             CollectTriggeredPunishmentGates(null, modifierReasons);
             return modifierReasons;

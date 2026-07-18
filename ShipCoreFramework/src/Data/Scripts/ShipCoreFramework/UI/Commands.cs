@@ -732,16 +732,14 @@ namespace ShipCoreFramework
             var currentMaxPerPlayer = groupComponent.ShipCore.MaxPerPlayer;
             if (currentMaxPerPlayer > 0)
             {
-                var ownerId = groupComponent.OwnerId;
-                body += $"Per Player Limit:{PerPlayerManager.GetCurrentCount(ownerId, shipCoreSubtypeId)}/{currentMaxPerPlayer}\n";
+                body += $"Per Player Limit:{groupComponent.GetCurrentPlayerCoreCount()}/{currentMaxPerPlayer}\n";
             }
             
             if(PerFactionManager.HasFactionCoreLimit(groupComponent.ShipCore))
             {
                 if (groupComponent.OwningFaction != null)
                 {
-                    var owningFactionId = groupComponent.OwningFaction.FactionId;
-                    body += $"Per Faction Limit:{FormatFactionLimit(groupComponent.ShipCore, groupComponent.OwningFaction, groupComponent.OwnerId, PerFactionManager.GetCurrentCount(owningFactionId, shipCoreSubtypeId))}\n";
+                    body += $"Per Faction Limit:{FormatFactionLimit(groupComponent.ShipCore, groupComponent.OwningFaction, groupComponent.OwnerId, groupComponent.GetCurrentFactionCoreCount())}\n";
                 }
                 else
                 {
@@ -753,7 +751,7 @@ namespace ShipCoreFramework
             {
                 foreach (var manifestGroup in PerManifestGroupManager.GetManifestGroups(groupComponent.ShipCore))
                     body +=
-                        $"Manifest Group Limit:{manifestGroup.Name} {PerManifestGroupManager.GetCurrentCount(manifestGroup.Name)}/{manifestGroup.MaxCount}\n";
+                        $"Manifest Group Limit:{manifestGroup.Name} {groupComponent.GetCurrentManifestCoreCount(manifestGroup.Name)}/{manifestGroup.MaxCount}\n";
             }
 
             // Grid Statistics

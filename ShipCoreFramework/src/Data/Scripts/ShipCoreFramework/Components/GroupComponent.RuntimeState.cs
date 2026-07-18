@@ -41,16 +41,29 @@ namespace ShipCoreFramework
             var directionReference = GetDirectionLockReferenceBlock();
             var modifiers = Modifiers;
             var speedModifiers = SpeedModifiers;
+            var ownerId = OwnerId;
+            var faction = OwningFaction;
+            var subtypeId = MainCoreComponent == null ? string.Empty : MainCoreComponent.SubtypeId;
+            var manifestCounts = new List<RuntimeManifestCount>();
+            foreach (var manifest in PerManifestGroupManager.GetManifestGroups(ShipCore))
+            {
+                if (manifest == null) continue;
+                manifestCounts.Add(new RuntimeManifestCount
+                {
+                    Name = manifest.Name ?? string.Empty,
+                    Count = PerManifestGroupManager.GetCurrentCount(manifest.Name)
+                });
+            }
             return new GroupRuntimeState
             {
                 GroupId = gridIds[0],
                 Revision = revision,
                 GridIds = gridIds.ToArray(),
-                CoreSubtypeId = MainCoreComponent == null ? string.Empty : MainCoreComponent.SubtypeId,
+                CoreSubtypeId = subtypeId,
                 MainCoreBlockId = MainCoreComponent == null ? 0L : MainCoreComponent.CoreBlock.EntityId,
                 CoreCount = CoreDictionary.Count,
                 DirectionReferenceBlockId = directionReference == null ? 0L : directionReference.EntityId,
-                OwnerId = OwnerId,
+                OwnerId = ownerId,
                 Deactivated = Deactivated,
                 Ignored = GetCachedIsIgnoredGroup(),
                 PunishModifiers = PunishModifiers,
@@ -83,7 +96,15 @@ namespace ShipCoreFramework
                 ActiveDefenseCooldownTimer = _activeDefenseCooldownTimer,
                 PowerOverclockActive = _powerOverclockActive,
                 PowerOverclockDurationTimer = _powerOverclockDurationTimer,
-                PowerOverclockCooldownTimer = _powerOverclockCooldownTimer
+                PowerOverclockCooldownTimer = _powerOverclockCooldownTimer,
+                RepresentativeGridId = GetCachedRepresentativeGridId(),
+                EffectiveBoostActive = EffectiveBoostEnabled,
+                PlayerCoreCount = PerPlayerManager.GetCurrentCount(ownerId, subtypeId),
+                FactionCoreCount = faction == null ? 0 : PerFactionManager.GetCurrentCount(faction.FactionId, subtypeId),
+                ManifestCounts = manifestCounts.ToArray(),
+                SpeedPunishmentReasons = GetSpeedPunishmentGateDescriptions().ToArray(),
+                ModifierPunishmentReasons = GetModifierPunishmentGateDescriptions().ToArray(),
+                LimitedBlockPunishmentReasons = GetLimitedBlockPunishmentGateDescriptions().ToArray()
             };
         }
 
@@ -96,6 +117,19 @@ namespace ShipCoreFramework
             _runtimeOwnerId = state.OwnerId;
             _runtimeMainCoreBlockId = state.MainCoreBlockId;
             _runtimeCoreCount = state.CoreCount;
+            _runtimePlayerCoreCount = state.PlayerCoreCount;
+            _runtimeFactionCoreCount = state.FactionCoreCount;
+            _runtimeManifestCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            if (state.ManifestCounts != null)
+                for (var i = 0; i < state.ManifestCounts.Length; i++)
+                {
+                    var count = state.ManifestCounts[i];
+                    if (count != null && !string.IsNullOrEmpty(count.Name))
+                        _runtimeManifestCounts[count.Name] = count.Count;
+                }
+            _runtimeSpeedPunishmentReasons = state.SpeedPunishmentReasons ?? Array.Empty<string>();
+            _runtimeModifierPunishmentReasons = state.ModifierPunishmentReasons ?? Array.Empty<string>();
+            _runtimeLimitedBlockPunishmentReasons = state.LimitedBlockPunishmentReasons ?? Array.Empty<string>();
             _lastOwnerId = state.OwnerId;
             Deactivated = state.Deactivated;
             PunishModifiers = state.PunishModifiers;
@@ -118,7 +152,8 @@ namespace ShipCoreFramework
             _cachedEffectiveMaxBlocks = state.MaxBlocks;
             _cachedEffectiveMaxPCU = state.MaxPcu;
             _cachedEffectiveMaxMass = state.MaxMass;
-            Interlocked.Exchange(ref _cachedRepresentativeGridId, state.GroupId);
+            Interlocked.Exchange(ref _cachedRepresentativeGridId,
+                state.RepresentativeGridId == 0 ? state.GroupId : state.RepresentativeGridId);
             _cachedMechanicalGridIds = state.GridIds ?? Array.Empty<long>();
             _cachedIsIgnoredGroup = state.Ignored;
             _cachedIsIgnoredByAiOrFactionTag = state.Ignored;
@@ -135,6 +170,7 @@ namespace ShipCoreFramework
             BaseSpeedLimitMetersPerSecond = state.BaseSpeed;
             EffectiveSpeedLimitMetersPerSecond = state.EffectiveSpeed;
             SpeedSourceGroupGridId = state.SpeedSourceGridId;
+            EffectiveBoostEnabled = state.EffectiveBoostActive;
             FrictionEnforcementEnabled = state.FrictionEnabled;
             FrictionMaximumDecelerationOverride = state.FrictionMaximumDecelerationOverride;
             MinimumFrictionSpeedAbsoluteOverride = state.MinimumFrictionSpeedAbsoluteOverride;
@@ -148,6 +184,27 @@ namespace ShipCoreFramework
             PublishRuntimeLimits(state.Limits);
             ApplyRuntimeCore(state.MainCoreBlockId);
             ApplyModifiers(_cachedActiveGridModifiers);
+        }
+
+        internal int GetCurrentPlayerCoreCount()
+        {
+            return Session.IsServer
+                ? PerPlayerManager.GetCurrentCount(OwnerId, ShipCore.SubtypeId)
+                : _runtimePlayerCoreCount;
+        }
+
+        internal int GetCurrentFactionCoreCount()
+        {
+            if (!Session.IsServer) return _runtimeFactionCoreCount;
+            var faction = OwningFaction;
+            return faction == null ? 0 : PerFactionManager.GetCurrentCount(faction.FactionId, ShipCore.SubtypeId);
+        }
+
+        internal int GetCurrentManifestCoreCount(string name)
+        {
+            if (Session.IsServer) return PerManifestGroupManager.GetCurrentCount(name);
+            int count;
+            return name != null && _runtimeManifestCounts.TryGetValue(name, out count) ? count : 0;
         }
 
         private void ApplyRuntimeCore(long mainCoreBlockId)

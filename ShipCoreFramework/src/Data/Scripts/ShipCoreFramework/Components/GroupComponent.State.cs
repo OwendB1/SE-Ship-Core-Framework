@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using VRage.Game.ModAPI;
@@ -74,6 +75,13 @@ namespace ShipCoreFramework
         private long _runtimeMainCoreBlockId;
         private int _runtimeCoreCount;
         private string _runtimeCoreSubtypeId = string.Empty;
+        private int _runtimePlayerCoreCount;
+        private int _runtimeFactionCoreCount;
+        private Dictionary<string, int> _runtimeManifestCounts =
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        private string[] _runtimeSpeedPunishmentReasons = Array.Empty<string>();
+        private string[] _runtimeModifierPunishmentReasons = Array.Empty<string>();
+        private string[] _runtimeLimitedBlockPunishmentReasons = Array.Empty<string>();
 
         internal int CoreCount => !Session.IsServer && _runtimeStateReceived
             ? _runtimeCoreCount

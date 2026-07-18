@@ -14,6 +14,13 @@ namespace ShipCoreFramework
     }
 
     [ProtoContract]
+    internal sealed class RuntimeManifestCount
+    {
+        [ProtoMember(1)] internal string Name;
+        [ProtoMember(2)] internal int Count;
+    }
+
+    [ProtoContract]
     internal sealed class GroupRuntimeState
     {
         [ProtoMember(1)] internal long GroupId;
@@ -57,6 +64,14 @@ namespace ShipCoreFramework
         [ProtoMember(39)] internal bool PowerOverclockActive;
         [ProtoMember(40)] internal float PowerOverclockDurationTimer;
         [ProtoMember(41)] internal float PowerOverclockCooldownTimer;
+        [ProtoMember(42)] internal long RepresentativeGridId;
+        [ProtoMember(43)] internal bool EffectiveBoostActive;
+        [ProtoMember(44)] internal int PlayerCoreCount;
+        [ProtoMember(45)] internal int FactionCoreCount;
+        [ProtoMember(46)] internal RuntimeManifestCount[] ManifestCounts = Array.Empty<RuntimeManifestCount>();
+        [ProtoMember(47)] internal string[] SpeedPunishmentReasons = Array.Empty<string>();
+        [ProtoMember(48)] internal string[] ModifierPunishmentReasons = Array.Empty<string>();
+        [ProtoMember(49)] internal string[] LimitedBlockPunishmentReasons = Array.Empty<string>();
     }
 
     internal static class RuntimeStateStore

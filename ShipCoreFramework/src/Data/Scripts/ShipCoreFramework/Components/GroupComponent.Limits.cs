@@ -205,6 +205,8 @@ namespace ShipCoreFramework
 
         internal List<string> GetLimitedBlockPunishmentGateDescriptions()
         {
+            if (!Session.IsServer && _runtimeStateReceived)
+                return new List<string>(_runtimeLimitedBlockPunishmentReasons);
             var reasons = new List<string>();
             if (IsMinimumBlocksLimitedBlockGateTriggered())
                 reasons.Add(GetBelowMinimumBlocksLimitedBlockPunishmentReason());
