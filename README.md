@@ -11,6 +11,9 @@ This repository contains:
 - `docs/`
   - Static XML configurator for authoring and updating config files.
 
+Developer guidance for the runtime client/server boundary is in
+[`docs/authority-layout.md`](docs/authority-layout.md).
+
 ## Feature overview
 
 - Per-core and no-core profiles.
