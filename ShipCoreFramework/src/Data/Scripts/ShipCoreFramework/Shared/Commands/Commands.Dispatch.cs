@@ -14,12 +14,32 @@ namespace ShipCoreFramework
                    trimmed.StartsWith(commandPrefix + " ", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static void DispatchCommand(long playerId, string messageText)
+        private static bool IsLocalReadOnlyCommand(string messageText)
         {
+            var allArgs = messageText.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (allArgs.Length < 2) return true;
+
+            var sub = allArgs[1];
+            return sub.Equals("help", StringComparison.OrdinalIgnoreCase) ||
+                   sub.Equals("info", StringComparison.OrdinalIgnoreCase) ||
+                   sub.Equals("listcores", StringComparison.OrdinalIgnoreCase) ||
+                   sub.Equals("coreinfo", StringComparison.OrdinalIgnoreCase) ||
+                   sub.Equals("listnocores", StringComparison.OrdinalIgnoreCase) ||
+                   sub.Equals("listnfzs", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static void DispatchLocalCommand(long playerId, string messageText)
+        {
+            if (IsLocalReadOnlyCommand(messageText))
+            {
+                ClientCommandSwitch(playerId, messageText);
+                return;
+            }
+
             if (Session.IsServer)
                 ServerCommandSwitch(playerId, messageText);
             else
-                ClientCommandSwitch(playerId, messageText);
+                ForwardToServer(messageText);
         }
     }
 }

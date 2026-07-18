@@ -19,7 +19,7 @@ namespace ShipCoreFramework
             if (!IsCoreCommand(message)) return;
 
             Utils.Log($"Server: Command received from {sender}: {message}");
-            DispatchCommand(playerId, message);
+            ServerCommandSwitch(playerId, message);
         }
     }
 }

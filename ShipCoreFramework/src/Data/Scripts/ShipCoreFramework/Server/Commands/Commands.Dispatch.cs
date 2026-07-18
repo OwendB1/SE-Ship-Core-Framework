@@ -14,11 +14,7 @@ namespace ShipCoreFramework
         {
             var allArgs = messageText.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
-            if (allArgs.Length < 2 || allArgs[1].Equals("help", StringComparison.OrdinalIgnoreCase))
-            {
-                if(Session.LocalPlayer != null) ShowHelp();
-                return;
-            }
+            if (allArgs.Length < 2) return;
 
             var args = allArgs.Skip(1).ToArray();
             var sub = args[0].ToLower();
@@ -26,24 +22,12 @@ namespace ShipCoreFramework
             switch (sub)
             {
                 case "inventory":
-                    if(Session.LocalPlayer!=null) Inventory(playerId,args);
+                    Inventory(playerId,args);
                     return;
                 case "reloadconfig":
                     if(!CheckIfAdmin(playerId)) return;
                     modMessage+=ReloadConfig();
                     break;
-                case "listcores":
-                    modMessage+=ListCores();
-                    break;
-                case "coreinfo":
-                    modMessage+=CoreInfo(args);
-                    break;
-                case "listnocores":
-                    modMessage+=ListNoCores();
-                    break;
-                case "listnfzs":
-                    ListNoFlyZones();
-                    return;
                 case "createnfz":
                     if(!CheckIfAdmin(playerId)) return;
                     modMessage+=CreateNoFlyZone(args);
@@ -84,21 +68,11 @@ namespace ShipCoreFramework
                     if(!CheckIfAdmin(playerId)) return;
                     modMessage+=UnattachedModules(args);
                     break;
-                case "info":
-                    if(Session.LocalPlayer!=null) CoreInfo(playerId);
-                    return;
                 default:
                     modMessage += "The command you have typed was not recognized. Did you make a typo?";
                     break;
             }
-            if(Session.IsServer)
-            {
-                MyVisualScriptLogicProvider.SendChatMessage(modMessage,"ShipCores: Server:", playerId, "Green");
-            }
-            else
-            {
-                MyVisualScriptLogicProvider.SendChatMessage(modMessage,"ShipCores: LocalHost:", playerId, "Red");
-            }
+            MyVisualScriptLogicProvider.SendChatMessage(modMessage,"ShipCores: Server:", playerId, "Green");
         }
         private static bool CheckIfAdmin(long playerId)
         {

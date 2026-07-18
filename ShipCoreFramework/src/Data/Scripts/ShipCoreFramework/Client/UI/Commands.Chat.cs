@@ -13,30 +13,7 @@ namespace ShipCoreFramework
             if (!IsCoreCommand(messageText)) return;
 
             sendToOthers = false;
-            if (!Session.IsServer)
-            {
-                if (IsLocalReadOnlyCommand(messageText))
-                    DispatchCommand(MyAPIGateway.Session.Player.IdentityId, messageText);
-                else
-                    ForwardToServer(messageText);
-                return;
-            }
-
-            DispatchCommand(MyAPIGateway.Session.Player.IdentityId, messageText);
-        }
-
-        private static bool IsLocalReadOnlyCommand(string messageText)
-        {
-            var allArgs = messageText.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            if (allArgs.Length < 2) return true;
-
-            var sub = allArgs[1];
-            return sub.Equals("help", StringComparison.OrdinalIgnoreCase) ||
-                   sub.Equals("info", StringComparison.OrdinalIgnoreCase) ||
-                   sub.Equals("listcores", StringComparison.OrdinalIgnoreCase) ||
-                   sub.Equals("coreinfo", StringComparison.OrdinalIgnoreCase) ||
-                   sub.Equals("listnocores", StringComparison.OrdinalIgnoreCase) ||
-                   sub.Equals("listnfzs", StringComparison.OrdinalIgnoreCase);
+            DispatchLocalCommand(MyAPIGateway.Session.Player.IdentityId, messageText);
         }
 
         private static void ClientCommandSwitch(long playerId, string messageText)
