@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
@@ -9,55 +8,8 @@ namespace ShipCoreFramework
 {
     internal partial class GroupComponent
     {
-        internal bool InitGrids()
+        private bool FinalizeAuthoritativeGridInitialization()
         {
-            var tempGridList = new List<IMyCubeGrid>();
-            if (!Session.TryGetGroupGrids(MyGroup, tempGridList, "group component initialization")) return false;
-
-            tempGridList = tempGridList
-                .OrderByDescending(HasPotentialCore)
-                .ThenBy(grid => grid.EntityId)
-                .ToList();
-
-            BeginGridInitialization();
-            try
-            {
-                var initializedGrids = new List<MyCubeGrid>();
-                foreach (var myCubeGrid in tempGridList)
-                {
-                    var startGrid = (MyCubeGrid)myCubeGrid;
-                    if (startGrid.IsPreview) continue;
-
-                    InitializeGridComponent(startGrid, MyGroup, false);
-                    initializedGrids.Add(startGrid);
-                }
-
-                foreach (var grid in initializedGrids)
-                {
-                    GridComponent gridComponent;
-                    if (TryGetGridComponent(grid, out gridComponent))
-                        gridComponent.InitializeCoreBlocks();
-                }
-
-                foreach (var grid in initializedGrids)
-                {
-                    GridComponent gridComponent;
-                    if (TryGetGridComponent(grid, out gridComponent))
-                        gridComponent.InitializeNonCoreBlocks();
-                }
-            }
-            finally
-            {
-                EndGridInitialization();
-            }
-
-            if (!Session.IsServer)
-            {
-                InvalidateGameThreadStateCache(true);
-                Session.ApplyRuntimeStateForGroup(this);
-                return true;
-            }
-
             if (MainCoreComponent == null)
                 ScheduleMissingCoreRescan();
 
@@ -70,34 +22,6 @@ namespace ShipCoreFramework
                       GridDictionary.Count + " grids, " + CoreDictionary.Count + " cores, main core " +
                       (MainCoreComponent == null ? "<none>" : MainCoreComponent.SubtypeId) + ".", 2);
             return true;
-        }
-
-        private void BeginGridInitialization()
-        {
-            _gridInitializationDepth++;
-        }
-
-        private void EndGridInitialization()
-        {
-            if (_gridInitializationDepth > 0)
-                _gridInitializationDepth--;
-        }
-
-        private void InitializeGridComponent(MyCubeGrid grid, IMyGridGroupData groupData, bool processBlocks = true)
-        {
-            var gridComp = new GridComponent();
-            if (!GridDictionary.TryAdd(grid, gridComp))
-                return;
-
-            InvalidateGameThreadStateCache(true);
-            gridComp.Init(grid, groupData, processBlocks);
-        }
-
-        private static bool HasPotentialCore(IMyCubeGrid grid)
-        {
-            var coreBlocks = new List<IMySlimBlock>();
-            grid.GetBlocks(coreBlocks, Utils.IsCoreBlock);
-            return coreBlocks.Count > 0;
         }
 
         private bool HasPotentialCoreBlocksInGroup()
@@ -338,30 +262,8 @@ namespace ShipCoreFramework
             QueueConnectorNetworkRefresh();
         }
 
-        internal void OnGridAdded(IMyGridGroupData addedTo, IMyCubeGrid grid, IMyGridGroupData removedFrom)
+        private void FinalizeAuthoritativeGridAdded(IMyCubeGrid grid)
         {
-            var g = grid as MyCubeGrid;
-            if (g == null || g.IsPreview) return;
-
-            GridComponent discard;
-            if (TryGetGridComponent(g, out discard)) return;
-
-            BeginGridInitialization();
-            try
-            {
-                InitializeGridComponent(g, addedTo);
-            }
-            finally
-            {
-                EndGridInitialization();
-            }
-
-            InvalidateGameThreadStateCache(true);
-            if (!Session.IsServer)
-            {
-                Session.ApplyRuntimeStateForGroup(this);
-                return;
-            }
             if (MainCoreComponent == null)
                 ScheduleMissingCoreRescan();
             Session.MarkRuntimeStateDirty(this);
@@ -378,33 +280,9 @@ namespace ShipCoreFramework
             });
         }
 
-        internal void OnGridRemoved(IMyGridGroupData removedFrom, IMyCubeGrid grid, IMyGridGroupData addedTo)
+        private void FinalizeAuthoritativeGridRemoved(MyCubeGrid g, IMyCubeGrid grid,
+            CoreComponent removedMain)
         {
-            var g = grid as MyCubeGrid;
-            if (g == null || g.IsPreview) return;
-
-            GridComponent comp;
-            CoreComponent removedMain = null;
-            if (TryGetGridComponent(g, out comp))
-            {
-                if (MainCoreComponent?.GridComponent.Grid.EntityId == g.EntityId)
-                    removedMain = MainCoreComponent;
-
-                AddGroupBlocksCount(-comp.BlockCount);
-                IncrementLimitGeneration();
-                comp.Clean();
-                GridComponent discarded;
-                GridDictionary.TryRemove(g, out discarded);
-                InvalidateGameThreadStateCache(true);
-            }
-
-            if (!Session.IsServer)
-            {
-                if (removedMain != null) MainCoreComponent = null;
-                if (GridCount == 0) _closing = true;
-                return;
-            }
-
             if (removedMain != null) MainCoreLeftGroup(removedMain);
 
             RemoveDefenseModifierCache(g.EntityId);
@@ -482,13 +360,8 @@ namespace ShipCoreFramework
             QueueConnectorNetworkRefresh();
         }
 
-        internal void CoreRemoved(CoreComponent lost)
+        private void CoreRemovedAuthoritative(CoreComponent lost)
         {
-            if (!Session.IsServer)
-            {
-                if (ReferenceEquals(lost, MainCoreComponent)) MainCoreComponent = null;
-                return;
-            }
             if (!ReferenceEquals(lost, MainCoreComponent)) return;
             lost.IsMainCore = false;
 
@@ -538,13 +411,9 @@ namespace ShipCoreFramework
                 gridComponent.SyncBeaconComponents();
         }
 
-        internal void OnConfigChanged()
+        private void OnConfigChangedAuthoritative()
         {
-            if (_closing || Session.IsShuttingDown) return;
-
-            InvalidateGameThreadStateCache(true);
             InvalidateModifierStateCache();
-            if (!Session.IsServer) return;
             IncrementLimitGeneration();
             SyncNoCoreLimitTracking();
             if (MainCoreComponent == null)
@@ -672,15 +541,13 @@ namespace ShipCoreFramework
             _missingCoreRescanAttempts = 0;
         }
 
-        internal void Clean()
+
+        private void CleanAuthoritativeStateBeforeGridCleanup()
         {
-            _closing = true;
-            if (Session.IsServer) try
+            try
             {
                 if (MainCoreComponent != null)
-                {
                     UnregisterCoreLimitTracking();
-                }
 
                 UnregisterNoCoreLimitTracking();
             }
@@ -691,10 +558,10 @@ namespace ShipCoreFramework
 
             ClearDefenseModifierCache();
             ClearPhysicalLinkedGroups();
-            foreach (var kvp in GridDictionary) kvp.Value.Clean();
-            ClearGridDictionary();
-            System.Threading.Interlocked.Exchange(ref _groupBlocksCount, 0);
-            PublishLimitsSnapshot(null);
+        }
+
+        private void CleanAuthoritativeStateAfterGridCleanup()
+        {
             IncrementLimitGeneration();
         }
 
