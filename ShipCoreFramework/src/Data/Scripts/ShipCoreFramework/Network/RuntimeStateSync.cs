@@ -139,6 +139,29 @@ namespace ShipCoreFramework
             lock (SyncRoot) return ByGrid.TryGetValue(gridId, out state);
         }
 
+        internal static bool TryGetManifestCount(string name, out int count)
+        {
+            count = 0;
+            if (string.IsNullOrEmpty(name)) return false;
+            lock (SyncRoot)
+            {
+                foreach (var state in ByGroup.Values)
+                {
+                    if (state == null || state.ManifestCounts == null) continue;
+                    for (var i = 0; i < state.ManifestCounts.Length; i++)
+                    {
+                        var manifest = state.ManifestCounts[i];
+                        if (manifest == null || !string.Equals(manifest.Name, name,
+                                StringComparison.OrdinalIgnoreCase))
+                            continue;
+                        count = manifest.Count;
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         internal static void Clear()
         {
             lock (SyncRoot)

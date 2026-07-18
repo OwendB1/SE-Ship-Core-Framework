@@ -49,6 +49,7 @@ namespace ShipCoreFramework
             var ownerId = OwnerId;
             var faction = OwningFaction;
             var subtypeId = MainCoreComponent == null ? string.Empty : MainCoreComponent.SubtypeId;
+            var countSubtypeId = ShipCore == null ? subtypeId : ShipCore.SubtypeId;
             var manifestCounts = new List<RuntimeManifestCount>();
             foreach (var manifest in PerManifestGroupManager.GetManifestGroups(ShipCore))
             {
@@ -104,8 +105,8 @@ namespace ShipCoreFramework
                 PowerOverclockCooldownTimer = _powerOverclockCooldownTimer,
                 RepresentativeGridId = GetCachedRepresentativeGridId(),
                 EffectiveBoostActive = EffectiveBoostEnabled,
-                PlayerCoreCount = PerPlayerManager.GetCurrentCount(ownerId, subtypeId),
-                FactionCoreCount = faction == null ? 0 : PerFactionManager.GetCurrentCount(faction.FactionId, subtypeId),
+                PlayerCoreCount = PerPlayerManager.GetCurrentCount(ownerId, countSubtypeId),
+                FactionCoreCount = faction == null ? 0 : PerFactionManager.GetCurrentCount(faction.FactionId, countSubtypeId),
                 ManifestCounts = manifestCounts.ToArray(),
                 SpeedPunishmentReasons = GetSpeedPunishmentGateDescriptions().ToArray(),
                 ModifierPunishmentReasons = GetModifierPunishmentGateDescriptions().ToArray(),

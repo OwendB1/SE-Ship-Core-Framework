@@ -898,7 +898,8 @@ namespace ShipCoreFramework
 
         // ===== Helper Methods =====
 
-        private static ShipCoreData ConvertToShipCoreData(ShipCore core, bool isDeactivated = false)
+        private static ShipCoreData ConvertToShipCoreData(ShipCore core, bool isDeactivated = false,
+            GroupComponent groupComponent = null)
         {
             if (core == null)
             {
@@ -961,7 +962,7 @@ namespace ShipCoreFramework
                 {
                     Name = group.Name,
                     MaxCount = group.MaxCount,
-                    CurrentCount = PerManifestGroupManager.GetCurrentCount(group.Name)
+                    CurrentCount = GetManifestGroupCurrentCount(group.Name, groupComponent)
                 })
                 .ToArray();
 
@@ -1024,6 +1025,14 @@ namespace ShipCoreFramework
                 SpeedModifiers = ConvertToSpeedModifiersData(core.SpeedModifiers),
                 IsDeactivated = isDeactivated
             };
+        }
+
+        private static int GetManifestGroupCurrentCount(string name, GroupComponent groupComponent)
+        {
+            if (groupComponent != null) return groupComponent.GetCurrentManifestCoreCount(name);
+            if (Session.IsServer) return PerManifestGroupManager.GetCurrentCount(name);
+            int count;
+            return RuntimeStateStore.TryGetManifestCount(name, out count) ? count : 0;
         }
 
         private static ModConfigData ConvertToModConfigData(ModConfig config)
@@ -1484,7 +1493,8 @@ namespace ShipCoreFramework
                 GroupComponent groupComponent;
                 return !Session.GroupDict.TryGetValue(groupData, out groupComponent) ? 
                     ConvertToShipCoreData(Session.Config.SelectedNoCore) : 
-                    ConvertToShipCoreData(groupComponent.ShipCore ?? Session.Config.SelectedNoCore, groupComponent.Deactivated);
+                    ConvertToShipCoreData(groupComponent.ShipCore ?? Session.Config.SelectedNoCore,
+                        groupComponent.Deactivated, groupComponent);
             }
             catch (Exception ex)
             {
