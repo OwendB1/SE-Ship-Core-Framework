@@ -4,7 +4,7 @@ namespace ShipCoreFramework
 {
     internal class Networking
     {
-        private const int MaxPacketBytes = 2 * 1024 * 1024;
+        internal const int MaxPacketBytes = 2 * 1024 * 1024;
         private readonly ushort _channelId;
         private bool _registered;
         internal Networking(ushort channelId)

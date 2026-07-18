@@ -9,7 +9,8 @@ namespace ShipCoreFramework
     public partial class Session
     {
         internal const int RuntimeStateBatchSize = 64;
-        internal const int RuntimeStateMaxBatches = 1024;
+        internal const int RuntimeStateMaxBatches = 8192;
+        private const int RuntimeStatePacketTargetBytes = Networking.MaxPacketBytes - 64 * 1024;
         private const int RuntimeStateSyncIntervalTicks = 120;
         private const int RuntimeStateRequestCooldownTicks = 300;
         private static int _runtimeStateSequence;
@@ -88,21 +89,50 @@ namespace ShipCoreFramework
             for (var offset = 0; offset < states.Count; offset += RuntimeStateBatchSize)
             {
                 var count = Math.Min(RuntimeStateBatchSize, states.Count - offset);
-                var batch = new GroupRuntimeState[count];
-                states.CopyTo(offset, batch, 0, count);
+                AddSizedRuntimeStateBatch(packets, states, offset, count, sequence);
+            }
+            if (packets.Count == 0)
                 packets.Add(new PacketRuntimeState
                 {
                     Sequence = sequence,
-                    Reset = offset == 0,
-                    States = batch
+                    Reset = true,
+                    States = Array.Empty<GroupRuntimeState>()
                 });
-            }
             for (var i = 0; i < packets.Count; i++)
             {
                 packets[i].BatchIndex = i;
                 packets[i].BatchCount = packets.Count;
             }
             return packets.ToArray();
+        }
+
+        private static void AddSizedRuntimeStateBatch(List<PacketRuntimeState> packets,
+            List<GroupRuntimeState> states, int offset, int count, int sequence)
+        {
+            var batch = new GroupRuntimeState[count];
+            states.CopyTo(offset, batch, 0, count);
+            var packet = new PacketRuntimeState
+            {
+                Sequence = sequence,
+                Reset = packets.Count == 0,
+                States = batch
+            };
+            var bytes = MyAPIGateway.Utilities.SerializeToBinary<PacketBase>(packet);
+            if (bytes != null && bytes.Length <= RuntimeStatePacketTargetBytes)
+            {
+                packets.Add(packet);
+                return;
+            }
+
+            if (count > 1)
+            {
+                var firstCount = count / 2;
+                AddSizedRuntimeStateBatch(packets, states, offset, firstCount, sequence);
+                AddSizedRuntimeStateBatch(packets, states, offset + firstCount, count - firstCount, sequence);
+                return;
+            }
+
+            Utils.Log("Runtime state skipped for oversized group " + states[offset].GroupId + ".", 1);
         }
 
         private static void SendRuntimeStatePacketsTo(PacketRuntimeState[] packets, ulong steamId)
