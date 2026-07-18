@@ -157,7 +157,8 @@ namespace ShipCoreFramework
                 LimitedBlockPunishmentReasons = GetLimitedBlockPunishmentGateDescriptions().ToArray(),
                 LimitRevision = Interlocked.CompareExchange(ref _publishedLimitRevision, 0, 0),
                 LimitEnforcementRevision = Interlocked.CompareExchange(ref _limitEnforcementRevision, 0, 0),
-                LastBlocksPunished = Interlocked.CompareExchange(ref _lastBlocksPunished, 0, 0)
+                LastBlocksPunished = Interlocked.CompareExchange(ref _lastBlocksPunished, 0, 0),
+                LimitEnforcementEvents = GetRuntimeLimitEnforcementEvents()
             };
         }
 
@@ -306,10 +307,26 @@ namespace ShipCoreFramework
             foreach (var gridId in oldGridIds)
                 if (!newGridIds.Contains(gridId)) ModAPI.BroadcastGridRemovedFromGroup(gridId, eventGridId);
 
-            if (state.LimitRevision > previousLimitRevision)
+            for (var revision = previousLimitRevision + 1; revision <= state.LimitRevision; revision++)
                 ModAPI.BroadcastLimitsRecalculated(eventGridId);
             if (state.LimitEnforcementRevision > previousLimitEnforcementRevision)
-                ModAPI.BroadcastLimitsEnforced(eventGridId, state.LastBlocksPunished);
+            {
+                var events = state.LimitEnforcementEvents;
+                if (events == null || events.Length == 0)
+                {
+                    ModAPI.BroadcastLimitsEnforced(eventGridId, state.LastBlocksPunished);
+                }
+                else
+                {
+                    for (var i = 0; i < events.Length; i++)
+                    {
+                        var runtimeEvent = events[i];
+                        if (runtimeEvent != null && runtimeEvent.Revision > previousLimitEnforcementRevision &&
+                            runtimeEvent.Revision <= state.LimitEnforcementRevision)
+                            ModAPI.BroadcastLimitsEnforced(eventGridId, runtimeEvent.BlocksPunished);
+                    }
+                }
+            }
         }
 
         internal void ClearRuntimeState()

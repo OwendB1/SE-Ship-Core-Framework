@@ -8,6 +8,7 @@ namespace ShipCoreFramework
     {
         private const int ExternalLimitValidationDelayTicks = 2 * 60;
         private const int NexusLimitValidationGraceTicks = 5 * 60;
+        private const int RuntimeLimitEventHistorySize = 64;
 
         private readonly object _limitSnapshotLock = new object();
         private ConcurrentDictionary<BlockLimit, LimitBucket> _limits = new ConcurrentDictionary<BlockLimit, LimitBucket>();
@@ -26,6 +27,9 @@ namespace ShipCoreFramework
         private int _publishedLimitRevision;
         private int _limitEnforcementRevision;
         private int _lastBlocksPunished;
+        private readonly object _runtimeLimitEventLock = new object();
+        private readonly Queue<RuntimeLimitEnforcementEvent> _runtimeLimitEnforcementEvents =
+            new Queue<RuntimeLimitEnforcementEvent>();
         private int _cachedEffectiveMaxBlocks = -1;
         private int _cachedEffectiveMaxPCU = -1;
         private float _cachedEffectiveMaxMass = -1f;
@@ -52,7 +56,22 @@ namespace ShipCoreFramework
         private void MarkLimitsEnforced(int blocksPunished)
         {
             Interlocked.Exchange(ref _lastBlocksPunished, blocksPunished);
-            Interlocked.Increment(ref _limitEnforcementRevision);
+            var revision = Interlocked.Increment(ref _limitEnforcementRevision);
+            lock (_runtimeLimitEventLock)
+            {
+                _runtimeLimitEnforcementEvents.Enqueue(new RuntimeLimitEnforcementEvent
+                {
+                    Revision = revision,
+                    BlocksPunished = blocksPunished
+                });
+                while (_runtimeLimitEnforcementEvents.Count > RuntimeLimitEventHistorySize)
+                    _runtimeLimitEnforcementEvents.Dequeue();
+            }
+        }
+
+        private RuntimeLimitEnforcementEvent[] GetRuntimeLimitEnforcementEvents()
+        {
+            lock (_runtimeLimitEventLock) return _runtimeLimitEnforcementEvents.ToArray();
         }
 
         private void PublishLimitsSnapshot(ConcurrentDictionary<BlockLimit, LimitBucket> limits)

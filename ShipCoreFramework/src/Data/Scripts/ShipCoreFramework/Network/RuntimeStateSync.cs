@@ -21,6 +21,13 @@ namespace ShipCoreFramework
     }
 
     [ProtoContract]
+    internal sealed class RuntimeLimitEnforcementEvent
+    {
+        [ProtoMember(1)] internal int Revision;
+        [ProtoMember(2)] internal int BlocksPunished;
+    }
+
+    [ProtoContract]
     internal sealed class GroupRuntimeState
     {
         [ProtoMember(1)] internal long GroupId;
@@ -76,6 +83,8 @@ namespace ShipCoreFramework
         [ProtoMember(51)] internal int LimitEnforcementRevision;
         [ProtoMember(52)] internal int LastBlocksPunished;
         [ProtoMember(53)] internal bool Removed;
+        [ProtoMember(54)] internal RuntimeLimitEnforcementEvent[] LimitEnforcementEvents =
+            Array.Empty<RuntimeLimitEnforcementEvent>();
     }
 
     internal static class RuntimeStateStore
