@@ -284,7 +284,13 @@ namespace ShipCoreFramework
 
             if (previousBoostActive != state.BoostActive)
             {
-                if (state.BoostActive) ModAPI.BroadcastBoostActivated(eventGridId);
+                if (state.BoostActive)
+                {
+                    var coreGrid = MainCoreComponent == null || MainCoreComponent.GridComponent == null
+                        ? null
+                        : MainCoreComponent.GridComponent.Grid;
+                    ModAPI.BroadcastBoostActivated(coreGrid == null ? eventGridId : coreGrid.EntityId);
+                }
                 else ModAPI.BroadcastBoostDeactivated(eventGridId);
             }
             if (previousDefenseActive != state.ActiveDefense)
