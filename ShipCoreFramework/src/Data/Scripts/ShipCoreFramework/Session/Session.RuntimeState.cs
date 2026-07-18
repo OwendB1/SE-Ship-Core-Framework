@@ -16,6 +16,8 @@ namespace ShipCoreFramework
         private static int _runtimeStateSequence;
         private static readonly Dictionary<ulong, int> RuntimeStateRequestTicks =
             new Dictionary<ulong, int>();
+        private static readonly Dictionary<ulong, int> ConfigRequestTicks =
+            new Dictionary<ulong, int>();
 
         private void RunRuntimeStateSyncTick()
         {
@@ -51,9 +53,21 @@ namespace ShipCoreFramework
             SendRuntimeStatePacketsTo(BuildRuntimeStatePackets(), steamId);
         }
 
+        internal static bool CanServeConfigRequest(ulong steamId)
+        {
+            if (!IsServer || steamId == 0) return false;
+            int lastRequestTick;
+            if (ConfigRequestTicks.TryGetValue(steamId, out lastRequestTick) &&
+                CurrentTick - lastRequestTick < RuntimeStateRequestCooldownTicks)
+                return false;
+            ConfigRequestTicks[steamId] = CurrentTick;
+            return true;
+        }
+
         internal static void ResetRuntimeStateSync()
         {
             RuntimeStateRequestTicks.Clear();
+            ConfigRequestTicks.Clear();
             _runtimeStateSequence = 0;
         }
 
