@@ -75,6 +75,7 @@ namespace ShipCoreFramework
         [ProtoMember(50)] internal int LimitRevision;
         [ProtoMember(51)] internal int LimitEnforcementRevision;
         [ProtoMember(52)] internal int LastBlocksPunished;
+        [ProtoMember(53)] internal bool Removed;
     }
 
     internal static class RuntimeStateStore
@@ -145,10 +146,11 @@ namespace ShipCoreFramework
             }
         }
 
-        internal static bool ApplyDelta(GroupRuntimeState[] states)
+        internal static bool ApplyDelta(GroupRuntimeState[] states, out GroupRuntimeState[] acceptedStates)
         {
+            acceptedStates = Array.Empty<GroupRuntimeState>();
             if (states == null || states.Length == 0) return false;
-            var changed = false;
+            var accepted = new List<GroupRuntimeState>();
             lock (SyncRoot)
             {
                 for (var i = 0; i < states.Length; i++)
@@ -158,12 +160,26 @@ namespace ShipCoreFramework
                     GroupRuntimeState current;
                     if (ByGroup.TryGetValue(state.GroupId, out current) && current.Revision >= state.Revision)
                         continue;
+                    if (HasCurrentTopologyAtLeast(state)) continue;
                     RemoveState(current);
                     IndexState(state);
-                    changed = true;
+                    accepted.Add(state);
                 }
             }
-            return changed;
+            if (accepted.Count == 0) return false;
+            acceptedStates = accepted.ToArray();
+            return true;
+        }
+
+        private static bool HasCurrentTopologyAtLeast(GroupRuntimeState state)
+        {
+            if (state.GridIds == null) return false;
+            GroupRuntimeState current;
+            for (var i = 0; i < state.GridIds.Length; i++)
+                if (ByGrid.TryGetValue(state.GridIds[i], out current) && current != null &&
+                    current.Revision >= state.Revision)
+                    return true;
+            return false;
         }
 
         private static void IndexState(GroupRuntimeState state)
@@ -171,6 +187,11 @@ namespace ShipCoreFramework
             if (state == null) return;
             GroupRuntimeState current;
             if (ByGroup.TryGetValue(state.GroupId, out current)) RemoveState(current);
+            if (state.Removed)
+            {
+                ByGroup[state.GroupId] = state;
+                return;
+            }
             if (state.GridIds != null)
             {
                 var staleStates = new HashSet<GroupRuntimeState>();
