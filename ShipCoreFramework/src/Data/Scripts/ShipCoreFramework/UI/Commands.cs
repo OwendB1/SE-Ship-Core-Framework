@@ -230,16 +230,6 @@ namespace ShipCoreFramework
                 RandomConsent()
             );
         }
-        private static string ReloadConfig()
-        {
-            Session.Config = null;
-            Session.Config = new ModConfig();
-            Session.Config.LoadConfig();
-            if (Session.IsServer) Session.RefreshGroupsAfterConfigChanged();
-            if (Session.MpActive && !Session.IsServer) Session.Networking.SendToServer(new PacketRequestConfig(), onlyToServer: true);
-            return "Config reloaded from disk.";
-        }
-
         private static string ListCores()
         {
             return Session.Config.ShipCores.Count == 0 ? "No ship cores defined." : 
