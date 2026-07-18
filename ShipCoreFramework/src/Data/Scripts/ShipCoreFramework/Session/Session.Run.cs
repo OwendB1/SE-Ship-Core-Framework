@@ -9,7 +9,6 @@ using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
-using VRageMath;
 
 namespace ShipCoreFramework
 {
@@ -21,14 +20,6 @@ namespace ShipCoreFramework
             "Missile", "LargeCalibreShell", "MediumCalibreShell", "LargeCaliber", "AutocannonShell",
             "LargeRailgunSlug", "SmallRailgunSlug", "SmallCaliber", "PistolCaliber", "Shrapnel"
         };
-        private const int HighResolutionLcdTextureSize = 1024;
-        private static readonly string[] HighResolutionLcdSubtypes =
-        {
-            "LargeLCDPanel3x3", "LargeLCDPanel5x3", "LargeLCDPanel5x5"
-        };
-        private static readonly List<LcdDefinitionTextureState> OriginalLcdTextureStates =
-            new List<LcdDefinitionTextureState>();
-
         public override void BeforeStart()
         {
             ModAPI.Initialize();
@@ -165,39 +156,6 @@ namespace ShipCoreFramework
             Utils.Log("UnloadData: Ship Core Framework session unloaded.", 1);
         }
         
-        private void OnNexusEnabled()
-        {
-            if (_startedNexus) return;
-            if (!IsServer) return;
-            _startedNexus = true;
-            LimitsNexusSync.Start(_myNexusApi);
-            LimitsNexusSync.BroadcastSnapshot();
-        }
-
-        public override void Draw()
-        {
-            if (!IsClient) return;
-            var camPos = MyAPIGateway.Session.Camera.WorldMatrix.Translation;
-            const double edgeProximity = 20000.0;
-
-            var zones = Config.NoFlyZones;
-            if (zones == null || zones.Count == 0) return;
-
-            foreach (var z in zones)
-            {
-                var dist = Vector3D.Distance(z.Position, camPos);
-                if (Math.Abs(dist - z.Radius) > edgeProximity) continue;
-
-                var world = MatrixD.CreateTranslation(z.Position);
-                var color = z.ForceOff ? new Color(1f, 0.2f, 0.2f, 0.05f) : new Color(0.2f, 0.6f, 1f, 0.05f);
-                var edge = z.ForceOff ? new Color(1f, 0.1f, 0.1f, 1f) : new Color(0.3f, 0.7f, 1f, 1f);
-
-                MySimpleObjectDraw.DrawTransparentSphere(ref world, (float)z.Radius, ref color, MySimpleObjectRasterizer.Solid,24, MatSphere, null, 1f);
-                MySimpleObjectDraw.DrawTransparentSphere(ref world, (float)z.Radius, ref edge, MySimpleObjectRasterizer.Wireframe,64, null, MatLine, 0.75f);
-            }
-
-        }
-
         public override void UpdateAfterSimulation()
         {
             if (Config.SelectedNoCore == null)
@@ -263,46 +221,6 @@ namespace ShipCoreFramework
             });
         }
 
-        private void RefreshMassCacheBatch()
-        {
-            var index = 0;
-            var checkedGroups = 0;
-            var refreshedGroups = 0;
-            var sawAnyGroup = false;
-            var stoppedEarly = false;
-
-            foreach (var kvp in GroupDict)
-            {
-                sawAnyGroup = true;
-                if (index < _massCacheRefreshCursor)
-                {
-                    index++;
-                    continue;
-                }
-
-                index++;
-                checkedGroups++;
-                var group = kvp.Value;
-                if (group != null && group.RefreshScheduledMassCache())
-                    refreshedGroups++;
-
-                if (checkedGroups >= MaxMassCacheGroupsCheckedPerTick ||
-                    refreshedGroups >= MaxMassCacheRefreshesPerTick)
-                {
-                    stoppedEarly = true;
-                    break;
-                }
-            }
-
-            if (!sawAnyGroup || checkedGroups == 0)
-            {
-                _massCacheRefreshCursor = 0;
-                return;
-            }
-
-            _massCacheRefreshCursor = stoppedEarly ? index : 0;
-        }
-
         internal static void ApplyConfigToDefinitions()
         {
             if (MyDefinitionManager.Static?.EnvironmentDefinition != null)
@@ -333,92 +251,6 @@ namespace ShipCoreFramework
 
             AppliedSpeedDifferential = newDifferential;
         }
-
-        private static void ApplyHighResolutionLcdDefinitions()
-        {
-            if (OriginalLcdTextureStates.Count > 0 || MyDefinitionManager.Static == null)
-                return;
-
-            for (var subtypeIndex = 0; subtypeIndex < HighResolutionLcdSubtypes.Length; subtypeIndex++)
-            {
-                MyCubeBlockDefinition cubeDefinition;
-                try
-                {
-                    var id = new MyDefinitionId(typeof(MyObjectBuilder_TextPanel),
-                        HighResolutionLcdSubtypes[subtypeIndex]);
-                    if (!MyDefinitionManager.Static.TryGetCubeBlockDefinition(id, out cubeDefinition))
-                        continue;
-                }
-                catch (Exception e)
-                {
-                    Utils.Log("LCD definition lookup failed for " + HighResolutionLcdSubtypes[subtypeIndex] +
-                              ": " + e.Message, 1);
-                    continue;
-                }
-
-                var definition = cubeDefinition as MyTextPanelDefinition;
-                if (definition == null || definition.ScreenAreas == null || definition.ScreenAreas.Count == 0)
-                    continue;
-
-                var state = new LcdDefinitionTextureState(definition);
-                OriginalLcdTextureStates.Add(state);
-                definition.TextureResolution = Math.Max(definition.TextureResolution, HighResolutionLcdTextureSize);
-
-                for (var i = 0; i < definition.ScreenAreas.Count; i++)
-                {
-                    var area = definition.ScreenAreas[i];
-                    if (area != null)
-                        area.TextureResolution = Math.Max(area.TextureResolution, HighResolutionLcdTextureSize);
-                }
-            }
-        }
-
-        private static void RevertHighResolutionLcdDefinitions()
-        {
-            for (var stateIndex = 0; stateIndex < OriginalLcdTextureStates.Count; stateIndex++)
-            {
-                var state = OriginalLcdTextureStates[stateIndex];
-                var definition = state.Definition;
-                if (definition == null)
-                    continue;
-
-                if (definition.TextureResolution == HighResolutionLcdTextureSize)
-                    definition.TextureResolution = state.TextureResolution;
-
-                if (definition.ScreenAreas != null)
-                {
-                    var count = Math.Min(definition.ScreenAreas.Count, state.ScreenAreaTextureResolutions.Length);
-                    for (var i = 0; i < count; i++)
-                    {
-                        var area = definition.ScreenAreas[i];
-                        if (area != null && area.TextureResolution == HighResolutionLcdTextureSize)
-                            area.TextureResolution = state.ScreenAreaTextureResolutions[i];
-                    }
-                }
-            }
-
-            OriginalLcdTextureStates.Clear();
-        }
-
-        private sealed class LcdDefinitionTextureState
-        {
-            internal readonly MyTextPanelDefinition Definition;
-            internal readonly int TextureResolution;
-            internal readonly int[] ScreenAreaTextureResolutions;
-
-            internal LcdDefinitionTextureState(MyTextPanelDefinition definition)
-            {
-                Definition = definition;
-                TextureResolution = definition.TextureResolution;
-                ScreenAreaTextureResolutions = new int[definition.ScreenAreas.Count];
-                for (var i = 0; i < definition.ScreenAreas.Count; i++)
-                {
-                    var area = definition.ScreenAreas[i];
-                    ScreenAreaTextureResolutions[i] = area != null ? area.TextureResolution : 0;
-                }
-            }
-        }
-
         private static void RevertAmmoSpeedAdjustments()
         {
             var delta = -AppliedSpeedDifferential;
@@ -442,21 +274,6 @@ namespace ShipCoreFramework
 
             AppliedSpeedDifferential = 0f;
         }
-
-        internal static void BroadcastConfigToClients()
-        {
-            if (!IsServer || !MpActive)
-                return;
-
-            var players = new List<IMyPlayer>();
-            MyAPIGateway.Players.GetPlayers(players);
-
-            var packet = new PacketSendConfig(MyAPIGateway.Utilities.SerializeToXML(Config));
-
-            foreach (var p in players)
-                Networking.SendToPlayer(packet, p.SteamUserId);
-        }
-
         internal static void RefreshGroupsAfterConfigChanged()
         {
             var groups = new List<GroupComponent>(GroupDict.Values);
