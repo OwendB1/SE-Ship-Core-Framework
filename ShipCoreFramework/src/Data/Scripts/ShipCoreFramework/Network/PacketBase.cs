@@ -154,16 +154,7 @@ namespace ShipCoreFramework
             if (!HasAccess(sender, newMain.CoreBlock) ||
                 (old != null && !HasAccess(sender, old.CoreBlock))) return;
             if (!ReferenceEquals(old, newMain))
-            {
-                if (old != null)
-                {
-                    old.IsMainCore = false;
-                }
-                
-                group.MainCoreComponent = newMain;
-                group.MainCoreComponent.IsMainCore = true;
-                group.SyncBeaconComponents();
-            }
+                group.Activate(newMain);
             
             var players = new List<IMyPlayer>();
             MyAPIGateway.Players.GetPlayers(players);
