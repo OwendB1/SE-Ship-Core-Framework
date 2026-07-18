@@ -32,7 +32,7 @@ Can only be directly integrated in space engineers to see it work!
 
 ### Core Component Hierarchy
 
-**Session (SessionRun.cs, SessionFields.cs, SessionEvents.cs)**
+**Session (`Session/`)**
 - Singleton session component (`MySessionComponentBase`)
 - Entry point for the mod, manages lifecycle (LoadData, BeforeStart, UpdateAfterSimulation, UnloadData)
 - Owns the `GroupDict`: a concurrent dictionary mapping `IMyGridGroupData` to `GroupComponent`
@@ -41,7 +41,7 @@ Can only be directly integrated in space engineers to see it work!
 - Manages Nexus API integration for multi-server support
 - Modifies game definitions on load (max ship speed, ammo speeds)
 
-**GroupComponent (Components/GroupComponent.cs)**
+**GroupComponent (`Shared/Components/GroupComponent.cs` plus role partials)**
 - Represents a logical grid group (connected by pistons, rotors, connectors, etc.)
 - Tracks:
   - `MainCoreComponent`: The active core for the group (deterministic failover on core destruction)
@@ -55,13 +55,13 @@ Can only be directly integrated in space engineers to see it work!
   - Managing boost and active defense timers
   - Speed punishment when over-capacity
 
-**GridComponent (Components/GridComponent.cs)**
+**GridComponent (`Shared/Components/GridComponent.cs` plus role partials)**
 - Represents a single `MyCubeGrid` within a group
 - Tracks blocks on the grid and their contribution to block limits
 - Recalculates limits when blocks are added/removed
 - Handles block refunds when punishment type is "Delete"
 
-**CoreComponent (Components/CoreComponent.cs)**
+**CoreComponent (`Shared/Components/CoreComponent.cs` plus role partials)**
 - Represents a single Ship Core block (`IMyBeacon`)
 - Init logic:
   - Validates core placement (owner must match grid owner, no duplicate core types on grid)
@@ -91,7 +91,7 @@ Can only be directly integrated in space engineers to see it work!
 - `BlockLimits[]`: Array of per-block-type/group limits with punishment rules
 - `SpeedBoostEnabled`, `EnableActiveDefenseModifiers`: Feature flags
 
-### Managers (Managers/)
+### Managers (`Server/Managers/`)
 
 **GridsPerFactionManager** and **GridsPerPlayerManager**:
 - Track which grid groups belong to which faction/player
@@ -127,9 +127,9 @@ Can only be directly integrated in space engineers to see it work!
 - `AllowedDirections`: Restricts block placement direction relative to core orientation (e.g., "Forward" only for certain weapons)
 - Enforcement runs in `GroupComponent.EnforceGroupPunishment()`
 
-### Networking (Network/)
+### Networking (`Shared/Network/`, `Client/Network/`, `Server/Network/`)
 
-**Networking (Networking.cs)**:
+**Networking (`Shared/Network/Networking.cs`)**:
 - Handles client-server packet communication
 - Registered handlers for each packet type
 - Uses `PacketBase` for serialization
@@ -171,9 +171,9 @@ Can only be directly integrated in space engineers to see it work!
 3. Ensure `BlockLimit.GetWeight()` handles the new group
 
 **Adding a new command:**
-1. Add command handler to `Commands.cs`
-2. Register in `Commands.OnChatCommand()` or `Commands.ServerMessageHandler()`
-3. Create packet type in `Network/` if client-server sync is needed
+1. Add local input or presentation under `Client/UI/`
+2. Add validation and authoritative execution under `Server/Commands/`
+3. Add packet contracts under `Shared/Network/` and the receive handler under the applicable role
 
 **Modifying core behavior:**
 - Core activation logic: `GroupComponent.Activate()` and `CoreComponent.Init()`

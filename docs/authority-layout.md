@@ -9,7 +9,9 @@ Ship Core Framework is compiled as one Space Engineers mod assembly, but its sou
 | `Client/` | Presentation, local input, replicated-state consumption, and client-bound packet handlers. |
 | `Server/` | Rule evaluation, world mutation, persistence, enforcement, authoritative snapshots, and client-to-server packet handlers. |
 | `Shared/` | Wire contracts and immutable data transferred between roles. |
-| Existing root feature folders | Lifecycle coordination, observer component shells, configuration models, shared queries, and code required by both roles. |
+| `Session/` | Session lifecycle and grid-group observation, with role hooks under `Session/Client` and `Session/Server`. |
+| `Config/` | Shared configuration models and mod-asset loading, with world persistence under `Config/Server`. |
+| `API/` | The external mod API contract and shared read surface, with authoritative mutations under `API/Server`. |
 
 A listen server and single-player session run both roles. Code must therefore use independent `Session.IsClient` and `Session.IsServer` checks rather than treating the roles as mutually exclusive.
 
@@ -28,13 +30,15 @@ A listen server and single-player session run both roles. Code must therefore us
 3. The client runtime-state consumer applies the snapshot to observer components.
 4. Client UI and read-only API queries render or return that replicated state without re-running enforcement.
 
-Commands follow the same direction: `Client/UI/Commands.Chat.cs` captures local chat, `Server/UI/Commands.Transport.cs` validates the sender and payload, and `Server/UI/Commands.Administration.cs` owns administrative mutations.
+Commands follow the same direction: `Client/UI/Commands.Chat.cs` captures local chat, `Server/Commands/Commands.Transport.cs` validates the sender and payload, and `Server/Commands/Commands.Administration.cs` owns administrative mutations.
 
 ## Placement guide
 
 - Add HUD, LCD, terminal, notification, or local-input behavior under `Client/`.
 - Add punishment, persistence, ownership-limit mutation, world-definition mutation, or authoritative timers under `Server/`.
 - Add packet DTOs under `Shared/Network`; place each handler on the side that receives the packet.
+- Keep session, configuration, and external API domains at the source root. Nest role-specific partials inside those domain folders only when required.
+- Put all other business logic under `Client/`, `Server/`, or `Shared/`.
 - Keep configuration data shapes and observer component identity shared when both roles need them.
 - When a method is genuinely mixed, keep a small shared coordinator and extract the role-specific work into partial files.
 
