@@ -401,13 +401,20 @@ namespace ShipCoreFramework
 
         private static void ApplySpeedState(GroupComponent groupComponent, SpeedLimitContext context)
         {
+            var changed = false;
             lock (groupComponent.SpeedStateLock)
             {
+                var sourceGridId = GetSpeedSourceGridId(context.SourceGroup, groupComponent);
+                changed = groupComponent.BaseSpeedLimitMetersPerSecond != context.BaseMaxSpeed ||
+                          groupComponent.EffectiveSpeedLimitMetersPerSecond != context.EffectiveMaxSpeed ||
+                          groupComponent.EffectiveBoostEnabled != context.BoostActive ||
+                          groupComponent.SpeedSourceGroupGridId != sourceGridId;
                 groupComponent.BaseSpeedLimitMetersPerSecond = context.BaseMaxSpeed;
                 groupComponent.EffectiveSpeedLimitMetersPerSecond = context.EffectiveMaxSpeed;
                 groupComponent.EffectiveBoostEnabled = context.BoostActive;
-                groupComponent.SpeedSourceGroupGridId = GetSpeedSourceGridId(context.SourceGroup, groupComponent);
+                groupComponent.SpeedSourceGroupGridId = sourceGridId;
             }
+            if (changed) Session.MarkRuntimeStateDirty(groupComponent);
         }
 
         private static GroupComponent ResolveSpeedSourceGroup(GroupComponent groupComponent)

@@ -273,6 +273,7 @@ namespace ShipCoreFramework
 
         internal void OnBlockAddedToGroup()
         {
+            Session.MarkRuntimeStateDirty(this);
             InvalidateGameThreadStateCache(true);
             IncrementLimitGeneration();
             AddGroupBlocksCount(1);
@@ -290,6 +291,7 @@ namespace ShipCoreFramework
 
         internal void OnBlockRemovedFromGroup()
         {
+            Session.MarkRuntimeStateDirty(this);
             InvalidateGameThreadStateCache(true);
             IncrementLimitGeneration();
             AddGroupBlocksCount(-1);
@@ -589,6 +591,7 @@ namespace ShipCoreFramework
                 if (appliedPunishments > 0 && MyGroup != null)
                 {
                     MarkLimitsEnforced(appliedPunishments);
+                    Session.MarkRuntimeStateDirty(this);
                     Utils.Log("ExecutePendingPunishments: applied " + appliedPunishments +
                               " block punishments for group " + GetGroupKey() + ".", 1);
                     ModAPI.BroadcastLimitsEnforced(representativeGridId, appliedPunishments);
@@ -767,6 +770,7 @@ namespace ShipCoreFramework
 
                 PublishLimitsSnapshot(groupLimits);
                 MarkLimitsPublished();
+                Session.MarkRuntimeStateDirty(this);
             }
 
             if (MyGroup != null)

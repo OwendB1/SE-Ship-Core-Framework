@@ -23,6 +23,7 @@ namespace ShipCoreFramework
     [ProtoInclude(7000, typeof(PacketCountdown))]
     [ProtoInclude(8000, typeof(PacketRequestRuntimeState))]
     [ProtoInclude(9000, typeof(PacketRuntimeState))]
+    [ProtoInclude(10000, typeof(PacketRuntimeStateDelta))]
     [ProtoContract]
     internal abstract class PacketBase
     {

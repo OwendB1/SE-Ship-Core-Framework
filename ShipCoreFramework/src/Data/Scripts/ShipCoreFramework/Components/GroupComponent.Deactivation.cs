@@ -63,6 +63,7 @@ namespace ShipCoreFramework
             }
 
             Deactivated = true;
+            Session.MarkRuntimeStateDirty(this);
             InvalidateGameThreadStateCache(true);
             InvalidateModifierStateCache();
             ClearDeactivatedLimitState();

@@ -60,6 +60,50 @@ namespace ShipCoreFramework
                     Count = PerManifestGroupManager.GetCurrentCount(manifest.Name)
                 });
             }
+            float baseSpeed;
+            float effectiveSpeed;
+            long speedSourceGridId;
+            bool frictionEnabled;
+            bool boostActive;
+            bool effectiveBoostActive;
+            float boostDurationTimer;
+            float boostCooldownTimer;
+            float frictionMaximumDecelerationOverride;
+            float minimumFrictionSpeedAbsoluteOverride;
+            float maximumFrictionSpeedAbsoluteOverride;
+            float minimumFrictionSpeedModifierOverride;
+            float maximumFrictionSpeedModifierOverride;
+            lock (SpeedStateLock)
+            {
+                baseSpeed = BaseSpeedLimitMetersPerSecond;
+                effectiveSpeed = EffectiveSpeedLimitMetersPerSecond;
+                speedSourceGridId = SpeedSourceGroupGridId;
+                frictionEnabled = FrictionEnforcementEnabled;
+                boostActive = BoostEnabled;
+                effectiveBoostActive = EffectiveBoostEnabled;
+                boostDurationTimer = _boostDurationTimer;
+                boostCooldownTimer = _boostCooldownTimer;
+                frictionMaximumDecelerationOverride = FrictionMaximumDecelerationOverride;
+                minimumFrictionSpeedAbsoluteOverride = MinimumFrictionSpeedAbsoluteOverride;
+                maximumFrictionSpeedAbsoluteOverride = MaximumFrictionSpeedAbsoluteOverride;
+                minimumFrictionSpeedModifierOverride = MinimumFrictionSpeedModifierOverride;
+                maximumFrictionSpeedModifierOverride = MaximumFrictionSpeedModifierOverride;
+            }
+            bool activeDefense;
+            float activeDefenseDurationTimer;
+            float activeDefenseCooldownTimer;
+            bool powerOverclockActive;
+            float powerOverclockDurationTimer;
+            float powerOverclockCooldownTimer;
+            lock (_abilityStateLock)
+            {
+                activeDefense = _activeDefenseEnabled;
+                activeDefenseDurationTimer = _activeDefenseDurationTimer;
+                activeDefenseCooldownTimer = _activeDefenseCooldownTimer;
+                powerOverclockActive = _powerOverclockActive;
+                powerOverclockDurationTimer = _powerOverclockDurationTimer;
+                powerOverclockCooldownTimer = _powerOverclockCooldownTimer;
+            }
             return new GroupRuntimeState
             {
                 GroupId = gridIds[0],
@@ -85,26 +129,26 @@ namespace ShipCoreFramework
                 Limits = runtimeLimits.ToArray(),
                 Modifiers = ModAPI.ConvertToGridModifiersData(modifiers),
                 SpeedModifiers = ModAPI.ConvertToSpeedModifiersData(speedModifiers),
-                BaseSpeed = BaseSpeedLimitMetersPerSecond,
-                EffectiveSpeed = EffectiveSpeedLimitMetersPerSecond,
-                SpeedSourceGridId = SpeedSourceGroupGridId,
-                FrictionEnabled = FrictionEnforcementEnabled,
-                FrictionMaximumDecelerationOverride = FrictionMaximumDecelerationOverride,
-                MinimumFrictionSpeedAbsoluteOverride = MinimumFrictionSpeedAbsoluteOverride,
-                MaximumFrictionSpeedAbsoluteOverride = MaximumFrictionSpeedAbsoluteOverride,
-                MinimumFrictionSpeedModifierOverride = MinimumFrictionSpeedModifierOverride,
-                MaximumFrictionSpeedModifierOverride = MaximumFrictionSpeedModifierOverride,
-                BoostActive = BoostEnabled,
-                BoostDurationTimer = _boostDurationTimer,
-                BoostCooldownTimer = _boostCooldownTimer,
-                ActiveDefense = _activeDefenseEnabled,
-                ActiveDefenseDurationTimer = _activeDefenseDurationTimer,
-                ActiveDefenseCooldownTimer = _activeDefenseCooldownTimer,
-                PowerOverclockActive = _powerOverclockActive,
-                PowerOverclockDurationTimer = _powerOverclockDurationTimer,
-                PowerOverclockCooldownTimer = _powerOverclockCooldownTimer,
+                BaseSpeed = baseSpeed,
+                EffectiveSpeed = effectiveSpeed,
+                SpeedSourceGridId = speedSourceGridId,
+                FrictionEnabled = frictionEnabled,
+                FrictionMaximumDecelerationOverride = frictionMaximumDecelerationOverride,
+                MinimumFrictionSpeedAbsoluteOverride = minimumFrictionSpeedAbsoluteOverride,
+                MaximumFrictionSpeedAbsoluteOverride = maximumFrictionSpeedAbsoluteOverride,
+                MinimumFrictionSpeedModifierOverride = minimumFrictionSpeedModifierOverride,
+                MaximumFrictionSpeedModifierOverride = maximumFrictionSpeedModifierOverride,
+                BoostActive = boostActive,
+                BoostDurationTimer = boostDurationTimer,
+                BoostCooldownTimer = boostCooldownTimer,
+                ActiveDefense = activeDefense,
+                ActiveDefenseDurationTimer = activeDefenseDurationTimer,
+                ActiveDefenseCooldownTimer = activeDefenseCooldownTimer,
+                PowerOverclockActive = powerOverclockActive,
+                PowerOverclockDurationTimer = powerOverclockDurationTimer,
+                PowerOverclockCooldownTimer = powerOverclockCooldownTimer,
                 RepresentativeGridId = GetCachedRepresentativeGridId(),
-                EffectiveBoostActive = EffectiveBoostEnabled,
+                EffectiveBoostActive = effectiveBoostActive,
                 PlayerCoreCount = PerPlayerManager.GetCurrentCount(ownerId, countSubtypeId),
                 FactionCoreCount = faction == null ? 0 : PerFactionManager.GetCurrentCount(faction.FactionId, countSubtypeId),
                 ManifestCounts = manifestCounts.ToArray(),
@@ -149,15 +193,15 @@ namespace ShipCoreFramework
             PunishModifiers = state.PunishModifiers;
             PunishSpeed = state.PunishSpeed;
             PunishLimitedBlocks = state.PunishLimitedBlocks;
-            BoostEnabled = state.BoostActive;
-            _boostDurationTimer = state.BoostDurationTimer;
-            _boostCooldownTimer = state.BoostCooldownTimer;
-            _activeDefenseEnabled = state.ActiveDefense;
-            _activeDefenseDurationTimer = state.ActiveDefenseDurationTimer;
-            _activeDefenseCooldownTimer = state.ActiveDefenseCooldownTimer;
-            _powerOverclockActive = state.PowerOverclockActive;
-            _powerOverclockDurationTimer = state.PowerOverclockDurationTimer;
-            _powerOverclockCooldownTimer = state.PowerOverclockCooldownTimer;
+            lock (_abilityStateLock)
+            {
+                _activeDefenseEnabled = state.ActiveDefense;
+                _activeDefenseDurationTimer = state.ActiveDefenseDurationTimer;
+                _activeDefenseCooldownTimer = state.ActiveDefenseCooldownTimer;
+                _powerOverclockActive = state.PowerOverclockActive;
+                _powerOverclockDurationTimer = state.PowerOverclockDurationTimer;
+                _powerOverclockCooldownTimer = state.PowerOverclockCooldownTimer;
+            }
 
             Interlocked.Exchange(ref _groupBlocksCount, Math.Max(0, state.BlockCount));
             Interlocked.Exchange(ref _cachedGroupPCU, Math.Max(0, state.Pcu));
@@ -181,16 +225,22 @@ namespace ShipCoreFramework
             _ignoredStateCacheDirty = false;
             _directionReferenceCacheDirty = false;
 
-            BaseSpeedLimitMetersPerSecond = state.BaseSpeed;
-            EffectiveSpeedLimitMetersPerSecond = state.EffectiveSpeed;
-            SpeedSourceGroupGridId = state.SpeedSourceGridId;
-            EffectiveBoostEnabled = state.EffectiveBoostActive;
-            FrictionEnforcementEnabled = state.FrictionEnabled;
-            FrictionMaximumDecelerationOverride = state.FrictionMaximumDecelerationOverride;
-            MinimumFrictionSpeedAbsoluteOverride = state.MinimumFrictionSpeedAbsoluteOverride;
-            MaximumFrictionSpeedAbsoluteOverride = state.MaximumFrictionSpeedAbsoluteOverride;
-            MinimumFrictionSpeedModifierOverride = state.MinimumFrictionSpeedModifierOverride;
-            MaximumFrictionSpeedModifierOverride = state.MaximumFrictionSpeedModifierOverride;
+            lock (SpeedStateLock)
+            {
+                BoostEnabled = state.BoostActive;
+                _boostDurationTimer = state.BoostDurationTimer;
+                _boostCooldownTimer = state.BoostCooldownTimer;
+                BaseSpeedLimitMetersPerSecond = state.BaseSpeed;
+                EffectiveSpeedLimitMetersPerSecond = state.EffectiveSpeed;
+                SpeedSourceGroupGridId = state.SpeedSourceGridId;
+                EffectiveBoostEnabled = state.EffectiveBoostActive;
+                FrictionEnforcementEnabled = state.FrictionEnabled;
+                FrictionMaximumDecelerationOverride = state.FrictionMaximumDecelerationOverride;
+                MinimumFrictionSpeedAbsoluteOverride = state.MinimumFrictionSpeedAbsoluteOverride;
+                MaximumFrictionSpeedAbsoluteOverride = state.MaximumFrictionSpeedAbsoluteOverride;
+                MinimumFrictionSpeedModifierOverride = state.MinimumFrictionSpeedModifierOverride;
+                MaximumFrictionSpeedModifierOverride = state.MaximumFrictionSpeedModifierOverride;
+            }
 
             _cachedActiveGridModifiers = nextModifiers;
             _cachedActiveSpeedModifiers = FromRuntimeData(state.SpeedModifiers);

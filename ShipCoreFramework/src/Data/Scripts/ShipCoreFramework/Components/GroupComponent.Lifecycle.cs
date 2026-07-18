@@ -262,6 +262,7 @@ namespace ShipCoreFramework
             }
 
             MainCoreComponent = coreComponent;
+            Session.MarkRuntimeStateDirty(this);
             ClearCoreRecoveryGrace("main core activated", false);
             InvalidateGameThreadStateCache(true);
             InvalidateModifierStateCache();
@@ -330,6 +331,7 @@ namespace ShipCoreFramework
             SyncNoCoreLimitTracking();
             ScheduleMissingCoreRescan();
             SyncBeaconComponents();
+            Session.MarkRuntimeStateDirty(this);
 
             if (_closing || !Session.HasStarted || Session.IsShuttingDown) return;
             OnUpgradeModulesChanged();
@@ -362,6 +364,7 @@ namespace ShipCoreFramework
             }
             if (MainCoreComponent == null)
                 ScheduleMissingCoreRescan();
+            Session.MarkRuntimeStateDirty(this);
 
             Utils.Log($"OnGridAdded: {grid.EntityId}, {OwnerId}, {grid.CustomName}", 2);
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
@@ -420,6 +423,7 @@ namespace ShipCoreFramework
             Session.RefreshPhysicalGroupLinkagesForGrid(grid);
             Session.RefreshPhysicalGroupLinkagesForGrids(GridDictionary.Keys);
             ModAPI.BroadcastGridRemovedFromGroup(grid.EntityId, GetRepresentativeGridId());
+            Session.MarkRuntimeStateDirty(this);
         }
 
         private void MainCoreLeftGroup(CoreComponent lost)
@@ -471,6 +475,7 @@ namespace ShipCoreFramework
             }
 
             SyncBeaconComponents();
+            Session.MarkRuntimeStateDirty(this);
 
             if (_closing || !Session.HasStarted || Session.IsShuttingDown) return;
             OnUpgradeModulesChanged();

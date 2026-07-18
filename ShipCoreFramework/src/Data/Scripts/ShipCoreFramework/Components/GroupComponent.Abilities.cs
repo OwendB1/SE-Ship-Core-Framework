@@ -31,12 +31,19 @@ namespace ShipCoreFramework
                 return;
             }
 
+            var previousMainCore = MainCoreComponent;
+            var previousPunishSpeed = PunishSpeed;
+            var previousPunishModifiersForSync = PunishModifiers;
+            var previousPunishLimitedBlocks = PunishLimitedBlocks;
+
             if (Deactivated || IsIgnoredByAiOrFactionTagThreadSafe())
             {
                 ClearDeactivatedLimitState();
                 RefreshModifierStateCache();
                 ApplyModifiers(Modifiers);
                 RefreshDefenseModifierCache();
+                MarkRuntimeStateDirtyIfChanged(previousMainCore, previousPunishSpeed,
+                    previousPunishModifiersForSync, previousPunishLimitedBlocks);
                 return;
             }
 
@@ -47,6 +54,8 @@ namespace ShipCoreFramework
             {
                 ClearCoreRecoveryGracePunishmentState();
                 RefreshDefenseModifierCache();
+                MarkRuntimeStateDirtyIfChanged(previousMainCore, previousPunishSpeed,
+                    previousPunishModifiersForSync, previousPunishLimitedBlocks);
                 return;
             }
 
@@ -55,6 +64,16 @@ namespace ShipCoreFramework
             RefreshModifierStateCache();
             if (mainCoreChanged || previousPunishModifiers != PunishModifiers) ApplyModifiers(Modifiers);
             RefreshDefenseModifierCache();
+            MarkRuntimeStateDirtyIfChanged(previousMainCore, previousPunishSpeed,
+                previousPunishModifiersForSync, previousPunishLimitedBlocks);
+        }
+
+        private void MarkRuntimeStateDirtyIfChanged(CoreComponent previousMainCore, bool previousPunishSpeed,
+            bool previousPunishModifiers, bool previousPunishLimitedBlocks)
+        {
+            if (!ReferenceEquals(previousMainCore, MainCoreComponent) || previousPunishSpeed != PunishSpeed ||
+                previousPunishModifiers != PunishModifiers || previousPunishLimitedBlocks != PunishLimitedBlocks)
+                Session.MarkRuntimeStateDirty(this);
         }
 
         internal void RefreshPunishmentFlags()
@@ -440,7 +459,10 @@ namespace ShipCoreFramework
             }
 
             if (expired)
+            {
+                Session.MarkRuntimeStateDirty(this);
                 QueueBoostDeactivatedSideEffects();
+            }
         }
 
         internal void RunActiveDefenseTimerTick()
@@ -467,6 +489,7 @@ namespace ShipCoreFramework
             }
 
             if (!expired) return;
+            Session.MarkRuntimeStateDirty(this);
             RefreshDefenseModifierCache();
             QueueActiveDefenseDeactivatedSideEffects();
         }
@@ -505,6 +528,7 @@ namespace ShipCoreFramework
             }
 
             if (!damageReactors && !expired) return;
+            if (expired) Session.MarkRuntimeStateDirty(this);
             QueuePowerOverclockSideEffects(damageReactors, expired);
         }
 
@@ -625,6 +649,7 @@ namespace ShipCoreFramework
             }
 
             RefreshDefenseModifierCache();
+            Session.MarkRuntimeStateDirty(this);
 
             Utils.ShowNotification("Active Defense Engaged!");
 
@@ -671,6 +696,7 @@ namespace ShipCoreFramework
             }
 
             Utils.ShowNotification("Boost Engaged!");
+            Session.MarkRuntimeStateDirty(this);
 
             if (MainCoreComponent?.GridComponent?.Grid != null)
                 ModAPI.BroadcastBoostActivated(MainCoreComponent.GridComponent.Grid.EntityId);
@@ -723,6 +749,7 @@ namespace ShipCoreFramework
             InvalidateModifierStateCache();
             RefreshModifierStateCache();
             ApplyModifiers(Modifiers);
+            Session.MarkRuntimeStateDirty(this);
             Utils.ShowNotification("Power Overclock Engaged!");
         }
 

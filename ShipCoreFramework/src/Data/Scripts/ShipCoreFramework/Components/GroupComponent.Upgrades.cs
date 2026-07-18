@@ -102,6 +102,7 @@ namespace ShipCoreFramework
             finally
             {
                 _refreshingUpgradeModules = false;
+                Session.MarkRuntimeStateDirty(this);
             }
         }
 

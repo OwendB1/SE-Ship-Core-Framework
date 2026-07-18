@@ -88,8 +88,10 @@ namespace ShipCoreFramework
         private static int _pendingSequence = -1;
         private static GroupRuntimeState[][] _pendingBatches;
         private static int _pendingBatchCount;
+        private static int _pendingSnapshotRevision;
 
-        internal static bool Apply(int sequence, int batchIndex, int batchCount, GroupRuntimeState[] states)
+        internal static bool Apply(int sequence, int snapshotRevision, int batchIndex, int batchCount,
+            GroupRuntimeState[] states)
         {
             lock (SyncRoot)
             {
@@ -102,9 +104,10 @@ namespace ShipCoreFramework
                     _pendingSequence = sequence;
                     _pendingBatches = new GroupRuntimeState[batchCount][];
                     _pendingBatchCount = 0;
+                    _pendingSnapshotRevision = snapshotRevision;
                 }
                 else if (sequence < _pendingSequence || _pendingBatches == null ||
-                         _pendingBatches.Length != batchCount)
+                         _pendingBatches.Length != batchCount || _pendingSnapshotRevision != snapshotRevision)
                 {
                     return false;
                 }
@@ -113,6 +116,11 @@ namespace ShipCoreFramework
                 _pendingBatches[batchIndex] = states ?? Array.Empty<GroupRuntimeState>();
                 _pendingBatchCount++;
                 if (_pendingBatchCount != batchCount) return false;
+
+                var newerStates = new List<GroupRuntimeState>();
+                foreach (var current in ByGroup.Values)
+                    if (current != null && current.Revision > snapshotRevision)
+                        newerStates.Add(current);
 
                 ByGroup.Clear();
                 ByGrid.Clear();
@@ -123,18 +131,65 @@ namespace ShipCoreFramework
                     {
                         var state = completedStates[i];
                         if (state == null || state.GroupId == 0) continue;
-                        ByGroup[state.GroupId] = state;
-                        if (state.GridIds == null) continue;
-                        for (var j = 0; j < state.GridIds.Length; j++) ByGrid[state.GridIds[j]] = state;
+                        IndexState(state);
                     }
                 }
+                for (var i = 0; i < newerStates.Count; i++) IndexState(newerStates[i]);
 
                 _sequence = sequence;
                 _pendingSequence = -1;
                 _pendingBatches = null;
                 _pendingBatchCount = 0;
+                _pendingSnapshotRevision = 0;
                 return true;
             }
+        }
+
+        internal static bool ApplyDelta(GroupRuntimeState[] states)
+        {
+            if (states == null || states.Length == 0) return false;
+            var changed = false;
+            lock (SyncRoot)
+            {
+                for (var i = 0; i < states.Length; i++)
+                {
+                    var state = states[i];
+                    if (state == null || state.GroupId == 0) continue;
+                    GroupRuntimeState current;
+                    if (ByGroup.TryGetValue(state.GroupId, out current) && current.Revision >= state.Revision)
+                        continue;
+                    RemoveState(current);
+                    IndexState(state);
+                    changed = true;
+                }
+            }
+            return changed;
+        }
+
+        private static void IndexState(GroupRuntimeState state)
+        {
+            if (state == null) return;
+            GroupRuntimeState current;
+            if (ByGroup.TryGetValue(state.GroupId, out current)) RemoveState(current);
+            if (state.GridIds != null)
+            {
+                var staleStates = new HashSet<GroupRuntimeState>();
+                for (var i = 0; i < state.GridIds.Length; i++)
+                    if (ByGrid.TryGetValue(state.GridIds[i], out current) && current != null)
+                        staleStates.Add(current);
+                foreach (var stale in staleStates) RemoveState(stale);
+            }
+            ByGroup[state.GroupId] = state;
+            if (state.GridIds == null) return;
+            for (var i = 0; i < state.GridIds.Length; i++) ByGrid[state.GridIds[i]] = state;
+        }
+
+        private static void RemoveState(GroupRuntimeState state)
+        {
+            if (state == null) return;
+            ByGroup.Remove(state.GroupId);
+            if (state.GridIds == null) return;
+            for (var i = 0; i < state.GridIds.Length; i++) ByGrid.Remove(state.GridIds[i]);
         }
 
         internal static bool TryGetByGrid(long gridId, out GroupRuntimeState state)
@@ -175,6 +230,7 @@ namespace ShipCoreFramework
                 _pendingSequence = -1;
                 _pendingBatches = null;
                 _pendingBatchCount = 0;
+                _pendingSnapshotRevision = 0;
             }
         }
     }
@@ -202,11 +258,26 @@ namespace ShipCoreFramework
         [ProtoMember(3)] internal GroupRuntimeState[] States = Array.Empty<GroupRuntimeState>();
         [ProtoMember(4)] internal int BatchIndex;
         [ProtoMember(5)] internal int BatchCount;
+        [ProtoMember(6)] internal int SnapshotRevision;
 
         internal override void Received()
         {
             if (States != null && States.Length > Session.RuntimeStateBatchSize) return;
-            Session.ApplyRuntimeState(Sequence, BatchIndex, BatchCount, States);
+            Session.ApplyRuntimeState(Sequence, SnapshotRevision, BatchIndex, BatchCount, States);
+        }
+    }
+
+    [ProtoContract]
+    internal sealed class PacketRuntimeStateDelta : PacketBase
+    {
+        internal override PacketDirection Direction { get { return PacketDirection.ServerToClient; } }
+
+        [ProtoMember(1)] internal GroupRuntimeState[] States = Array.Empty<GroupRuntimeState>();
+
+        internal override void Received()
+        {
+            if (States == null || States.Length == 0 || States.Length > Session.RuntimeStateBatchSize) return;
+            Session.ApplyRuntimeStateDelta(States);
         }
     }
 }

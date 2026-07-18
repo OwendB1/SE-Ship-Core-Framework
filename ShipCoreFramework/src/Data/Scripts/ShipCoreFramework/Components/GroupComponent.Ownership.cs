@@ -81,6 +81,7 @@ namespace ShipCoreFramework
                     SaveOwnerIdToMainCore(ownerId);
                 }
 
+                if (_lastOwnerId != ownerId) Session.MarkRuntimeStateDirty(this);
                 _lastOwnerId = ownerId;
                 return ownerId;
             }
