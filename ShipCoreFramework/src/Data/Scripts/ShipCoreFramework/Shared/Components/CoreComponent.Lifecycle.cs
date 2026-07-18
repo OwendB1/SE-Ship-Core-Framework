@@ -13,9 +13,13 @@ namespace ShipCoreFramework
                 return;
             }
 
-            CoreBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged;
-            CoreBlock.AppendingCustomInfo += AppendingCustomInfo;
-            CoreBlock.IsWorkingChanged += OnIsWorkingChanged;
+            if (Session.IsServer)
+            {
+                CoreBlock.OnUpgradeValuesChanged += OnUpgradeValuesChanged;
+                CoreBlock.IsWorkingChanged += OnIsWorkingChanged;
+            }
+            if (Session.IsClient)
+                CoreBlock.AppendingCustomInfo += AppendingCustomInfo;
             _eventsAttached = true;
         }
 
@@ -23,9 +27,13 @@ namespace ShipCoreFramework
         {
             if (CoreBlock == null || !_eventsAttached) return;
 
-            CoreBlock.OnUpgradeValuesChanged -= OnUpgradeValuesChanged;
-            CoreBlock.AppendingCustomInfo -= AppendingCustomInfo;
-            CoreBlock.IsWorkingChanged -= OnIsWorkingChanged;
+            if (Session.IsServer)
+            {
+                CoreBlock.OnUpgradeValuesChanged -= OnUpgradeValuesChanged;
+                CoreBlock.IsWorkingChanged -= OnIsWorkingChanged;
+            }
+            if (Session.IsClient)
+                CoreBlock.AppendingCustomInfo -= AppendingCustomInfo;
             _eventsAttached = false;
         }
 

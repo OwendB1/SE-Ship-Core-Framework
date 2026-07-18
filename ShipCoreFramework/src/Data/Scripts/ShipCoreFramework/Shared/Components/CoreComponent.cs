@@ -23,7 +23,7 @@ namespace ShipCoreFramework
                 if (Session.IsGameThread)
                 {
                     if (Session.IsServer) SaveCoreState();
-                    RefreshCoreCustomInfo();
+                    if (Session.IsClient) RefreshCoreCustomInfo();
                     return;
                 }
 
@@ -33,7 +33,7 @@ namespace ShipCoreFramework
                         return;
 
                     if (Session.IsServer) SaveCoreState();
-                    RefreshCoreCustomInfo();
+                    if (Session.IsClient) RefreshCoreCustomInfo();
                 });
             }
         }
