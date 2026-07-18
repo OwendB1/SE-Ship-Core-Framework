@@ -10,14 +10,11 @@ namespace ShipCoreFramework
 {
     internal partial class GroupComponent
     {
-        internal void InvalidateGameThreadStateCache(bool directionReferenceMayChange)
+        private void RefreshAuthoritativeDirectionLockReference()
         {
-            _gridStateCacheDirty = true;
-            _massCacheDirty = true;
-            _ignoredStateCacheDirty = true;
-
-            if (directionReferenceMayChange)
-                _directionReferenceCacheDirty = true;
+            if (!Session.IsGameThread) return;
+            RefreshGridStateCacheIfNeeded(false);
+            RefreshNoCoreDirectionLockReferenceCacheIfNeeded();
         }
 
         private void InvalidateModifierStateCache()

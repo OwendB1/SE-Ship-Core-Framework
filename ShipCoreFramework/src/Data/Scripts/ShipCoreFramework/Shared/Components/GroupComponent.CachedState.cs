@@ -83,6 +83,16 @@ namespace ShipCoreFramework
         private int _nextMassCacheRefreshTick;
         private int _nextIgnoredStateCacheRefreshTick;
 
+        internal void InvalidateGameThreadStateCache(bool directionReferenceMayChange)
+        {
+            _gridStateCacheDirty = true;
+            _massCacheDirty = true;
+            _ignoredStateCacheDirty = true;
+
+            if (directionReferenceMayChange)
+                _directionReferenceCacheDirty = true;
+        }
+
         internal IMyCubeBlock GetDirectionLockReferenceBlock()
         {
             var mainCoreBlock = MainCoreComponent?.CoreBlock;
@@ -93,13 +103,6 @@ namespace ShipCoreFramework
                 RefreshAuthoritativeDirectionLockReference();
 
             return GetCachedDirectionLockReferenceBlock();
-        }
-
-        private void RefreshAuthoritativeDirectionLockReference()
-        {
-            if (!Session.IsGameThread) return;
-            RefreshGridStateCacheIfNeeded(false);
-            RefreshNoCoreDirectionLockReferenceCacheIfNeeded();
         }
 
         private IMyCubeBlock GetCachedDirectionLockReferenceBlock()
