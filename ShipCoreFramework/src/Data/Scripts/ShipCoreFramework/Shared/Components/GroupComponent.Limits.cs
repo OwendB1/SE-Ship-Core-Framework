@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using VRage.Game.ModAPI;
 using VRageMath;
 
 namespace ShipCoreFramework
@@ -48,31 +47,6 @@ namespace ShipCoreFramework
             return Session.IsServer && Session.IsGameThread ? ComputeEffectiveMaxPCU() : _cachedEffectiveMaxPCU;
         }
 
-        internal static bool IsValidDirection(IMyCubeBlock directionReferenceBlock, IMySlimBlock block,
-            List<DirectionType> allowedDirections, bool showNotification = true,
-            DirectionType primaryDirection = DirectionType.Forward)
-        {
-            if (directionReferenceBlock?.Orientation == null || block?.Orientation == null || allowedDirections == null ||
-                allowedDirections.Count == 0)
-                return true;
-
-            if (directionReferenceBlock.CubeGrid != block.CubeGrid)
-                return Session.Config != null && !Session.Config.BlockDirectionalPlacementOnSubgrids;
-
-            var referenceForward = Base6Directions.GetVector(directionReferenceBlock.Orientation.Forward);
-            var referenceUp = Base6Directions.GetVector(directionReferenceBlock.Orientation.Up);
-            var primaryAxis = GetBlockPrimaryDirectionVector(block, primaryDirection);
-
-            var xyDirection = ResolveFacing(referenceForward, referenceUp, primaryAxis);
-            var isValid = allowedDirections.Contains(xyDirection);
-            if (!isValid && showNotification)
-                Utils.ShowNotification(
-                    Utils.GetLocalizedBlockName(block) + ": the direction " + xyDirection + " is invalid",
-                    directionReferenceBlock.SlimBlock.BuiltBy);
-
-            return isValid;
-        }
-
         /// <summary>
         /// Resolves which of the reference block's six directions <paramref name="primaryAxis"/> points
         /// along. The single source of truth for the directional rule, shared by enforcement (which
@@ -110,30 +84,5 @@ namespace ShipCoreFramework
             }
         }
 
-        private static Vector3 GetBlockPrimaryDirectionVector(IMySlimBlock block, DirectionType primaryDirection)
-        {
-            var f = Base6Directions.GetVector(block.Orientation.Forward);
-            var u = Base6Directions.GetVector(block.Orientation.Up);
-
-            switch (primaryDirection)
-            {
-                case DirectionType.Backward:
-                    return Base6Directions.GetVector(Base6Directions.GetOppositeDirection(block.Orientation.Forward));
-                case DirectionType.Up:
-                    return u;
-                case DirectionType.Down:
-                    return Base6Directions.GetVector(Base6Directions.GetOppositeDirection(block.Orientation.Up));
-                case DirectionType.Left:
-                    Vector3 l;
-                    Vector3.Cross(ref u, ref f, out l);
-                    return l;
-                case DirectionType.Right:
-                    Vector3 r;
-                    Vector3.Cross(ref f, ref u, out r);
-                    return r;
-                default:
-                    return f;
-            }
-        }
     }
 }

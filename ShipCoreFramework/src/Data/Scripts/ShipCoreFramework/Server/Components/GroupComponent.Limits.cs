@@ -10,6 +10,58 @@ namespace ShipCoreFramework
 {
     internal partial class GroupComponent
     {
+        internal static bool IsValidDirection(IMyCubeBlock directionReferenceBlock, IMySlimBlock block,
+            List<DirectionType> allowedDirections, bool showNotification = true,
+            DirectionType primaryDirection = DirectionType.Forward)
+        {
+            if (directionReferenceBlock?.Orientation == null || block?.Orientation == null ||
+                allowedDirections == null || allowedDirections.Count == 0)
+                return true;
+
+            if (directionReferenceBlock.CubeGrid != block.CubeGrid)
+                return Session.Config != null && !Session.Config.BlockDirectionalPlacementOnSubgrids;
+
+            var referenceForward = Base6Directions.GetVector(directionReferenceBlock.Orientation.Forward);
+            var referenceUp = Base6Directions.GetVector(directionReferenceBlock.Orientation.Up);
+            var primaryAxis = GetBlockPrimaryDirectionVector(block, primaryDirection);
+
+            var xyDirection = ResolveFacing(referenceForward, referenceUp, primaryAxis);
+            var isValid = allowedDirections.Contains(xyDirection);
+            if (!isValid && showNotification)
+                Utils.ShowNotification(
+                    Utils.GetLocalizedBlockName(block) + ": the direction " + xyDirection + " is invalid",
+                    directionReferenceBlock.SlimBlock.BuiltBy);
+
+            return isValid;
+        }
+
+        private static Vector3 GetBlockPrimaryDirectionVector(IMySlimBlock block, DirectionType primaryDirection)
+        {
+            var forward = Base6Directions.GetVector(block.Orientation.Forward);
+            var up = Base6Directions.GetVector(block.Orientation.Up);
+
+            switch (primaryDirection)
+            {
+                case DirectionType.Backward:
+                    return Base6Directions.GetVector(
+                        Base6Directions.GetOppositeDirection(block.Orientation.Forward));
+                case DirectionType.Up:
+                    return up;
+                case DirectionType.Down:
+                    return Base6Directions.GetVector(Base6Directions.GetOppositeDirection(block.Orientation.Up));
+                case DirectionType.Left:
+                    Vector3 left;
+                    Vector3.Cross(ref up, ref forward, out left);
+                    return left;
+                case DirectionType.Right:
+                    Vector3 right;
+                    Vector3.Cross(ref forward, ref up, out right);
+                    return right;
+                default:
+                    return forward;
+            }
+        }
+
         private sealed class PendingBlockPunishment
         {
             internal readonly IMySlimBlock Block;
