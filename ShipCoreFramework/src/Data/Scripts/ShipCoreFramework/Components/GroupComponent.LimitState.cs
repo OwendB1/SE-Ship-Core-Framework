@@ -55,10 +55,10 @@ namespace ShipCoreFramework
 
         private void MarkLimitsEnforced(int blocksPunished)
         {
-            Interlocked.Exchange(ref _lastBlocksPunished, blocksPunished);
-            var revision = Interlocked.Increment(ref _limitEnforcementRevision);
             lock (_runtimeLimitEventLock)
             {
+                Interlocked.Exchange(ref _lastBlocksPunished, blocksPunished);
+                var revision = Interlocked.Increment(ref _limitEnforcementRevision);
                 _runtimeLimitEnforcementEvents.Enqueue(new RuntimeLimitEnforcementEvent
                 {
                     Revision = revision,
@@ -69,9 +69,15 @@ namespace ShipCoreFramework
             }
         }
 
-        private RuntimeLimitEnforcementEvent[] GetRuntimeLimitEnforcementEvents()
+        private RuntimeLimitEnforcementEvent[] GetRuntimeLimitEnforcementEvents(
+            out int revision, out int lastBlocksPunished)
         {
-            lock (_runtimeLimitEventLock) return _runtimeLimitEnforcementEvents.ToArray();
+            lock (_runtimeLimitEventLock)
+            {
+                revision = Interlocked.CompareExchange(ref _limitEnforcementRevision, 0, 0);
+                lastBlocksPunished = Interlocked.CompareExchange(ref _lastBlocksPunished, 0, 0);
+                return _runtimeLimitEnforcementEvents.ToArray();
+            }
         }
 
         private void PublishLimitsSnapshot(ConcurrentDictionary<BlockLimit, LimitBucket> limits)

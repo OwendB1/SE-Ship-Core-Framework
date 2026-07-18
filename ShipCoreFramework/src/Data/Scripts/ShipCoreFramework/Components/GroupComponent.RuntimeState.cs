@@ -22,26 +22,36 @@ namespace ShipCoreFramework
             if (gridIds.Count == 0) return null;
 
             var runtimeLimits = new List<RuntimeLimitState>();
-            var configuredLimits = ShipCore == null ? null : ShipCore.BlockLimits;
-            if (configuredLimits != null)
+            int limitRevision;
+            lock (_limitSnapshotLock)
             {
-                for (var i = 0; i < configuredLimits.Length; i++)
+                var configuredLimits = ShipCore == null ? null : ShipCore.BlockLimits;
+                if (configuredLimits != null)
                 {
-                    var limit = configuredLimits[i];
-                    if (limit == null) continue;
-                    var total = 0d;
-                    LimitBucket bucket;
-                    if (Limits.TryGetValue(limit, out bucket) && bucket != null)
-                        lock (bucket.BucketLock) total = bucket.TotalWeight;
-                    runtimeLimits.Add(new RuntimeLimitState
+                    for (var i = 0; i < configuredLimits.Length; i++)
                     {
-                        Name = limit.Name ?? string.Empty,
-                        CurrentCount = total,
-                        MaxCount = GetEffectiveMaxCount(limit)
-                    });
+                        var limit = configuredLimits[i];
+                        if (limit == null) continue;
+                        var total = 0d;
+                        LimitBucket bucket;
+                        if (Limits.TryGetValue(limit, out bucket) && bucket != null)
+                            lock (bucket.BucketLock) total = bucket.TotalWeight;
+                        runtimeLimits.Add(new RuntimeLimitState
+                        {
+                            Name = limit.Name ?? string.Empty,
+                            CurrentCount = total,
+                            MaxCount = GetEffectiveMaxCount(limit)
+                        });
+                    }
                 }
+                limitRevision = Interlocked.CompareExchange(ref _publishedLimitRevision, 0, 0);
             }
             runtimeLimits.Sort((left, right) => string.Compare(left.Name, right.Name, StringComparison.Ordinal));
+
+            int limitEnforcementRevision;
+            int lastBlocksPunished;
+            var limitEnforcementEvents = GetRuntimeLimitEnforcementEvents(
+                out limitEnforcementRevision, out lastBlocksPunished);
 
             var directionReference = GetDirectionLockReferenceBlock();
             var modifiers = Modifiers;
@@ -155,10 +165,10 @@ namespace ShipCoreFramework
                 SpeedPunishmentReasons = GetSpeedPunishmentGateDescriptions().ToArray(),
                 ModifierPunishmentReasons = GetModifierPunishmentGateDescriptions().ToArray(),
                 LimitedBlockPunishmentReasons = GetLimitedBlockPunishmentGateDescriptions().ToArray(),
-                LimitRevision = Interlocked.CompareExchange(ref _publishedLimitRevision, 0, 0),
-                LimitEnforcementRevision = Interlocked.CompareExchange(ref _limitEnforcementRevision, 0, 0),
-                LastBlocksPunished = Interlocked.CompareExchange(ref _lastBlocksPunished, 0, 0),
-                LimitEnforcementEvents = GetRuntimeLimitEnforcementEvents()
+                LimitRevision = limitRevision,
+                LimitEnforcementRevision = limitEnforcementRevision,
+                LastBlocksPunished = lastBlocksPunished,
+                LimitEnforcementEvents = limitEnforcementEvents
             };
         }
 
