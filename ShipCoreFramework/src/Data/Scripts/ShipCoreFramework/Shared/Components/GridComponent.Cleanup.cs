@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
-using IMyShipConnector = Sandbox.ModAPI.IMyShipConnector;
 
 namespace ShipCoreFramework
 {
@@ -26,18 +25,10 @@ namespace ShipCoreFramework
             foreach (var block in blocksCopy)
             {
                 var fatBlock = block?.FatBlock;
-                var func = fatBlock as IMyFunctionalBlock;
-                if (func != null) func.EnabledChanged -= FuncBlockOnEnabledChanged;
-
                 var shipController = fatBlock as IMyShipController;
                 if (shipController != null) shipController.PropertiesChanged -= ShipControllerOnPropertiesChanged;
 
-                var connector = fatBlock as IMyShipConnector;
-                if (connector == null) continue;
-                
-                connector.IsConnectedChanged -= ConnectorOnConnectionChanged;
-                connector.AttachFinished -= ConnectorOnConnectionChanged;
-                connector.DetachFinished -= ConnectorOnConnectionChanged;
+                if (Session.IsServer) DetachAuthoritativeBlockEvents(block);
             }
 
             lock (_shipControllersLock)
@@ -45,13 +36,7 @@ namespace ShipCoreFramework
                 _shipControllers.Clear();
             }
 
-            _trackedConnectorIds.Clear();
-
-            PublishLimitsSnapshot(null);
-            foreach (var beaconComponent in BeaconDictionary.Values) beaconComponent.Clean();
-            BeaconDictionary.Clear();
-            foreach (var moduleComponent in _upgradeModuleDictionary.Values) moduleComponent.Clean();
-            _upgradeModuleDictionary.Clear();
+            if (Session.IsServer) CleanAuthoritativeState();
             foreach (var coreComponent in CoreDictionary.Values) coreComponent.Clean();
             CoreDictionary.Clear();
         }

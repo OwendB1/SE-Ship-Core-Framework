@@ -8,39 +8,6 @@ namespace ShipCoreFramework
 {
     internal partial class GridComponent
     {
-        internal static BlockKey KeyOf(IMySlimBlock block)
-        {
-            return new BlockKey(Utils.GetBlockTypeId(block), Utils.GetBlockSubtypeId(block));
-        }
-
-        internal List<IMySlimBlock> GetBlocksCopy()
-        {
-            lock (_blocksLock)
-            {
-                return new List<IMySlimBlock>(_blocks);
-            }
-        }
-
-        private void BlockAddedEvent(IMySlimBlock block)
-        {
-            BlockAddedInternal(block, false);
-        }
-
-        private bool IsTrackedBlock(IMySlimBlock block)
-        {
-            lock (_blocksLock)
-                return _blocks.Contains(block);
-        }
-
-        private void AddTrackedBlock(IMySlimBlock block)
-        {
-            lock (_blocksLock)
-            {
-                if (!_blocks.Contains(block))
-                    _blocks.Add(block);
-            }
-        }
-
         private static void RollBackCoreInitialization(GroupComponent groupComponent, CoreComponent coreComponent)
         {
             if (groupComponent != null && ReferenceEquals(groupComponent.MainCoreComponent, coreComponent))
@@ -50,16 +17,9 @@ namespace ShipCoreFramework
                 coreComponent.Clean();
         }
 
-        private bool BlockAddedInternal(IMySlimBlock block, bool limitBasedPunish = true)
+        private bool AddBlockAuthoritative(IMySlimBlock block, GroupComponent groupComponent,
+            bool limitBasedPunish)
         {
-            if (block?.CubeGrid == null || Grid == null || block.CubeGrid != Grid) return false;
-
-            var groupComponent = GroupComponent;
-            if (groupComponent == null) return false;
-
-            if (!Session.IsServer)
-                return ObserveBlockAdded(block, groupComponent);
-
             var builderId = block.BuiltBy;
 
             var players = new List<IMyPlayer>();
@@ -177,52 +137,8 @@ namespace ShipCoreFramework
             return true;
         }
 
-        private bool ObserveBlockAdded(IMySlimBlock block, GroupComponent groupComponent)
+        private void RemoveBlockAuthoritative(IMySlimBlock block, GroupComponent groupComponent)
         {
-            if (IsTrackedBlock(block)) return false;
-
-            var functionalBlock = block.FatBlock as IMyFunctionalBlock;
-            var shipController = functionalBlock as IMyShipController;
-            if (Utils.IsCoreBlock(functionalBlock))
-            {
-                CoreComponent existingCore;
-                if (!CoreDictionary.TryGetValue(functionalBlock, out existingCore))
-                {
-                    var core = new CoreComponent();
-                    if (!core.Init(functionalBlock, this, groupComponent)) return false;
-                    if (!CoreDictionary.TryAdd(block.FatBlock, core))
-                    {
-                        core.Clean();
-                        return false;
-                    }
-                }
-            }
-
-            AddTrackedBlock(block);
-            var terminalBlock = functionalBlock as IMyTerminalBlock;
-            if (terminalBlock != null && groupComponent.HasRuntimeState)
-                CubeGridModifiers.ApplyModifiers(terminalBlock, groupComponent.Modifiers);
-            if (shipController != null)
-            {
-                TrackShipController(shipController);
-                shipController.PropertiesChanged += ShipControllerOnPropertiesChanged;
-            }
-
-            groupComponent.ObserveClientBlockCount(1);
-            return true;
-        }
-
-        private void BlockRemoved(IMySlimBlock block)
-        {
-            var groupComponent = GroupComponent;
-            if (groupComponent == null) return;
-
-            if (!Session.IsServer)
-            {
-                ObserveBlockRemoved(block, groupComponent);
-                return;
-            }
-
             var functionalBlock = block.FatBlock as IMyFunctionalBlock;
             var shipController = functionalBlock as IMyShipController;
             CoreComponent value = null;
@@ -297,36 +213,6 @@ namespace ShipCoreFramework
                 groupComponent.OnUpgradeModulesChanged();
             else
                 groupComponent.ApplyModifiers(groupComponent.Modifiers);
-        }
-
-        private void ObserveBlockRemoved(IMySlimBlock block, GroupComponent groupComponent)
-        {
-            if (block == null) return;
-
-            var functionalBlock = block.FatBlock as IMyFunctionalBlock;
-            CoreComponent core;
-            if (functionalBlock != null && CoreDictionary.TryRemove(functionalBlock, out core))
-                core.CoreDestroyed();
-
-            bool wasTracked;
-            lock (_blocksLock) wasTracked = _blocks.Remove(block);
-
-            var shipController = functionalBlock as IMyShipController;
-            if (shipController != null)
-            {
-                UntrackShipController(shipController);
-                shipController.PropertiesChanged -= ShipControllerOnPropertiesChanged;
-            }
-
-            if (wasTracked) groupComponent.ObserveClientBlockCount(-1);
-        }
-
-        private void ShipControllerOnPropertiesChanged(IMyTerminalBlock obj)
-        {
-            var groupComponent = GroupComponent;
-            if (groupComponent == null || groupComponent.MainCoreComponent != null) return;
-
-            groupComponent.OnNoCoreDirectionReferencePropertiesChanged();
         }
 
         private void FuncBlockOnEnabledChanged(IMyTerminalBlock obj)
