@@ -116,21 +116,6 @@ namespace ShipCoreFramework
             return ownersPerGrid.Count == 0 ? 0 : ownersPerGrid.MaxBy(kvp => kvp.Value).Key;
         }
 
-        internal static IMyCubeGrid RaycastForGrid(double maxDistance = 50.0)
-        {
-            var player = MyAPIGateway.Session?.Player;
-            if (player?.Character == null) return null;
-
-            var worldMatrix = player.Character.WorldMatrix;
-            var startPos = worldMatrix.Translation + worldMatrix.Forward * 1.5;
-            var endPos = startPos + worldMatrix.Forward * maxDistance;
-
-            var hits = new List<IHitInfo>();
-            MyAPIGateway.Physics.CastRay(startPos, endPos, hits);
-
-            return hits.Select(hit => hit.HitEntity).OfType<IMyCubeGrid>().FirstOrDefault();
-        }
-
         internal static bool TryFindByGridId(long gridEntityId, out GroupComponent group)
         {
             foreach (var gc in Session.GroupDict.Select(kv => kv.Value))
