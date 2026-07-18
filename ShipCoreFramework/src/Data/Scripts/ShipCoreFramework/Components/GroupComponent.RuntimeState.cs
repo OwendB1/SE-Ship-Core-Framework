@@ -22,19 +22,24 @@ namespace ShipCoreFramework
             if (gridIds.Count == 0) return null;
 
             var runtimeLimits = new List<RuntimeLimitState>();
-            foreach (var pair in Limits)
+            var configuredLimits = ShipCore == null ? null : ShipCore.BlockLimits;
+            if (configuredLimits != null)
             {
-                var limit = pair.Key;
-                var bucket = pair.Value;
-                if (limit == null || bucket == null) continue;
-                double total;
-                lock (bucket.BucketLock) total = bucket.TotalWeight;
-                runtimeLimits.Add(new RuntimeLimitState
+                for (var i = 0; i < configuredLimits.Length; i++)
                 {
-                    Name = limit.Name ?? string.Empty,
-                    CurrentCount = total,
-                    MaxCount = GetEffectiveMaxCount(limit)
-                });
+                    var limit = configuredLimits[i];
+                    if (limit == null) continue;
+                    var total = 0d;
+                    LimitBucket bucket;
+                    if (Limits.TryGetValue(limit, out bucket) && bucket != null)
+                        lock (bucket.BucketLock) total = bucket.TotalWeight;
+                    runtimeLimits.Add(new RuntimeLimitState
+                    {
+                        Name = limit.Name ?? string.Empty,
+                        CurrentCount = total,
+                        MaxCount = GetEffectiveMaxCount(limit)
+                    });
+                }
             }
             runtimeLimits.Sort((left, right) => string.Compare(left.Name, right.Name, StringComparison.Ordinal));
 
@@ -117,7 +122,6 @@ namespace ShipCoreFramework
             _runtimeStateReceived = true;
             _runtimeCoreSubtypeId = state.CoreSubtypeId ?? string.Empty;
             _runtimeOwnerId = state.OwnerId;
-            _runtimeMainCoreBlockId = state.MainCoreBlockId;
             _runtimeCoreCount = state.CoreCount;
             _runtimePlayerCoreCount = state.PlayerCoreCount;
             _runtimeFactionCoreCount = state.FactionCoreCount;

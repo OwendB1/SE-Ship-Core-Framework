@@ -72,7 +72,6 @@ namespace ShipCoreFramework
         private long _lastOwnerId;
         private bool _runtimeStateReceived;
         private long _runtimeOwnerId;
-        private long _runtimeMainCoreBlockId;
         private int _runtimeCoreCount;
         private string _runtimeCoreSubtypeId = string.Empty;
         private int _runtimePlayerCoreCount;
