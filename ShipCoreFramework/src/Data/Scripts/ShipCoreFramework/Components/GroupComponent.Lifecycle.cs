@@ -740,6 +740,7 @@ namespace ShipCoreFramework
             _registeredNoCoreLimitOwnerId = ownerId;
             _registeredNoCoreLimitFactionId = factionId;
             _noCoreLimitsRegistered = true;
+            MarkRuntimeCountStatesDirty();
         }
 
         private void UnregisterNoCoreLimitTracking()
@@ -762,6 +763,7 @@ namespace ShipCoreFramework
             _registeredNoCoreLimitOwnerId = 0;
             _registeredNoCoreLimitFactionId = -1;
             _noCoreLimitsRegistered = false;
+            MarkRuntimeCountStatesDirty();
         }
 
         private void RegisterCoreLimitTracking()
@@ -795,6 +797,7 @@ namespace ShipCoreFramework
             _registeredCoreLimitOwnerId = ownerId;
             _registeredCoreLimitFactionId = factionId;
             _coreLimitsRegistered = true;
+            MarkRuntimeCountStatesDirty();
         }
 
         private void UnregisterCoreLimitTracking()
@@ -817,6 +820,14 @@ namespace ShipCoreFramework
             _registeredCoreLimitOwnerId = 0;
             _registeredCoreLimitFactionId = -1;
             _coreLimitsRegistered = false;
+            MarkRuntimeCountStatesDirty();
+        }
+
+        private static void MarkRuntimeCountStatesDirty()
+        {
+            if (!Session.IsServer) return;
+            foreach (var pair in Session.GroupDict)
+                Session.MarkRuntimeStateDirty(pair.Value);
         }
 
         private void RefreshRegisteredLimitOwnership()
