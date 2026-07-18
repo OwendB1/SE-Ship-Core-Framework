@@ -167,7 +167,14 @@ namespace ShipCoreFramework
 
             var nextModifiers = FromRuntimeData(state.Modifiers);
             var modifiersChanged = !_runtimeStateReceived || !SameModifiers(_cachedActiveGridModifiers, nextModifiers);
-            if (_runtimeStateReceived) BroadcastRuntimeStateChanges(state);
+            var broadcastChanges = _runtimeStateReceived;
+            var previousCoreBlockId = _runtimeMainCoreBlockId;
+            var previousCoreSubtypeId = _runtimeCoreSubtypeId;
+            var previousBoostActive = BoostEnabled;
+            var previousDefenseActive = _activeDefenseEnabled;
+            var previousGridIds = _cachedMechanicalGridIds ?? Array.Empty<long>();
+            var previousLimitRevision = _runtimeLimitRevision;
+            var previousLimitEnforcementRevision = _runtimeLimitEnforcementRevision;
             _runtimeStateReceived = true;
             _runtimeCoreSubtypeId = state.CoreSubtypeId ?? string.Empty;
             _runtimeOwnerId = state.OwnerId;
@@ -248,20 +255,26 @@ namespace ShipCoreFramework
             PublishRuntimeLimits(state.Limits);
             ApplyRuntimeCore(state.MainCoreBlockId);
             if (modifiersChanged) ApplyModifiers(_cachedActiveGridModifiers);
+            if (broadcastChanges)
+                BroadcastRuntimeStateChanges(state, previousCoreBlockId, previousCoreSubtypeId,
+                    previousBoostActive, previousDefenseActive, previousGridIds,
+                    previousLimitRevision, previousLimitEnforcementRevision);
         }
 
-        private void BroadcastRuntimeStateChanges(GroupRuntimeState state)
+        private void BroadcastRuntimeStateChanges(GroupRuntimeState state, long previousCoreBlockId,
+            string previousCoreSubtypeId, bool previousBoostActive, bool previousDefenseActive,
+            long[] previousGridIds, int previousLimitRevision, int previousLimitEnforcementRevision)
         {
             var eventGridId = state.RepresentativeGridId == 0 ? state.GroupId : state.RepresentativeGridId;
-            if (_runtimeMainCoreBlockId != state.MainCoreBlockId)
+            if (previousCoreBlockId != state.MainCoreBlockId)
             {
-                if (_runtimeMainCoreBlockId != 0)
+                if (previousCoreBlockId != 0 && state.MainCoreBlockId == 0)
                 {
-                    var oldCore = Session.Config.GetShipCoreByTypeId(_runtimeCoreSubtypeId);
-                    ModAPI.BroadcastCoreDeactivated(eventGridId, _runtimeCoreSubtypeId,
-                        oldCore == null ? _runtimeCoreSubtypeId : oldCore.UniqueName);
+                    var oldCore = Session.Config.GetShipCoreByTypeId(previousCoreSubtypeId);
+                    ModAPI.BroadcastCoreDeactivated(eventGridId, previousCoreSubtypeId,
+                        oldCore == null ? previousCoreSubtypeId : oldCore.UniqueName);
                 }
-                if (state.MainCoreBlockId != 0)
+                else if (previousCoreBlockId == 0 && state.MainCoreBlockId != 0)
                 {
                     var newCore = Session.Config.GetShipCoreByTypeId(state.CoreSubtypeId ?? string.Empty);
                     ModAPI.BroadcastCoreActivated(eventGridId, state.CoreSubtypeId,
@@ -269,27 +282,27 @@ namespace ShipCoreFramework
                 }
             }
 
-            if (BoostEnabled != state.BoostActive)
+            if (previousBoostActive != state.BoostActive)
             {
                 if (state.BoostActive) ModAPI.BroadcastBoostActivated(eventGridId);
                 else ModAPI.BroadcastBoostDeactivated(eventGridId);
             }
-            if (_activeDefenseEnabled != state.ActiveDefense)
+            if (previousDefenseActive != state.ActiveDefense)
             {
                 if (state.ActiveDefense) ModAPI.BroadcastActiveDefenseActivated(eventGridId);
                 else ModAPI.BroadcastActiveDefenseDeactivated(eventGridId);
             }
 
-            var oldGridIds = new HashSet<long>(_cachedMechanicalGridIds ?? Array.Empty<long>());
+            var oldGridIds = new HashSet<long>(previousGridIds);
             var newGridIds = new HashSet<long>(state.GridIds ?? Array.Empty<long>());
             foreach (var gridId in newGridIds)
                 if (!oldGridIds.Contains(gridId)) ModAPI.BroadcastGridAddedToGroup(gridId);
             foreach (var gridId in oldGridIds)
                 if (!newGridIds.Contains(gridId)) ModAPI.BroadcastGridRemovedFromGroup(gridId, eventGridId);
 
-            if (state.LimitRevision > _runtimeLimitRevision)
+            if (state.LimitRevision > previousLimitRevision)
                 ModAPI.BroadcastLimitsRecalculated(eventGridId);
-            if (state.LimitEnforcementRevision > _runtimeLimitEnforcementRevision)
+            if (state.LimitEnforcementRevision > previousLimitEnforcementRevision)
                 ModAPI.BroadcastLimitsEnforced(eventGridId, state.LastBlocksPunished);
         }
 
