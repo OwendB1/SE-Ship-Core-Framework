@@ -200,7 +200,8 @@ namespace ShipCoreFramework
 
             AddTrackedBlock(block);
             var terminalBlock = functionalBlock as IMyTerminalBlock;
-            if (terminalBlock != null) CubeGridModifiers.ApplyModifiers(terminalBlock, groupComponent.Modifiers);
+            if (terminalBlock != null && groupComponent.HasRuntimeState)
+                CubeGridModifiers.ApplyModifiers(terminalBlock, groupComponent.Modifiers);
             if (shipController != null)
             {
                 TrackShipController(shipController);

@@ -85,6 +85,7 @@ namespace ShipCoreFramework
         internal int CoreCount => !Session.IsServer && _runtimeStateReceived
             ? _runtimeCoreCount
             : CoreDictionary.Count;
+        internal bool HasRuntimeState => _runtimeStateReceived;
         private float _boostCooldownTimer;
         private float _boostDurationTimer;
 
