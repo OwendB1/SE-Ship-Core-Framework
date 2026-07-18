@@ -8,6 +8,12 @@ using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
 {
+    internal enum PacketDirection
+    {
+        ClientToServer,
+        ServerToClient
+    }
+
     [ProtoInclude(1000, typeof(PacketAction))]
     [ProtoInclude(2000, typeof(PacketSetMainCore))]
     [ProtoInclude(3000, typeof(PacketSetMainCoreSync))]
@@ -25,12 +31,53 @@ namespace ShipCoreFramework
         internal bool SentFromServer;
 
         internal PacketBase() { } // Empty constructor required for deserialization
+        internal abstract PacketDirection Direction { get; }
         internal abstract void Received();
+
+        internal bool CanReceive()
+        {
+            return Direction == PacketDirection.ClientToServer
+                ? Session.IsServer && !SentFromServer
+                : Session.IsClient && SentFromServer;
+        }
+
+        protected bool TryGetSender(out IMyPlayer sender)
+        {
+            sender = null;
+            if (SenderSteamId == 0) return false;
+
+            var players = new List<IMyPlayer>();
+            MyAPIGateway.Players.GetPlayers(players);
+            for (var i = 0; i < players.Count; i++)
+            {
+                if (players[i].SteamUserId != SenderSteamId) continue;
+                sender = players[i];
+                return sender.IdentityId != 0;
+            }
+
+            return false;
+        }
+
+        protected static bool HasAccess(IMyPlayer sender, IMyTerminalBlock block)
+        {
+            if (sender == null || sender.IdentityId == 0 || block == null) return false;
+            if (sender.PromoteLevel == MyPromoteLevel.Admin || sender.PromoteLevel == MyPromoteLevel.Owner)
+                return true;
+            return block.HasPlayerAccess(sender.IdentityId);
+        }
+
+        protected static string Cap(string value, int maxLength)
+        {
+            if (string.IsNullOrEmpty(value)) return string.Empty;
+            return value.Length <= maxLength ? value : value.Substring(0, maxLength);
+        }
     }
     
     [ProtoContract]
     internal class PacketAction : PacketBase
     {
+        internal override PacketDirection Direction { get { return PacketDirection.ClientToServer; } }
+
         [ProtoMember(100)]
         internal ButtonAction ActionData;
         internal PacketAction() { } // Empty constructor required for deserialization
@@ -41,9 +88,14 @@ namespace ShipCoreFramework
         
         internal override void Received()
         {
+            IMyPlayer sender;
+            if (!TryGetSender(out sender)) return;
+
             Utils.Log($"Received action from {SenderSteamId}: {ActionData.Action}");
             GroupComponent group;
             if (!Utils.TryFindByGridId(ActionData.CubegridEntityId, out group)) return;
+            var mainCore = group.MainCoreComponent;
+            if (mainCore == null || !HasAccess(sender, mainCore.CoreBlock)) return;
             switch (ActionData.Action)
             {
                 case CoreActionType.Boost:
@@ -65,6 +117,8 @@ namespace ShipCoreFramework
     [ProtoContract]
     internal class PacketSetMainCore : PacketBase
     {
+        internal override PacketDirection Direction { get { return PacketDirection.ClientToServer; } }
+
         [ProtoMember(200)]
         internal SetMainCoreAction ActionData;
 
@@ -76,6 +130,9 @@ namespace ShipCoreFramework
 
         internal override void Received()
         {
+            IMyPlayer sender;
+            if (!TryGetSender(out sender)) return;
+
             GroupComponent group;
             if (!Utils.TryFindByGridId(ActionData.CubegridEntityId, out group)) return;
 
@@ -92,6 +149,8 @@ namespace ShipCoreFramework
                 return;
 
             var old = group.MainCoreComponent;
+            if (!HasAccess(sender, newMain.CoreBlock) ||
+                (old != null && !HasAccess(sender, old.CoreBlock))) return;
             if (!ReferenceEquals(old, newMain))
             {
                 if (old != null)
@@ -117,6 +176,8 @@ namespace ShipCoreFramework
     [ProtoContract]
     internal class PacketSetMainCoreSync : PacketBase
     {
+        internal override PacketDirection Direction { get { return PacketDirection.ServerToClient; } }
+
         [ProtoMember(300)]
         internal SetMainCoreAction ActionData;
 
@@ -152,6 +213,8 @@ namespace ShipCoreFramework
     
     [ProtoContract]
     internal class PacketNotify : PacketBase {
+        internal override PacketDirection Direction { get { return PacketDirection.ServerToClient; } }
+
         [ProtoMember(400)] internal string Text;
         [ProtoMember(401)] internal int TimeMs;
         [ProtoMember(402)] internal string Font;
@@ -162,6 +225,9 @@ namespace ShipCoreFramework
         }
 
         internal override void Received() {
+            Text = Cap(Text, 2048);
+            Font = Cap(Font, 32);
+            TimeMs = Math.Max(0, Math.Min(TimeMs, 60000));
             // Runs on the client that received it
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
                 NotificationInstance.ShowNotification(Text, TimeMs, Font));
@@ -171,6 +237,8 @@ namespace ShipCoreFramework
     [ProtoContract]
     internal class PacketCountdown : PacketBase
     {
+        internal override PacketDirection Direction { get { return PacketDirection.ServerToClient; } }
+
         [ProtoMember(700)] internal string Key;
         [ProtoMember(701)] internal string Text;
         [ProtoMember(702)] internal int RemainingSeconds;
@@ -188,6 +256,10 @@ namespace ShipCoreFramework
 
         internal override void Received()
         {
+            Key = Cap(Key, 128);
+            Text = Cap(Text, 2048);
+            Font = Cap(Font, 32);
+            RemainingSeconds = Math.Max(0, Math.Min(RemainingSeconds, 86400));
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
                 if (RemainingSeconds <= 0)
@@ -201,11 +273,15 @@ namespace ShipCoreFramework
     [ProtoContract]
     internal class PacketRequestConfig : PacketBase
     {
+        internal override PacketDirection Direction { get { return PacketDirection.ClientToServer; } }
+
         internal PacketRequestConfig() { } // for deserialization
 
         internal override void Received()
         {
             if (!MyAPIGateway.Multiplayer.IsServer) return;
+            IMyPlayer sender;
+            if (!TryGetSender(out sender)) return;
 
             var response = new PacketSendConfig(MyAPIGateway.Utilities.SerializeToXML(Session.Config));
 
@@ -216,6 +292,9 @@ namespace ShipCoreFramework
     [ProtoContract]
     internal class PacketSendConfig : PacketBase
     {
+        private const int MaxConfigCharacters = 1024 * 1024;
+        internal override PacketDirection Direction { get { return PacketDirection.ServerToClient; } }
+
         [ProtoMember(1)]
         internal string ConfigXml;
 
@@ -236,6 +315,11 @@ namespace ShipCoreFramework
                 if (string.IsNullOrWhiteSpace(ConfigXml))
                 {
                     Utils.Log("Config sync skipped: received empty config payload.", 2, "Config Sync");
+                    return;
+                }
+                if (ConfigXml.Length > MaxConfigCharacters)
+                {
+                    Utils.Log("Config sync skipped: config payload exceeded size limit.", 1, "Config Sync");
                     return;
                 }
 

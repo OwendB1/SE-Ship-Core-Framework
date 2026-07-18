@@ -12,11 +12,22 @@ namespace ShipCoreFramework
 {
     internal static class Commands
     {
+        private const int MaxCommandPayloadBytes = 4096;
+
         public static void ServerMessageHandler(ushort id, byte[] data, ulong sender, bool fromServer)
         {
+            if (!Session.IsServer || fromServer || id != Session.CommandsSyncId || sender == 0 ||
+                data == null || data.Length == 0 || data.Length > MaxCommandPayloadBytes)
+                return;
+
+            var playerId = Utils.GetPlayerIdFromSteamId(sender);
+            if (playerId == 0) return;
+
             var message = Encoding.UTF8.GetString(data);
+            if (!IsCoreCommand(message)) return;
+
             Utils.Log($"Server: Command received from {sender}: {message}");
-            CommandSwitch(Utils.GetPlayerIdFromSteamId(sender),message);
+            CommandSwitch(playerId, message);
         }
         
         public static void OnChatCommand(ulong sender,string messageText, ref bool sendToOthers)
@@ -24,8 +35,16 @@ namespace ShipCoreFramework
             if (!IsCoreCommand(messageText)) return;
 
             sendToOthers = false;
-            if(!Session.IsServer) ForwardToServer(messageText);
-            CommandSwitch(MyAPIGateway.Session.Player.IdentityId,messageText);
+            if (!Session.IsServer)
+            {
+                if (IsLocalReadOnlyCommand(messageText))
+                    CommandSwitch(MyAPIGateway.Session.Player.IdentityId, messageText);
+                else
+                    ForwardToServer(messageText);
+                return;
+            }
+
+            CommandSwitch(MyAPIGateway.Session.Player.IdentityId, messageText);
         }
         
         private static void ForwardToServer(string message)
@@ -37,10 +56,25 @@ namespace ShipCoreFramework
         private static bool IsCoreCommand(string messageText)
         {
             const string commandPrefix = "/core";
-            if (!messageText.StartsWith(commandPrefix, StringComparison.OrdinalIgnoreCase))
-                return false;
+            if (string.IsNullOrWhiteSpace(messageText)) return false;
 
-            return !messageText.StartsWith("/corehud", StringComparison.OrdinalIgnoreCase);
+            var trimmed = messageText.Trim();
+            return trimmed.Equals(commandPrefix, StringComparison.OrdinalIgnoreCase) ||
+                   trimmed.StartsWith(commandPrefix + " ", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsLocalReadOnlyCommand(string messageText)
+        {
+            var allArgs = messageText.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (allArgs.Length < 2) return true;
+
+            var sub = allArgs[1];
+            return sub.Equals("help", StringComparison.OrdinalIgnoreCase) ||
+                   sub.Equals("info", StringComparison.OrdinalIgnoreCase) ||
+                   sub.Equals("listcores", StringComparison.OrdinalIgnoreCase) ||
+                   sub.Equals("coreinfo", StringComparison.OrdinalIgnoreCase) ||
+                   sub.Equals("listnocores", StringComparison.OrdinalIgnoreCase) ||
+                   sub.Equals("listnfzs", StringComparison.OrdinalIgnoreCase);
         }
         
         private static void CommandSwitch(long playerId, string messageText)
