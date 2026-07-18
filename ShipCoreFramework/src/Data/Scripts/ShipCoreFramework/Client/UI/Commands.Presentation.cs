@@ -13,7 +13,7 @@ namespace ShipCoreFramework
     {
         private static string ListCores()
         {
-            return Session.Config.ShipCores.Count == 0 ? "No ship cores defined." : 
+            return Session.Config.ShipCores.Count == 0 ? "No ship cores defined." :
                 Session.Config.ShipCores.Aggregate("", (current, core) => current + $"{core.UniqueName} (SubtypeId: {core.SubtypeId})");
         }
 
@@ -34,7 +34,7 @@ namespace ShipCoreFramework
 
         private static string ListNoCores()
         {
-            return Session.Config.NoCoreConfigs.Count == 0 ? "No 'no core' configs available." : 
+            return Session.Config.NoCoreConfigs.Count == 0 ? "No 'no core' configs available." :
                 Session.Config.NoCoreConfigs.Aggregate("", (current, nc) => current + $"{nc.UniqueName} (SubtypeId: {nc.SubtypeId})");
         }
 
@@ -72,11 +72,11 @@ namespace ShipCoreFramework
                 ClientConsent()
             );
         }
-        
+
         private static void CoreInfo(long playerId)
         {
              var targetGrid = Utils.RaycastForGrid();
-            
+
             if (targetGrid == null)
             {
                 Utils.ShowChatMessage("No grid found within 50m of crosshairs.");
@@ -99,14 +99,14 @@ namespace ShipCoreFramework
                     return;
                 }
             }
-        
+
             var groupComponent = targetGrid.GetGroupComponent();
             if (groupComponent == null)
             {
                 Utils.ShowChatMessage($"Grid '{targetGrid.CustomName}' has no ship core or configuration.");
                 return;
             }
-            
+
             var shipCore = groupComponent.ShipCore;
             var body = GetCoreInfo(targetGrid, shipCore, groupComponent);
             MyAPIGateway.Utilities.ShowMissionScreen(
@@ -118,7 +118,7 @@ namespace ShipCoreFramework
                 ClientConsent()
             );
         }
-        
+
         internal static string GetCoreInfo(IMyCubeGrid targetGrid, ShipCore shipCore, GroupComponent groupComponent)
         {
             var shipCoreSubtypeId = groupComponent.ShipCore.SubtypeId;
@@ -163,7 +163,7 @@ namespace ShipCoreFramework
             {
                 body += $"Per Player Limit:{groupComponent.GetCurrentPlayerCoreCount()}/{currentMaxPerPlayer}\n";
             }
-            
+
             if (HasFactionCoreLimit(groupComponent.ShipCore))
             {
                 if (groupComponent.OwningFaction != null)
@@ -199,7 +199,7 @@ namespace ShipCoreFramework
                 var minBlocksPassed = groupComponent.GroupBlocksCount >= shipCore.MinBlocks;
                 body += $"  Min Blocks: {minBlocksStatus} ({(minBlocksPassed ? "met" : "below minimum")})\n";
             }
-            
+
             // Block Count
             var blockCountStatus = effectiveMaxBlocks > 0 ? $"{groupComponent.GroupBlocksCount} / {effectiveMaxBlocks}" : groupComponent.GroupBlocksCount.ToString();
             var blockCountPercent = effectiveMaxBlocks > 0 ? groupComponent.GroupBlocksCount / (float)effectiveMaxBlocks * 100 : -1;
@@ -207,7 +207,7 @@ namespace ShipCoreFramework
             if (effectiveMaxBlocks > 0)
                 body += $" ({blockCountPercent:F1}%)";
             body += "\n";
-            
+
             // Mass
             var massStatus = effectiveMaxMass > 0 ? $"{groupComponent.GroupMass:F0} / {effectiveMaxMass:F0} kg" : $"{groupComponent.GroupMass:F0} kg";
             var massPercent = effectiveMaxMass > 0 ? groupComponent.GroupMass / effectiveMaxMass * 100 : -1;
@@ -215,7 +215,7 @@ namespace ShipCoreFramework
             if (effectiveMaxMass > 0)
                 body += $" ({massPercent:F1}%)";
             body += "\n";
-            
+
             // PCU
             var pcuStatus = effectiveMaxPcu > 0 ? $"{groupComponent.GroupPCU} / {effectiveMaxPcu}" : groupComponent.GroupPCU.ToString();
             var pcuPercent = effectiveMaxPcu > 0 ? groupComponent.GroupPCU / (float)effectiveMaxPcu * 100 : -1;
@@ -223,7 +223,7 @@ namespace ShipCoreFramework
             if (effectiveMaxPcu > 0)
                 body += $" ({pcuPercent:F1}%)";
             body += "\n\n";
-            
+
             body += "Modifiers:\n";
 
             var gridMods = groupComponent.Modifiers;
@@ -325,8 +325,8 @@ namespace ShipCoreFramework
                 body += $"  Cooldown: {groupComponent.ActiveDefenseCoolDown:F1}s\n";
             }
             body += "\n";
-            
-            
+
+
             if (shipCore.BlockLimits.Length == 0)
             {
                 body += "No block limits configured for this ship class.";
@@ -492,7 +492,7 @@ Raycasts from crosshairs to find a grid and displays all its core information.";
                 body,
                 null,
                 ClientConsent()
-                
+
             );
         }
 
@@ -501,7 +501,7 @@ Raycasts from crosshairs to find a grid and displays all its core information.";
             if(!Session.MpActive) return true;
             var players = new List<IMyPlayer>();
             MyAPIGateway.Players.GetPlayers(players);
-            return (from player in players where player.IdentityId == playerId 
+            return (from player in players where player.IdentityId == playerId
                 select player.PromoteLevel == MyPromoteLevel.Admin || player.PromoteLevel == MyPromoteLevel.Owner).FirstOrDefault();
         }
         private static string ClientConsent()
