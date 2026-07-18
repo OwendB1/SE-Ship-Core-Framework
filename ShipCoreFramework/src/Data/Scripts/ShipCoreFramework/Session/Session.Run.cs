@@ -169,56 +169,10 @@ namespace ShipCoreFramework
             _tick++;
             CurrentTick = _tick;
             if (IsClient)
-            {
-                CoreTypeLCDScript.RunFrameScrollUpdate();
-                NotificationInstance.RunCountdownTick();
-            }
+                RunClientSimulationTick();
 
             if (!IsServer) return;
-
-            foreach (var kvp in GroupDict)
-            {
-                var group = kvp.Value;
-                if (group != null)
-                {
-                    group.RefreshGameThreadStateCache();
-                    group.RunMissingCoreRescanTick();
-                }
-            }
-
-            RefreshMassCacheBatch();
-            LimitsNexusSync.RunPeriodicSnapshotTick();
-            RunRuntimeStateSyncTick();
-            var runNfz = _tick % 10 == 0;
-            var doPunish = _tick % 60 == 0;
-
-            if (doPunish)
-            {
-                foreach (var kvp in GroupDict)
-                {
-                    var group = kvp.Value;
-                    if (group != null)
-                        group.RefreshPunishmentState();
-                }
-            }
-
-            MyAPIGateway.Parallel.StartBackground(() =>
-            {
-                var speedBatch = SpeedEnforcement.CreateBatch();
-                MyAPIGateway.Parallel.ForEach(GroupDict, kvp =>
-                {
-                    kvp.Value.UpdateDeactivationState();
-                    kvp.Value.RunBoostTimerTick();
-                    kvp.Value.RunActiveDefenseTimerTick();
-                    kvp.Value.RunPowerOverclockTimerTick();
-                    kvp.Value.RunLimitedBlockPunishmentTick();
-                    kvp.Value.RunExternalLimitValidationTick();
-                    SpeedEnforcement.EnforceSpeedLimit(kvp.Value, speedBatch);
-                    if (runNfz) NoFlyZoneEnforcement.EnforceNoFlyZones(kvp.Value, doPunish);
-                });
-
-                SpeedEnforcement.DispatchBatch(speedBatch);
-            });
+            RunServerSimulationTick();
         }
 
         internal static void ApplyConfigToDefinitions()
@@ -251,6 +205,7 @@ namespace ShipCoreFramework
 
             AppliedSpeedDifferential = newDifferential;
         }
+
         private static void RevertAmmoSpeedAdjustments()
         {
             var delta = -AppliedSpeedDifferential;
