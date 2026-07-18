@@ -24,7 +24,6 @@ namespace ShipCoreFramework
                 pair.Value.IsMainCore = isMain;
                 if (isMain) group.MainCoreComponent = pair.Value;
             }
-
         }
     }
 
@@ -55,6 +54,19 @@ namespace ShipCoreFramework
                 else
                     NotificationInstance.StartCountdown(Key, Text, RemainingSeconds, Font);
             });
+        }
+    }
+
+    internal sealed partial class PacketMissionScreen
+    {
+        partial void ReceiveOnClient()
+        {
+            Title = Cap(Title, 128);
+            ObjectivePrefix = Cap(ObjectivePrefix, 128);
+            Objective = Cap(Objective, 128);
+            Body = Cap(Body, 128 * 1024);
+            ButtonText = Cap(ButtonText, 64);
+            MyAPIGateway.Utilities.ShowMissionScreen(Title, ObjectivePrefix, Objective, Body, null, ButtonText);
         }
     }
 

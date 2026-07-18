@@ -9,6 +9,9 @@ namespace ShipCoreFramework
     {
         private static void Inventory(long playerId, string[] args)
         {
+            var recipientSteamId = MyAPIGateway.Players.TryGetSteamId(playerId);
+            if (recipientSteamId == 0) return;
+
             var body ="";
             var bodySort = new Dictionary<string, string>();
             if (args.Length < 3 || !CheckIfAdmin(playerId))
@@ -102,14 +105,13 @@ namespace ShipCoreFramework
             //else
             //{
             //}
-            MyAPIGateway.Utilities.ShowMissionScreen(
+            Session.Networking.SendToPlayer(new PacketMissionScreen(
                 "Ship Core Framework",
                 $"Inventory - {playerId}\n",
                 "Core Counts",
                 body,
-                null,
                 ServerConsent()
-            );
+            ), recipientSteamId);
         }
         private static string ServerConsent()
         {

@@ -159,6 +159,36 @@ namespace ShipCoreFramework
     }
 
     [ProtoContract]
+    internal sealed partial class PacketMissionScreen : PacketBase
+    {
+        internal override PacketDirection Direction { get { return PacketDirection.ServerToClient; } }
+
+        [ProtoMember(1100)] internal string Title;
+        [ProtoMember(1101)] internal string ObjectivePrefix;
+        [ProtoMember(1102)] internal string Objective;
+        [ProtoMember(1103)] internal string Body;
+        [ProtoMember(1104)] internal string ButtonText;
+
+        internal PacketMissionScreen() { }
+        internal PacketMissionScreen(string title, string objectivePrefix, string objective, string body,
+            string buttonText)
+        {
+            Title = title;
+            ObjectivePrefix = objectivePrefix;
+            Objective = objective;
+            Body = body;
+            ButtonText = buttonText;
+        }
+
+        internal override void Received()
+        {
+            ReceiveOnClient();
+        }
+
+        partial void ReceiveOnClient();
+    }
+
+    [ProtoContract]
     internal sealed partial class PacketRequestRuntimeState : PacketBase
     {
         internal override PacketDirection Direction { get { return PacketDirection.ClientToServer; } }
