@@ -23,6 +23,7 @@ namespace ShipCoreFramework
 
         internal void RefreshPunishmentState()
         {
+            if (!Session.IsServer) return;
             if (_closing || Session.IsShuttingDown || IsInitializingGrids) return;
             if (!Session.IsGameThread)
             {
@@ -404,11 +405,13 @@ namespace ShipCoreFramework
 
         internal void DefenseValuesChanged()
         {
+            if (!Session.IsServer) return;
             RefreshDefenseModifierCache();
         }
 
         internal void RunBoostTimerTick()
         {
+            if (!Session.IsServer) return;
             var expired = false;
             lock (SpeedStateLock)
             {
@@ -438,6 +441,7 @@ namespace ShipCoreFramework
 
         internal void RunActiveDefenseTimerTick()
         {
+            if (!Session.IsServer) return;
             var expired = false;
             lock (_abilityStateLock)
             {
@@ -465,6 +469,7 @@ namespace ShipCoreFramework
 
         internal void RunPowerOverclockTimerTick()
         {
+            if (!Session.IsServer) return;
             var damageReactors = false;
             var expired = false;
             lock (_abilityStateLock)
@@ -583,6 +588,7 @@ namespace ShipCoreFramework
 
         internal void ActivateDefense()
         {
+            if (!Session.IsServer) return;
             if (!ShipCore.EnableActiveDefenseModifiers)
             {
                 Utils.ShowNotification("Active defense is not allowed on this grid!");
@@ -624,6 +630,7 @@ namespace ShipCoreFramework
 
         internal void ActivateBoost()
         {
+            if (!Session.IsServer) return;
             if (!ShipCore.SpeedBoostEnabled)
             {
                 Utils.ShowNotification("Boosting is not allowed on this grid!");
@@ -675,6 +682,7 @@ namespace ShipCoreFramework
 
         internal void ActivatePowerOverclock()
         {
+            if (!Session.IsServer) return;
             if (!ShipCore.PowerOverclockEnabled)
             {
                 Utils.ShowNotification("Power overclock is not allowed on this grid!");

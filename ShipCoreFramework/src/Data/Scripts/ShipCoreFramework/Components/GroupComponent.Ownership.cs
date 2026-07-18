@@ -33,6 +33,9 @@ namespace ShipCoreFramework
                     ownerId = this.GetMajorityOwnerId();
                 }
 
+                if (!Session.IsServer)
+                    return IsIgnoredNpcGroup() ? 0 : ownerId;
+
                 if (IsIgnoredNpcGroup())
                 {
                     _lastOwnerId = 0;
@@ -112,6 +115,8 @@ namespace ShipCoreFramework
 
         private void SaveOwnerIdToMainCore(long ownerId)
         {
+            if (!Session.IsServer) return;
+
             var coreBlock = MainCoreComponent?.CoreBlock;
             if (coreBlock == null) return;
             if (coreBlock.Storage == null) coreBlock.Storage = new MyModStorageComponent();

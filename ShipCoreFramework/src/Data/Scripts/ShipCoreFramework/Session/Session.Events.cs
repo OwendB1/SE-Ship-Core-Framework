@@ -129,6 +129,7 @@ namespace ShipCoreFramework
         private static void FactionStateChanged(MyFactionStateChange action, long fromFactionId, long toFactionId,
             long factionId, long playerId)
         {
+            if (!IsServer) return;
             if (Config.SelectedNoCore == null) return;
             if (playerId > 0)
             {
@@ -169,11 +170,13 @@ namespace ShipCoreFramework
 
         private static void FactionCreated(long factionId)
         {
+            if (!IsServer) return;
             PerFactionManager.TrackFactionMembers(factionId);
         }
 
         private static void FactionEdited(long factionId)
         {
+            if (!IsServer) return;
             PerFactionManager.TrackFactionMembers(factionId);
         }
         

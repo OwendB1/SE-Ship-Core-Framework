@@ -174,6 +174,7 @@ namespace ShipCoreFramework
 
         public override void Draw()
         {
+            if (!IsClient) return;
             var camPos = MyAPIGateway.Session.Camera.WorldMatrix.Translation;
             const double edgeProximity = 20000.0;
 
@@ -212,6 +213,9 @@ namespace ShipCoreFramework
                 CoreTypeLCDScript.RunFrameScrollUpdate();
                 NotificationInstance.RunCountdownTick();
             }
+
+            if (!IsServer) return;
+
             foreach (var kvp in GroupDict)
             {
                 var group = kvp.Value;

@@ -306,6 +306,7 @@ namespace ShipCoreFramework
 
         internal void RunLimitedBlockPunishmentTick()
         {
+            if (!Session.IsServer) return;
             if (IsCoreRecoveryGraceActive())
             {
                 ClearCoreRecoveryGracePunishmentState();
@@ -328,6 +329,7 @@ namespace ShipCoreFramework
 
         internal void RunExternalLimitValidationTick()
         {
+            if (!Session.IsServer) return;
             if (_closing)
             {
                 ClearExternalLimitValidation();
@@ -445,6 +447,7 @@ namespace ShipCoreFramework
 
         private void EnforceGroupPunishment(bool forceShutOffPunishment = false)
         {
+            if (!Session.IsServer) return;
             if (IsCoreRecoveryGraceActive()) return;
             if (Deactivated || IsIgnoredGroup()) return;
 
@@ -593,7 +596,7 @@ namespace ShipCoreFramework
         internal float GetEffectiveMaxCount(BlockLimit limit)
         {
             if (limit == null) return 0f;
-            if (Session.IsGameThread) return ComputeEffectiveMaxCount(limit);
+            if (Session.IsServer && Session.IsGameThread) return ComputeEffectiveMaxCount(limit);
 
             var cached = _cachedEffectiveMaxCounts;
             float maxCount;
@@ -624,7 +627,7 @@ namespace ShipCoreFramework
 
         internal int GetEffectiveMaxBlocks()
         {
-            return Session.IsGameThread ? ComputeEffectiveMaxBlocks() : _cachedEffectiveMaxBlocks;
+            return Session.IsServer && Session.IsGameThread ? ComputeEffectiveMaxBlocks() : _cachedEffectiveMaxBlocks;
         }
 
         private int ComputeEffectiveMaxBlocks()
@@ -646,7 +649,7 @@ namespace ShipCoreFramework
 
         internal float GetEffectiveMaxMass()
         {
-            return Session.IsGameThread ? ComputeEffectiveMaxMass() : _cachedEffectiveMaxMass;
+            return Session.IsServer && Session.IsGameThread ? ComputeEffectiveMaxMass() : _cachedEffectiveMaxMass;
         }
 
         private float ComputeEffectiveMaxMass()
@@ -668,7 +671,7 @@ namespace ShipCoreFramework
 
         internal int GetEffectiveMaxPCU()
         {
-            return Session.IsGameThread ? ComputeEffectiveMaxPCU() : _cachedEffectiveMaxPCU;
+            return Session.IsServer && Session.IsGameThread ? ComputeEffectiveMaxPCU() : _cachedEffectiveMaxPCU;
         }
 
         private int ComputeEffectiveMaxPCU()
@@ -708,6 +711,7 @@ namespace ShipCoreFramework
 
         private void QueueRecalculateAllLimits(bool enforceAfterPublish, bool forceShutOffPunishment)
         {
+            if (!Session.IsServer) return;
             var generation = GetLimitGeneration();
             MyAPIGateway.Parallel.StartBackground(() =>
             {

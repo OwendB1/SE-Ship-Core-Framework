@@ -57,6 +57,7 @@ namespace ShipCoreFramework
         }
         private void OnModuleWorkingChanged(IMyCubeBlock obj)
         {
+            if (!Session.IsServer) return;
             var shipCore = _groupComponent.ShipCore;
             if (BeaconBlock == null || shipCore == null || !shipCore.ForceBroadCast) return;
 
@@ -67,6 +68,7 @@ namespace ShipCoreFramework
 
         private void OnPropertiesChanged(IMyTerminalBlock obj)
         {
+            if (!Session.IsServer) return;
             if (_isUpdatingProperties || BeaconBlock == null) return;
 
             var shipCore = _groupComponent.ShipCore;
@@ -137,6 +139,7 @@ namespace ShipCoreFramework
 
         internal void SyncForceBroadcast()
         {
+            if (!Session.IsServer) return;
             if (!IsBeaconAvailable()) return;
 
             var shipCore = _groupComponent.ShipCore;

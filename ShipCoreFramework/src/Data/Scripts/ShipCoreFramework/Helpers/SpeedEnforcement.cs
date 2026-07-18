@@ -101,7 +101,7 @@ namespace ShipCoreFramework
 
         internal static void DispatchBatch(EnforcementBatch batch)
         {
-            if (batch == null) return;
+            if (!Session.IsServer || batch == null) return;
 
             var contexts = new List<SpeedLimitContext>();
             SpeedLimitContext context;
@@ -129,6 +129,7 @@ namespace ShipCoreFramework
         internal static void RefreshSpeedState(GroupComponent groupComponent)
         {
             if (groupComponent == null) return;
+            if (!Session.IsServer) return;
 
             var context = ResolveSpeedLimitContext(groupComponent);
             ApplySpeedState(groupComponent, context);
@@ -136,7 +137,7 @@ namespace ShipCoreFramework
 
         internal static void EnforceSpeedLimit(GroupComponent groupComponent, EnforcementBatch batch)
         {
-            if (groupComponent == null || batch == null) return;
+            if (!Session.IsServer || groupComponent == null || batch == null) return;
             if (!ShouldEnforceForGroup(groupComponent)) return;
 
             var context = ResolveSpeedLimitContext(groupComponent);
@@ -578,6 +579,8 @@ namespace ShipCoreFramework
 
         private static void EnforceContextOnGameThread(SpeedLimitContext context)
         {
+            if (!Session.IsServer) return;
+
             var targetGrids = context.TargetGrids;
             if (targetGrids == null || targetGrids.Length == 0) return;
 
