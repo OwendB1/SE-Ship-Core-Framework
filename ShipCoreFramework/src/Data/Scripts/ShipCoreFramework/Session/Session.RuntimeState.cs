@@ -9,6 +9,7 @@ namespace ShipCoreFramework
     public partial class Session
     {
         internal const int RuntimeStateBatchSize = 64;
+        internal const int RuntimeStateMaxBatches = 1024;
         private const int RuntimeStateSyncIntervalTicks = 120;
         private static int _runtimeStateSequence;
 
@@ -62,6 +63,8 @@ namespace ShipCoreFramework
                     {
                         Sequence = sequence,
                         Reset = true,
+                        BatchIndex = 0,
+                        BatchCount = 1,
                         States = Array.Empty<GroupRuntimeState>()
                     }
                 };
@@ -80,6 +83,11 @@ namespace ShipCoreFramework
                     States = batch
                 });
             }
+            for (var i = 0; i < packets.Count; i++)
+            {
+                packets[i].BatchIndex = i;
+                packets[i].BatchCount = packets.Count;
+            }
             return packets.ToArray();
         }
 
@@ -90,26 +98,28 @@ namespace ShipCoreFramework
                 Networking.SendToPlayer(packets[i], steamId);
         }
 
-        internal static void ApplyRuntimeState(int sequence, bool reset, GroupRuntimeState[] states)
+        internal static void ApplyRuntimeState(int sequence, int batchIndex, int batchCount,
+            GroupRuntimeState[] states)
         {
             if (!IsClient || IsServer || IsShuttingDown) return;
-            if (!RuntimeStateStore.Apply(sequence, reset, states)) return;
+            if (!RuntimeStateStore.Apply(sequence, batchIndex, batchCount, states)) return;
 
             foreach (var pair in GroupDict)
-                ApplyRuntimeStateForGroup(pair.Value);
+                if (!ApplyRuntimeStateForGroup(pair.Value)) pair.Value.ClearRuntimeState();
         }
 
-        internal static void ApplyRuntimeStateForGroup(GroupComponent group)
+        internal static bool ApplyRuntimeStateForGroup(GroupComponent group)
         {
-            if (IsServer || group == null) return;
+            if (IsServer || group == null) return false;
             foreach (MyCubeGrid grid in group.GridDictionary.Keys)
             {
                 if (grid == null) continue;
                 GroupRuntimeState state;
                 if (!RuntimeStateStore.TryGetByGrid(grid.EntityId, out state)) continue;
                 group.ApplyRuntimeState(state);
-                return;
+                return true;
             }
+            return false;
         }
     }
 }

@@ -82,40 +82,54 @@ namespace ShipCoreFramework
         private static readonly Dictionary<long, GroupRuntimeState> ByGrid =
             new Dictionary<long, GroupRuntimeState>();
         private static int _sequence = -1;
+        private static int _pendingSequence = -1;
+        private static GroupRuntimeState[][] _pendingBatches;
+        private static int _pendingBatchCount;
 
-        internal static bool Apply(int sequence, bool reset, GroupRuntimeState[] states)
+        internal static bool Apply(int sequence, int batchIndex, int batchCount, GroupRuntimeState[] states)
         {
             lock (SyncRoot)
             {
-                if (sequence < _sequence) return false;
-                if (reset)
+                if (sequence <= _sequence || batchCount <= 0 || batchCount > Session.RuntimeStateMaxBatches ||
+                    batchIndex < 0 || batchIndex >= batchCount)
+                    return false;
+
+                if (sequence > _pendingSequence)
                 {
-                    ByGroup.Clear();
-                    ByGrid.Clear();
-                    _sequence = sequence;
+                    _pendingSequence = sequence;
+                    _pendingBatches = new GroupRuntimeState[batchCount][];
+                    _pendingBatchCount = 0;
                 }
-                else if (sequence != _sequence)
+                else if (sequence < _pendingSequence || _pendingBatches == null ||
+                         _pendingBatches.Length != batchCount)
                 {
                     return false;
                 }
 
-                if (states == null) return true;
-                for (var i = 0; i < states.Length; i++)
+                if (_pendingBatches[batchIndex] != null) return false;
+                _pendingBatches[batchIndex] = states ?? Array.Empty<GroupRuntimeState>();
+                _pendingBatchCount++;
+                if (_pendingBatchCount != batchCount) return false;
+
+                ByGroup.Clear();
+                ByGrid.Clear();
+                for (var batch = 0; batch < _pendingBatches.Length; batch++)
                 {
-                    var state = states[i];
-                    if (state == null || state.GroupId == 0) continue;
-
-                    GroupRuntimeState old;
-                    if (ByGroup.TryGetValue(state.GroupId, out old) && old.GridIds != null)
+                    var completedStates = _pendingBatches[batch];
+                    for (var i = 0; i < completedStates.Length; i++)
                     {
-                        for (var j = 0; j < old.GridIds.Length; j++) ByGrid.Remove(old.GridIds[j]);
+                        var state = completedStates[i];
+                        if (state == null || state.GroupId == 0) continue;
+                        ByGroup[state.GroupId] = state;
+                        if (state.GridIds == null) continue;
+                        for (var j = 0; j < state.GridIds.Length; j++) ByGrid[state.GridIds[j]] = state;
                     }
-
-                    ByGroup[state.GroupId] = state;
-                    if (state.GridIds == null) continue;
-                    for (var j = 0; j < state.GridIds.Length; j++) ByGrid[state.GridIds[j]] = state;
                 }
 
+                _sequence = sequence;
+                _pendingSequence = -1;
+                _pendingBatches = null;
+                _pendingBatchCount = 0;
                 return true;
             }
         }
@@ -132,6 +146,9 @@ namespace ShipCoreFramework
                 ByGroup.Clear();
                 ByGrid.Clear();
                 _sequence = -1;
+                _pendingSequence = -1;
+                _pendingBatches = null;
+                _pendingBatchCount = 0;
             }
         }
     }
@@ -157,11 +174,13 @@ namespace ShipCoreFramework
         [ProtoMember(1)] internal int Sequence;
         [ProtoMember(2)] internal bool Reset;
         [ProtoMember(3)] internal GroupRuntimeState[] States = Array.Empty<GroupRuntimeState>();
+        [ProtoMember(4)] internal int BatchIndex;
+        [ProtoMember(5)] internal int BatchCount;
 
         internal override void Received()
         {
             if (States != null && States.Length > Session.RuntimeStateBatchSize) return;
-            Session.ApplyRuntimeState(Sequence, Reset, States);
+            Session.ApplyRuntimeState(Sequence, BatchIndex, BatchCount, States);
         }
     }
 }

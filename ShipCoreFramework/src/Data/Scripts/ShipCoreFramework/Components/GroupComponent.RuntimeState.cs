@@ -192,6 +192,30 @@ namespace ShipCoreFramework
             if (modifiersChanged) ApplyModifiers(_cachedActiveGridModifiers);
         }
 
+        internal void ClearRuntimeState()
+        {
+            if (Session.IsServer || !_runtimeStateReceived) return;
+            _runtimeStateReceived = false;
+            _runtimeCoreSubtypeId = string.Empty;
+            _runtimeOwnerId = 0;
+            _runtimeCoreCount = 0;
+            _runtimePlayerCoreCount = 0;
+            _runtimeFactionCoreCount = 0;
+            _runtimeManifestCounts.Clear();
+            _runtimeSpeedPunishmentReasons = Array.Empty<string>();
+            _runtimeModifierPunishmentReasons = Array.Empty<string>();
+            _runtimeLimitedBlockPunishmentReasons = Array.Empty<string>();
+            MainCoreComponent = null;
+            foreach (var pair in CoreDictionary) pair.Value.ApplyAuthoritativeMainState(false);
+            PublishLimitsSnapshot(null);
+            _cachedEffectiveMaxCounts.Clear();
+            _cachedActiveGridModifiers = new GridModifiers();
+            _cachedActiveSpeedModifiers = new SpeedModifiers();
+            EffectiveBoostEnabled = false;
+            BoostEnabled = false;
+            ApplyModifiers(_cachedActiveGridModifiers);
+        }
+
         private static bool SameModifiers(GridModifiers left, GridModifiers right)
         {
             return left != null && right != null &&
