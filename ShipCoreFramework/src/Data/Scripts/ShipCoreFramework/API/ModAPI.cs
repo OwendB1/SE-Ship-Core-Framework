@@ -1322,7 +1322,7 @@ namespace ShipCoreFramework
             };
         }
 
-        private static GridModifiersData ConvertToGridModifiersData(GridModifiers modifiers)
+        internal static GridModifiersData ConvertToGridModifiersData(GridModifiers modifiers)
         {
             if (modifiers == null)
             {
@@ -1354,7 +1354,7 @@ namespace ShipCoreFramework
             };
         }
         
-        private static SpeedModifiersData ConvertToSpeedModifiersData(SpeedModifiers modifiers)
+        internal static SpeedModifiersData ConvertToSpeedModifiersData(SpeedModifiers modifiers)
         {
             if (modifiers == null)
             {

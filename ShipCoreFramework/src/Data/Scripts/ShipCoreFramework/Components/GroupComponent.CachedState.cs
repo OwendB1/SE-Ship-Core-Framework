@@ -29,6 +29,8 @@ namespace ShipCoreFramework
         internal int GroupPCU {
             get
             {
+                if (!Session.IsServer)
+                    return Interlocked.CompareExchange(ref _cachedGroupPCU, 0, 0);
                 if (!Session.IsGameThread)
                     return Interlocked.CompareExchange(ref _cachedGroupPCU, 0, 0);
 
@@ -40,6 +42,7 @@ namespace ShipCoreFramework
         internal float GroupMass {
             get
             {
+                if (!Session.IsServer) return _cachedConfiguredMass;
                 if (!Session.IsGameThread)
                     return _cachedConfiguredMass;
 
@@ -51,6 +54,7 @@ namespace ShipCoreFramework
         internal float GroupDryMass {
             get
             {
+                if (!Session.IsServer) return _cachedDryMass;
                 if (!Session.IsGameThread)
                     return _cachedDryMass;
 

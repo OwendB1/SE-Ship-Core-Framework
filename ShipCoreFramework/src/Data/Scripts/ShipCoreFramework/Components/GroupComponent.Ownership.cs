@@ -21,6 +21,7 @@ namespace ShipCoreFramework
         {
             get
             {
+                if (!Session.IsServer && _runtimeStateReceived) return _runtimeOwnerId;
                 long ownerId;
                 if (MainCoreComponent != null)
                 {
@@ -125,6 +126,7 @@ namespace ShipCoreFramework
 
         internal bool IsIgnoredGroup()
         {
+            if (!Session.IsServer && _runtimeStateReceived) return GetCachedIsIgnoredGroup();
             return Session.IsGameThread ? ComputeIsIgnoredGroup() : GetCachedIsIgnoredGroup();
         }
 

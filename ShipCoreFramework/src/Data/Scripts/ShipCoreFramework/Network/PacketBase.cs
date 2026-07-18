@@ -21,6 +21,8 @@ namespace ShipCoreFramework
     [ProtoInclude(5000, typeof(PacketRequestConfig))]
     [ProtoInclude(6000, typeof(PacketSendConfig))]
     [ProtoInclude(7000, typeof(PacketCountdown))]
+    [ProtoInclude(8000, typeof(PacketRequestRuntimeState))]
+    [ProtoInclude(9000, typeof(PacketRuntimeState))]
     [ProtoContract]
     internal abstract class PacketBase
     {
@@ -341,6 +343,7 @@ namespace ShipCoreFramework
                 Session.ApplyConfigToDefinitions();
                 Session.RefreshGroupsAfterConfigChanged();
                 ModAPI.BroadcastConfigReceived();
+                Session.RequestRuntimeState();
             }
             catch (Exception e)
             {

@@ -54,6 +54,7 @@ namespace ShipCoreFramework
             if (!Session.IsServer)
             {
                 InvalidateGameThreadStateCache(true);
+                Session.ApplyRuntimeStateForGroup(this);
                 return true;
             }
 
@@ -356,6 +357,7 @@ namespace ShipCoreFramework
             InvalidateGameThreadStateCache(true);
             if (!Session.IsServer)
             {
+                Session.ApplyRuntimeStateForGroup(this);
                 return;
             }
             if (MainCoreComponent == null)

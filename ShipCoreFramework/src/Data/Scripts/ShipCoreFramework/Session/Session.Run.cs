@@ -146,6 +146,7 @@ namespace ShipCoreFramework
             _myNexusApi = null;
 
             ModAPI.Close();
+            RuntimeStateStore.Clear();
 
             PerFactionManager.Reset();
             PerPlayerManager.Reset();
@@ -227,7 +228,8 @@ namespace ShipCoreFramework
             }
 
             RefreshMassCacheBatch();
-            if (IsServer) LimitsNexusSync.RunPeriodicSnapshotTick();
+            LimitsNexusSync.RunPeriodicSnapshotTick();
+            RunRuntimeStateSyncTick();
             var runNfz = _tick % 10 == 0;
             var doPunish = _tick % 60 == 0;
 
