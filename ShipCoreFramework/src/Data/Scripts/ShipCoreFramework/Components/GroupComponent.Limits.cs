@@ -165,8 +165,11 @@ namespace ShipCoreFramework
             InvalidateModifierStateCache();
 
             if (changed)
+            {
+                Session.MarkRuntimeStateDirty(this);
                 Utils.Log("CoreRecoveryGrace: cleared punishment state for group " +
                           GetGroupKey() + ".", 1);
+            }
         }
 
         private void RefreshLimitedBlockPunishmentState()
@@ -176,8 +179,11 @@ namespace ShipCoreFramework
                 var wasPunishing = PunishLimitedBlocks;
                 PunishLimitedBlocks = false;
                 if (wasPunishing)
+                {
+                    Session.MarkRuntimeStateDirty(this);
                     Utils.Log("RefreshLimitedBlockPunishmentState: cleared limited block punishment during core recovery grace for group " +
                               GetGroupKey() + ".", 1);
+                }
                 return;
             }
 
@@ -186,8 +192,11 @@ namespace ShipCoreFramework
                 var wasPunishing = PunishLimitedBlocks;
                 PunishLimitedBlocks = false;
                 if (wasPunishing)
+                {
+                    Session.MarkRuntimeStateDirty(this);
                     Utils.Log("RefreshLimitedBlockPunishmentState: cleared limited block punishment for ignored/deactivated group " +
                               GetGroupKey() + ".", 1);
+                }
                 return;
             }
 
@@ -195,6 +204,7 @@ namespace ShipCoreFramework
             PunishLimitedBlocks = IsMinimumBlocksLimitedBlockGateTriggered() || HasConnectedBlacklistingCoreGroup();
             if (previous != PunishLimitedBlocks)
             {
+                Session.MarkRuntimeStateDirty(this);
                 var reasons = GetLimitedBlockPunishmentGateDescriptions();
                 Utils.Log("RefreshLimitedBlockPunishmentState: " +
                           (PunishLimitedBlocks ? "enabled" : "cleared") +
@@ -320,7 +330,9 @@ namespace ShipCoreFramework
             if (_closing || Deactivated || IsIgnoredGroup())
             {
                 ClearMinimumBlocksLimitedBlockGateState("group closing, deactivated, or ignored");
+                var clearedLimitedBlockPunishment = PunishLimitedBlocks;
                 PunishLimitedBlocks = false;
+                if (clearedLimitedBlockPunishment) Session.MarkRuntimeStateDirty(this);
                 return;
             }
 
