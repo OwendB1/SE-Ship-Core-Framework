@@ -11,7 +11,10 @@ namespace ShipCoreFramework
         internal const int RuntimeStateBatchSize = 64;
         internal const int RuntimeStateMaxBatches = 1024;
         private const int RuntimeStateSyncIntervalTicks = 120;
+        private const int RuntimeStateRequestCooldownTicks = 300;
         private static int _runtimeStateSequence;
+        private static readonly Dictionary<ulong, int> RuntimeStateRequestTicks =
+            new Dictionary<ulong, int>();
 
         private void RunRuntimeStateSyncTick()
         {
@@ -39,7 +42,18 @@ namespace ShipCoreFramework
         internal static void SendRuntimeStateTo(ulong steamId)
         {
             if (!IsServer || steamId == 0 || Networking == null) return;
+            int lastRequestTick;
+            if (RuntimeStateRequestTicks.TryGetValue(steamId, out lastRequestTick) &&
+                CurrentTick - lastRequestTick < RuntimeStateRequestCooldownTicks)
+                return;
+            RuntimeStateRequestTicks[steamId] = CurrentTick;
             SendRuntimeStatePacketsTo(BuildRuntimeStatePackets(), steamId);
+        }
+
+        internal static void ResetRuntimeStateSync()
+        {
+            RuntimeStateRequestTicks.Clear();
+            _runtimeStateSequence = 0;
         }
 
         private static PacketRuntimeState[] BuildRuntimeStatePackets()

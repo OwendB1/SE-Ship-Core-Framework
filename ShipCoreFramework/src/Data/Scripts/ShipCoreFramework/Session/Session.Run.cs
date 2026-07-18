@@ -147,6 +147,7 @@ namespace ShipCoreFramework
 
             ModAPI.Close();
             RuntimeStateStore.Clear();
+            ResetRuntimeStateSync();
 
             PerFactionManager.Reset();
             PerPlayerManager.Reset();
