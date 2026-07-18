@@ -96,23 +96,6 @@ namespace ShipCoreFramework
             ApplyPunishmentFlags(EvaluatePunishmentGates());
         }
 
-        internal List<string> GetSpeedPunishmentGateDescriptions()
-        {
-            if (!Session.IsServer && _runtimeStateReceived)
-                return new List<string>(_runtimeSpeedPunishmentReasons);
-            var speedReasons = new List<string>();
-            CollectTriggeredPunishmentGates(speedReasons, null);
-            return speedReasons;
-        }
-
-        internal List<string> GetModifierPunishmentGateDescriptions()
-        {
-            if (!Session.IsServer && _runtimeStateReceived)
-                return new List<string>(_runtimeModifierPunishmentReasons);
-            var modifierReasons = new List<string>();
-            CollectTriggeredPunishmentGates(null, modifierReasons);
-            return modifierReasons;
-        }
 
         private GroupPunishmentFlags EvaluatePunishmentGates()
         {
@@ -396,35 +379,6 @@ namespace ShipCoreFramework
             return false;
         }
 
-        internal void ApplyModifiers(GridModifiers modifiers)
-        {
-            if (IsCoreRecoveryGraceActive())
-            {
-                Utils.Log("ApplyModifiers: suppressed modifier application during core recovery grace for group " +
-                          GetGroupKey() + ".", 2);
-                return;
-            }
-
-            if (!Session.IsGameThread)
-            {
-                MyAPIGateway.Utilities.InvokeOnGameThread(delegate
-                {
-                    if (_closing || Session.IsShuttingDown) return;
-                    ApplyModifiers(modifiers);
-                });
-                return;
-            }
-
-            foreach (var kvp in GridDictionary)
-            {
-                var blocksCopy = kvp.Value.GetBlocksCopy();
-                foreach (var block in blocksCopy)
-                {
-                    var terminalBlock = block?.FatBlock as IMyTerminalBlock;
-                    if (terminalBlock != null) CubeGridModifiers.ApplyModifiers(terminalBlock, modifiers);
-                }
-            }
-        }
 
         internal void DefenseValuesChanged()
         {
@@ -702,14 +656,6 @@ namespace ShipCoreFramework
                 ModAPI.BroadcastBoostActivated(MainCoreComponent.GridComponent.Grid.EntityId);
         }
 
-        internal bool IsPowerOverclockActive()
-        {
-            lock (_abilityStateLock)
-            {
-                return _powerOverclockActive;
-            }
-        }
-
         internal void ActivatePowerOverclock()
         {
             if (!Session.IsServer) return;
@@ -753,10 +699,6 @@ namespace ShipCoreFramework
             Utils.ShowNotification("Power Overclock Engaged!");
         }
 
-        internal GridDefenseModifiers GetActiveDefenseModifiers()
-        {
-            return Session.IsGameThread ? ComputeActiveDefenseModifiers() : GetCachedActiveDefenseModifiers();
-        }
 
         private GridDefenseModifiers ComputeActiveDefenseModifiers()
         {
@@ -767,10 +709,6 @@ namespace ShipCoreFramework
             return PunishModifiers ? CubeGridModifiers.ScaleDefenseModifiers(modifiers, 2f) : modifiers;
         }
 
-        internal GridDefenseModifiers GetPassiveDefenseModifiers()
-        {
-            return Session.IsGameThread ? ComputePassiveDefenseModifiers() : GetCachedPassiveDefenseModifiers();
-        }
 
         private GridDefenseModifiers ComputePassiveDefenseModifiers()
         {
