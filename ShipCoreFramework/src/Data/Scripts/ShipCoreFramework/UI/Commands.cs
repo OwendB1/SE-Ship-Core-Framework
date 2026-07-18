@@ -756,6 +756,9 @@ namespace ShipCoreFramework
 
             // Grid Statistics
             body += "Grid Statistics:\n";
+            var effectiveMaxBlocks = groupComponent.GetEffectiveMaxBlocks();
+            var effectiveMaxMass = groupComponent.GetEffectiveMaxMass();
+            var effectiveMaxPcu = groupComponent.GetEffectiveMaxPCU();
 
             if (shipCore.MinBlocks > 0)
             {
@@ -765,26 +768,26 @@ namespace ShipCoreFramework
             }
             
             // Block Count
-            var blockCountStatus = shipCore.MaxBlocks > 0 ? $"{groupComponent.GroupBlocksCount} / {shipCore.MaxBlocks}" : groupComponent.GroupBlocksCount.ToString();
-            var blockCountPercent = shipCore.MaxBlocks > 0 ? groupComponent.GroupBlocksCount / (float)shipCore.MaxBlocks * 100 : -1;
+            var blockCountStatus = effectiveMaxBlocks > 0 ? $"{groupComponent.GroupBlocksCount} / {effectiveMaxBlocks}" : groupComponent.GroupBlocksCount.ToString();
+            var blockCountPercent = effectiveMaxBlocks > 0 ? groupComponent.GroupBlocksCount / (float)effectiveMaxBlocks * 100 : -1;
             body += $"  Blocks: {blockCountStatus}";
-            if (shipCore.MaxBlocks > 0)
+            if (effectiveMaxBlocks > 0)
                 body += $" ({blockCountPercent:F1}%)";
             body += "\n";
             
             // Mass
-            var massStatus = shipCore.MaxMass > 0 ? $"{groupComponent.GroupMass:F0} / {shipCore.MaxMass:F0} kg" : $"{groupComponent.GroupMass:F0} kg";
-            var massPercent = shipCore.MaxMass > 0 ? groupComponent.GroupMass / shipCore.MaxMass * 100 : -1;
+            var massStatus = effectiveMaxMass > 0 ? $"{groupComponent.GroupMass:F0} / {effectiveMaxMass:F0} kg" : $"{groupComponent.GroupMass:F0} kg";
+            var massPercent = effectiveMaxMass > 0 ? groupComponent.GroupMass / effectiveMaxMass * 100 : -1;
             body += $"  Mass: {massStatus}";
-            if (shipCore.MaxMass > 0)
+            if (effectiveMaxMass > 0)
                 body += $" ({massPercent:F1}%)";
             body += "\n";
             
             // PCU
-            var pcuStatus = shipCore.MaxPCU > 0 ? $"{groupComponent.GroupPCU} / {shipCore.MaxPCU}" : groupComponent.GroupPCU.ToString();
-            var pcuPercent = shipCore.MaxPCU > 0 ? groupComponent.GroupPCU / (float)shipCore.MaxPCU * 100 : -1;
+            var pcuStatus = effectiveMaxPcu > 0 ? $"{groupComponent.GroupPCU} / {effectiveMaxPcu}" : groupComponent.GroupPCU.ToString();
+            var pcuPercent = effectiveMaxPcu > 0 ? groupComponent.GroupPCU / (float)effectiveMaxPcu * 100 : -1;
             body += $"  PCU: {pcuStatus}";
-            if (shipCore.MaxPCU > 0)
+            if (effectiveMaxPcu > 0)
                 body += $" ({pcuPercent:F1}%)";
             body += "\n\n";
             
