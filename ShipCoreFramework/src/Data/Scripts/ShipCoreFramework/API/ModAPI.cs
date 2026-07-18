@@ -707,7 +707,7 @@ namespace ShipCoreFramework
                     return 100f;
 
                 if (Session.IsServer)
-                    SpeedEnforcement.RefreshSpeedState(groupComponent);
+                    RefreshAuthoritativeSpeedState(groupComponent);
                 return groupComponent.BaseSpeedLimitMetersPerSecond;
             }
             catch (Exception ex)
@@ -805,7 +805,7 @@ namespace ShipCoreFramework
                 };
             }
 
-            var manifestGroups = PerManifestGroupManager.GetManifestGroups(core)
+            var manifestGroups = GetConfiguredManifestGroups(core)
                 .Select(group => new ManifestGroupLimitData
                 {
                     Name = group.Name,
@@ -878,9 +878,22 @@ namespace ShipCoreFramework
         private static int GetManifestGroupCurrentCount(string name, GroupComponent groupComponent)
         {
             if (groupComponent != null) return groupComponent.GetCurrentManifestCoreCount(name);
-            if (Session.IsServer) return PerManifestGroupManager.GetCurrentCount(name);
-            int count;
-            return RuntimeStateStore.TryGetManifestCount(name, out count) ? count : 0;
+            return Session.IsServer
+                ? GetAuthoritativeManifestGroupCount(name)
+                : GetReplicatedManifestGroupCount(name);
+        }
+
+        private static IEnumerable<ManifestCoreGroup> GetConfiguredManifestGroups(ShipCore core)
+        {
+            if (core == null || core.ManifestGroupNames == null)
+                yield break;
+
+            foreach (var groupName in core.ManifestGroupNames)
+            {
+                var group = Session.Config.GetManifestGroupByName(groupName);
+                if (group != null)
+                    yield return group;
+            }
         }
 
         private static ModConfigData ConvertToModConfigData(ModConfig config)
@@ -1516,7 +1529,7 @@ namespace ShipCoreFramework
                     return 100f;
 
                 if (Session.IsServer)
-                    SpeedEnforcement.RefreshSpeedState(groupComponent);
+                    RefreshAuthoritativeSpeedState(groupComponent);
                 return groupComponent.EffectiveSpeedLimitMetersPerSecond;
             }
             catch (Exception ex)
@@ -1534,7 +1547,7 @@ namespace ShipCoreFramework
                 if (!TryGetGroupComponent(gridId, out groupComponent)) return false;
 
                 if (Session.IsServer)
-                    SpeedEnforcement.RefreshSpeedState(groupComponent);
+                    RefreshAuthoritativeSpeedState(groupComponent);
                 lock (groupComponent.SpeedStateLock)
                 {
                     return groupComponent.EffectiveBoostEnabled;
