@@ -29,6 +29,14 @@ namespace ShipCoreFramework
             while (Interlocked.CompareExchange(ref _groupBlocksCount, updated, current) != current);
         }
 
+        internal void ObserveClientBlockCount(int delta)
+        {
+            if (Session.IsServer) return;
+            if (_runtimeStateReceived) return;
+            AddGroupBlocksCount(delta);
+            InvalidateGameThreadStateCache(true);
+        }
+
         internal bool PunishModifiers;
         internal bool PunishSpeed;
         internal bool PunishLimitedBlocks;
@@ -61,6 +69,15 @@ namespace ShipCoreFramework
         internal float MaximumFrictionSpeedModifierOverride = -1f;
 
         private long _lastOwnerId;
+        private bool _runtimeStateReceived;
+        private long _runtimeOwnerId;
+        private long _runtimeMainCoreBlockId;
+        private int _runtimeCoreCount;
+        private string _runtimeCoreSubtypeId = string.Empty;
+
+        internal int CoreCount => !Session.IsServer && _runtimeStateReceived
+            ? _runtimeCoreCount
+            : CoreDictionary.Count;
         private float _boostCooldownTimer;
         private float _boostDurationTimer;
 

@@ -12,6 +12,13 @@ namespace ShipCoreFramework
         internal bool Init(IMyFunctionalBlock coreBlock, GridComponent gridComponent, GroupComponent groupComponent)
         {
             CoreBlock = coreBlock;
+            GridComponent = gridComponent;
+            _groupComponent = groupComponent;
+            SubtypeId = CoreBlock.BlockDefinition.SubtypeId;
+
+            if (!Session.IsServer)
+                return InitClientObserver();
+
             var isIgnoredNpcGrid = Session.Config.IgnoreAiFactions && CoreBlock.CubeGrid.IsNpcSpawnedGrid;
             var builder = ResolvePlacementOwnerIdentityId();
             if (builder == 0 && !isIgnoredNpcGrid)
@@ -43,10 +50,6 @@ namespace ShipCoreFramework
             }
 
             IsMainCore = false;
-            GridComponent = gridComponent;
-            _groupComponent = groupComponent;
-            SubtypeId = CoreBlock.BlockDefinition.SubtypeId;
-
             var shipCoreConfig = Session.Config.GetShipCoreByTypeId(SubtypeId);
             var rankOwnerId = CoreBlock.CubeGrid.BigOwners.FirstOrDefault();
             if (rankOwnerId == 0) rankOwnerId = builder;
@@ -157,6 +160,13 @@ namespace ShipCoreFramework
             return true;
         }
 
+        private bool InitClientObserver()
+        {
+            CubeGridModifiers.RegisterUpgradeModuleLink(CoreBlock);
+            AttachBlockEvents();
+            return true;
+        }
+
         private bool CheckIfCoreOfOtherTypeExists()
         {
             var knownOtherCoreSubtypeIds = Session.Config?.ShipCores
@@ -203,6 +213,7 @@ namespace ShipCoreFramework
 
         private void SaveCoreState()
         {
+            if (!Session.IsServer) return;
             if (CoreBlock.Storage == null) CoreBlock.Storage = new MyModStorageComponent();
             CoreBlock.Storage[Session.CoreStateStorageGUID] = IsMainCore ? "1" : "0";
         }

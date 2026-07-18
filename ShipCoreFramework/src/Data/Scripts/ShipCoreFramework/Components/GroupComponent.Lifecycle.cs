@@ -51,6 +51,12 @@ namespace ShipCoreFramework
                 EndGridInitialization();
             }
 
+            if (!Session.IsServer)
+            {
+                InvalidateGameThreadStateCache(true);
+                return true;
+            }
+
             if (MainCoreComponent == null)
                 ScheduleMissingCoreRescan();
 
@@ -239,6 +245,7 @@ namespace ShipCoreFramework
 
         internal void Activate(CoreComponent coreComponent)
         {
+            if (!Session.IsServer) return;
             if (Deactivated)
             {
                 coreComponent.IsMainCore = false;
@@ -293,6 +300,7 @@ namespace ShipCoreFramework
 
         internal void ResetCore()
         {
+            if (!Session.IsServer) return;
             var old = MainCoreComponent;
             if (old == null) return;
             if (!Session.IsGameThread)
@@ -346,6 +354,10 @@ namespace ShipCoreFramework
             }
 
             InvalidateGameThreadStateCache(true);
+            if (!Session.IsServer)
+            {
+                return;
+            }
             if (MainCoreComponent == null)
                 ScheduleMissingCoreRescan();
 
@@ -381,6 +393,13 @@ namespace ShipCoreFramework
                 InvalidateGameThreadStateCache(true);
             }
 
+            if (!Session.IsServer)
+            {
+                if (removedMain != null) MainCoreComponent = null;
+                if (GridCount == 0) _closing = true;
+                return;
+            }
+
             if (removedMain != null) MainCoreLeftGroup(removedMain);
 
             RemoveDefenseModifierCache(g.EntityId);
@@ -403,6 +422,7 @@ namespace ShipCoreFramework
 
         private void MainCoreLeftGroup(CoreComponent lost)
         {
+            if (!Session.IsServer) return;
             if (!ReferenceEquals(lost, MainCoreComponent)) return;
 
             var oldType = lost.SubtypeId;
@@ -457,6 +477,11 @@ namespace ShipCoreFramework
 
         internal void CoreRemoved(CoreComponent lost)
         {
+            if (!Session.IsServer)
+            {
+                if (ReferenceEquals(lost, MainCoreComponent)) MainCoreComponent = null;
+                return;
+            }
             if (!ReferenceEquals(lost, MainCoreComponent)) return;
             lost.IsMainCore = false;
 
@@ -512,6 +537,7 @@ namespace ShipCoreFramework
 
             InvalidateGameThreadStateCache(true);
             InvalidateModifierStateCache();
+            if (!Session.IsServer) return;
             IncrementLimitGeneration();
             SyncNoCoreLimitTracking();
             if (MainCoreComponent == null)
@@ -522,6 +548,7 @@ namespace ShipCoreFramework
 
         internal void ScheduleMissingCoreRescan()
         {
+            if (!Session.IsServer) return;
             if (_closing || Deactivated || MainCoreComponent != null) return;
             if (!HasPotentialCoreBlocksInGroup())
             {
@@ -540,6 +567,7 @@ namespace ShipCoreFramework
 
         internal void RunMissingCoreRescanTick()
         {
+            if (!Session.IsServer) return;
             if (_closing || Deactivated)
             {
                 ClearMissingCoreRescan();
@@ -640,7 +668,7 @@ namespace ShipCoreFramework
         internal void Clean()
         {
             _closing = true;
-            try
+            if (Session.IsServer) try
             {
                 if (MainCoreComponent != null)
                 {

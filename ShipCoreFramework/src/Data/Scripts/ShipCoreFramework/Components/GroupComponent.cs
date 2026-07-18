@@ -8,7 +8,10 @@ namespace ShipCoreFramework
 {
     internal partial class GroupComponent
     {
-        internal ShipCore ShipCore => Session.Config.GetShipCoreByTypeId(MainCoreComponent?.SubtypeId ?? string.Empty);
+        internal ShipCore ShipCore => Session.Config.GetShipCoreByTypeId(
+            !Session.IsServer && _runtimeStateReceived
+                ? _runtimeCoreSubtypeId
+                : MainCoreComponent?.SubtypeId ?? string.Empty);
 
         internal IMyFaction OwningFaction => MyAPIGateway.Session.Factions.TryGetPlayerFaction(OwnerId);
 
