@@ -559,8 +559,7 @@ namespace ShipCoreFramework
                 GroupComponent groupComponent;
                 if (!TryGetGroupComponent(gridId, out groupComponent)) return ConvertToSpeedModifiersData(null);
 
-                var core = groupComponent.ShipCore;
-                return ConvertToSpeedModifiersData(core?.SpeedModifiers);
+                return ConvertToSpeedModifiersData(groupComponent.SpeedModifiers);
             }
             catch (Exception ex)
             {
