@@ -803,7 +803,8 @@ namespace ShipCoreFramework
                     body += $"  {m.Name}: x{m.Value:F2}\n";
             }
             //Speed Info
-            SpeedEnforcement.RefreshSpeedState(groupComponent);
+            if (Session.IsServer)
+                SpeedEnforcement.RefreshSpeedState(groupComponent);
             body += "Speed Modifiers:\n";
             var speedmods = groupComponent.SpeedModifiers;
             if (speedmods != null)

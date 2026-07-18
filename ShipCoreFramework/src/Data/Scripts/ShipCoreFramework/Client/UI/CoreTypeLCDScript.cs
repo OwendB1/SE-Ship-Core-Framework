@@ -141,8 +141,6 @@ namespace ShipCoreFramework
                 return;
             }
 
-            SpeedEnforcement.RefreshSpeedState(group);
-
             var layout = BuildPanelGroupLayout();
             var hasCursorHit = UpdateCursorState(layout);
 

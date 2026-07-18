@@ -858,7 +858,8 @@ namespace ShipCoreFramework
                 if (!Session.GroupDict.TryGetValue(groupData, out groupComponent))
                     return 100f;
 
-                SpeedEnforcement.RefreshSpeedState(groupComponent);
+                if (Session.IsServer)
+                    SpeedEnforcement.RefreshSpeedState(groupComponent);
                 return groupComponent.BaseSpeedLimitMetersPerSecond;
             }
             catch (Exception ex)
@@ -1666,7 +1667,8 @@ namespace ShipCoreFramework
                 if (!Session.GroupDict.TryGetValue(groupData, out groupComponent))
                     return 100f;
 
-                SpeedEnforcement.RefreshSpeedState(groupComponent);
+                if (Session.IsServer)
+                    SpeedEnforcement.RefreshSpeedState(groupComponent);
                 return groupComponent.EffectiveSpeedLimitMetersPerSecond;
             }
             catch (Exception ex)
@@ -1683,7 +1685,8 @@ namespace ShipCoreFramework
                 GroupComponent groupComponent;
                 if (!TryGetGroupComponent(gridId, out groupComponent)) return false;
 
-                SpeedEnforcement.RefreshSpeedState(groupComponent);
+                if (Session.IsServer)
+                    SpeedEnforcement.RefreshSpeedState(groupComponent);
                 lock (groupComponent.SpeedStateLock)
                 {
                     return groupComponent.EffectiveBoostEnabled;
