@@ -217,9 +217,13 @@ namespace ShipCoreFramework
         private static void RemoveState(GroupRuntimeState state)
         {
             if (state == null) return;
-            ByGroup.Remove(state.GroupId);
+            GroupRuntimeState current;
+            if (ByGroup.TryGetValue(state.GroupId, out current) && ReferenceEquals(current, state))
+                ByGroup.Remove(state.GroupId);
             if (state.GridIds == null) return;
-            for (var i = 0; i < state.GridIds.Length; i++) ByGrid.Remove(state.GridIds[i]);
+            for (var i = 0; i < state.GridIds.Length; i++)
+                if (ByGrid.TryGetValue(state.GridIds[i], out current) && ReferenceEquals(current, state))
+                    ByGrid.Remove(state.GridIds[i]);
         }
 
         internal static bool TryGetByGrid(long gridId, out GroupRuntimeState state)
