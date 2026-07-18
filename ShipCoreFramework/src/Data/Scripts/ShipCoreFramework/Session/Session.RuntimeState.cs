@@ -18,12 +18,14 @@ namespace ShipCoreFramework
 
             var players = new List<IMyPlayer>();
             MyAPIGateway.Players.GetPlayers(players);
+            PacketRuntimeState[] packets = null;
             for (var i = 0; i < players.Count; i++)
             {
                 var player = players[i];
                 if (player == null || player.SteamUserId == 0) continue;
                 if (LocalPlayer != null && player.SteamUserId == LocalPlayer.SteamUserId) continue;
-                SendRuntimeStateTo(player.SteamUserId);
+                if (packets == null) packets = BuildRuntimeStatePackets();
+                SendRuntimeStatePacketsTo(packets, player.SteamUserId);
             }
         }
 
@@ -36,7 +38,11 @@ namespace ShipCoreFramework
         internal static void SendRuntimeStateTo(ulong steamId)
         {
             if (!IsServer || steamId == 0 || Networking == null) return;
+            SendRuntimeStatePacketsTo(BuildRuntimeStatePackets(), steamId);
+        }
 
+        private static PacketRuntimeState[] BuildRuntimeStatePackets()
+        {
             var sequence = ++_runtimeStateSequence;
             var states = new List<GroupRuntimeState>();
             foreach (var pair in GroupDict)
@@ -50,27 +56,38 @@ namespace ShipCoreFramework
 
             if (states.Count == 0)
             {
-                Networking.SendToPlayer(new PacketRuntimeState
+                return new[]
                 {
-                    Sequence = sequence,
-                    Reset = true,
-                    States = Array.Empty<GroupRuntimeState>()
-                }, steamId);
-                return;
+                    new PacketRuntimeState
+                    {
+                        Sequence = sequence,
+                        Reset = true,
+                        States = Array.Empty<GroupRuntimeState>()
+                    }
+                };
             }
 
+            var packets = new List<PacketRuntimeState>();
             for (var offset = 0; offset < states.Count; offset += RuntimeStateBatchSize)
             {
                 var count = Math.Min(RuntimeStateBatchSize, states.Count - offset);
                 var batch = new GroupRuntimeState[count];
                 states.CopyTo(offset, batch, 0, count);
-                Networking.SendToPlayer(new PacketRuntimeState
+                packets.Add(new PacketRuntimeState
                 {
                     Sequence = sequence,
                     Reset = offset == 0,
                     States = batch
-                }, steamId);
+                });
             }
+            return packets.ToArray();
+        }
+
+        private static void SendRuntimeStatePacketsTo(PacketRuntimeState[] packets, ulong steamId)
+        {
+            if (packets == null || Networking == null) return;
+            for (var i = 0; i < packets.Length; i++)
+                Networking.SendToPlayer(packets[i], steamId);
         }
 
         internal static void ApplyRuntimeState(int sequence, bool reset, GroupRuntimeState[] states)
