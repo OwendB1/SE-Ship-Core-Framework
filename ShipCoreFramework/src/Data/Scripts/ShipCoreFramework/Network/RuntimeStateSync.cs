@@ -254,7 +254,6 @@ namespace ShipCoreFramework
         internal override PacketDirection Direction { get { return PacketDirection.ServerToClient; } }
 
         [ProtoMember(1)] internal int Sequence;
-        [ProtoMember(2)] internal bool Reset;
         [ProtoMember(3)] internal GroupRuntimeState[] States = Array.Empty<GroupRuntimeState>();
         [ProtoMember(4)] internal int BatchIndex;
         [ProtoMember(5)] internal int BatchCount;

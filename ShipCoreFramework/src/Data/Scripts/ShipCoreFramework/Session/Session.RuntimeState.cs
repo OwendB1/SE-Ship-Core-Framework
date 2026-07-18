@@ -119,7 +119,6 @@ namespace ShipCoreFramework
                     {
                         Sequence = sequence,
                         SnapshotRevision = revision,
-                        Reset = true,
                         BatchIndex = 0,
                         BatchCount = 1,
                         States = Array.Empty<GroupRuntimeState>()
@@ -138,7 +137,6 @@ namespace ShipCoreFramework
                 {
                     Sequence = sequence,
                     SnapshotRevision = revision,
-                    Reset = true,
                     States = Array.Empty<GroupRuntimeState>()
                 });
             for (var i = 0; i < packets.Count; i++)
@@ -158,7 +156,6 @@ namespace ShipCoreFramework
             {
                 Sequence = sequence,
                 SnapshotRevision = revision,
-                Reset = packets.Count == 0,
                 States = batch
             };
             var bytes = MyAPIGateway.Utilities.SerializeToBinary<PacketBase>(packet);
