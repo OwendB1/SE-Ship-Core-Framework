@@ -1,12 +1,47 @@
+using System.Linq;
 using Sandbox.Game.Entities;
 using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI;
 using VRage.Game;
+using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
 {
     internal partial class GroupComponent
     {
+        private bool IsIgnoredNpcGroup()
+        {
+            if (!Session.Config.IgnoreAiFactions) return false;
+
+            var mainGrid = MainCoreComponent?.CoreBlock?.CubeGrid;
+            return mainGrid?.IsNpcSpawnedGrid ??
+                   GridDictionary.Keys.Any(grid => grid != null && grid.IsNpcSpawnedGrid);
+        }
+
+        private bool ComputeIsIgnoredGroup()
+        {
+            if (IsIgnoredByAiOrFactionTag()) return true;
+            if (OwnerId == 0) return true;
+            var player = MyAPIGateway.Players.TryGetIdentityId(OwnerId);
+            return player != null && player.PromoteLevel == MyPromoteLevel.Admin &&
+                   MyAPIGateway.Session.IsUserIgnorePCULimit(player.SteamUserId);
+        }
+
+        internal bool IsIgnoredByAiOrFactionTag()
+        {
+            if (IsIgnoredNpcGroup()) return true;
+
+            var faction = OwningFaction;
+            if (faction == null) return false;
+            return Session.Config.IgnoredFactionTags != null &&
+                   Session.Config.IgnoredFactionTags.Contains(faction.Tag);
+        }
+
+        internal bool IsIgnoredByAiOrFactionTagThreadSafe()
+        {
+            return Session.IsGameThread ? IsIgnoredByAiOrFactionTag() : GetCachedIsIgnoredByAiOrFactionTag();
+        }
+
         private long GetAuthoritativeOwnerId()
         {
             var ownerId = ResolveLocalOwnerId();
