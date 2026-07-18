@@ -11,225 +11,6 @@ namespace ShipCoreFramework
 {
     internal static partial class Commands
     {
-        private static bool IsCoreCommand(string messageText)
-        {
-            const string commandPrefix = "/core";
-            if (string.IsNullOrWhiteSpace(messageText)) return false;
-
-            var trimmed = messageText.Trim();
-            return trimmed.Equals(commandPrefix, StringComparison.OrdinalIgnoreCase) ||
-                   trimmed.StartsWith(commandPrefix + " ", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool IsLocalReadOnlyCommand(string messageText)
-        {
-            var allArgs = messageText.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            if (allArgs.Length < 2) return true;
-
-            var sub = allArgs[1];
-            return sub.Equals("help", StringComparison.OrdinalIgnoreCase) ||
-                   sub.Equals("info", StringComparison.OrdinalIgnoreCase) ||
-                   sub.Equals("listcores", StringComparison.OrdinalIgnoreCase) ||
-                   sub.Equals("coreinfo", StringComparison.OrdinalIgnoreCase) ||
-                   sub.Equals("listnocores", StringComparison.OrdinalIgnoreCase) ||
-                   sub.Equals("listnfzs", StringComparison.OrdinalIgnoreCase);
-        }
-        
-        private static void CommandSwitch(long playerId, string messageText)
-        {
-            var allArgs = messageText.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-
-            if (allArgs.Length < 2 || allArgs[1].Equals("help", StringComparison.OrdinalIgnoreCase))
-            {
-                if(Session.LocalPlayer != null) ShowHelp();
-                return;
-            }
-
-            var args = allArgs.Skip(1).ToArray();
-            var sub = args[0].ToLower();
-            var modMessage ="";
-            switch (sub)
-            {
-                case "inventory":
-                    if(Session.LocalPlayer!=null) Inventory(playerId,args);
-                    return;
-                case "reloadconfig":
-                    if(!CheckIfAdmin(playerId)) return;
-                    modMessage+=ReloadConfig();
-                    break;
-                case "listcores":
-                    modMessage+=ListCores();
-                    break;
-                case "coreinfo":
-                    modMessage+=CoreInfo(args);
-                    break;
-                case "listnocores":
-                    modMessage+=ListNoCores();
-                    break;
-                case "listnfzs":
-                    ListNoFlyZones();
-                    return;
-                case "createnfz":
-                    if(!CheckIfAdmin(playerId)) return;
-                    modMessage+=CreateNoFlyZone(args);
-                    break;
-                case "deletenfz":
-                    if(!CheckIfAdmin(playerId)) return;
-                    modMessage+=DeleteNoFlyZone(args);
-                    break;
-                case "debug":
-                    if(!CheckIfAdmin(playerId)) return;
-                    modMessage+=Debug(args);
-                    break;
-                case "combatlog":
-                    if(!CheckIfAdmin(playerId)) return;
-                    modMessage+=CombatLog(args);
-                    break;
-                case "loglevel":
-                    if(!CheckIfAdmin(playerId)) return;
-                    modMessage+=LogLevel(args);
-                    break;
-                case "select":
-                    if(!CheckIfAdmin(playerId))return;
-                    modMessage+=Select(args);
-                    break;
-                case "setworldspeed":
-                    if(!CheckIfAdmin(playerId)) return;
-                    modMessage+=SetWorldSpeed(args);
-                    break;
-                case "ignoretags":
-                case "ignoretag":
-                    modMessage+=IgnoreTags(playerId,args);
-                    break;
-                case "ignoreai":
-                    if(!CheckIfAdmin(playerId)) return;
-                    modMessage+=IgnoreAi();
-                    break;
-                case "unattachedmodules":
-                    if(!CheckIfAdmin(playerId)) return;
-                    modMessage+=UnattachedModules(args);
-                    break;
-                case "info":
-                    if(Session.LocalPlayer!=null) CoreInfo(playerId);
-                    return;
-                default:
-                    modMessage += "The command you have typed was not recognized. Did you make a typo?";
-                    break;
-            }
-            if(Session.IsServer)
-            {
-                MyVisualScriptLogicProvider.SendChatMessage(modMessage,"ShipCores: Server:", playerId, "Green");
-            }
-            else
-            {
-                MyVisualScriptLogicProvider.SendChatMessage(modMessage,"ShipCores: LocalHost:", playerId, "Red");
-            }
-        }
-        
-        private static void Inventory(long playerId, string[] args)
-        {
-            var body ="";
-            var bodySort = new Dictionary<string, string>();
-            if (args.Length < 3 || !CheckIfAdmin(playerId))
-            {
-                var playerVal = PerPlayerManager.GetPlayerCountsSnapshot(playerId);
-                if(playerVal.Count > 0)
-                {
-                    foreach (var classCount in playerVal)
-                    {
-                        var max = Session.Config.GetShipCoreByTypeId(classCount.Key).MaxPerPlayer;
-                        bodySort[classCount.Key]=$"> {classCount.Key}:\n";
-                        if(max != -1 && classCount.Value>0)
-                        {
-                            bodySort[classCount.Key]+=$"            > Per Player:{classCount.Value}/{max}\n";
-                        }
-                    }
-                }
-                
-                var faction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(playerId);
-                var factionId = faction?.FactionId ?? -1;
-                var factionVal = factionId != -1
-                    ? PerFactionManager.GetFactionCountsSnapshot(factionId)
-                    : new Dictionary<string, int>();
-                if(factionVal.Count > 0)
-                {
-                    foreach (var classCount in factionVal)
-                    {
-                        var core = Session.Config.GetShipCoreByTypeId(classCount.Key);
-                        var max = PerFactionManager.GetEffectiveFactionCoreLimit(core, PerFactionManager.GetFactionPlayerCount(faction, playerId));
-                        if(max != -1 && classCount.Value>0)
-                        {
-                            if (!bodySort.ContainsKey(classCount.Key))
-                                bodySort[classCount.Key] = $"> {classCount.Key}:\n";
-
-                            bodySort[classCount.Key]+=$"            > Per Faction:{FormatFactionLimit(core, faction, playerId, classCount.Value)}\n";
-                        }
-                    }                
-                }
-                body = string.Join("", bodySort.Values);
-            }
-            else
-            {
-                var sub = args[1].ToLower();
-                switch (sub)
-                {
-                    case "faction":
-                        goto case "f";
-                    case "f":
-                        if (!long.TryParse(args[2], out playerId)) return;
-                        var faction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(playerId);
-                        var factionId = faction?.FactionId ?? -1;
-                        var factionVal = factionId != -1
-                            ? PerFactionManager.GetFactionCountsSnapshot(factionId)
-                            : new Dictionary<string, int>();
-                        if(factionVal.Count > 0)
-                        {
-                            foreach (var classCount in factionVal)
-                            {
-                                var core = Session.Config.GetShipCoreByTypeId(classCount.Key);
-                                var max = PerFactionManager.GetEffectiveFactionCoreLimit(core, PerFactionManager.GetFactionPlayerCount(faction, playerId));
-                                if(max != -1)
-                                {
-                                    bodySort[classCount.Key]=$"            > Per Faction:{FormatFactionLimit(core, faction, playerId, classCount.Value)}\n";
-                                }
-                            }                
-                        }
-                        break;
-                    case "player":
-                        goto case "p";
-                    case "p":
-                        if (!long.TryParse(args[2], out playerId)) return;
-                        var playerVal = PerPlayerManager.GetPlayerCountsSnapshot(playerId);
-                        if(playerVal.Count > 0)
-                        {
-                            foreach (var classCount in playerVal)
-                            {
-                                var max = Session.Config.GetShipCoreByTypeId(classCount.Key).MaxPerPlayer;
-                                bodySort[classCount.Key]=$"> {classCount.Key}:\n";
-                                if(max != -1)
-                                {
-                                    bodySort[classCount.Key]+=$"            > Per Player:{classCount.Value}/{max}\n";
-                                }
-                            }
-                        }
-                        break;
-                }
-            }
-            //{
-                //PerFactionManager.
-            //}
-            //else
-            //{
-            //}
-            MyAPIGateway.Utilities.ShowMissionScreen(
-                "Ship Core Framework",
-                $"Inventory - {playerId}\n",
-                "Core Counts",
-                body,
-                null,
-                RandomConsent()
-            );
-        }
         private static string ListCores()
         {
             return Session.Config.ShipCores.Count == 0 ? "No ship cores defined." : 
@@ -288,7 +69,7 @@ namespace ShipCoreFramework
                 "No-Fly Zones",
                 body,
                 null,
-                RandomConsent()
+                ClientConsent()
             );
         }
         
@@ -308,7 +89,7 @@ namespace ShipCoreFramework
             // Check if player owns the grid
             if (!targetGrid.BigOwners.Contains(player.IdentityId))
             {
-                if(CheckIfAdmin(playerId))
+                if(CheckLocalAdmin(playerId))
                 {
                     Utils.ShowChatMessage($"This Grid is owned by: {player.DisplayName}");
                 }
@@ -334,7 +115,7 @@ namespace ShipCoreFramework
                 "Block Limits & Usage",
                 body,
                 null,
-                RandomConsent()
+                ClientConsent()
             );
         }
         
@@ -708,12 +489,12 @@ Raycasts from crosshairs to find a grid and displays all its core information.";
                 "Command Reference",
                 body,
                 null,
-                RandomConsent()
+                ClientConsent()
                 
             );
         }
 
-        private static bool CheckIfAdmin(long playerId)
+        private static bool CheckLocalAdmin(long playerId)
         {
             if(!Session.MpActive) return true;
             var players = new List<IMyPlayer>();
@@ -721,13 +502,12 @@ Raycasts from crosshairs to find a grid and displays all its core information.";
             return (from player in players where player.IdentityId == playerId 
                 select player.PromoteLevel == MyPromoteLevel.Admin || player.PromoteLevel == MyPromoteLevel.Owner).FirstOrDefault();
         }
-        private static string RandomConsent()
+        private static string ClientConsent()
         {
             string[] options = {"Cool Beans","I Understand","I Understand","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","I Don't like reading","It's MoMo's fault","Sussy Baka"};
             var rng = new Random();
             return options[rng.Next(options.Length)];
         }
-
         private static string DescribeFactionLimitConfig(ShipCore core)
         {
             if (core == null || !PerFactionManager.HasFactionCoreLimit(core))
