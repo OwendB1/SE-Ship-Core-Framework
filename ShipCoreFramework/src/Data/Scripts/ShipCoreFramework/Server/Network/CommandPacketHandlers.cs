@@ -60,6 +60,13 @@ namespace ShipCoreFramework
             if (!HasAccess(sender, newMain.CoreBlock) ||
                 (oldMain != null && !HasAccess(sender, oldMain.CoreBlock))) return;
 
+            string ownershipError;
+            if (!HasCompatibleCoreOwnership(group, newMain.CoreBlock, out ownershipError))
+            {
+                Session.Networking.SendToPlayer(new PacketNotify(ownershipError, 5000), SenderSteamId);
+                return;
+            }
+
             if (!ReferenceEquals(oldMain, newMain))
                 group.Activate(newMain);
             if (!ReferenceEquals(group.MainCoreComponent, newMain)) return;
@@ -73,6 +80,29 @@ namespace ShipCoreFramework
             });
             foreach (IMyPlayer player in players)
                 Session.Networking.SendToPlayer(sync, player.SteamUserId);
+        }
+
+        private static bool HasCompatibleCoreOwnership(GroupComponent group, IMyFunctionalBlock newCore,
+            out string error)
+        {
+            error = string.Empty;
+            if (group == null || newCore == null) return false;
+
+            long newOwnerId = newCore.OwnerId == 0 ? newCore.SlimBlock.BuiltBy : newCore.OwnerId;
+            IMyFaction newFaction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(newOwnerId);
+            if (newFaction == null)
+            {
+                if (group.OwnerId == newOwnerId) return true;
+                error = "Cannot transfer main core because its owner is not the same as the main core. " +
+                        "Destroy the main core first.";
+                return false;
+            }
+
+            IMyFaction currentFaction = group.OwningFaction;
+            if (currentFaction != null && currentFaction.FactionId == newFaction.FactionId) return true;
+            error = "Cannot transfer main core because its owning faction differs from the main core. " +
+                    "Destroy the main core first.";
+            return false;
         }
     }
 

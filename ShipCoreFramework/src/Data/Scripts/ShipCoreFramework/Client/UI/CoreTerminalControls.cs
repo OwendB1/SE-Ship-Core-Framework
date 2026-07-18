@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Text;
-using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces.Terminal;
 using VRage.Utils;
@@ -66,20 +65,6 @@ namespace ShipCoreFramework
                     return;
                 }
 
-                var currentCoreOwningFaction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(b.OwnerId);
-                if (currentCoreOwningFaction == null)
-                {
-                    if (groupComp.OwnerId != b.OwnerId)
-                    {
-                        Utils.ShowChatMessage("Cannot transfer main core because its owner is not the same as the main core. Destroy main core first!");
-                        return;
-                    }
-                } else if (currentCoreOwningFaction.FactionId != groupComp.OwningFaction.FactionId)
-                {
-                    Utils.ShowChatMessage("Owning faction of this core is unequal to current main core. Destroy main core first!");
-                    return;
-                }
-                
                 Session.Networking.SendToServer(new PacketSetMainCore
                 {
                     ActionData = new SetMainCoreAction
