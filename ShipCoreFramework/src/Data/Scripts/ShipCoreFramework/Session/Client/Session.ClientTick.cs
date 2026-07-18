@@ -4,6 +4,7 @@ namespace ShipCoreFramework
     {
         private void RunClientSimulationTick()
         {
+            CoreTerminalControls.RegisterOnce();
             CoreTypeLCDScript.RunFrameScrollUpdate();
             NotificationInstance.RunCountdownTick();
         }
