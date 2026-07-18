@@ -31,6 +31,8 @@ namespace ShipCoreFramework
             _runtimeCoreCount = state.CoreCount;
             _runtimePlayerCoreCount = state.PlayerCoreCount;
             _runtimeFactionCoreCount = state.FactionCoreCount;
+            _runtimeFactionPlayerCount = state.FactionPlayerCount;
+            _runtimeEffectiveFactionCoreLimit = state.EffectiveFactionCoreLimit;
             _runtimeManifestCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             if (state.ManifestCounts != null)
                 for (var i = 0; i < state.ManifestCounts.Length; i++)
@@ -192,6 +194,8 @@ namespace ShipCoreFramework
             _runtimeCoreCount = 0;
             _runtimePlayerCoreCount = 0;
             _runtimeFactionCoreCount = 0;
+            _runtimeFactionPlayerCount = 0;
+            _runtimeEffectiveFactionCoreLimit = -1;
             _runtimeManifestCounts.Clear();
             _runtimeSpeedPunishmentReasons = Array.Empty<string>();
             _runtimeModifierPunishmentReasons = Array.Empty<string>();

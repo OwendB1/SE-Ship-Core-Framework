@@ -164,11 +164,11 @@ namespace ShipCoreFramework
                 body += $"Per Player Limit:{groupComponent.GetCurrentPlayerCoreCount()}/{currentMaxPerPlayer}\n";
             }
             
-            if(PerFactionManager.HasFactionCoreLimit(groupComponent.ShipCore))
+            if (HasFactionCoreLimit(groupComponent.ShipCore))
             {
                 if (groupComponent.OwningFaction != null)
                 {
-                    body += $"Per Faction Limit:{FormatFactionLimit(groupComponent.ShipCore, groupComponent.OwningFaction, groupComponent.OwnerId, groupComponent.GetCurrentFactionCoreCount())}\n";
+                    body += $"Per Faction Limit:{FormatFactionLimit(groupComponent.ShipCore, groupComponent.GetCurrentFactionCoreCount(), groupComponent.GetCurrentFactionPlayerCount(), groupComponent.GetCurrentEffectiveFactionCoreLimit())}\n";
                 }
                 else
                 {
@@ -176,11 +176,15 @@ namespace ShipCoreFramework
                 }
             }
 
-            if (PerManifestGroupManager.HasManifestGroupLimit(groupComponent.ShipCore))
+            if (groupComponent.ShipCore != null && groupComponent.ShipCore.ManifestGroupNames != null)
             {
-                foreach (var manifestGroup in PerManifestGroupManager.GetManifestGroups(groupComponent.ShipCore))
+                foreach (var groupName in groupComponent.ShipCore.ManifestGroupNames)
+                {
+                    var manifestGroup = Session.Config.GetManifestGroupByName(groupName);
+                    if (manifestGroup == null) continue;
                     body +=
                         $"Manifest Group Limit:{manifestGroup.Name} {groupComponent.GetCurrentManifestCoreCount(manifestGroup.Name)}/{manifestGroup.MaxCount}\n";
+                }
             }
 
             // Grid Statistics
@@ -232,8 +236,6 @@ namespace ShipCoreFramework
                     body += $"  {m.Name}: x{m.Value:F2}\n";
             }
             //Speed Info
-            if (Session.IsServer)
-                SpeedEnforcement.RefreshSpeedState(groupComponent);
             body += "Speed Modifiers:\n";
             var speedmods = groupComponent.SpeedModifiers;
             if (speedmods != null)
@@ -510,7 +512,7 @@ Raycasts from crosshairs to find a grid and displays all its core information.";
         }
         private static string DescribeFactionLimitConfig(ShipCore core)
         {
-            if (core == null || !PerFactionManager.HasFactionCoreLimit(core))
+            if (!HasFactionCoreLimit(core))
                 return "Unlimited";
 
             if (core.MaxPerFaction >= 0 && core.FactionPlayersNeededPerCore > 0)
@@ -519,10 +521,13 @@ Raycasts from crosshairs to find a grid and displays all its core information.";
             return core.MaxPerFaction >= 0 ? core.MaxPerFaction.ToString() : $"1 per {core.FactionPlayersNeededPerCore} faction players";
         }
 
-        private static string FormatFactionLimit(ShipCore core, IMyFaction faction, long ownerId, int currentCount)
+        private static bool HasFactionCoreLimit(ShipCore core)
         {
-            var playerCount = PerFactionManager.GetFactionPlayerCount(faction, ownerId);
-            var max = PerFactionManager.GetEffectiveFactionCoreLimit(core, playerCount);
+            return core != null && (core.MaxPerFaction >= 0 || core.FactionPlayersNeededPerCore > 0);
+        }
+
+        private static string FormatFactionLimit(ShipCore core, int currentCount, int playerCount, int max)
+        {
             if (max < 0)
                 return currentCount.ToString();
 

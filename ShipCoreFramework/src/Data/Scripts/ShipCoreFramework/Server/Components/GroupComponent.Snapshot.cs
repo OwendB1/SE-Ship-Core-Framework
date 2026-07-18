@@ -56,6 +56,9 @@ namespace ShipCoreFramework
             var faction = OwningFaction;
             var subtypeId = MainCoreComponent == null ? string.Empty : MainCoreComponent.SubtypeId;
             var countSubtypeId = ShipCore == null ? subtypeId : ShipCore.SubtypeId;
+            var factionPlayerCount = PerFactionManager.GetFactionPlayerCount(faction, ownerId);
+            var effectiveFactionCoreLimit = PerFactionManager.GetEffectiveFactionCoreLimit(ShipCore,
+                factionPlayerCount);
             var manifestCounts = new List<RuntimeManifestCount>();
             foreach (var manifest in PerManifestGroupManager.GetManifestGroups(ShipCore))
             {
@@ -164,7 +167,9 @@ namespace ShipCoreFramework
                 LimitRevision = limitRevision,
                 LimitEnforcementRevision = limitEnforcementRevision,
                 LastBlocksPunished = lastBlocksPunished,
-                LimitEnforcementEvents = limitEnforcementEvents
+                LimitEnforcementEvents = limitEnforcementEvents,
+                FactionPlayerCount = factionPlayerCount,
+                EffectiveFactionCoreLimit = effectiveFactionCoreLimit
             };
         }
     }

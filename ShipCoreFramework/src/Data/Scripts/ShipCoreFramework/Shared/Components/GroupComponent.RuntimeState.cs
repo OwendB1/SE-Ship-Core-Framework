@@ -16,6 +16,20 @@ namespace ShipCoreFramework
                 : _runtimeFactionCoreCount;
         }
 
+        internal int GetCurrentFactionPlayerCount()
+        {
+            return Session.IsServer
+                ? GetAuthoritativeFactionPlayerCount()
+                : _runtimeFactionPlayerCount;
+        }
+
+        internal int GetCurrentEffectiveFactionCoreLimit()
+        {
+            return Session.IsServer
+                ? GetAuthoritativeEffectiveFactionCoreLimit()
+                : _runtimeEffectiveFactionCoreLimit;
+        }
+
         internal int GetCurrentManifestCoreCount(string name)
         {
             return Session.IsServer

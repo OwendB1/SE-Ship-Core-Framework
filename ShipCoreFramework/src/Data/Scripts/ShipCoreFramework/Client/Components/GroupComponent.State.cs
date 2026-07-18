@@ -19,6 +19,8 @@ namespace ShipCoreFramework
         private string _runtimeCoreSubtypeId = string.Empty;
         private int _runtimePlayerCoreCount;
         private int _runtimeFactionCoreCount;
+        private int _runtimeFactionPlayerCount;
+        private int _runtimeEffectiveFactionCoreLimit = -1;
         private Dictionary<string, int> _runtimeManifestCounts =
             new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         private string[] _runtimeSpeedPunishmentReasons = Array.Empty<string>();

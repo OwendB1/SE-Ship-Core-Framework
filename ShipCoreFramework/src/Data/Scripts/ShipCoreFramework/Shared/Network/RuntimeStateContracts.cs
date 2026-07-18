@@ -83,5 +83,7 @@ namespace ShipCoreFramework
         [ProtoMember(53)] internal bool Removed;
         [ProtoMember(54)] internal RuntimeLimitEnforcementEvent[] LimitEnforcementEvents =
             Array.Empty<RuntimeLimitEnforcementEvent>();
+        [ProtoMember(55)] internal int FactionPlayerCount;
+        [ProtoMember(56)] internal int EffectiveFactionCoreLimit;
     }
 }
