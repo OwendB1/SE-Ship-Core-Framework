@@ -92,10 +92,9 @@ namespace ShipCoreFramework
     [ProtoContract]
     internal struct SetMainCoreAction
     {
-        [ProtoMember(1)] 
+        [ProtoMember(1)]
         internal long CubegridEntityId;
-        [ProtoMember(2)] 
+        [ProtoMember(2)]
         internal long BlockEntityId;
     }
 }
-

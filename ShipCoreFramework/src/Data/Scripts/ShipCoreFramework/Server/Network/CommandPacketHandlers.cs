@@ -19,7 +19,7 @@ namespace ShipCoreFramework
         {
             this.ActionData = actionData;
         }
-        
+
         internal override void Received()
         {
             IMyPlayer sender;
@@ -47,7 +47,7 @@ namespace ShipCoreFramework
             }
         }
     }
-    
+
     [ProtoContract]
     internal class PacketSetMainCore : PacketBase
     {
@@ -89,7 +89,7 @@ namespace ShipCoreFramework
                 group.Activate(newMain);
 
             if (!ReferenceEquals(group.MainCoreComponent, newMain)) return;
-            
+
             var players = new List<IMyPlayer>();
             MyAPIGateway.Players.GetPlayers(players);
             var sync = new PacketSetMainCoreSync(new SetMainCoreAction {
@@ -119,4 +119,3 @@ namespace ShipCoreFramework
         }
     }
 }
-

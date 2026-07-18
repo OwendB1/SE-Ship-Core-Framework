@@ -43,7 +43,7 @@ namespace ShipCoreFramework
             group.SyncBeaconComponents();
         }
     }
-    
+
     [ProtoContract]
     internal class PacketNotify : PacketBase {
         internal override PacketDirection Direction { get { return PacketDirection.ServerToClient; } }
@@ -163,4 +163,3 @@ namespace ShipCoreFramework
         }
     }
 }
-

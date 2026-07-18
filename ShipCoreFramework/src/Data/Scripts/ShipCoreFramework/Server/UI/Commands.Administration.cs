@@ -11,7 +11,7 @@ namespace ShipCoreFramework
     {
         private static string CreateNoFlyZone(string[] args)
         {
-            if (args.Length < 3) 
+            if (args.Length < 3)
                 return "Usage: /core createnfz <radius> <forceoff:true|false> [GPS:...] [allowedSubtype1 allowedSubtype2 ...]";
 
             double radius;
@@ -59,10 +59,10 @@ namespace ShipCoreFramework
 
             Session.Config.NoFlyZones.Add(newZone);
             Session.Config.SaveConfig();
-            return "Created NoFlyZone with ID " + nextId + 
+            return "Created NoFlyZone with ID " + nextId +
                    " at the chosen center (ForceOff=" + forceOff + "); please reconnect to resync from server config!";
         }
-        
+
         private static string DeleteNoFlyZone(string[] args)
         {
             if (args.Length < 2) return "Usage: /core deletenfz <id>";
@@ -311,4 +311,3 @@ namespace ShipCoreFramework
         }
     }
 }
-
