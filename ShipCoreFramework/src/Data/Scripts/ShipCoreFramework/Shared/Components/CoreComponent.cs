@@ -23,7 +23,7 @@ namespace ShipCoreFramework
                 if (Session.IsGameThread)
                 {
                     if (Session.IsServer) SaveCoreState();
-                    CoreBlock?.RefreshCustomInfo();
+                    RefreshCoreCustomInfo();
                     return;
                 }
 
@@ -33,26 +33,9 @@ namespace ShipCoreFramework
                         return;
 
                     if (Session.IsServer) SaveCoreState();
-                    CoreBlock.RefreshCustomInfo();
+                    RefreshCoreCustomInfo();
                 });
             }
-        }
-
-        internal void ApplyAuthoritativeMainState(bool value)
-        {
-            _isMainCore = value;
-            if (CoreBlock == null || CoreBlock.MarkedForClose || CoreBlock.Closed) return;
-            if (Session.IsGameThread)
-            {
-                CoreBlock.RefreshCustomInfo();
-                return;
-            }
-
-            MyAPIGateway.Utilities.InvokeOnGameThread(delegate
-            {
-                if (CoreBlock != null && !CoreBlock.MarkedForClose && !CoreBlock.Closed && !Session.IsShuttingDown)
-                    CoreBlock.RefreshCustomInfo();
-            });
         }
     }
 }

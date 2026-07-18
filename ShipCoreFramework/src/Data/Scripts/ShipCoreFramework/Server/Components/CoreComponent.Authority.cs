@@ -9,23 +9,15 @@ namespace ShipCoreFramework
 {
     internal partial class CoreComponent
     {
-        internal bool Init(IMyFunctionalBlock coreBlock, GridComponent gridComponent, GroupComponent groupComponent)
+        private bool InitAuthoritative()
         {
-            CoreBlock = coreBlock;
-            GridComponent = gridComponent;
-            _groupComponent = groupComponent;
-            SubtypeId = CoreBlock.BlockDefinition.SubtypeId;
-
-            if (!Session.IsServer)
-                return InitClientObserver();
-
             var isIgnoredNpcGrid = Session.Config.IgnoreAiFactions && CoreBlock.CubeGrid.IsNpcSpawnedGrid;
             var builder = ResolvePlacementOwnerIdentityId();
             if (builder == 0 && !isIgnoredNpcGrid)
             {
                 var name = CoreBlock.CustomName;
                 Utils.Log($"Core init deferred for {name}: owner/builder identity is not available yet.", 1);
-                groupComponent.ScheduleMissingCoreRescan();
+                _groupComponent.ScheduleMissingCoreRescan();
                 return false;
             }
 
@@ -82,10 +74,10 @@ namespace ShipCoreFramework
                 return false;
             }
 
-            if (groupComponent.CoreDictionary.Count > groupComponent.ShipCore?.MaxBackupCores &&
-                groupComponent.ShipCore?.MaxBackupCores > 0)
+            if (_groupComponent.CoreDictionary.Count > _groupComponent.ShipCore?.MaxBackupCores &&
+                _groupComponent.ShipCore?.MaxBackupCores > 0)
             {
-                Utils.Log($"Core init rejected for {SubtypeId} on {CoreBlock.CubeGrid.CustomName}: backup core count {groupComponent.CoreDictionary.Count}/{groupComponent.ShipCore.MaxBackupCores}.", 1);
+                Utils.Log($"Core init rejected for {SubtypeId} on {CoreBlock.CubeGrid.CustomName}: backup core count {_groupComponent.CoreDictionary.Count}/{_groupComponent.ShipCore.MaxBackupCores}.", 1);
                 Utils.ShowNotification($"This core exceeds max number of backup cores: {CoreBlock.CubeGrid.CustomName}", builder);
                 CoreBlock.SlimBlock.RemoveAndRefund();
                 return false;
@@ -157,13 +149,6 @@ namespace ShipCoreFramework
 
             AttachBlockEvents();
             _groupComponent.DefenseValuesChanged();
-            return true;
-        }
-
-        private bool InitClientObserver()
-        {
-            CubeGridModifiers.RegisterUpgradeModuleLink(CoreBlock);
-            AttachBlockEvents();
             return true;
         }
 
