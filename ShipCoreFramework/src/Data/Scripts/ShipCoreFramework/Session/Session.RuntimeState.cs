@@ -145,6 +145,7 @@ namespace ShipCoreFramework
             var sequence = ++_runtimeStateSequence;
             var revision = ++_runtimeStateRevision;
             var states = new List<GroupRuntimeState>();
+            var knownStates = new Dictionary<GroupComponent, RuntimeStateIdentity>();
             foreach (var pair in GroupDict)
             {
                 var group = pair.Value;
@@ -152,8 +153,10 @@ namespace ShipCoreFramework
                 var state = group.BuildRuntimeState(revision);
                 if (state == null) continue;
                 states.Add(state);
-                RuntimeStateKnown[group] = new RuntimeStateIdentity(state.GroupId, state.GridIds);
+                knownStates[group] = new RuntimeStateIdentity(state.GroupId, state.GridIds);
             }
+            RuntimeStateKnown.Clear();
+            foreach (var pair in knownStates) RuntimeStateKnown[pair.Key] = pair.Value;
             states.Sort((left, right) => left.GroupId.CompareTo(right.GroupId));
 
             if (states.Count == 0)
