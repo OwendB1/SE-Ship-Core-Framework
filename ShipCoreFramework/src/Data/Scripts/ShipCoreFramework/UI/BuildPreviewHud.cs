@@ -239,7 +239,7 @@ namespace ShipCoreFramework
             _drawCoreOrientation = _fullHud
                                    && modConfig != null
                                    && modConfig.IsValidCoreType(def.Id.SubtypeName)
-                                   && group.CoreDictionary.Count == 0;
+                                   && group.CoreCount == 0;
             if (_drawCoreOrientation)
             {
                 _coreForward = orientation.Forward;

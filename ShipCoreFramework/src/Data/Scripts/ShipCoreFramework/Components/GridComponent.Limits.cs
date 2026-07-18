@@ -11,6 +11,7 @@ namespace ShipCoreFramework
         {
             if (GroupComponent.Deactivated) return true;
 
+            var authoritative = Session.IsServer;
             var firstOwner = Grid?.BigOwners.FirstOrDefault() ?? 0;
             var deferPunishment = GroupComponent.IsLimitPunishmentDeferred();
 
@@ -23,7 +24,7 @@ namespace ShipCoreFramework
             foreach (var limit in limits)
             {
                 if (limit == null) continue;
-                var forceShutOff = !deferPunishment && GroupComponent.ShouldForceLimitedBlocksOff(limit);
+                var forceShutOff = authoritative && !deferPunishment && GroupComponent.ShouldForceLimitedBlocksOff(limit);
                 var matchedBlockType = limit.GetMatchingBlockType(blockKey);
                 if (matchedBlockType == null) continue;
 
@@ -33,10 +34,10 @@ namespace ShipCoreFramework
                 if (forceShutOff) block.WhackABlock(PunishmentType.ShutOff);
                 
                 if (directionReferenceBlock != null &&
-                    !GroupComponent.IsValidDirection(directionReferenceBlock, block, limit.AllowedDirections, true,
+                    !GroupComponent.IsValidDirection(directionReferenceBlock, block, limit.AllowedDirections, authoritative,
                         matchedBlockType.PrimaryDirection))
                 {
-                    if (!deferPunishment)
+                    if (authoritative && !deferPunishment)
                     {
                         Utils.ShowNotification(localizedBlockName + " violated directional locking!");
                         block.WhackABlock(forceShutOff
@@ -57,7 +58,7 @@ namespace ShipCoreFramework
                 var effectiveMaxCount = GroupComponent.GetEffectiveMaxCount(limit);
                 if (currentWeight + weight > effectiveMaxCount)
                 {
-                    if (!deferPunishment)
+                    if (authoritative && !deferPunishment)
                     {
                         var message = localizedBlockName + " violates Block limit " + limit.Name + ": " +
                                       (currentWeight + weight) + "/" + effectiveMaxCount;

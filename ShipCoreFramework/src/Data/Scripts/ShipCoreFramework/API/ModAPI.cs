@@ -559,8 +559,7 @@ namespace ShipCoreFramework
                 GroupComponent groupComponent;
                 if (!TryGetGroupComponent(gridId, out groupComponent)) return ConvertToSpeedModifiersData(null);
 
-                var core = groupComponent.ShipCore;
-                return ConvertToSpeedModifiersData(core?.SpeedModifiers);
+                return ConvertToSpeedModifiersData(groupComponent.SpeedModifiers);
             }
             catch (Exception ex)
             {
@@ -585,6 +584,8 @@ namespace ShipCoreFramework
         /// </summary>
         public static bool SetFrictionEnabledForGroup(long gridId, bool enabled)
         {
+            if (!Session.IsServer) return false;
+
             try
             {
                 GroupComponent groupComponent;
@@ -622,6 +623,7 @@ namespace ShipCoreFramework
         /// </summary>
         public static bool SetFrictionMaximumDecelerationForGroup(long gridId, float deceleration)
         {
+            if (!Session.IsServer) return false;
             if (deceleration < 0f) return false;
 
             try
@@ -644,6 +646,8 @@ namespace ShipCoreFramework
         /// </summary>
         public static bool ClearFrictionMaximumDecelerationForGroup(long gridId)
         {
+            if (!Session.IsServer) return false;
+
             try
             {
                 GroupComponent groupComponent;
@@ -678,6 +682,9 @@ namespace ShipCoreFramework
 
         public static MyTuple<bool, string> SetFrictionMinimumSpeedAbsoluteForGroup(long gridId, float speedMetersPerSecond)
         {
+            if (!Session.IsServer)
+                return MyTuple.Create(false, "Runtime friction overrides are server-authoritative.");
+
             if (Session.Config.FrictionSpeedValueMode != FrictionSpeedValueMode.Absolute)
                 return MyTuple.Create(false, "World config uses modifier-based friction speeds; use SetFrictionMinimumSpeedModifierForGroup.");
 
@@ -697,6 +704,9 @@ namespace ShipCoreFramework
 
         public static MyTuple<bool, string> SetFrictionMaximumSpeedAbsoluteForGroup(long gridId, float speedMetersPerSecond)
         {
+            if (!Session.IsServer)
+                return MyTuple.Create(false, "Runtime friction overrides are server-authoritative.");
+
             if (Session.Config.FrictionSpeedValueMode != FrictionSpeedValueMode.Absolute)
                 return MyTuple.Create(false, "World config uses modifier-based friction speeds; use SetFrictionMaximumSpeedModifierForGroup.");
 
@@ -734,6 +744,9 @@ namespace ShipCoreFramework
 
         public static MyTuple<bool, string> SetFrictionMinimumSpeedModifierForGroup(long gridId, float modifier)
         {
+            if (!Session.IsServer)
+                return MyTuple.Create(false, "Runtime friction overrides are server-authoritative.");
+
             if (Session.Config.FrictionSpeedValueMode != FrictionSpeedValueMode.Modifier)
                 return MyTuple.Create(false, "World config uses absolute friction speeds; use SetFrictionMinimumSpeedAbsoluteForGroup.");
 
@@ -753,6 +766,9 @@ namespace ShipCoreFramework
 
         public static MyTuple<bool, string> SetFrictionMaximumSpeedModifierForGroup(long gridId, float modifier)
         {
+            if (!Session.IsServer)
+                return MyTuple.Create(false, "Runtime friction overrides are server-authoritative.");
+
             if (Session.Config.FrictionSpeedValueMode != FrictionSpeedValueMode.Modifier)
                 return MyTuple.Create(false, "World config uses absolute friction speeds; use SetFrictionMaximumSpeedAbsoluteForGroup.");
 
@@ -881,7 +897,8 @@ namespace ShipCoreFramework
 
         // ===== Helper Methods =====
 
-        private static ShipCoreData ConvertToShipCoreData(ShipCore core, bool isDeactivated = false)
+        private static ShipCoreData ConvertToShipCoreData(ShipCore core, bool isDeactivated = false,
+            GroupComponent groupComponent = null)
         {
             if (core == null)
             {
@@ -944,7 +961,7 @@ namespace ShipCoreFramework
                 {
                     Name = group.Name,
                     MaxCount = group.MaxCount,
-                    CurrentCount = PerManifestGroupManager.GetCurrentCount(group.Name)
+                    CurrentCount = GetManifestGroupCurrentCount(group.Name, groupComponent)
                 })
                 .ToArray();
 
@@ -1007,6 +1024,14 @@ namespace ShipCoreFramework
                 SpeedModifiers = ConvertToSpeedModifiersData(core.SpeedModifiers),
                 IsDeactivated = isDeactivated
             };
+        }
+
+        private static int GetManifestGroupCurrentCount(string name, GroupComponent groupComponent)
+        {
+            if (groupComponent != null) return groupComponent.GetCurrentManifestCoreCount(name);
+            if (Session.IsServer) return PerManifestGroupManager.GetCurrentCount(name);
+            int count;
+            return RuntimeStateStore.TryGetManifestCount(name, out count) ? count : 0;
         }
 
         private static ModConfigData ConvertToModConfigData(ModConfig config)
@@ -1305,7 +1330,7 @@ namespace ShipCoreFramework
             };
         }
 
-        private static GridModifiersData ConvertToGridModifiersData(GridModifiers modifiers)
+        internal static GridModifiersData ConvertToGridModifiersData(GridModifiers modifiers)
         {
             if (modifiers == null)
             {
@@ -1337,7 +1362,7 @@ namespace ShipCoreFramework
             };
         }
         
-        private static SpeedModifiersData ConvertToSpeedModifiersData(SpeedModifiers modifiers)
+        internal static SpeedModifiersData ConvertToSpeedModifiersData(SpeedModifiers modifiers)
         {
             if (modifiers == null)
             {
@@ -1467,7 +1492,8 @@ namespace ShipCoreFramework
                 GroupComponent groupComponent;
                 return !Session.GroupDict.TryGetValue(groupData, out groupComponent) ? 
                     ConvertToShipCoreData(Session.Config.SelectedNoCore) : 
-                    ConvertToShipCoreData(groupComponent.ShipCore ?? Session.Config.SelectedNoCore, groupComponent.Deactivated);
+                    ConvertToShipCoreData(groupComponent.ShipCore ?? Session.Config.SelectedNoCore,
+                        groupComponent.Deactivated, groupComponent);
             }
             catch (Exception ex)
             {

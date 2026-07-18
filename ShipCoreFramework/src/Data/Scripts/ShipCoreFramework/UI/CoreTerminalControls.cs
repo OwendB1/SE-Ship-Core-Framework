@@ -47,21 +47,13 @@ namespace ShipCoreFramework
             _mainCoreCheckbox.SupportsMultipleBlocks = false;
 
             _mainCoreCheckbox.Getter = b => {
-                var group = b.GetGroupComponent();
-                CoreComponent cc;
-                var cubeBlock = b as MyCubeBlock;
-                return group != null
-                       && cubeBlock != null
-                       && group.CoreDictionary.TryGetValue(cubeBlock, out cc)
-                       && cc.IsMainCore;
+                return IsMainCoreBlock(b);
             };
 
             _mainCoreCheckbox.Enabled = b => {
                 var group = b.GetGroupComponent();
                 if (group == null) return false;
-                CoreComponent cc;
-                var cubeBlock = b as MyCubeBlock;
-                return cubeBlock != null && group.CoreDictionary.TryGetValue(cubeBlock, out cc) && !cc.IsMainCore;
+                return !IsMainCoreBlock(b);
             };
 
             _mainCoreCheckbox.Setter = (b, val) =>
@@ -109,16 +101,12 @@ namespace ShipCoreFramework
             _boostAction.Enabled = delegate(IMyTerminalBlock b)
             {
                 if (!Utils.IsCoreBlock(b as IMyFunctionalBlock)) return false;
-                var groupComp = b.GetGroupComponent();
-                if (groupComp != null) return groupComp.MainCoreComponent?.IsMainCore ?? false;
-                Utils.ShowChatMessage("Could not sync box, main grid group match was not found??");
-                return false;
+                return IsMainCoreBlock(b);
             };
             
             _boostAction.Action = b =>
             {
                 var groupComp = b.GetGroupComponent();
-                Utils.ShowChatMessage("Test: " + b.CustomName);
                 if (groupComp == null)
                 {
                     Utils.ShowChatMessage("Could not trigger boost, main grid group match was not found??");
@@ -136,10 +124,7 @@ namespace ShipCoreFramework
             _defenseAction.Enabled = delegate(IMyTerminalBlock b)
             {
                 if (!Utils.IsCoreBlock(b as IMyFunctionalBlock)) return false;
-                var groupComp = b.GetGroupComponent();
-                if (groupComp != null) return groupComp.MainCoreComponent?.IsMainCore ?? false;
-                Utils.ShowChatMessage("Could not sync box, main grid group match was not found??");
-                return false;
+                return IsMainCoreBlock(b);
             };
             
             _defenseAction.Action = b =>
@@ -161,8 +146,7 @@ namespace ShipCoreFramework
             _powerOverclockAction.Enabled = delegate(IMyTerminalBlock b)
             {
                 if (!Utils.IsCoreBlock(b as IMyFunctionalBlock)) return false;
-                var groupComp = b.GetGroupComponent();
-                return groupComp != null && (groupComp.MainCoreComponent?.IsMainCore ?? false);
+                return IsMainCoreBlock(b);
             };
 
             _powerOverclockAction.Action = b =>
@@ -207,6 +191,21 @@ namespace ShipCoreFramework
             {
                 list.RemoveAt(index);
             }
+        }
+
+        private static bool IsMainCoreBlock(IMyTerminalBlock block)
+        {
+            if (block == null || block.CubeGrid == null) return false;
+            if (!Session.IsServer)
+            {
+                GroupRuntimeState state;
+                return RuntimeStateStore.TryGetByGrid(block.CubeGrid.EntityId, out state) &&
+                       state.MainCoreBlockId == block.EntityId;
+            }
+
+            var group = block.GetGroupComponent();
+            return group != null && group.MainCoreComponent != null &&
+                   group.MainCoreComponent.CoreBlock.EntityId == block.EntityId;
         }
     }
 }

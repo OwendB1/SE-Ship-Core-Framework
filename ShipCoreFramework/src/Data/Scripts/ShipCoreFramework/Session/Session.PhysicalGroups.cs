@@ -26,6 +26,7 @@ namespace ShipCoreFramework
 
         private static void TrackPhysicalGridGroup(IMyGridGroupData group)
         {
+            if (!IsServer) return;
             if (group == null || group.LinkType != GridLinkTypeEnum.Physical) return;
 
             PhysicalSpeedClusterDict.GetOrAdd(group, physicalGroup => new PhysicalSpeedCluster(physicalGroup));
@@ -75,6 +76,7 @@ namespace ShipCoreFramework
 
         internal static void RefreshPhysicalGroupLinkagesForGrid(IMyCubeGrid grid)
         {
+            if (!IsServer) return;
             if (grid == null || grid.MarkedForClose || grid.Closed) return;
 
             var physicalGroup = grid.GetGridGroup(GridLinkTypeEnum.Physical);
@@ -84,6 +86,7 @@ namespace ShipCoreFramework
 
         internal static void RefreshPhysicalGroupLinkagesForGrids(IEnumerable<IMyCubeGrid> grids)
         {
+            if (!IsServer) return;
             if (grids == null) return;
 
             var seenPhysicalGroups = new HashSet<IMyGridGroupData>();
@@ -108,6 +111,7 @@ namespace ShipCoreFramework
 
         internal static void MarkPhysicalSpeedClusterSourceDirty(GroupComponent groupComponent)
         {
+            if (!IsServer) return;
             PhysicalSpeedCluster cluster;
             if (!TryGetPhysicalSpeedCluster(groupComponent, out cluster)) return;
 

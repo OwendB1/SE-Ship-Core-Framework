@@ -12,11 +12,22 @@ namespace ShipCoreFramework
 {
     internal static class Commands
     {
+        private const int MaxCommandPayloadBytes = 4096;
+
         public static void ServerMessageHandler(ushort id, byte[] data, ulong sender, bool fromServer)
         {
+            if (!Session.IsServer || fromServer || id != Session.CommandsSyncId || sender == 0 ||
+                data == null || data.Length == 0 || data.Length > MaxCommandPayloadBytes)
+                return;
+
+            var playerId = Utils.GetPlayerIdFromSteamId(sender);
+            if (playerId == 0) return;
+
             var message = Encoding.UTF8.GetString(data);
+            if (!IsCoreCommand(message)) return;
+
             Utils.Log($"Server: Command received from {sender}: {message}");
-            CommandSwitch(Utils.GetPlayerIdFromSteamId(sender),message);
+            CommandSwitch(playerId, message);
         }
         
         public static void OnChatCommand(ulong sender,string messageText, ref bool sendToOthers)
@@ -24,8 +35,16 @@ namespace ShipCoreFramework
             if (!IsCoreCommand(messageText)) return;
 
             sendToOthers = false;
-            if(!Session.IsServer) ForwardToServer(messageText);
-            CommandSwitch(MyAPIGateway.Session.Player.IdentityId,messageText);
+            if (!Session.IsServer)
+            {
+                if (IsLocalReadOnlyCommand(messageText))
+                    CommandSwitch(MyAPIGateway.Session.Player.IdentityId, messageText);
+                else
+                    ForwardToServer(messageText);
+                return;
+            }
+
+            CommandSwitch(MyAPIGateway.Session.Player.IdentityId, messageText);
         }
         
         private static void ForwardToServer(string message)
@@ -37,10 +56,25 @@ namespace ShipCoreFramework
         private static bool IsCoreCommand(string messageText)
         {
             const string commandPrefix = "/core";
-            if (!messageText.StartsWith(commandPrefix, StringComparison.OrdinalIgnoreCase))
-                return false;
+            if (string.IsNullOrWhiteSpace(messageText)) return false;
 
-            return !messageText.StartsWith("/corehud", StringComparison.OrdinalIgnoreCase);
+            var trimmed = messageText.Trim();
+            return trimmed.Equals(commandPrefix, StringComparison.OrdinalIgnoreCase) ||
+                   trimmed.StartsWith(commandPrefix + " ", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsLocalReadOnlyCommand(string messageText)
+        {
+            var allArgs = messageText.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (allArgs.Length < 2) return true;
+
+            var sub = allArgs[1];
+            return sub.Equals("help", StringComparison.OrdinalIgnoreCase) ||
+                   sub.Equals("info", StringComparison.OrdinalIgnoreCase) ||
+                   sub.Equals("listcores", StringComparison.OrdinalIgnoreCase) ||
+                   sub.Equals("coreinfo", StringComparison.OrdinalIgnoreCase) ||
+                   sub.Equals("listnocores", StringComparison.OrdinalIgnoreCase) ||
+                   sub.Equals("listnfzs", StringComparison.OrdinalIgnoreCase);
         }
         
         private static void CommandSwitch(long playerId, string messageText)
@@ -698,16 +732,14 @@ namespace ShipCoreFramework
             var currentMaxPerPlayer = groupComponent.ShipCore.MaxPerPlayer;
             if (currentMaxPerPlayer > 0)
             {
-                var ownerId = groupComponent.OwnerId;
-                body += $"Per Player Limit:{PerPlayerManager.GetCurrentCount(ownerId, shipCoreSubtypeId)}/{currentMaxPerPlayer}\n";
+                body += $"Per Player Limit:{groupComponent.GetCurrentPlayerCoreCount()}/{currentMaxPerPlayer}\n";
             }
             
             if(PerFactionManager.HasFactionCoreLimit(groupComponent.ShipCore))
             {
                 if (groupComponent.OwningFaction != null)
                 {
-                    var owningFactionId = groupComponent.OwningFaction.FactionId;
-                    body += $"Per Faction Limit:{FormatFactionLimit(groupComponent.ShipCore, groupComponent.OwningFaction, groupComponent.OwnerId, PerFactionManager.GetCurrentCount(owningFactionId, shipCoreSubtypeId))}\n";
+                    body += $"Per Faction Limit:{FormatFactionLimit(groupComponent.ShipCore, groupComponent.OwningFaction, groupComponent.OwnerId, groupComponent.GetCurrentFactionCoreCount())}\n";
                 }
                 else
                 {
@@ -719,11 +751,14 @@ namespace ShipCoreFramework
             {
                 foreach (var manifestGroup in PerManifestGroupManager.GetManifestGroups(groupComponent.ShipCore))
                     body +=
-                        $"Manifest Group Limit:{manifestGroup.Name} {PerManifestGroupManager.GetCurrentCount(manifestGroup.Name)}/{manifestGroup.MaxCount}\n";
+                        $"Manifest Group Limit:{manifestGroup.Name} {groupComponent.GetCurrentManifestCoreCount(manifestGroup.Name)}/{manifestGroup.MaxCount}\n";
             }
 
             // Grid Statistics
             body += "Grid Statistics:\n";
+            var effectiveMaxBlocks = groupComponent.GetEffectiveMaxBlocks();
+            var effectiveMaxMass = groupComponent.GetEffectiveMaxMass();
+            var effectiveMaxPcu = groupComponent.GetEffectiveMaxPCU();
 
             if (shipCore.MinBlocks > 0)
             {
@@ -733,26 +768,26 @@ namespace ShipCoreFramework
             }
             
             // Block Count
-            var blockCountStatus = shipCore.MaxBlocks > 0 ? $"{groupComponent.GroupBlocksCount} / {shipCore.MaxBlocks}" : groupComponent.GroupBlocksCount.ToString();
-            var blockCountPercent = shipCore.MaxBlocks > 0 ? groupComponent.GroupBlocksCount / (float)shipCore.MaxBlocks * 100 : -1;
+            var blockCountStatus = effectiveMaxBlocks > 0 ? $"{groupComponent.GroupBlocksCount} / {effectiveMaxBlocks}" : groupComponent.GroupBlocksCount.ToString();
+            var blockCountPercent = effectiveMaxBlocks > 0 ? groupComponent.GroupBlocksCount / (float)effectiveMaxBlocks * 100 : -1;
             body += $"  Blocks: {blockCountStatus}";
-            if (shipCore.MaxBlocks > 0)
+            if (effectiveMaxBlocks > 0)
                 body += $" ({blockCountPercent:F1}%)";
             body += "\n";
             
             // Mass
-            var massStatus = shipCore.MaxMass > 0 ? $"{groupComponent.GroupMass:F0} / {shipCore.MaxMass:F0} kg" : $"{groupComponent.GroupMass:F0} kg";
-            var massPercent = shipCore.MaxMass > 0 ? groupComponent.GroupMass / shipCore.MaxMass * 100 : -1;
+            var massStatus = effectiveMaxMass > 0 ? $"{groupComponent.GroupMass:F0} / {effectiveMaxMass:F0} kg" : $"{groupComponent.GroupMass:F0} kg";
+            var massPercent = effectiveMaxMass > 0 ? groupComponent.GroupMass / effectiveMaxMass * 100 : -1;
             body += $"  Mass: {massStatus}";
-            if (shipCore.MaxMass > 0)
+            if (effectiveMaxMass > 0)
                 body += $" ({massPercent:F1}%)";
             body += "\n";
             
             // PCU
-            var pcuStatus = shipCore.MaxPCU > 0 ? $"{groupComponent.GroupPCU} / {shipCore.MaxPCU}" : groupComponent.GroupPCU.ToString();
-            var pcuPercent = shipCore.MaxPCU > 0 ? groupComponent.GroupPCU / (float)shipCore.MaxPCU * 100 : -1;
+            var pcuStatus = effectiveMaxPcu > 0 ? $"{groupComponent.GroupPCU} / {effectiveMaxPcu}" : groupComponent.GroupPCU.ToString();
+            var pcuPercent = effectiveMaxPcu > 0 ? groupComponent.GroupPCU / (float)effectiveMaxPcu * 100 : -1;
             body += $"  PCU: {pcuStatus}";
-            if (shipCore.MaxPCU > 0)
+            if (effectiveMaxPcu > 0)
                 body += $" ({pcuPercent:F1}%)";
             body += "\n\n";
             

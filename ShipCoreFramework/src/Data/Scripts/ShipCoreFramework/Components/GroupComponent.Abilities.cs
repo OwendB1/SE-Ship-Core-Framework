@@ -23,6 +23,7 @@ namespace ShipCoreFramework
 
         internal void RefreshPunishmentState()
         {
+            if (!Session.IsServer) return;
             if (_closing || Session.IsShuttingDown || IsInitializingGrids) return;
             if (!Session.IsGameThread)
             {
@@ -30,12 +31,19 @@ namespace ShipCoreFramework
                 return;
             }
 
+            var previousMainCore = MainCoreComponent;
+            var previousPunishSpeed = PunishSpeed;
+            var previousPunishModifiersForSync = PunishModifiers;
+            var previousPunishLimitedBlocks = PunishLimitedBlocks;
+
             if (Deactivated || IsIgnoredByAiOrFactionTagThreadSafe())
             {
                 ClearDeactivatedLimitState();
                 RefreshModifierStateCache();
                 ApplyModifiers(Modifiers);
                 RefreshDefenseModifierCache();
+                MarkRuntimeStateDirtyIfChanged(previousMainCore, previousPunishSpeed,
+                    previousPunishModifiersForSync, previousPunishLimitedBlocks);
                 return;
             }
 
@@ -46,6 +54,8 @@ namespace ShipCoreFramework
             {
                 ClearCoreRecoveryGracePunishmentState();
                 RefreshDefenseModifierCache();
+                MarkRuntimeStateDirtyIfChanged(previousMainCore, previousPunishSpeed,
+                    previousPunishModifiersForSync, previousPunishLimitedBlocks);
                 return;
             }
 
@@ -54,6 +64,16 @@ namespace ShipCoreFramework
             RefreshModifierStateCache();
             if (mainCoreChanged || previousPunishModifiers != PunishModifiers) ApplyModifiers(Modifiers);
             RefreshDefenseModifierCache();
+            MarkRuntimeStateDirtyIfChanged(previousMainCore, previousPunishSpeed,
+                previousPunishModifiersForSync, previousPunishLimitedBlocks);
+        }
+
+        private void MarkRuntimeStateDirtyIfChanged(CoreComponent previousMainCore, bool previousPunishSpeed,
+            bool previousPunishModifiers, bool previousPunishLimitedBlocks)
+        {
+            if (!ReferenceEquals(previousMainCore, MainCoreComponent) || previousPunishSpeed != PunishSpeed ||
+                previousPunishModifiers != PunishModifiers || previousPunishLimitedBlocks != PunishLimitedBlocks)
+                Session.MarkRuntimeStateDirty(this);
         }
 
         internal void RefreshPunishmentFlags()
@@ -78,6 +98,8 @@ namespace ShipCoreFramework
 
         internal List<string> GetSpeedPunishmentGateDescriptions()
         {
+            if (!Session.IsServer && _runtimeStateReceived)
+                return new List<string>(_runtimeSpeedPunishmentReasons);
             var speedReasons = new List<string>();
             CollectTriggeredPunishmentGates(speedReasons, null);
             return speedReasons;
@@ -85,6 +107,8 @@ namespace ShipCoreFramework
 
         internal List<string> GetModifierPunishmentGateDescriptions()
         {
+            if (!Session.IsServer && _runtimeStateReceived)
+                return new List<string>(_runtimeModifierPunishmentReasons);
             var modifierReasons = new List<string>();
             CollectTriggeredPunishmentGates(null, modifierReasons);
             return modifierReasons;
@@ -404,11 +428,13 @@ namespace ShipCoreFramework
 
         internal void DefenseValuesChanged()
         {
+            if (!Session.IsServer) return;
             RefreshDefenseModifierCache();
         }
 
         internal void RunBoostTimerTick()
         {
+            if (!Session.IsServer) return;
             var expired = false;
             lock (SpeedStateLock)
             {
@@ -433,11 +459,15 @@ namespace ShipCoreFramework
             }
 
             if (expired)
+            {
+                Session.MarkRuntimeStateDirty(this);
                 QueueBoostDeactivatedSideEffects();
+            }
         }
 
         internal void RunActiveDefenseTimerTick()
         {
+            if (!Session.IsServer) return;
             var expired = false;
             lock (_abilityStateLock)
             {
@@ -459,12 +489,14 @@ namespace ShipCoreFramework
             }
 
             if (!expired) return;
+            Session.MarkRuntimeStateDirty(this);
             RefreshDefenseModifierCache();
             QueueActiveDefenseDeactivatedSideEffects();
         }
 
         internal void RunPowerOverclockTimerTick()
         {
+            if (!Session.IsServer) return;
             var damageReactors = false;
             var expired = false;
             lock (_abilityStateLock)
@@ -496,6 +528,7 @@ namespace ShipCoreFramework
             }
 
             if (!damageReactors && !expired) return;
+            if (expired) Session.MarkRuntimeStateDirty(this);
             QueuePowerOverclockSideEffects(damageReactors, expired);
         }
 
@@ -583,6 +616,7 @@ namespace ShipCoreFramework
 
         internal void ActivateDefense()
         {
+            if (!Session.IsServer) return;
             if (!ShipCore.EnableActiveDefenseModifiers)
             {
                 Utils.ShowNotification("Active defense is not allowed on this grid!");
@@ -615,6 +649,7 @@ namespace ShipCoreFramework
             }
 
             RefreshDefenseModifierCache();
+            Session.MarkRuntimeStateDirty(this);
 
             Utils.ShowNotification("Active Defense Engaged!");
 
@@ -624,6 +659,7 @@ namespace ShipCoreFramework
 
         internal void ActivateBoost()
         {
+            if (!Session.IsServer) return;
             if (!ShipCore.SpeedBoostEnabled)
             {
                 Utils.ShowNotification("Boosting is not allowed on this grid!");
@@ -660,6 +696,7 @@ namespace ShipCoreFramework
             }
 
             Utils.ShowNotification("Boost Engaged!");
+            Session.MarkRuntimeStateDirty(this);
 
             if (MainCoreComponent?.GridComponent?.Grid != null)
                 ModAPI.BroadcastBoostActivated(MainCoreComponent.GridComponent.Grid.EntityId);
@@ -675,6 +712,7 @@ namespace ShipCoreFramework
 
         internal void ActivatePowerOverclock()
         {
+            if (!Session.IsServer) return;
             if (!ShipCore.PowerOverclockEnabled)
             {
                 Utils.ShowNotification("Power overclock is not allowed on this grid!");
@@ -711,6 +749,7 @@ namespace ShipCoreFramework
             InvalidateModifierStateCache();
             RefreshModifierStateCache();
             ApplyModifiers(Modifiers);
+            Session.MarkRuntimeStateDirty(this);
             Utils.ShowNotification("Power Overclock Engaged!");
         }
 

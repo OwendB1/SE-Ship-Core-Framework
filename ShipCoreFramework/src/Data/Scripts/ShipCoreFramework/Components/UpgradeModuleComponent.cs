@@ -73,6 +73,7 @@ namespace ShipCoreFramework
 
         internal void RemoveInvalidModule(string reason)
         {
+            if (!Session.IsServer) return;
             if (ModuleBlock?.SlimBlock?.CubeGrid == null) return;
 
             var builder = ModuleBlock.SlimBlock.BuiltBy;

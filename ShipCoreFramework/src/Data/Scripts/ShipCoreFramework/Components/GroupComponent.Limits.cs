@@ -165,8 +165,11 @@ namespace ShipCoreFramework
             InvalidateModifierStateCache();
 
             if (changed)
+            {
+                Session.MarkRuntimeStateDirty(this);
                 Utils.Log("CoreRecoveryGrace: cleared punishment state for group " +
                           GetGroupKey() + ".", 1);
+            }
         }
 
         private void RefreshLimitedBlockPunishmentState()
@@ -176,8 +179,11 @@ namespace ShipCoreFramework
                 var wasPunishing = PunishLimitedBlocks;
                 PunishLimitedBlocks = false;
                 if (wasPunishing)
+                {
+                    Session.MarkRuntimeStateDirty(this);
                     Utils.Log("RefreshLimitedBlockPunishmentState: cleared limited block punishment during core recovery grace for group " +
                               GetGroupKey() + ".", 1);
+                }
                 return;
             }
 
@@ -186,8 +192,11 @@ namespace ShipCoreFramework
                 var wasPunishing = PunishLimitedBlocks;
                 PunishLimitedBlocks = false;
                 if (wasPunishing)
+                {
+                    Session.MarkRuntimeStateDirty(this);
                     Utils.Log("RefreshLimitedBlockPunishmentState: cleared limited block punishment for ignored/deactivated group " +
                               GetGroupKey() + ".", 1);
+                }
                 return;
             }
 
@@ -195,6 +204,7 @@ namespace ShipCoreFramework
             PunishLimitedBlocks = IsMinimumBlocksLimitedBlockGateTriggered() || HasConnectedBlacklistingCoreGroup();
             if (previous != PunishLimitedBlocks)
             {
+                Session.MarkRuntimeStateDirty(this);
                 var reasons = GetLimitedBlockPunishmentGateDescriptions();
                 Utils.Log("RefreshLimitedBlockPunishmentState: " +
                           (PunishLimitedBlocks ? "enabled" : "cleared") +
@@ -205,6 +215,8 @@ namespace ShipCoreFramework
 
         internal List<string> GetLimitedBlockPunishmentGateDescriptions()
         {
+            if (!Session.IsServer && _runtimeStateReceived)
+                return new List<string>(_runtimeLimitedBlockPunishmentReasons);
             var reasons = new List<string>();
             if (IsMinimumBlocksLimitedBlockGateTriggered())
                 reasons.Add(GetBelowMinimumBlocksLimitedBlockPunishmentReason());
@@ -271,6 +283,7 @@ namespace ShipCoreFramework
 
         internal void OnBlockAddedToGroup()
         {
+            Session.MarkRuntimeStateDirty(this);
             InvalidateGameThreadStateCache(true);
             IncrementLimitGeneration();
             AddGroupBlocksCount(1);
@@ -288,6 +301,7 @@ namespace ShipCoreFramework
 
         internal void OnBlockRemovedFromGroup()
         {
+            Session.MarkRuntimeStateDirty(this);
             InvalidateGameThreadStateCache(true);
             IncrementLimitGeneration();
             AddGroupBlocksCount(-1);
@@ -306,6 +320,7 @@ namespace ShipCoreFramework
 
         internal void RunLimitedBlockPunishmentTick()
         {
+            if (!Session.IsServer) return;
             if (IsCoreRecoveryGraceActive())
             {
                 ClearCoreRecoveryGracePunishmentState();
@@ -315,7 +330,9 @@ namespace ShipCoreFramework
             if (_closing || Deactivated || IsIgnoredGroup())
             {
                 ClearMinimumBlocksLimitedBlockGateState("group closing, deactivated, or ignored");
+                var clearedLimitedBlockPunishment = PunishLimitedBlocks;
                 PunishLimitedBlocks = false;
+                if (clearedLimitedBlockPunishment) Session.MarkRuntimeStateDirty(this);
                 return;
             }
 
@@ -328,6 +345,7 @@ namespace ShipCoreFramework
 
         internal void RunExternalLimitValidationTick()
         {
+            if (!Session.IsServer) return;
             if (_closing)
             {
                 ClearExternalLimitValidation();
@@ -445,6 +463,7 @@ namespace ShipCoreFramework
 
         private void EnforceGroupPunishment(bool forceShutOffPunishment = false)
         {
+            if (!Session.IsServer) return;
             if (IsCoreRecoveryGraceActive()) return;
             if (Deactivated || IsIgnoredGroup()) return;
 
@@ -583,6 +602,8 @@ namespace ShipCoreFramework
 
                 if (appliedPunishments > 0 && MyGroup != null)
                 {
+                    MarkLimitsEnforced(appliedPunishments);
+                    Session.MarkRuntimeStateDirty(this);
                     Utils.Log("ExecutePendingPunishments: applied " + appliedPunishments +
                               " block punishments for group " + GetGroupKey() + ".", 1);
                     ModAPI.BroadcastLimitsEnforced(representativeGridId, appliedPunishments);
@@ -593,7 +614,7 @@ namespace ShipCoreFramework
         internal float GetEffectiveMaxCount(BlockLimit limit)
         {
             if (limit == null) return 0f;
-            if (Session.IsGameThread) return ComputeEffectiveMaxCount(limit);
+            if (Session.IsServer && Session.IsGameThread) return ComputeEffectiveMaxCount(limit);
 
             var cached = _cachedEffectiveMaxCounts;
             float maxCount;
@@ -624,7 +645,7 @@ namespace ShipCoreFramework
 
         internal int GetEffectiveMaxBlocks()
         {
-            return Session.IsGameThread ? ComputeEffectiveMaxBlocks() : _cachedEffectiveMaxBlocks;
+            return Session.IsServer && Session.IsGameThread ? ComputeEffectiveMaxBlocks() : _cachedEffectiveMaxBlocks;
         }
 
         private int ComputeEffectiveMaxBlocks()
@@ -646,7 +667,7 @@ namespace ShipCoreFramework
 
         internal float GetEffectiveMaxMass()
         {
-            return Session.IsGameThread ? ComputeEffectiveMaxMass() : _cachedEffectiveMaxMass;
+            return Session.IsServer && Session.IsGameThread ? ComputeEffectiveMaxMass() : _cachedEffectiveMaxMass;
         }
 
         private float ComputeEffectiveMaxMass()
@@ -668,7 +689,7 @@ namespace ShipCoreFramework
 
         internal int GetEffectiveMaxPCU()
         {
-            return Session.IsGameThread ? ComputeEffectiveMaxPCU() : _cachedEffectiveMaxPCU;
+            return Session.IsServer && Session.IsGameThread ? ComputeEffectiveMaxPCU() : _cachedEffectiveMaxPCU;
         }
 
         private int ComputeEffectiveMaxPCU()
@@ -708,6 +729,7 @@ namespace ShipCoreFramework
 
         private void QueueRecalculateAllLimits(bool enforceAfterPublish, bool forceShutOffPunishment)
         {
+            if (!Session.IsServer) return;
             var generation = GetLimitGeneration();
             MyAPIGateway.Parallel.StartBackground(() =>
             {
@@ -759,6 +781,8 @@ namespace ShipCoreFramework
                         snapshot.GridComponent.PublishLimitsSnapshot(snapshot.Limits);
 
                 PublishLimitsSnapshot(groupLimits);
+                MarkLimitsPublished();
+                Session.MarkRuntimeStateDirty(this);
             }
 
             if (MyGroup != null)

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using VRage.Game.ModAPI;
@@ -27,6 +28,14 @@ namespace ShipCoreFramework
                 if (updated < 0) updated = 0;
             }
             while (Interlocked.CompareExchange(ref _groupBlocksCount, updated, current) != current);
+        }
+
+        internal void ObserveClientBlockCount(int delta)
+        {
+            if (Session.IsServer) return;
+            if (_runtimeStateReceived) return;
+            AddGroupBlocksCount(delta);
+            InvalidateGameThreadStateCache(true);
         }
 
         internal bool PunishModifiers;
@@ -61,6 +70,25 @@ namespace ShipCoreFramework
         internal float MaximumFrictionSpeedModifierOverride = -1f;
 
         private long _lastOwnerId;
+        private bool _runtimeStateReceived;
+        private long _runtimeOwnerId;
+        private int _runtimeCoreCount;
+        private string _runtimeCoreSubtypeId = string.Empty;
+        private int _runtimePlayerCoreCount;
+        private int _runtimeFactionCoreCount;
+        private Dictionary<string, int> _runtimeManifestCounts =
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        private string[] _runtimeSpeedPunishmentReasons = Array.Empty<string>();
+        private string[] _runtimeModifierPunishmentReasons = Array.Empty<string>();
+        private string[] _runtimeLimitedBlockPunishmentReasons = Array.Empty<string>();
+        private long _runtimeMainCoreBlockId;
+        private int _runtimeLimitRevision;
+        private int _runtimeLimitEnforcementRevision;
+
+        internal int CoreCount => !Session.IsServer && _runtimeStateReceived
+            ? _runtimeCoreCount
+            : CoreDictionary.Count;
+        internal bool HasRuntimeState => _runtimeStateReceived;
         private float _boostCooldownTimer;
         private float _boostDurationTimer;
 

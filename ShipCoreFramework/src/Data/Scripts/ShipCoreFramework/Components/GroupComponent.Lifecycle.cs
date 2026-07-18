@@ -51,6 +51,13 @@ namespace ShipCoreFramework
                 EndGridInitialization();
             }
 
+            if (!Session.IsServer)
+            {
+                InvalidateGameThreadStateCache(true);
+                Session.ApplyRuntimeStateForGroup(this);
+                return true;
+            }
+
             if (MainCoreComponent == null)
                 ScheduleMissingCoreRescan();
 
@@ -239,6 +246,7 @@ namespace ShipCoreFramework
 
         internal void Activate(CoreComponent coreComponent)
         {
+            if (!Session.IsServer) return;
             if (Deactivated)
             {
                 coreComponent.IsMainCore = false;
@@ -254,6 +262,7 @@ namespace ShipCoreFramework
             }
 
             MainCoreComponent = coreComponent;
+            Session.MarkRuntimeStateDirty(this);
             ClearCoreRecoveryGrace("main core activated", false);
             InvalidateGameThreadStateCache(true);
             InvalidateModifierStateCache();
@@ -293,6 +302,7 @@ namespace ShipCoreFramework
 
         internal void ResetCore()
         {
+            if (!Session.IsServer) return;
             var old = MainCoreComponent;
             if (old == null) return;
             if (!Session.IsGameThread)
@@ -321,6 +331,7 @@ namespace ShipCoreFramework
             SyncNoCoreLimitTracking();
             ScheduleMissingCoreRescan();
             SyncBeaconComponents();
+            Session.MarkRuntimeStateDirty(this);
 
             if (_closing || !Session.HasStarted || Session.IsShuttingDown) return;
             OnUpgradeModulesChanged();
@@ -346,8 +357,14 @@ namespace ShipCoreFramework
             }
 
             InvalidateGameThreadStateCache(true);
+            if (!Session.IsServer)
+            {
+                Session.ApplyRuntimeStateForGroup(this);
+                return;
+            }
             if (MainCoreComponent == null)
                 ScheduleMissingCoreRescan();
+            Session.MarkRuntimeStateDirty(this);
 
             Utils.Log($"OnGridAdded: {grid.EntityId}, {OwnerId}, {grid.CustomName}", 2);
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
@@ -381,6 +398,13 @@ namespace ShipCoreFramework
                 InvalidateGameThreadStateCache(true);
             }
 
+            if (!Session.IsServer)
+            {
+                if (removedMain != null) MainCoreComponent = null;
+                if (GridCount == 0) _closing = true;
+                return;
+            }
+
             if (removedMain != null) MainCoreLeftGroup(removedMain);
 
             RemoveDefenseModifierCache(g.EntityId);
@@ -399,10 +423,12 @@ namespace ShipCoreFramework
             Session.RefreshPhysicalGroupLinkagesForGrid(grid);
             Session.RefreshPhysicalGroupLinkagesForGrids(GridDictionary.Keys);
             ModAPI.BroadcastGridRemovedFromGroup(grid.EntityId, GetRepresentativeGridId());
+            Session.MarkRuntimeStateDirty(this);
         }
 
         private void MainCoreLeftGroup(CoreComponent lost)
         {
+            if (!Session.IsServer) return;
             if (!ReferenceEquals(lost, MainCoreComponent)) return;
 
             var oldType = lost.SubtypeId;
@@ -449,6 +475,7 @@ namespace ShipCoreFramework
             }
 
             SyncBeaconComponents();
+            Session.MarkRuntimeStateDirty(this);
 
             if (_closing || !Session.HasStarted || Session.IsShuttingDown) return;
             OnUpgradeModulesChanged();
@@ -457,6 +484,11 @@ namespace ShipCoreFramework
 
         internal void CoreRemoved(CoreComponent lost)
         {
+            if (!Session.IsServer)
+            {
+                if (ReferenceEquals(lost, MainCoreComponent)) MainCoreComponent = null;
+                return;
+            }
             if (!ReferenceEquals(lost, MainCoreComponent)) return;
             lost.IsMainCore = false;
 
@@ -512,6 +544,7 @@ namespace ShipCoreFramework
 
             InvalidateGameThreadStateCache(true);
             InvalidateModifierStateCache();
+            if (!Session.IsServer) return;
             IncrementLimitGeneration();
             SyncNoCoreLimitTracking();
             if (MainCoreComponent == null)
@@ -522,6 +555,7 @@ namespace ShipCoreFramework
 
         internal void ScheduleMissingCoreRescan()
         {
+            if (!Session.IsServer) return;
             if (_closing || Deactivated || MainCoreComponent != null) return;
             if (!HasPotentialCoreBlocksInGroup())
             {
@@ -540,6 +574,7 @@ namespace ShipCoreFramework
 
         internal void RunMissingCoreRescanTick()
         {
+            if (!Session.IsServer) return;
             if (_closing || Deactivated)
             {
                 ClearMissingCoreRescan();
@@ -640,7 +675,7 @@ namespace ShipCoreFramework
         internal void Clean()
         {
             _closing = true;
-            try
+            if (Session.IsServer) try
             {
                 if (MainCoreComponent != null)
                 {
@@ -705,6 +740,7 @@ namespace ShipCoreFramework
             _registeredNoCoreLimitOwnerId = ownerId;
             _registeredNoCoreLimitFactionId = factionId;
             _noCoreLimitsRegistered = true;
+            MarkRuntimeCountStatesDirty();
         }
 
         private void UnregisterNoCoreLimitTracking()
@@ -727,6 +763,7 @@ namespace ShipCoreFramework
             _registeredNoCoreLimitOwnerId = 0;
             _registeredNoCoreLimitFactionId = -1;
             _noCoreLimitsRegistered = false;
+            MarkRuntimeCountStatesDirty();
         }
 
         private void RegisterCoreLimitTracking()
@@ -760,6 +797,7 @@ namespace ShipCoreFramework
             _registeredCoreLimitOwnerId = ownerId;
             _registeredCoreLimitFactionId = factionId;
             _coreLimitsRegistered = true;
+            MarkRuntimeCountStatesDirty();
         }
 
         private void UnregisterCoreLimitTracking()
@@ -782,6 +820,14 @@ namespace ShipCoreFramework
             _registeredCoreLimitOwnerId = 0;
             _registeredCoreLimitFactionId = -1;
             _coreLimitsRegistered = false;
+            MarkRuntimeCountStatesDirty();
+        }
+
+        private static void MarkRuntimeCountStatesDirty()
+        {
+            if (!Session.IsServer) return;
+            foreach (var pair in Session.GroupDict)
+                Session.MarkRuntimeStateDirty(pair.Value);
         }
 
         private void RefreshRegisteredLimitOwnership()

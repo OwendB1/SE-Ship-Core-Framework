@@ -81,6 +81,7 @@ namespace ShipCoreFramework
 
         internal void OnUpgradeModulesChanged()
         {
+            if (!Session.IsServer) return;
             if (_closing || _refreshingUpgradeModules || IsInitializingGrids) return;
             IncrementLimitGeneration();
             InvalidateGameThreadStateCache(true);
@@ -101,6 +102,7 @@ namespace ShipCoreFramework
             finally
             {
                 _refreshingUpgradeModules = false;
+                Session.MarkRuntimeStateDirty(this);
             }
         }
 

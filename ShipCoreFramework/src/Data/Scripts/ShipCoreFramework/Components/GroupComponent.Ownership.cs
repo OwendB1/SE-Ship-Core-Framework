@@ -21,6 +21,7 @@ namespace ShipCoreFramework
         {
             get
             {
+                if (!Session.IsServer && _runtimeStateReceived) return _runtimeOwnerId;
                 long ownerId;
                 if (MainCoreComponent != null)
                 {
@@ -32,6 +33,9 @@ namespace ShipCoreFramework
                 {
                     ownerId = this.GetMajorityOwnerId();
                 }
+
+                if (!Session.IsServer)
+                    return IsIgnoredNpcGroup() ? 0 : ownerId;
 
                 if (IsIgnoredNpcGroup())
                 {
@@ -77,6 +81,7 @@ namespace ShipCoreFramework
                     SaveOwnerIdToMainCore(ownerId);
                 }
 
+                if (_lastOwnerId != ownerId) Session.MarkRuntimeStateDirty(this);
                 _lastOwnerId = ownerId;
                 return ownerId;
             }
@@ -112,6 +117,8 @@ namespace ShipCoreFramework
 
         private void SaveOwnerIdToMainCore(long ownerId)
         {
+            if (!Session.IsServer) return;
+
             var coreBlock = MainCoreComponent?.CoreBlock;
             if (coreBlock == null) return;
             if (coreBlock.Storage == null) coreBlock.Storage = new MyModStorageComponent();
@@ -120,6 +127,7 @@ namespace ShipCoreFramework
 
         internal bool IsIgnoredGroup()
         {
+            if (!Session.IsServer && _runtimeStateReceived) return GetCachedIsIgnoredGroup();
             return Session.IsGameThread ? ComputeIsIgnoredGroup() : GetCachedIsIgnoredGroup();
         }
 

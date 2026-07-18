@@ -101,7 +101,7 @@ namespace ShipCoreFramework
 
         internal static void DispatchBatch(EnforcementBatch batch)
         {
-            if (batch == null) return;
+            if (!Session.IsServer || batch == null) return;
 
             var contexts = new List<SpeedLimitContext>();
             SpeedLimitContext context;
@@ -129,6 +129,7 @@ namespace ShipCoreFramework
         internal static void RefreshSpeedState(GroupComponent groupComponent)
         {
             if (groupComponent == null) return;
+            if (!Session.IsServer) return;
 
             var context = ResolveSpeedLimitContext(groupComponent);
             ApplySpeedState(groupComponent, context);
@@ -136,7 +137,7 @@ namespace ShipCoreFramework
 
         internal static void EnforceSpeedLimit(GroupComponent groupComponent, EnforcementBatch batch)
         {
-            if (groupComponent == null || batch == null) return;
+            if (!Session.IsServer || groupComponent == null || batch == null) return;
             if (!ShouldEnforceForGroup(groupComponent)) return;
 
             var context = ResolveSpeedLimitContext(groupComponent);
@@ -400,13 +401,20 @@ namespace ShipCoreFramework
 
         private static void ApplySpeedState(GroupComponent groupComponent, SpeedLimitContext context)
         {
+            var changed = false;
             lock (groupComponent.SpeedStateLock)
             {
+                var sourceGridId = GetSpeedSourceGridId(context.SourceGroup, groupComponent);
+                changed = groupComponent.BaseSpeedLimitMetersPerSecond != context.BaseMaxSpeed ||
+                          groupComponent.EffectiveSpeedLimitMetersPerSecond != context.EffectiveMaxSpeed ||
+                          groupComponent.EffectiveBoostEnabled != context.BoostActive ||
+                          groupComponent.SpeedSourceGroupGridId != sourceGridId;
                 groupComponent.BaseSpeedLimitMetersPerSecond = context.BaseMaxSpeed;
                 groupComponent.EffectiveSpeedLimitMetersPerSecond = context.EffectiveMaxSpeed;
                 groupComponent.EffectiveBoostEnabled = context.BoostActive;
-                groupComponent.SpeedSourceGroupGridId = GetSpeedSourceGridId(context.SourceGroup, groupComponent);
+                groupComponent.SpeedSourceGroupGridId = sourceGridId;
             }
+            if (changed) Session.MarkRuntimeStateDirty(groupComponent);
         }
 
         private static GroupComponent ResolveSpeedSourceGroup(GroupComponent groupComponent)
@@ -578,6 +586,8 @@ namespace ShipCoreFramework
 
         private static void EnforceContextOnGameThread(SpeedLimitContext context)
         {
+            if (!Session.IsServer) return;
+
             var targetGrids = context.TargetGrids;
             if (targetGrids == null || targetGrids.Length == 0) return;
 

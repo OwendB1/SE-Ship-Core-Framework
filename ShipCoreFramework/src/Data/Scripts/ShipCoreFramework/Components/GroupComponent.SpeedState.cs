@@ -13,6 +13,7 @@ namespace ShipCoreFramework
             {
                 FrictionEnforcementEnabled = enabled;
                 InvalidateSpeedStateCache();
+                Session.MarkRuntimeStateDirty(this);
             }
         }
 
@@ -31,6 +32,7 @@ namespace ShipCoreFramework
             {
                 FrictionMaximumDecelerationOverride = value;
                 InvalidateSpeedStateCache();
+                Session.MarkRuntimeStateDirty(this);
             }
         }
 
@@ -48,6 +50,7 @@ namespace ShipCoreFramework
             {
                 MinimumFrictionSpeedAbsoluteOverride = value;
                 InvalidateSpeedStateCache();
+                Session.MarkRuntimeStateDirty(this);
             }
         }
 
@@ -65,6 +68,7 @@ namespace ShipCoreFramework
             {
                 MaximumFrictionSpeedAbsoluteOverride = value;
                 InvalidateSpeedStateCache();
+                Session.MarkRuntimeStateDirty(this);
             }
         }
 
@@ -82,6 +86,7 @@ namespace ShipCoreFramework
             {
                 MinimumFrictionSpeedModifierOverride = value;
                 InvalidateSpeedStateCache();
+                Session.MarkRuntimeStateDirty(this);
             }
         }
 
@@ -99,6 +104,7 @@ namespace ShipCoreFramework
             {
                 MaximumFrictionSpeedModifierOverride = value;
                 InvalidateSpeedStateCache();
+                Session.MarkRuntimeStateDirty(this);
             }
         }
 

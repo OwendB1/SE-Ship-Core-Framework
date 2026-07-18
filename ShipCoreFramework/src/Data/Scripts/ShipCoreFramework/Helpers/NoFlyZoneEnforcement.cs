@@ -13,6 +13,7 @@ namespace ShipCoreFramework
         
         internal static void EnforceNoFlyZones(GroupComponent groupComponent, bool doPunish)
         {
+            if (!Session.IsServer) return;
             if (Session.Config.NoFlyZones == null || Session.Config.NoFlyZones.Count == 0) return;
 
             // Skip no-fly zone enforcement for ignored factions/AI
@@ -63,6 +64,7 @@ namespace ShipCoreFramework
 
         private static void ApplyNoFlyZonePunishment(GroupComponent groupComponent, Zones zone, long gridEntityId, string gridName)
         {
+            if (!Session.IsServer) return;
             if (groupComponent == null || zone == null || groupComponent.IsIgnoredGroup()) return;
 
             GridComponent gridComponent = null;

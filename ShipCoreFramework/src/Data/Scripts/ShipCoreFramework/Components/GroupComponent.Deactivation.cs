@@ -16,6 +16,7 @@ namespace ShipCoreFramework
 
         internal void UpdateDeactivationState()
         {
+            if (!Session.IsServer) return;
             if (_closing) return;
 
             var isIgnored = ShouldDeactivateForIgnoredState();
@@ -62,6 +63,7 @@ namespace ShipCoreFramework
             }
 
             Deactivated = true;
+            Session.MarkRuntimeStateDirty(this);
             InvalidateGameThreadStateCache(true);
             InvalidateModifierStateCache();
             ClearDeactivatedLimitState();

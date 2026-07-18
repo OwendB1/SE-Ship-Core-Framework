@@ -39,11 +39,13 @@ namespace ShipCoreFramework
 
         private void OnIsWorkingChanged(IMyCubeBlock obj)
         {
+            if (!Session.IsServer) return;
             _groupComponent.RefreshPunishmentState();
         }
 
         private void OnUpgradeValuesChanged()
         {
+            if (!Session.IsServer) return;
             _groupComponent.OnUpgradeModulesChanged();
         }
 
@@ -58,6 +60,14 @@ namespace ShipCoreFramework
 
         internal void CoreDestroyed()
         {
+            if (!Session.IsServer)
+            {
+                DetachBlockEvents();
+                if (ReferenceEquals(_groupComponent.MainCoreComponent, this))
+                    _groupComponent.MainCoreComponent = null;
+                return;
+            }
+
             var grid = CoreBlock.CubeGrid;
             Utils.ShowNotification(
                 IsMainCore

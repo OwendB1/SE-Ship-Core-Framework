@@ -14,6 +14,8 @@ namespace ShipCoreFramework
     {
         internal static void RemoveAndRefund(this IMySlimBlock block)
         {
+            if (!Session.IsServer) return;
+
             if (!Session.IsGameThread)
             {
                 var capturedBlock = block;
@@ -112,6 +114,8 @@ namespace ShipCoreFramework
         internal static void WhackABlock(this IMySlimBlock block, PunishmentType harm,
             MyStringHash? customDamageType = null)
         {
+            if (!Session.IsServer) return;
+
             var damageType = customDamageType ?? DamageTypeBlockLimit;
             var func = block.FatBlock as IMyFunctionalBlock;
 

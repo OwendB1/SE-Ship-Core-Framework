@@ -190,7 +190,7 @@ namespace ShipCoreFramework
 
             if (core.MaxBackupCores > 0)
             {
-                var backupCores = Math.Max(0, group.CoreDictionary.Count - 1);
+                var backupCores = Math.Max(0, group.CoreCount - 1);
                 var fail = backupCores > core.MaxBackupCores;
                 snapshot.Metrics.Add(new MetricRow("Backup Cores", backupCores.ToString(CultureInfo.InvariantCulture),
                     core.MaxBackupCores, core.MaxBackupCores > 0 ? backupCores / (double)core.MaxBackupCores : 0d, fail));
