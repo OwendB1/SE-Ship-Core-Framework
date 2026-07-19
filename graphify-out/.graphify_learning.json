@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-17T06:51:08.786086+00:00",
+  "generated_at": "2026-07-19T08:29:04.339394+00:00",
   "nodes": {
     "api_apidata_modconfigdata": {
       "code_fingerprint": "16ff7f6bab00bbb0ac361d79bfb69d93d0a26adf898983517eed028fe74da66a",
@@ -12,13 +12,13 @@
           "q": "I see that SCF mod API is currently lacking the ability for other mods to request the full config through the mod API. Could you add that?"
         }
       ],
-      "score": 0.963297886,
+      "score": 0.918352823,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/API/ApiData.cs",
       "status": "tentative",
       "uses": 1
     },
     "api_modapi_modapi": {
-      "code_fingerprint": "222a0f99cbdf8f8e8dc691299a783a833e3e80ac05643c5fcbdc294316a66915",
+      "code_fingerprint": "be98c1be12a3eca1e5d43009ddd8cc082d0db6193600c906bcb70a5da29f77e9",
       "label": "ModAPI",
       "last": "2026-07-15T16:00:40.508340+00:00",
       "provenance": [
@@ -28,7 +28,7 @@
           "q": "I see that SCF mod API is currently lacking the ability for other mods to request the full config through the mod API. Could you add that?"
         }
       ],
-      "score": 0.963297886,
+      "score": 0.918352823,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/API/ModAPI.cs",
       "status": "tentative",
       "uses": 1
@@ -44,13 +44,13 @@
           "q": "I see that SCF mod API is currently lacking the ability for other mods to request the full config through the mod API. Could you add that?"
         }
       ],
-      "score": 0.963297886,
+      "score": 0.918352823,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/API/SCF_ModAPIClient.cs",
       "status": "tentative",
       "uses": 1
     },
     "components_groupcomponent_connectors": {
-      "code_fingerprint": "4c82fe1c99ea8b80f6879e1661520bd9bae9aa0141ee3d0f8f7ca5b48ce104b1",
+      "code_fingerprint": "",
       "label": "GroupComponent.Connectors.cs",
       "last": "2026-07-11T10:51:16.862781+00:00",
       "provenance": [
@@ -60,13 +60,13 @@
           "q": "Can we make it so connector blacklist checks through all connected connectors by diffing the mechanically linked group against the logically linked group and then based off that decide the priority across multiple gridgroups? Come up with a plan for this. Use $ponytail and other relevant skills."
         }
       ],
-      "score": 0.873911245,
+      "score": 0.833136738,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Components/GroupComponent.Connectors.cs",
       "status": "tentative",
       "uses": 1
     },
     "components_groupcomponent_coreselection": {
-      "code_fingerprint": "8105d01e1a9a982d754a508f8e6cc738322660042c131bc4344ddf90328dfde0",
+      "code_fingerprint": "",
       "label": "GroupComponent.CoreSelection.cs",
       "last": "2026-07-11T10:51:16.862781+00:00",
       "provenance": [
@@ -76,13 +76,29 @@
           "q": "Can we make it so connector blacklist checks through all connected connectors by diffing the mechanically linked group against the logically linked group and then based off that decide the priority across multiple gridgroups? Come up with a plan for this. Use $ponytail and other relevant skills."
         }
       ],
-      "score": 0.873911245,
+      "score": 0.833136738,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Components/GroupComponent.CoreSelection.cs",
       "status": "tentative",
       "uses": 1
     },
+    "configurator_app": {
+      "code_fingerprint": "627deba08698919f27bcaff3b4ba91600360920832786928ceb359d15f2602ce",
+      "label": "app.js",
+      "last": "2026-07-19T08:19:23.913189+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-19T08:19:23.913189+00:00",
+          "outcome": "useful",
+          "q": "Reorder the XML web editor UI numbering. First section number starts at 2 instead of 1"
+        }
+      ],
+      "score": 0.999844796,
+      "source_file": "docs/configurator/app.js",
+      "status": "tentative",
+      "uses": 1
+    },
     "helpers_cubegridmodifiers_cubegridmodifiers": {
-      "code_fingerprint": "80a5f7364f712e2ad409727776c28b7a27db3e732b5100d7f173701c94dcac74",
+      "code_fingerprint": "",
       "label": "CubeGridModifiers",
       "last": "2026-07-10T12:44:41.140798+00:00",
       "provenance": [
@@ -92,13 +108,13 @@
           "q": "Use $ponytail and $caveman and implement this feature."
         }
       ],
-      "score": 0.855506336,
+      "score": 0.815590556,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Helpers/CubeGridModifiers.cs",
       "status": "tentative",
       "uses": 1
     },
     "helpers_noflyzoneenforcement_noflyzoneenforcement": {
-      "code_fingerprint": "a0621e696188faea09e62b53176e663f8da232df1d3dd73d9c4094f0a1e5736f",
+      "code_fingerprint": "",
       "label": "NoFlyZoneEnforcement",
       "last": "2026-06-25T21:30:27.460509+00:00",
       "provenance": [
@@ -108,13 +124,13 @@
           "q": "Why does GroupComponent connect Speed Rules to many runtime rule communities?"
         }
       ],
-      "score": 0.610059175,
+      "score": 0.581595344,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Helpers/NoFlyZoneEnforcement.cs",
       "status": "tentative",
       "uses": 1
     },
     "helpers_speedenforcement_speedenforcement": {
-      "code_fingerprint": "fd9d9b713d1e24089d6db13c42666cb6ca80d9808e39bbd7cc571087033f4f7e",
+      "code_fingerprint": "",
       "label": "SpeedEnforcement",
       "last": "2026-06-25T21:30:27.460509+00:00",
       "provenance": [
@@ -124,13 +140,13 @@
           "q": "Why does GroupComponent connect Speed Rules to many runtime rule communities?"
         }
       ],
-      "score": 0.610059175,
+      "score": 0.581595344,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Helpers/SpeedEnforcement.cs",
       "status": "tentative",
       "uses": 1
     },
     "helpers_textutils_textutils": {
-      "code_fingerprint": "d5a895bfaa55243e4b1695411910bf4eec17b3705d33ed6dda017ce54309e4b4",
+      "code_fingerprint": "",
       "label": "TextUtils",
       "last": "2026-07-16T21:02:11.920934+00:00",
       "provenance": [
@@ -140,13 +156,13 @@
           "q": "The text is super unclear now. Is there a way to make it sharper? I also think that 1/3 render scale is a bit too much"
         }
       ],
-      "score": 0.990594798,
+      "score": 0.944376129,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Helpers/TextUtils.cs",
       "status": "tentative",
       "uses": 1
     },
     "network_packetbase_packetbase": {
-      "code_fingerprint": "d1a93657d1418bcd3c8975f22969dcc668b2b0a11c02a7279a055fa0ab84c746",
+      "code_fingerprint": "",
       "label": "PacketBase",
       "last": "2026-07-10T12:44:41.140798+00:00",
       "provenance": [
@@ -156,13 +172,13 @@
           "q": "Use $ponytail and $caveman and implement this feature."
         }
       ],
-      "score": 0.855506336,
+      "score": 0.815590556,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Network/PacketBase.cs",
       "status": "tentative",
       "uses": 1
     },
     "ui_coreterminalcontrols_coreterminalcontrols": {
-      "code_fingerprint": "7e3a39800db500044f04e8a98cbccfafe2c05d27c763bb22c120c15f4ee1f096",
+      "code_fingerprint": "",
       "label": "CoreTerminalControls",
       "last": "2026-07-10T12:44:41.140798+00:00",
       "provenance": [
@@ -172,13 +188,13 @@
           "q": "Use $ponytail and $caveman and implement this feature."
         }
       ],
-      "score": 0.855506336,
+      "score": 0.815590556,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/UI/CoreTerminalControls.cs",
       "status": "tentative",
       "uses": 1
     },
     "ui_coretypelcdscript_coretypelcdscript": {
-      "code_fingerprint": "c7d19031e0c5a4f1d046d16de356cc4ee506cb56602cc4c6dd244beebab2d17e",
+      "code_fingerprint": "",
       "label": "CoreTypeLCDScript",
       "last": "2026-07-16T21:22:52.325443+00:00",
       "neg": 1,
@@ -209,7 +225,7 @@
           "q": "I think we forgot to implement the LCD scaling that we were planning to add. The 3x3 massively zooms in because the relative scale of the layout/pixels is not kept."
         }
       ],
-      "score": 2.972235868,
+      "score": 2.833558797,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/UI/CoreTypeLCDScript.cs",
       "status": "contested",
       "uses": 4,
