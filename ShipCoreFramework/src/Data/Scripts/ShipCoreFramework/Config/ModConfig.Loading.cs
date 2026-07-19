@@ -20,25 +20,9 @@ namespace ShipCoreFramework
             var hasIgnoredFactionTagsSetting = false;
             var hasSelectedNoCoreSetting = false;
 
-            if (allowWorldStorageReadWrite && MyAPIGateway.Utilities.FileExistsInWorldStorage(GlobalConfigFileName, typeof(ModConfig)))
-            {
-                using (var reader = MyAPIGateway.Utilities.ReadFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig)))
-                {
-                    var text = reader.ReadToEnd();
-                    hasIgnoreAiSetting = text.IndexOf("<IgnoreAiFactions>", StringComparison.OrdinalIgnoreCase) >= 0;
-                    hasIgnoredFactionTagsSetting = text.IndexOf("<IgnoredFactionTags>", StringComparison.OrdinalIgnoreCase) >= 0;
-                    hasSelectedNoCoreSetting = text.IndexOf("<SelectedNoCoreUniqueName>", StringComparison.OrdinalIgnoreCase) >= 0;
-                    var import = MyAPIGateway.Utilities.SerializeFromXML<ModConfig>(text);
-                    if (import == null) throw new Exception("Failed to load world config.");
-                    ApplyWorldSettingsFrom(import);
-                }
-            }
-            else if (allowWorldStorageReadWrite)
-            {
-                var globalConfigWriter = MyAPIGateway.Utilities.WriteFileInWorldStorage(GlobalConfigFileName, typeof(ModConfig));
-                globalConfigWriter.Write(MyAPIGateway.Utilities.SerializeToXML(this));
-                globalConfigWriter.Close();
-            }
+            if (allowWorldStorageReadWrite)
+                LoadWorldSettings(out hasIgnoreAiSetting, out hasIgnoredFactionTagsSetting,
+                    out hasSelectedNoCoreSetting);
 
             foreach (var mod in MyAPIGateway.Session.Mods)
             {
@@ -70,7 +54,9 @@ namespace ShipCoreFramework
             ResolveBlockGroupsForCores(NoCoreConfigs);
             ResolveBlockGroupsForCores(ShipCores);
 
-            ImportLegacyWorldSettingsIfNeeded(allowWorldStorageReadWrite, hasIgnoreAiSetting, hasIgnoredFactionTagsSetting, hasSelectedNoCoreSetting);
+            if (allowWorldStorageReadWrite)
+                ImportLegacyWorldSettingsIfNeeded(hasIgnoreAiSetting, hasIgnoredFactionTagsSetting,
+                    hasSelectedNoCoreSetting);
             NormalizeIgnoredFactionTags(hasIgnoredFactionTagsSetting);
             EnsurePersistedWorldSettings();
             ResolveSelectedNoCore();
@@ -139,35 +125,6 @@ namespace ShipCoreFramework
             return core != null && !string.IsNullOrWhiteSpace(core.ConfigFile)
                 ? core.ConfigFile
                 : fallback;
-        }
-
-        private void ImportLegacyWorldSettingsIfNeeded(bool allowWorldStorageReadWrite, bool hasIgnoreAiSetting,
-            bool hasIgnoredFactionTagsSetting, bool hasSelectedNoCoreSetting)
-        {
-            if (!allowWorldStorageReadWrite)
-                return;
-
-            if (!hasIgnoreAiSetting)
-            {
-                bool ignoreAiFactions;
-                
-                if (Utils.TryLoadFromSandbox(LegacyIgnoreAiKey, out ignoreAiFactions))
-                    IgnoreAiFactions = ignoreAiFactions;
-            }
-
-            if (!hasIgnoredFactionTagsSetting)
-            {
-                List<string> ignoredFactionTags;
-                if (Utils.TryLoadFromSandbox(LegacyIgnoredFactionsKey, out ignoredFactionTags) && ignoredFactionTags != null)
-                    IgnoredFactionTags = ignoredFactionTags;
-            }
-
-            if (!hasSelectedNoCoreSetting)
-            {
-                ShipCore legacySelectedNoCore;
-                if (Utils.TryLoadFromSandbox(LegacySelectedNoCoreKey, out legacySelectedNoCore) && legacySelectedNoCore != null)
-                    SelectedNoCoreUniqueName = legacySelectedNoCore.UniqueName ?? string.Empty;
-            }
         }
 
         private void NormalizeIgnoredFactionTags(bool hasIgnoredFactionTagsSetting)
