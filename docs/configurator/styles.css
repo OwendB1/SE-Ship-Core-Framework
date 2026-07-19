@@ -92,6 +92,11 @@ button {
   cursor: pointer;
 }
 button:hover { background: #0d9488; }
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+button:disabled:hover { background: #0f766e; }
 
 .button-green {
   background: #15803d;
@@ -99,6 +104,7 @@ button:hover { background: #0d9488; }
 .button-green:hover {
   background: #16a34a;
 }
+.button-green:disabled:hover { background: #15803d; }
 .code-block {
   background: #0b1220;
   border: 1px solid #374151;

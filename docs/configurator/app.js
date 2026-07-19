@@ -1,4 +1,4 @@
-// app.js build v1014
+// app.js build v1015
 const state = {
   blockGroups: [],
   manifestGroups: [],
@@ -2368,6 +2368,70 @@ ${module.body}`)
   return { noCore, groups, manifest, cores, upgradeModules };
 }
 
+function getUpdateEntryPath(entryPath, selectedFolderIsData) {
+  const dataRootFilenames = new Set([
+    "shipcoreconfig_no_core.xml",
+    "shipcoreconfig_groups.xml",
+    "shipcoreconfig_manifest.xml"
+  ]);
+  const normalizedPath = String(entryPath || "").replaceAll("\\", "/").trim();
+  const segments = normalizedPath.split("/");
+  if (
+    !normalizedPath ||
+    normalizedPath.startsWith("/") ||
+    /^[a-z]:\//i.test(normalizedPath) ||
+    segments.some((segment) => !segment || segment === "." || segment === "..")
+  ) {
+    throw new Error(`Unsafe generated path '${entryPath}'.`);
+  }
+
+  const isDataRootFile = segments.length === 1 && dataRootFilenames.has(segments[0].toLowerCase());
+  if (!selectedFolderIsData) {
+    return isDataRootFile ? `Data/${normalizedPath}` : normalizedPath;
+  }
+  if (isDataRootFile) return normalizedPath;
+  if (segments[0].toLowerCase() === "data" && segments.length > 1) return segments.slice(1).join("/");
+  throw new Error(`Generated path '${entryPath}' is outside Data. Select the mod root folder instead.`);
+}
+
+async function writeEntriesToFolder(rootHandle, entries, selectedFolderIsData) {
+  const plannedEntries = entries.map((entry) => ({
+    ...entry,
+    relativePath: getUpdateEntryPath(entry.name, selectedFolderIsData)
+  }));
+  const writtenPaths = [];
+  for (const entry of plannedEntries) {
+    const segments = entry.relativePath.split("/");
+    const filename = segments.pop();
+    let directoryHandle = rootHandle;
+    for (const segment of segments) {
+      directoryHandle = await directoryHandle.getDirectoryHandle(segment, { create: true });
+    }
+
+    const fileHandle = await directoryHandle.getFileHandle(filename, { create: true });
+    const writable = await fileHandle.createWritable();
+    try {
+      await writable.write(entry.content);
+      await writable.close();
+    } catch (error) {
+      if (typeof writable.abort === "function") await writable.abort().catch(() => {});
+      throw error;
+    }
+    writtenPaths.push(entry.relativePath);
+  }
+  return writtenPaths;
+}
+
+function generatedXmlEntries(xml) {
+  return [
+    { name: "ShipCoreConfig_No_Core.xml", content: xml.noCore },
+    { name: "ShipCoreConfig_Groups.xml", content: xml.groups },
+    { name: "ShipCoreConfig_Manifest.xml", content: xml.manifest },
+    ...xml.cores.map((core) => ({ name: core.outputPath, content: core.body })),
+    ...xml.upgradeModules.map((module) => ({ name: `${state.outputUpgradeModuleDirectory}${module.file}`, content: module.body }))
+  ];
+}
+
 document.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
@@ -2980,15 +3044,10 @@ ids("downloadManifest").addEventListener("click", () => {
 });
 ids("downloadAllFiles").addEventListener("click", async () => {
   const xml = generateXml({ persistDraft: false });
+  const generatedEntries = generatedXmlEntries(xml);
 
   // Build a set of zip paths that are being replaced by generated versions
-  const generatedPaths = new Set([
-    "ShipCoreConfig_No_Core.xml",
-    "ShipCoreConfig_Groups.xml",
-    "ShipCoreConfig_Manifest.xml",
-    ...xml.cores.map((core) => core.outputPath),
-    ...xml.upgradeModules.map((module) => `${state.outputUpgradeModuleDirectory}${module.file}`)
-  ].map((p) => p.toLowerCase()));
+  const generatedPaths = new Set(generatedEntries.map((entry) => entry.name.toLowerCase()));
 
   // Passthrough files that are NOT being replaced (e.g. SBCs, CubeBlock XMLs)
   const passthroughEntries = await Promise.all(
@@ -2998,11 +3057,7 @@ ids("downloadAllFiles").addEventListener("click", async () => {
   );
 
   const zip = createZip([
-    { name: "ShipCoreConfig_No_Core.xml", content: xml.noCore },
-    { name: "ShipCoreConfig_Groups.xml", content: xml.groups },
-    { name: "ShipCoreConfig_Manifest.xml", content: xml.manifest },
-    ...xml.cores.map((core) => ({ name: core.outputPath, content: core.body })),
-    ...xml.upgradeModules.map((module) => ({ name: `${state.outputUpgradeModuleDirectory}${module.file}`, content: module.body })),
+    ...generatedEntries,
     ...passthroughEntries
   ]);
   downloadBlob("ShipCore_All_Files.zip", zip);
@@ -3333,13 +3388,100 @@ async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, cor
   setImportStatus(status);
 }
 
+let _selectedUpdateFolderHandle = null;
+let _selectedUpdateFolderIsData = false;
+let _pendingFolderStatus = [];
+
+async function collectConfigFiles(directoryHandle, pathPrefix = "") {
+  const files = [];
+  const paths = new Map();
+  for await (const [name, entryHandle] of directoryHandle.entries()) {
+    const relativePath = `${pathPrefix}${name}`;
+    if (entryHandle.kind === "directory") {
+      const nested = await collectConfigFiles(entryHandle, `${relativePath}/`);
+      files.push(...nested.files);
+      nested.paths.forEach((path, file) => paths.set(file, path));
+      continue;
+    }
+    if (!/\.(xml|sbc)$/i.test(name)) continue;
+    const file = await entryHandle.getFile();
+    files.push(file);
+    paths.set(file, relativePath);
+  }
+  return { files, paths };
+}
+
+async function openUpdateFolder() {
+  const pickerButton = ids("openUpdateFolder");
+  pickerButton.disabled = true;
+  try {
+    const rootHandle = await window.showDirectoryPicker({ id: "ship-core-config", mode: "readwrite" });
+    const selectedFolderIsData = String(rootHandle.name || "").toLowerCase() === "data";
+    const dataHandle = selectedFolderIsData
+      ? rootHandle
+      : await rootHandle.getDirectoryHandle("Data");
+    const collected = await collectConfigFiles(dataHandle, selectedFolderIsData ? "" : "Data/");
+
+    _selectedUpdateFolderHandle = rootHandle;
+    _selectedUpdateFolderIsData = selectedFolderIsData;
+    _cachedFolderFiles = collected.files;
+    _cachedFolderFilePaths = collected.paths;
+    _pendingFolderStatus = [`Opened '${rootHandle.name}' for in-place updates (${collected.files.length} XML/SBC files found).`];
+
+    ["groupsXmlFile", "manifestXmlFile", "noCoreXmlFile", "coreXmlFiles", "folderUpload", "zipUpload", "upgradeModuleSbcFiles"]
+      .forEach((id) => { ids(id).value = ""; });
+    ids("updateFolderStatus").textContent = `Update folder: ${rootHandle.name}${selectedFolderIsData ? "" : "/Data"}`;
+    ids("updateSelectedFolder").disabled = false;
+    await loadUploadedXml();
+  } catch (error) {
+    if (error?.name !== "AbortError") {
+      setImportStatus([`Could not open update folder: ${error.message}. Select a mod folder containing Data, or the Data folder itself.`]);
+    }
+  } finally {
+    pickerButton.disabled = false;
+  }
+}
+
+async function updateSelectedFolder() {
+  if (!_selectedUpdateFolderHandle) return;
+  const updateButton = ids("updateSelectedFolder");
+  updateButton.disabled = true;
+  try {
+    const entries = generatedXmlEntries(generateXml({ persistDraft: false }));
+    const writtenPaths = await writeEntriesToFolder(_selectedUpdateFolderHandle, entries, _selectedUpdateFolderIsData);
+    setImportStatus([`Updated ${writtenPaths.length} generated XML file(s) in '${_selectedUpdateFolderHandle.name}'.`]);
+    clearDraftFromStorage();
+  } catch (error) {
+    setImportStatus([`Could not update '${_selectedUpdateFolderHandle.name}': ${error.message}`]);
+  } finally {
+    updateButton.disabled = false;
+  }
+}
+
+function clearUpdateFolderSelection() {
+  _selectedUpdateFolderHandle = null;
+  _selectedUpdateFolderIsData = false;
+  ids("updateSelectedFolder").disabled = true;
+  ids("updateFolderStatus").textContent = "No update folder selected.";
+}
+
+function clearFolderPickerCache() {
+  _cachedFolderFiles = [];
+  _cachedFolderFilePaths = new Map();
+  _pendingFolderStatus = [];
+}
+
 // Store folder files captured directly from the change event's FileList
 let _cachedFolderFiles = [];
+let _cachedFolderFilePaths = new Map();
 ids("folderUpload").addEventListener("change", (evt) => {
   // Capture files immediately from the event — more reliable than reading
   // .files later on click, especially when served from file:// protocol.
   const input = evt.target;
+  clearUpdateFolderSelection();
   _cachedFolderFiles = Array.from(input.files || []);
+  _cachedFolderFilePaths = new Map();
+  _pendingFolderStatus = [];
   if (_cachedFolderFiles.length > 0) {
     const label = input.closest("label");
     if (label) {
@@ -3353,13 +3495,19 @@ ids("folderUpload").addEventListener("change", (evt) => {
   }
 });
 
-ids("loadUploadedXml").addEventListener("click", async () => {
+["groupsXmlFile", "manifestXmlFile", "noCoreXmlFile", "coreXmlFiles", "zipUpload", "upgradeModuleSbcFiles"]
+  .forEach((id) => ids(id).addEventListener("change", () => {
+    clearUpdateFolderSelection();
+    clearFolderPickerCache();
+  }));
+
+async function loadUploadedXml() {
   let groupsFile   = ids("groupsXmlFile").files?.[0] || null;
   let manifestFile = ids("manifestXmlFile").files?.[0] || null;
   let noCoreFile   = ids("noCoreXmlFile").files?.[0] || null;
   const coreFiles  = Array.from(ids("coreXmlFiles").files || []);
   const sbcFiles   = [];
-  const preStatus  = [];
+  const preStatus  = _pendingFolderStatus.splice(0);
   const passthroughFiles = [];
 
   const folderFiles = (() => {
@@ -3384,7 +3532,7 @@ ids("loadUploadedXml").addEventListener("click", async () => {
   }
 
   function folderZipPath(f) {
-    const rel = (f.webkitRelativePath || f.name).replace(/\\/g, "/");
+    const rel = (_cachedFolderFilePaths.get(f) || f.webkitRelativePath || f.name).replace(/\\/g, "/");
     return folderRootPrefix && rel.startsWith(folderRootPrefix)
       ? rel.slice(folderRootPrefix.length)
       : rel;
@@ -3459,9 +3607,19 @@ ids("loadUploadedXml").addEventListener("click", async () => {
     { persistDraft: !clearSavedDraftForImport }
   );
   if (clearSavedDraftForImport) clearDraftFromStorage();
-});
+}
+
+ids("loadUploadedXml").addEventListener("click", () => loadUploadedXml());
+ids("openUpdateFolder").addEventListener("click", openUpdateFolder);
+ids("updateSelectedFolder").addEventListener("click", updateSelectedFolder);
 
 (() => {
+  if (typeof window.showDirectoryPicker !== "function") {
+    ids("openUpdateFolder").disabled = true;
+    ids("openUpdateFolder").title = "In-place updates require a browser with the File System Access API.";
+    ids("updateFolderStatus").textContent = "In-place updates are unavailable in this browser; use Upload Folder and downloads.";
+  }
+
   if (restoreDraftFromStorage()) {
     renderEditors();
     generateXml();

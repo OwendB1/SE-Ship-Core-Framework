@@ -41,9 +41,11 @@
         </label>
       </div>
       <div class="row wrap">
+        <button id="openUpdateFolder" class="button-green">Open Mod/Data Folder</button>
         <button id="loadUploadedXml">Load Uploaded XML</button>
         <button id="resetEditor">Reset Editor</button>
         <button id="resetDraftStorage">Clear Autosave Draft</button>
+        <span id="updateFolderStatus" class="muted">No update folder selected.</span>
       </div>
       <pre id="importStatus" class="code-block"></pre>
       </div>
@@ -122,6 +124,7 @@
       <p class="muted">Generated XML previews update automatically as you edit.</p>
       <div class="row wrap">
         <button hidden="hidden" id="generateXml">Generate</button>
+        <button id="updateSelectedFolder" class="button-green" disabled>Update Selected Folder</button>
         <button id="downloadAllFiles" class="button-green">Download all files (.zip)</button>
         <button id="downloadNoCore">Download ShipCoreConfig_No_Core.xml</button>
         <button id="downloadGroups">Download ShipCoreConfig_Groups.xml</button>
@@ -140,6 +143,6 @@
     </details>
   </main>
 
-  <script type="module" src="./app.js?v=1014"></script>
+  <script type="module" src="./app.js?v=1015"></script>
 </body>
 </html>
