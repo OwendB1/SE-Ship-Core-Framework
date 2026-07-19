@@ -482,7 +482,7 @@ namespace ShipCoreFramework
             var totalPlayerCount = PerPlayerManager.GetCurrentCount(ownerId, subtypeId);
             var localPlayerCount = totalPlayerCount - remotePlayerCount;
             var core = Session.Config.GetShipCoreByTypeId(subtypeId);
-            var maxPerPlayer = core == null ? -1 : core.MaxPerPlayer;
+            var maxPerPlayer = core?.MaxPerPlayer ?? -1;
 
             Utils.Log("ExternalLimitFailure: server=" + LimitsNexusSync.CurrentServerId +
                       ", group=" + GetGroupKey() +

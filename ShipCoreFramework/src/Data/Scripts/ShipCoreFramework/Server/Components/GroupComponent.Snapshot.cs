@@ -21,7 +21,7 @@ namespace ShipCoreFramework
             int limitRevision;
             lock (_limitSnapshotLock)
             {
-                var configuredLimits = ShipCore == null ? null : ShipCore.BlockLimits;
+                var configuredLimits = ShipCore?.BlockLimits;
                 if (configuredLimits != null)
                 {
                     for (var i = 0; i < configuredLimits.Length; i++)
@@ -121,7 +121,7 @@ namespace ShipCoreFramework
                 CoreSubtypeId = subtypeId,
                 MainCoreBlockId = MainCoreComponent == null ? 0L : MainCoreComponent.CoreBlock.EntityId,
                 CoreCount = CoreDictionary.Count,
-                DirectionReferenceBlockId = directionReference == null ? 0L : directionReference.EntityId,
+                DirectionReferenceBlockId = directionReference?.EntityId ?? 0L,
                 OwnerId = ownerId,
                 Deactivated = Deactivated,
                 Ignored = GetCachedIsIgnoredGroup(),

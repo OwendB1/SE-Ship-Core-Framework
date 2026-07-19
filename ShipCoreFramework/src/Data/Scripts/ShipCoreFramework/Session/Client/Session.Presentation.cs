@@ -64,7 +64,7 @@ namespace ShipCoreFramework
                 }
 
                 var definition = cubeDefinition as MyTextPanelDefinition;
-                if (definition == null || definition.ScreenAreas == null || definition.ScreenAreas.Count == 0)
+                if (definition?.ScreenAreas == null || definition.ScreenAreas.Count == 0)
                     continue;
 
                 var state = new LcdDefinitionTextureState(definition);
@@ -121,7 +121,7 @@ namespace ShipCoreFramework
                 for (var i = 0; i < definition.ScreenAreas.Count; i++)
                 {
                     var area = definition.ScreenAreas[i];
-                    ScreenAreaTextureResolutions[i] = area != null ? area.TextureResolution : 0;
+                    ScreenAreaTextureResolutions[i] = area?.TextureResolution ?? 0;
                 }
             }
         }

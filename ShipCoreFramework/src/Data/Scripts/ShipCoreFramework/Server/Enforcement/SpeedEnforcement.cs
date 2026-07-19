@@ -324,7 +324,7 @@ namespace ShipCoreFramework
             out FrictionCurveSegmentRuntime[] runtimeSegments)
         {
             runtimeSegments = new FrictionCurveSegmentRuntime[0];
-            if (curve == null || curve.Segments == null || curve.Segments.Length == 0)
+            if (curve?.Segments == null || curve.Segments.Length == 0)
                 return false;
 
             var segments = new List<FrictionCurveSegmentRuntime>();
@@ -434,7 +434,7 @@ namespace ShipCoreFramework
                 for (var i = 0; i < memberGroups.Length; i++)
                 {
                     var member = memberGroups[i];
-                    if (member == null || member.ShipCore == null) continue;
+                    if (member?.ShipCore == null) continue;
                     var tier = (int)member.ShipCore.SpeedOverrideMode;
                     if (tier > highestTier) highestTier = tier;
                 }
@@ -455,7 +455,7 @@ namespace ShipCoreFramework
                     for (var i = 0; i < memberGroups.Length; i++)
                     {
                         var linkedGroup = memberGroups[i];
-                        if (linkedGroup == null || linkedGroup.ShipCore == null) continue;
+                        if (linkedGroup?.ShipCore == null) continue;
 
                         var memberTier = (int)linkedGroup.ShipCore.SpeedOverrideMode;
                         if (!allNone && memberTier != highestTier) continue;
@@ -717,7 +717,7 @@ namespace ShipCoreFramework
             try
             {
                 var entity = grid as ModEntity;
-                var position = entity == null ? grid.PositionComp.WorldAABB.Center : entity.GetPosition();
+                var position = entity?.GetPosition() ?? grid.PositionComp.WorldAABB.Center;
                 var planet = MyGamePruningStructure.GetClosestPlanet(position);
                 if (planet != null)
                     density = Math.Max(0f, planet.GetAirDensity(position));

@@ -176,7 +176,7 @@ namespace ShipCoreFramework
                 }
             }
 
-            if (groupComponent.ShipCore != null && groupComponent.ShipCore.ManifestGroupNames != null)
+            if (groupComponent.ShipCore?.ManifestGroupNames != null)
             {
                 foreach (var groupName in groupComponent.ShipCore.ManifestGroupNames)
                 {

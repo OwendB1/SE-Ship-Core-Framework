@@ -243,7 +243,7 @@ namespace ShipCoreFramework
 
         private void RefreshGridStateCache()
         {
-            var capacity = Math.Max(_cachedGridStates == null ? 0 : _cachedGridStates.Length,
+            var capacity = Math.Max(_cachedGridStates?.Length ?? 0,
                 DefaultGridStateCacheCapacity);
             var groupPcu = 0;
             var representativeGridId = 0L;

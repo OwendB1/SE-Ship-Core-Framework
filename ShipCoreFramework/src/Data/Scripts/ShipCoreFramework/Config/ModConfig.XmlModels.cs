@@ -721,7 +721,7 @@ namespace ShipCoreFramework
         internal double GetWeight(BlockKey key)
         {
             var blockType = GetMatchingBlockType(key);
-            return blockType != null ? blockType.CountWeight : 0d;
+            return blockType?.CountWeight ?? 0d;
         }
 
         internal BlockType GetMatchingBlockType(BlockKey key)

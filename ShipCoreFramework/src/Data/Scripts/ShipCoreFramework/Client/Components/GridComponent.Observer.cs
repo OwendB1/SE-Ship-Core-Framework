@@ -14,7 +14,7 @@ namespace ShipCoreFramework
             if (Utils.IsCoreBlock(functionalBlock))
             {
                 CoreComponent existingCore;
-                if (!CoreDictionary.TryGetValue(functionalBlock, out existingCore))
+                if (functionalBlock != null && !CoreDictionary.TryGetValue(functionalBlock, out existingCore))
                 {
                     var core = new CoreComponent();
                     if (!core.Init(functionalBlock, this, groupComponent)) return false;

@@ -29,7 +29,7 @@ namespace ShipCoreFramework
             for (var i = 0; i < acceptedStates.Length; i++)
             {
                 var state = acceptedStates[i];
-                if (state == null || state.GridIds == null) continue;
+                if (state?.GridIds == null) continue;
                 for (var j = 0; j < state.GridIds.Length; j++)
                 {
                     GroupComponent group;

@@ -82,7 +82,7 @@ namespace ShipCoreFramework
 
         public override ScriptUpdate NeedsUpdate { get { return ScriptUpdate.Update10; } }
 
-        private GroupComponent GroupComponent { get { return _terminalBlock != null ? _terminalBlock.GetGroupComponent() : null; } }
+        private GroupComponent GroupComponent { get { return _terminalBlock?.GetGroupComponent(); } }
 
         public override void Dispose()
         {
@@ -135,7 +135,7 @@ namespace ShipCoreFramework
         private void DrawDashboard()
         {
             var group = GroupComponent;
-            if (group == null || group.ShipCore == null)
+            if (group?.ShipCore == null)
             {
                 DrawMessage("No ship core data", "Grid group not ready yet.");
                 return;
@@ -490,7 +490,7 @@ namespace ShipCoreFramework
             var hasCurrentLayout = TryGetSurfaceLayout(out current);
             var singleRenderScale = GetPhysicalRenderScale(hasCurrentLayout ? current.PixelsPerMeter : 0d);
             var single = PanelGroupLayout.Single(Surface.SurfaceSize, GetMemberKey(), singleRenderScale);
-            if (!_combinePanels || _cubeBlock == null || _cubeBlock.CubeGrid == null || !hasCurrentLayout)
+            if (!_combinePanels || _cubeBlock?.CubeGrid == null || !hasCurrentLayout)
                 return single;
 
             var scripts = new List<CoreTypeLCDScript>();
@@ -606,7 +606,7 @@ namespace ShipCoreFramework
             if (TryGetDefinitionRenderScale(out definitionScale))
                 return definitionScale;
 
-            if (pixelsPerMeter <= 0d || Surface == null || _cubeBlock == null || _cubeBlock.CubeGrid == null)
+            if (pixelsPerMeter <= 0d || Surface == null || _cubeBlock?.CubeGrid == null)
                 return 1f;
             if (Surface.TextureSize.X <= 1f || Surface.TextureSize.Y <= 1f ||
                 _cubeBlock.CubeGrid.GridSize <= 0.01f)
@@ -630,7 +630,7 @@ namespace ShipCoreFramework
 
             var definition = _cubeBlock.SlimBlock.BlockDefinition as MyFunctionalBlockDefinition;
             var surfaceIndex = ResolveSurfaceIndex();
-            if (definition == null || definition.ScreenAreas == null || surfaceIndex < 0 ||
+            if (definition?.ScreenAreas == null || surfaceIndex < 0 ||
                 surfaceIndex >= definition.ScreenAreas.Count)
                 return false;
 
@@ -695,7 +695,7 @@ namespace ShipCoreFramework
 
         private bool IsUsableForGroup(string page, long gridId)
         {
-            if (_disposed || _cubeBlock == null || _cubeBlock.CubeGrid == null || Surface == null) return false;
+            if (_disposed || _cubeBlock?.CubeGrid == null || Surface == null) return false;
             if (!_combinePanels) return false;
             if (_cubeBlock.CubeGrid.EntityId != gridId) return false;
             return string.Equals(_page, page, StringComparison.OrdinalIgnoreCase);
@@ -730,7 +730,7 @@ namespace ShipCoreFramework
 
         private string GetMemberKey()
         {
-            var entityId = _cubeBlock != null ? _cubeBlock.EntityId : _instanceId;
+            var entityId = _cubeBlock?.EntityId ?? _instanceId;
             return entityId.ToString(CultureInfo.InvariantCulture) + "#" + ResolveSurfaceIndex().ToString(CultureInfo.InvariantCulture);
         }
 
@@ -1126,7 +1126,7 @@ namespace ShipCoreFramework
             _showCursor = true;
             _page = "Auto";
 
-            var customData = _terminalBlock != null ? _terminalBlock.CustomData : null;
+            var customData = _terminalBlock?.CustomData;
             if (string.IsNullOrWhiteSpace(customData)) return;
 
             var ini = new MyIni();

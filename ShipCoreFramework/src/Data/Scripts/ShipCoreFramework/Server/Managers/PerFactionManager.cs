@@ -282,7 +282,7 @@ namespace ShipCoreFramework
                         MarkNonPlayerIdentity(identityId);
                 }
 
-                if (checkpoint.AllPlayersData != null && checkpoint.AllPlayersData.Dictionary != null)
+                if (checkpoint.AllPlayersData?.Dictionary != null)
                 {
                     foreach (var entry in checkpoint.AllPlayersData.Dictionary)
                     {

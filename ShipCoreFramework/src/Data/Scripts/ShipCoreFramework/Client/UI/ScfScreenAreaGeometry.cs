@@ -52,7 +52,7 @@ namespace ShipCoreFramework
             if (block == null) return false;
 
             var blockEntity = block as IMyEntity;
-            if (blockEntity == null || blockEntity.Model == null) return false;
+            if (blockEntity?.Model == null) return false;
 
             ScfMinimalMwmScreenAreaGeometry geometry;
             if (!TryGetScreenAreaGeometry(block, surfaceIndex, out geometry))
@@ -102,7 +102,7 @@ namespace ShipCoreFramework
                 return false;
 
             var blockEntity = block as IMyEntity;
-            if (blockEntity == null || blockEntity.Model == null)
+            if (blockEntity?.Model == null)
                 return false;
 
             if (!TryGetScreenLocalMatrix(blockEntity.Model, geometry, out localMatrix))
@@ -129,7 +129,7 @@ namespace ShipCoreFramework
             out Matrix localMatrix)
         {
             localMatrix = Matrix.Identity;
-            if (blockModel == null || geometry == null || geometry.TriangleIndices == null ||
+            if (blockModel == null || geometry?.TriangleIndices == null ||
                 geometry.UvTriangles == null)
                 return false;
 
@@ -175,7 +175,7 @@ namespace ShipCoreFramework
             right = Vector3.Zero;
             up = Vector3.Zero;
             forward = Vector3.Zero;
-            if (blockModel == null || geometry == null || geometry.TriangleIndices == null || geometry.UvTriangles == null)
+            if (blockModel == null || geometry?.TriangleIndices == null || geometry.UvTriangles == null)
                 return false;
 
             if (geometryTriangleIndex < 0 || geometryTriangleIndex >= geometry.TriangleIndices.Count ||
@@ -242,7 +242,7 @@ namespace ShipCoreFramework
         private static bool TryGetCenterTriangleIndex(ScfMinimalMwmScreenAreaGeometry geometry, out int triangleIndex)
         {
             triangleIndex = -1;
-            if (geometry == null || geometry.TriangleIndices == null || geometry.UvTriangles == null)
+            if (geometry?.TriangleIndices == null || geometry.UvTriangles == null)
                 return false;
 
             var centerRawUv = GetScreenCenterRawUv(geometry);
@@ -276,7 +276,7 @@ namespace ShipCoreFramework
             out Vector3 point)
         {
             point = Vector3.Zero;
-            if (blockModel == null || geometry == null || geometry.TriangleIndices == null ||
+            if (blockModel == null || geometry?.TriangleIndices == null ||
                 geometry.UvTriangles == null)
                 return false;
 
@@ -392,7 +392,7 @@ namespace ShipCoreFramework
             uv1 = Vector2.Zero;
             uv2 = Vector2.Zero;
 
-            if (geometry == null || geometry.UvByVertexIndex == null) return false;
+            if (geometry?.UvByVertexIndex == null) return false;
 
             return geometry.UvByVertexIndex.TryGetValue(i0, out uv0) &&
                    geometry.UvByVertexIndex.TryGetValue(i1, out uv1) &&
@@ -406,7 +406,7 @@ namespace ShipCoreFramework
             if (block == null) return false;
 
             var blockEntity = block as IMyEntity;
-            if (blockEntity == null || blockEntity.Model == null) return false;
+            if (blockEntity?.Model == null) return false;
 
             var assetName = blockEntity.Model.AssetName;
             if (string.IsNullOrWhiteSpace(assetName)) return false;
@@ -426,11 +426,9 @@ namespace ShipCoreFramework
         private static List<string> ResolveMaterialCandidates(IMyCubeBlock block, int surfaceIndex)
         {
             var result = new List<string>();
-            var definition = block != null
-                ? block.SlimBlock.BlockDefinition as MyFunctionalBlockDefinition
-                : null;
+            var definition = block?.SlimBlock.BlockDefinition as MyFunctionalBlockDefinition;
 
-            if (definition == null || definition.ScreenAreas == null || definition.ScreenAreas.Count == 0)
+            if (definition?.ScreenAreas == null || definition.ScreenAreas.Count == 0)
                 return result;
 
             if (surfaceIndex < 0 || surfaceIndex >= definition.ScreenAreas.Count)
@@ -685,7 +683,7 @@ namespace ShipCoreFramework
             uv = Vector2.Zero;
             rawUv = Vector2.Zero;
             hitDistance = 0d;
-            if (blockModel == null || geometry == null || geometry.TriangleIndices == null ||
+            if (blockModel == null || geometry?.TriangleIndices == null ||
                 geometry.UvTriangles == null)
                 return false;
 
@@ -741,7 +739,7 @@ namespace ShipCoreFramework
             double w, double u, double v, out Vector2 uv)
         {
             uv = Vector2.Zero;
-            if (geometry == null || geometry.UvByVertexIndex == null) return false;
+            if (geometry?.UvByVertexIndex == null) return false;
 
             Vector2 uv0;
             Vector2 uv1;

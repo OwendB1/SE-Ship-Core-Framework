@@ -35,9 +35,8 @@ namespace ShipCoreFramework
             _runtimeEffectiveFactionCoreLimit = state.EffectiveFactionCoreLimit;
             _runtimeManifestCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             if (state.ManifestCounts != null)
-                for (var i = 0; i < state.ManifestCounts.Length; i++)
+                foreach (var count in state.ManifestCounts)
                 {
-                    var count = state.ManifestCounts[i];
                     if (count != null && !string.IsNullOrEmpty(count.Name))
                         _runtimeManifestCounts[count.Name] = count.Count;
                 }
@@ -137,10 +136,8 @@ namespace ShipCoreFramework
             {
                 if (state.BoostActive)
                 {
-                    var coreGrid = MainCoreComponent == null || MainCoreComponent.GridComponent == null
-                        ? null
-                        : MainCoreComponent.GridComponent.Grid;
-                    ModAPI.BroadcastBoostActivated(coreGrid == null ? eventGridId : coreGrid.EntityId);
+                    var coreGrid = MainCoreComponent?.GridComponent?.Grid;
+                    ModAPI.BroadcastBoostActivated(coreGrid?.EntityId ?? eventGridId);
                 }
                 else ModAPI.BroadcastBoostDeactivated(eventGridId);
             }
@@ -159,22 +156,19 @@ namespace ShipCoreFramework
 
             for (var revision = previousLimitRevision + 1; revision <= state.LimitRevision; revision++)
                 ModAPI.BroadcastLimitsRecalculated(eventGridId);
-            if (state.LimitEnforcementRevision > previousLimitEnforcementRevision)
+            if (state.LimitEnforcementRevision <= previousLimitEnforcementRevision) return;
+            var events = state.LimitEnforcementEvents;
+            if (events == null || events.Length == 0)
             {
-                var events = state.LimitEnforcementEvents;
-                if (events == null || events.Length == 0)
+                ModAPI.BroadcastLimitsEnforced(eventGridId, state.LastBlocksPunished);
+            }
+            else
+            {
+                foreach (var runtimeEvent in events)
                 {
-                    ModAPI.BroadcastLimitsEnforced(eventGridId, state.LastBlocksPunished);
-                }
-                else
-                {
-                    for (var i = 0; i < events.Length; i++)
-                    {
-                        var runtimeEvent = events[i];
-                        if (runtimeEvent != null && runtimeEvent.Revision > previousLimitEnforcementRevision &&
-                            runtimeEvent.Revision <= state.LimitEnforcementRevision)
-                            ModAPI.BroadcastLimitsEnforced(eventGridId, runtimeEvent.BlocksPunished);
-                    }
+                    if (runtimeEvent != null && runtimeEvent.Revision > previousLimitEnforcementRevision &&
+                        runtimeEvent.Revision <= state.LimitEnforcementRevision)
+                        ModAPI.BroadcastLimitsEnforced(eventGridId, runtimeEvent.BlocksPunished);
                 }
             }
         }
@@ -263,8 +257,8 @@ namespace ShipCoreFramework
             }
             if (previousBoostActive) ModAPI.BroadcastBoostDeactivated(eventGridId);
             if (previousDefenseActive) ModAPI.BroadcastActiveDefenseDeactivated(eventGridId);
-            for (var i = 0; i < previousGridIds.Length; i++)
-                ModAPI.BroadcastGridRemovedFromGroup(previousGridIds[i], eventGridId);
+            foreach (var t in previousGridIds)
+                ModAPI.BroadcastGridRemovedFromGroup(t, eventGridId);
         }
 
         private static bool SameModifiers(GridModifiers left, GridModifiers right)
@@ -296,16 +290,14 @@ namespace ShipCoreFramework
         {
             var limits = new ConcurrentDictionary<BlockLimit, LimitBucket>();
             var effectiveCounts = new Dictionary<BlockLimit, float>();
-            var configured = ShipCore == null ? null : ShipCore.BlockLimits;
+            var configured = ShipCore?.BlockLimits;
             if (configured != null && runtimeLimits != null)
             {
-                for (var i = 0; i < configured.Length; i++)
+                foreach (var limit in configured)
                 {
-                    var limit = configured[i];
                     if (limit == null) continue;
-                    for (var j = 0; j < runtimeLimits.Length; j++)
+                    foreach (var runtime in runtimeLimits)
                     {
-                        var runtime = runtimeLimits[j];
                         if (runtime == null || !string.Equals(limit.Name, runtime.Name, StringComparison.OrdinalIgnoreCase))
                             continue;
                         limits[limit] = new LimitBucket(runtime.CurrentCount);

@@ -91,14 +91,14 @@ namespace ShipCoreFramework
 
         private static bool IsSelectableCore(CoreComponent core, bool requireWorking)
         {
-            var block = core == null ? null : core.CoreBlock;
+            var block = core?.CoreBlock;
             if (block == null || block.MarkedForClose || block.Closed) return false;
             return !requireWorking || block.IsWorking;
         }
 
         private static int GetCoreSelectionPriority(ShipCore core)
         {
-            return core == null ? 0 : core.CoreSelectionPriority;
+            return core?.CoreSelectionPriority ?? 0;
         }
 
         private static int GetCoreGridBlockCount(CoreComponent core)
@@ -106,13 +106,13 @@ namespace ShipCoreFramework
             if (core == null) return 0;
             if (core.GridComponent != null) return core.GridComponent.BlockCount;
 
-            var grid = core.CoreBlock == null ? null : core.CoreBlock.CubeGrid as MyCubeGrid;
-            return grid == null ? 0 : grid.BlocksCount;
+            var grid = core.CoreBlock?.CubeGrid as MyCubeGrid;
+            return grid?.BlocksCount ?? 0;
         }
 
         private static long GetCoreEntityId(CoreComponent core)
         {
-            return core == null || core.CoreBlock == null ? 0L : core.CoreBlock.EntityId;
+            return core?.CoreBlock?.EntityId ?? 0L;
         }
 
         private static long NormalizeSelectionTieBreakerId(long entityId)

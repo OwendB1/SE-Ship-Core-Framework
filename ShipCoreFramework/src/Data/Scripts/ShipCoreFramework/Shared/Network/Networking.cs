@@ -69,7 +69,7 @@ namespace ShipCoreFramework
             if (Session.IsServer)
             {
                 var localPlayer = Session.LocalPlayer;
-                packet.SenderSteamId = localPlayer == null ? 0UL : localPlayer.SteamUserId;
+                packet.SenderSteamId = localPlayer?.SteamUserId ?? 0UL;
                 packet.SentFromServer = false;
                 MyAPIGateway.Utilities.InvokeOnGameThread(delegate
                 {

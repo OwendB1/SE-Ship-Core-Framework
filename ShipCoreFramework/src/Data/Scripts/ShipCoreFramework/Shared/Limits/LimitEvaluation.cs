@@ -224,7 +224,7 @@ namespace ShipCoreFramework
                 foreach (var kvp in group.Limits)
                 {
                     var limit = kvp.Key;
-                    if (limit == null || limit.AllowedDirections == null || limit.AllowedDirections.Count == 0) continue;
+                    if (limit?.AllowedDirections == null || limit.AllowedDirections.Count == 0) continue;
 
                     var matched = limit.GetMatchingBlockType(block.Key);
                     if (matched == null) continue;

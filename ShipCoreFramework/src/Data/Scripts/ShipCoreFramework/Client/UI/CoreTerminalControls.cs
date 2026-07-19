@@ -180,7 +180,7 @@ namespace ShipCoreFramework
 
         private static bool IsMainCoreBlock(IMyTerminalBlock block)
         {
-            if (block == null || block.CubeGrid == null) return false;
+            if (block?.CubeGrid == null) return false;
             if (!Session.IsServer)
             {
                 GroupRuntimeState state;
@@ -189,7 +189,7 @@ namespace ShipCoreFramework
             }
 
             var group = block.GetGroupComponent();
-            return group != null && group.MainCoreComponent != null &&
+            return group?.MainCoreComponent != null &&
                    group.MainCoreComponent.CoreBlock.EntityId == block.EntityId;
         }
     }

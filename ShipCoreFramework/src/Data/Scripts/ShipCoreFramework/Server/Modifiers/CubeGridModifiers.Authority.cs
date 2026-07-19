@@ -48,7 +48,7 @@ namespace ShipCoreFramework
             foreach (UpgradeModuleComponent module in groupComponent.GetEffectiveUpgradeModules(true))
             {
                 UpgradeModuleConfig config = module.GetConfig();
-                if (config == null || config.Modifiers == null) continue;
+                if (config?.Modifiers == null) continue;
 
                 foreach (UpgradeStatModifier modifier in config.Modifiers.Where(value => value != null))
                 {
@@ -102,7 +102,7 @@ namespace ShipCoreFramework
             foreach (UpgradeModuleComponent module in groupComponent.GetEffectiveUpgradeModules(true))
             {
                 UpgradeModuleConfig config = module.GetConfig();
-                if (config == null || config.Modifiers == null) continue;
+                if (config?.Modifiers == null) continue;
 
                 foreach (UpgradeStatModifier modifier in config.Modifiers.Where(value => value != null))
                 {
@@ -164,7 +164,7 @@ namespace ShipCoreFramework
             IEnumerable<UpgradeModuleConfig> upgradeModules, DefenseModifierTarget target)
         {
             GridDefenseModifiers modifiers = Clone(baseModifiers);
-            foreach (UpgradeModuleConfig module in upgradeModules.Where(value => value != null && value.Modifiers != null))
+            foreach (UpgradeModuleConfig module in upgradeModules.Where(value => value?.Modifiers != null))
             {
                 foreach (UpgradeStatModifier modifier in module.Modifiers.Where(value => value != null))
                 {

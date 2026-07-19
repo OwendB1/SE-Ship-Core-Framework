@@ -116,7 +116,7 @@ namespace ShipCoreFramework
                 GroupComponent current = pendingGroups.Dequeue();
                 foreach (GroupComponent otherComp in GetDirectConnectedGroupComponents(current))
                 {
-                    if (otherComp == null || otherComp.MyGroup == null || !visitedGroups.Add(otherComp.MyGroup))
+                    if (otherComp?.MyGroup == null || !visitedGroups.Add(otherComp.MyGroup))
                         continue;
 
                     connectedGroups.Add(otherComp);
@@ -193,7 +193,7 @@ namespace ShipCoreFramework
             {
                 GroupComponent otherComp;
                 if (!Session.GroupDict.TryGetValue(otherGroupData, out otherComp)) continue;
-                if (otherComp == null || otherComp.MainCoreComponent == null || ReferenceEquals(otherComp, this)) continue;
+                if (otherComp?.MainCoreComponent == null || ReferenceEquals(otherComp, this)) continue;
 
                 var otherCore = otherComp.ShipCore;
                 if (otherCore == null || !otherCore.IsConnectorBlacklistedCore(selfSubtypeId))

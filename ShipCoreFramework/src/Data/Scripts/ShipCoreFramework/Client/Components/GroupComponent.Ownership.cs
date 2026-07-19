@@ -4,8 +4,7 @@ namespace ShipCoreFramework
     {
         private long GetObservedOwnerId()
         {
-            if (_runtimeStateReceived) return _runtimeOwnerId;
-            return ResolveLocalOwnerId();
+            return _runtimeStateReceived ? _runtimeOwnerId : ResolveLocalOwnerId();
         }
     }
 }

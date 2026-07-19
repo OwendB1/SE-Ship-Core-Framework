@@ -885,7 +885,7 @@ namespace ShipCoreFramework
 
         private static IEnumerable<ManifestCoreGroup> GetConfiguredManifestGroups(ShipCore core)
         {
-            if (core == null || core.ManifestGroupNames == null)
+            if (core?.ManifestGroupNames == null)
                 yield break;
 
             foreach (var groupName in core.ManifestGroupNames)
@@ -1268,7 +1268,7 @@ namespace ShipCoreFramework
 
         private static FrictionCurveSegmentData[] ConvertToFrictionCurveData(FrictionCurve curve)
         {
-            if (curve == null || curve.Segments == null || curve.Segments.Length == 0)
+            if (curve?.Segments == null || curve.Segments.Length == 0)
                 return Array.Empty<FrictionCurveSegmentData>();
 
             var segments = new List<FrictionCurveSegmentData>();

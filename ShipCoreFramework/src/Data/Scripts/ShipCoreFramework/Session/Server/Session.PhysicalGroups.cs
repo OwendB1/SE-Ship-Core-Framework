@@ -103,7 +103,7 @@ namespace ShipCoreFramework
         internal static bool TryGetPhysicalSpeedCluster(GroupComponent groupComponent, out PhysicalSpeedCluster cluster)
         {
             cluster = null;
-            if (groupComponent == null || groupComponent.SpeedClusterPhysicalGroup == null) return false;
+            if (groupComponent?.SpeedClusterPhysicalGroup == null) return false;
             if (!PhysicalSpeedClusterDict.TryGetValue(groupComponent.SpeedClusterPhysicalGroup, out cluster) || cluster == null)
                 return false;
             return cluster.IsTracked;

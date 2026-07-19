@@ -155,7 +155,7 @@ namespace ShipCoreFramework
             {
                 foreach (var state in ByGroup.Values)
                 {
-                    if (state == null || state.ManifestCounts == null) continue;
+                    if (state?.ManifestCounts == null) continue;
                     for (var i = 0; i < state.ManifestCounts.Length; i++)
                     {
                         var manifest = state.ManifestCounts[i];

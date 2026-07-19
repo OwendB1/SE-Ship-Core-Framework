@@ -166,7 +166,7 @@ namespace ShipCoreFramework
 
             foreach (var gridComponent in _groupComponent.GridDictionary.Values)
             {
-                if (gridComponent == null || gridComponent.Grid == null) continue;
+                if (gridComponent?.Grid == null) continue;
 
                 var fatTerminals = ((IMyCubeGrid)gridComponent.Grid).GetFatBlocks<IMyFunctionalBlock>();
                 foreach (var terminal in fatTerminals)

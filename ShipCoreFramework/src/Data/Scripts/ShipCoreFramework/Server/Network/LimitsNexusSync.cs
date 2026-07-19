@@ -205,10 +205,8 @@ namespace ShipCoreFramework
                 foreach (var pair in RemoteStates.OrderBy(pair => pair.Key))
                 {
                     var player = pair.Value.State.Players.FirstOrDefault(p => p.PlayerId == playerId);
-                    var core = player == null
-                        ? null
-                        : player.Cores.FirstOrDefault(c => c.CoreType == coreType);
-                    values.Add(pair.Key + "=" + (core == null ? 0 : core.Count) +
+                    var core = player?.Cores.FirstOrDefault(c => c.CoreType == coreType);
+                    values.Add(pair.Key + "=" + (core?.Count ?? 0) +
                                "@" + pair.Value.HighestRevision +
                                "/age=" + Math.Max(0, Session.CurrentTick - pair.Value.LastUpdatedTick));
                 }

@@ -407,7 +407,7 @@ namespace ShipCoreFramework
 
         private void ResolveBlockGroups(ShipCore core)
         {
-            if (core == null || core.BlockLimits == null) return;
+            if (core?.BlockLimits == null) return;
 
             foreach (var limit in core.BlockLimits)
             {
@@ -424,8 +424,7 @@ namespace ShipCoreFramework
                     var groupName = shorthand == null ? string.Empty : shorthand.Trim();
                     var found = false;
                     foreach (var group in BlockGroups.Where(group =>
-                                 group != null &&
-                                 group.Name != null &&
+                                 group?.Name != null &&
                                  group.Name.Equals(groupName, StringComparison.OrdinalIgnoreCase)))
                     {
                         limit.BlockGroups.Add(group);
