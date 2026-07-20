@@ -8,6 +8,7 @@ namespace ShipCoreFramework
 {
     internal enum PacketDirection
     {
+        Unknown,
         ClientToServer,
         ServerToClient
     }
@@ -24,7 +25,7 @@ namespace ShipCoreFramework
     [ProtoInclude(10000, typeof(PacketRuntimeStateDelta))]
     [ProtoInclude(11000, typeof(PacketMissionScreen))]
     [ProtoContract]
-    internal abstract class PacketBase
+    internal class PacketBase
     {
         [ProtoIgnore]
         internal ulong SenderSteamId;
@@ -33,14 +34,13 @@ namespace ShipCoreFramework
         internal bool SentFromServer;
 
         internal PacketBase() { } // Empty constructor required for deserialization
-        internal abstract PacketDirection Direction { get; }
-        internal abstract void Received();
+        internal virtual PacketDirection Direction { get { return PacketDirection.Unknown; } }
+        internal virtual void Received() { }
 
         internal bool CanReceive()
         {
-            return Direction == PacketDirection.ClientToServer
-                ? Session.IsServer && !SentFromServer
-                : Session.IsClient && SentFromServer;
+            return Direction == PacketDirection.ClientToServer && Session.IsServer && !SentFromServer ||
+                   Direction == PacketDirection.ServerToClient && Session.IsClient && SentFromServer;
         }
 
         protected bool TryGetSender(out IMyPlayer sender)
