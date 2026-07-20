@@ -4,13 +4,7 @@ namespace ShipCoreFramework
 {
     internal partial class GroupComponent
     {
-        internal long OwnerId
-        {
-            get
-            {
-                return Session.IsServer ? GetAuthoritativeOwnerId() : GetObservedOwnerId();
-            }
-        }
+        internal long OwnerId => Session.IsServer ? GetAuthoritativeOwnerId() : GetObservedOwnerId();
 
         private long ResolveLocalOwnerId()
         {

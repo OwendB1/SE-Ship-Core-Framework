@@ -6,7 +6,7 @@ namespace ShipCoreFramework
     [ProtoContract]
     internal partial class PacketAction : PacketBase
     {
-        internal override PacketDirection Direction { get { return PacketDirection.ClientToServer; } }
+        internal override PacketDirection Direction => PacketDirection.ClientToServer;
 
         [ProtoMember(100)]
         internal ButtonAction ActionData;
@@ -28,7 +28,7 @@ namespace ShipCoreFramework
     [ProtoContract]
     internal partial class PacketSetMainCore : PacketBase
     {
-        internal override PacketDirection Direction { get { return PacketDirection.ClientToServer; } }
+        internal override PacketDirection Direction => PacketDirection.ClientToServer;
 
         [ProtoMember(200)]
         internal SetMainCoreAction ActionData;
@@ -50,7 +50,7 @@ namespace ShipCoreFramework
     [ProtoContract]
     internal partial class PacketSetMainCoreSync : PacketBase
     {
-        internal override PacketDirection Direction { get { return PacketDirection.ServerToClient; } }
+        internal override PacketDirection Direction => PacketDirection.ServerToClient;
 
         [ProtoMember(300)]
         internal SetMainCoreAction ActionData;
@@ -72,7 +72,7 @@ namespace ShipCoreFramework
     [ProtoContract]
     internal partial class PacketNotify : PacketBase
     {
-        internal override PacketDirection Direction { get { return PacketDirection.ServerToClient; } }
+        internal override PacketDirection Direction => PacketDirection.ServerToClient;
 
         [ProtoMember(400)] internal string Text;
         [ProtoMember(401)] internal int TimeMs;
@@ -97,7 +97,7 @@ namespace ShipCoreFramework
     [ProtoContract]
     internal partial class PacketRequestConfig : PacketBase
     {
-        internal override PacketDirection Direction { get { return PacketDirection.ClientToServer; } }
+        internal override PacketDirection Direction => PacketDirection.ClientToServer;
 
         internal PacketRequestConfig() { }
 
@@ -112,7 +112,7 @@ namespace ShipCoreFramework
     [ProtoContract]
     internal partial class PacketSendConfig : PacketBase
     {
-        internal override PacketDirection Direction { get { return PacketDirection.ServerToClient; } }
+        internal override PacketDirection Direction => PacketDirection.ServerToClient;
 
         [ProtoMember(1)]
         internal string ConfigXml;
@@ -134,7 +134,7 @@ namespace ShipCoreFramework
     [ProtoContract]
     internal partial class PacketCountdown : PacketBase
     {
-        internal override PacketDirection Direction { get { return PacketDirection.ServerToClient; } }
+        internal override PacketDirection Direction => PacketDirection.ServerToClient;
 
         [ProtoMember(700)] internal string Key;
         [ProtoMember(701)] internal string Text;
@@ -161,7 +161,7 @@ namespace ShipCoreFramework
     [ProtoContract]
     internal sealed partial class PacketMissionScreen : PacketBase
     {
-        internal override PacketDirection Direction { get { return PacketDirection.ServerToClient; } }
+        internal override PacketDirection Direction => PacketDirection.ServerToClient;
 
         [ProtoMember(1100)] internal string Title;
         [ProtoMember(1101)] internal string ObjectivePrefix;
@@ -191,7 +191,7 @@ namespace ShipCoreFramework
     [ProtoContract]
     internal sealed partial class PacketRequestRuntimeState : PacketBase
     {
-        internal override PacketDirection Direction { get { return PacketDirection.ClientToServer; } }
+        internal override PacketDirection Direction => PacketDirection.ClientToServer;
 
         internal override void Received()
         {
@@ -204,7 +204,7 @@ namespace ShipCoreFramework
     [ProtoContract]
     internal sealed partial class PacketRuntimeState : PacketBase
     {
-        internal override PacketDirection Direction { get { return PacketDirection.ServerToClient; } }
+        internal override PacketDirection Direction => PacketDirection.ServerToClient;
 
         [ProtoMember(1)] internal int Sequence;
         [ProtoMember(3)] internal GroupRuntimeState[] States = Array.Empty<GroupRuntimeState>();
@@ -223,7 +223,7 @@ namespace ShipCoreFramework
     [ProtoContract]
     internal sealed partial class PacketRuntimeStateDelta : PacketBase
     {
-        internal override PacketDirection Direction { get { return PacketDirection.ServerToClient; } }
+        internal override PacketDirection Direction => PacketDirection.ServerToClient;
 
         [ProtoMember(1)] internal GroupRuntimeState[] States = Array.Empty<GroupRuntimeState>();
 

@@ -114,14 +114,7 @@ namespace Draygo.API
 		/// <summary>
 		/// If Heartbeat is true you may call any constructor in this class. Do not call any constructor or set properties if this is false.
 		/// </summary>
-		public bool Heartbeat
-		{
-			get
-			{
-				return registered;
-			}
-		}
-
+		public bool Heartbeat => registered;
 
 
 		#region Intercomm
@@ -258,13 +251,8 @@ namespace Draygo.API
 			/// <summary>
 			/// Returns the distance for one pixel in x and y directions, can be multiplied and fed into Origin, Offset, and Size parameters for precise manipulation of HUD objects. 
 			/// </summary>
-			public static Vector2D ScreenPositionOnePX
-			{
-				get
-				{
-					return (Vector2D)instance.MessageGet(null, (int)APIinfoMembers.ScreenPositionOnePX);
-				}
-			}
+			public static Vector2D ScreenPositionOnePX => (Vector2D)instance.MessageGet(null, (int)APIinfoMembers.ScreenPositionOnePX);
+
 			/// <summary>
 			/// Available definitions: None, Default, Square
 			/// </summary>
@@ -2326,13 +2314,7 @@ namespace Draygo.API
 			/// <summary>
 			/// Returns the margin + padding + border values. subtract this from the total size to get the size of the content area of the object. 
 			/// </summary>
-			public Vector2I Min
-			{
-				get
-				{
-					return (Vector2I)instance.MessageGet(BackingDefinition, (int)BoxUIDefinitionMembers.Min);
-				}
-			}
+			public Vector2I Min => (Vector2I)instance.MessageGet(BackingDefinition, (int)BoxUIDefinitionMembers.Min);
 
 			enum BoxUIDefinitionMembers : int
 			{

@@ -35,17 +35,11 @@ namespace ShipCoreFramework
         internal string Material;
         internal int TriangleCount;
         internal double AreaM2;
-        internal bool HasUvBounds { get { return _hasUvBounds; } }
-        internal Vector2 UvMin { get { return _uvMin; } }
-        internal Vector2 UvMax { get { return _uvMax; } }
+        internal bool HasUvBounds => _hasUvBounds;
+        internal Vector2 UvMin => _uvMin;
+        internal Vector2 UvMax => _uvMax;
 
-        internal double WidthM
-        {
-            get
-            {
-                return _hasBounds ? Math.Max(Math.Max(_max.X - _min.X, _max.Y - _min.Y), _max.Z - _min.Z) : 0d;
-            }
-        }
+        internal double WidthM => _hasBounds ? Math.Max(Math.Max(_max.X - _min.X, _max.Y - _min.Y), _max.Z - _min.Z) : 0d;
 
         internal double HeightM
         {

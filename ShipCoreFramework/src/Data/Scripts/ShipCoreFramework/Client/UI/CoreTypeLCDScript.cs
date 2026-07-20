@@ -80,9 +80,9 @@ namespace ShipCoreFramework
             }
         }
 
-        public override ScriptUpdate NeedsUpdate { get { return ScriptUpdate.Update10; } }
+        public override ScriptUpdate NeedsUpdate => ScriptUpdate.Update10;
 
-        private GroupComponent GroupComponent { get { return _terminalBlock?.GetGroupComponent(); } }
+        private GroupComponent GroupComponent => _terminalBlock?.GetGroupComponent();
 
         public override void Dispose()
         {
