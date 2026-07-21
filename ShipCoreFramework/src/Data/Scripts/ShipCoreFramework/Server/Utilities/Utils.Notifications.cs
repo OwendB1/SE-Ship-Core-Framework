@@ -9,6 +9,46 @@ namespace ShipCoreFramework
 {
     internal static partial class Utils
     {
+        static partial void ForwardServerLogMessage(string msg, int logPriority, string tooltip)
+        {
+            if (!Session.IsServer || !Session.MpActive || Session.Networking == null ||
+                Session.IsShuttingDown) return;
+
+            try
+            {
+                MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+                {
+                    var config = Session.Config;
+                    if (config == null || !config.DebugMode || logPriority > config.ClientOutputLogLevel ||
+                        Session.IsShuttingDown) return;
+
+                    var players = new List<IMyPlayer>();
+                    MyAPIGateway.Players.GetPlayers(players);
+                    var localSteamId = Session.LocalPlayer?.SteamUserId ?? 0UL;
+                    var packet = new PacketNotify
+                    {
+                        Text = msg,
+                        IsDebugLog = true,
+                        LogPriority = logPriority,
+                        LogTooltip = tooltip
+                    };
+
+                    foreach (var player in players)
+                    {
+                        if (player == null || player.SteamUserId == 0 || player.SteamUserId == localSteamId) continue;
+                        if (player.PromoteLevel != MyPromoteLevel.Admin &&
+                            player.PromoteLevel != MyPromoteLevel.Owner) continue;
+
+                        Session.Networking.SendToPlayer(packet, player.SteamUserId);
+                    }
+                });
+            }
+            catch
+            {
+                // Ignore debug forwarding failures during startup/shutdown.
+            }
+        }
+
         internal static long GetPlayerIdFromSteamId(ulong steamId)
         {
             var players = new List<IMyPlayer>();

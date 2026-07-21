@@ -32,6 +32,15 @@ namespace ShipCoreFramework
         partial void ReceiveOnClient()
         {
             Text = Cap(Text, 2048);
+
+            if (IsDebugLog)
+            {
+                LogPriority = Math.Max(0, Math.Min(LogPriority, 3));
+                LogTooltip = Cap(LogTooltip, 64);
+                Utils.DisplayClientLogMessage(Text, LogPriority, "Server " + LogTooltip);
+                return;
+            }
+
             Font = Cap(Font, 32);
             TimeMs = Math.Max(0, Math.Min(TimeMs, 60000));
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>

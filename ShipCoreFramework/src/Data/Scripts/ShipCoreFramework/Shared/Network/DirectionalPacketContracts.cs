@@ -77,6 +77,9 @@ namespace ShipCoreFramework
         [ProtoMember(400)] internal string Text;
         [ProtoMember(401)] internal int TimeMs;
         [ProtoMember(402)] internal string Font;
+        [ProtoMember(403)] internal bool IsDebugLog;
+        [ProtoMember(404)] internal int LogPriority;
+        [ProtoMember(405)] internal string LogTooltip;
 
         internal PacketNotify() { }
         internal PacketNotify(string text, int timeMs = 2000, string font = "Red")

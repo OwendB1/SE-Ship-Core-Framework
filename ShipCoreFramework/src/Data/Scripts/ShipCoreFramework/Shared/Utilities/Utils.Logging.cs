@@ -1,6 +1,7 @@
 using System;
 using Sandbox.Game;
 using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 using VRage.Utils;
 
 namespace ShipCoreFramework
@@ -23,12 +24,31 @@ namespace ShipCoreFramework
             if (config != null && logPriority <= config.LogLevel)
                 MyLog.Default.WriteLine($"[{tooltip}]: {msg}");
 
-            if (config == null || !Session.IsClient || logPriority > config.ClientOutputLogLevel ||
-                !config.DebugMode) return;
+            if (config == null || logPriority > config.ClientOutputLogLevel || !config.DebugMode) return;
 
+            if (Session.IsServer)
+                ForwardServerLogMessage(msg, logPriority, tooltip);
+
+            if (!Session.IsClient || !LocalPlayerCanReceiveDebugLogs()) return;
+
+            DisplayClientLogMessage(msg, logPriority, tooltip);
+        }
+
+        private static bool LocalPlayerCanReceiveDebugLogs()
+        {
+            if (!Session.MpActive) return true;
+
+            var player = Session.LocalPlayer;
+            return player != null &&
+                   (player.PromoteLevel == MyPromoteLevel.Admin || player.PromoteLevel == MyPromoteLevel.Owner);
+        }
+
+        internal static void DisplayClientLogMessage(string msg, int logPriority, string tooltip)
+        {
             ShowClientLogMessage(msg, logPriority, tooltip);
         }
 
         static partial void ShowClientLogMessage(string msg, int logPriority, string tooltip);
+        static partial void ForwardServerLogMessage(string msg, int logPriority, string tooltip);
     }
 }
