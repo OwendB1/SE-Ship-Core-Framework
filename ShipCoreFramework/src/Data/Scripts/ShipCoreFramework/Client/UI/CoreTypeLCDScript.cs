@@ -230,6 +230,9 @@ namespace ShipCoreFramework
             snapshot.Flags.Add(new FlagRow("Speed", punishSpeed));
             snapshot.Flags.Add(new FlagRow("Limited blocks", punishLimitedBlocks));
             snapshot.Flags.Add(new FlagRow("Deactivated", deactivated));
+            AddPunishmentReasons(snapshot, "Speed", group.GetSpeedPunishmentGateDescriptions());
+            AddPunishmentReasons(snapshot, "Modifiers", group.GetModifierPunishmentGateDescriptions());
+            AddPunishmentReasons(snapshot, "Limited Blocks", group.GetLimitedBlockPunishmentGateDescriptions());
 
             if (core.BlockLimits != null)
             {
@@ -315,6 +318,7 @@ namespace ShipCoreFramework
             y += 12f * scale;
             y = RenderFlags(sprites, snapshot, canvas, margin, y, smallScale);
             y += 14f * scale;
+            y = RenderPunishmentReasons(sprites, snapshot, canvas, margin, y, bodyScale, smallScale);
 
             var showAll = IsPage("All") || IsPage("Auto") && canvas.X >= 900f;
             var showOverview = IsPage("Overview") || IsPage("Auto");
@@ -396,6 +400,31 @@ namespace ShipCoreFramework
             }
 
             return y + pillH;
+        }
+
+        private static void AddPunishmentReasons(CoreLcdSnapshot snapshot, string category, List<string> reasons)
+        {
+            for (var i = 0; i < reasons.Count; i++)
+                snapshot.PunishmentReasons.Add(category + ": " + reasons[i]);
+        }
+
+        private float RenderPunishmentReasons(List<MySprite> sprites, CoreLcdSnapshot snapshot, Vector2 canvas,
+            float margin, float y, float bodyScale, float smallScale)
+        {
+            if (snapshot.PunishmentReasons.Count == 0) return y;
+
+            AddSectionTitle(sprites, "Punishment Reasons", y, margin, bodyScale);
+            y += 34f * _fontScale;
+
+            var maxWidth = canvas.X - margin * 2f - 12f * _fontScale;
+            for (var i = 0; i < snapshot.PunishmentReasons.Count; i++)
+            {
+                var text = WrapToWidth("- " + snapshot.PunishmentReasons[i], maxWidth, smallScale);
+                AddText(sprites, text, new Vector2(margin + 6f * _fontScale, y), Palette.Amber, smallScale);
+                y += TextUtils.GetTextHeight(text, smallScale) + 5f * _fontScale;
+            }
+
+            return y + 9f * _fontScale;
         }
 
         private float RenderLimits(List<MySprite> sprites, CoreLcdSnapshot snapshot, Vector2 canvas, float margin, float y,
@@ -1104,6 +1133,36 @@ namespace ShipCoreFramework
             return text.Substring(0, maxChars) + suffix;
         }
 
+        private static string WrapToWidth(string text, float maxWidth, float scale)
+        {
+            var maxChars = Math.Max(1, (int)(maxWidth / (TextUtils.CharWidth * scale)));
+            if (string.IsNullOrEmpty(text) || text.Length <= maxChars) return text ?? string.Empty;
+
+            var words = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            var lines = new List<string>();
+            var line = string.Empty;
+            for (var i = 0; i < words.Length; i++)
+            {
+                if (line.Length == 0)
+                {
+                    line = words[i];
+                    continue;
+                }
+
+                if (line.Length + 1 + words[i].Length <= maxChars)
+                {
+                    line += " " + words[i];
+                    continue;
+                }
+
+                lines.Add(line);
+                line = "  " + words[i];
+            }
+
+            if (line.Length > 0) lines.Add(line);
+            return string.Join("\n", lines);
+        }
+
         private void DrawMessage(string title, string body)
         {
             var frame = Surface.DrawFrame();
@@ -1249,6 +1308,7 @@ namespace ShipCoreFramework
             internal int PanelCount;
             internal readonly List<MetricRow> Metrics = new List<MetricRow>();
             internal readonly List<FlagRow> Flags = new List<FlagRow>();
+            internal readonly List<string> PunishmentReasons = new List<string>();
             internal readonly List<LimitRow> Limits = new List<LimitRow>();
             internal readonly List<ModifierRow> Modifiers = new List<ModifierRow>();
         }
