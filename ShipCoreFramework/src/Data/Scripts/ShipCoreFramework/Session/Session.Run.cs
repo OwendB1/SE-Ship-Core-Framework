@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.Components;
@@ -17,7 +16,6 @@ namespace ShipCoreFramework
             if (Config.SelectedNoCore == null) return;
             MyAPIGateway.GridGroups.OnGridGroupCreated += GridGroupsOnOnGridGroupCreated;
             MyAPIGateway.GridGroups.OnGridGroupDestroyed += GridGroupsOnOnGridGroupDestroyed;
-            MyCubeGrid.OnBlocksChangeFinishedGlobally += MyCubeGridOnBlocksChangeFinishedGlobally;
             
             var initialGroups = new List<IMyGridGroupData>();
             MyAPIGateway.GridGroups.GetGridGroups(GridLinkTypeEnum.Mechanical, initialGroups);
@@ -75,7 +73,6 @@ namespace ShipCoreFramework
             {
                 MyAPIGateway.GridGroups.OnGridGroupCreated -= GridGroupsOnOnGridGroupCreated;
                 MyAPIGateway.GridGroups.OnGridGroupDestroyed -= GridGroupsOnOnGridGroupDestroyed;
-                MyCubeGrid.OnBlocksChangeFinishedGlobally -= MyCubeGridOnBlocksChangeFinishedGlobally;
             }
             catch { /**/ }
 
