@@ -34,7 +34,7 @@ namespace ShipCoreFramework
         internal bool SentFromServer;
 
         internal PacketBase() { } // Empty constructor required for deserialization
-        internal virtual PacketDirection Direction { get { return PacketDirection.Unknown; } }
+        internal virtual PacketDirection Direction => PacketDirection.Unknown;
         internal virtual void Received() { }
 
         internal bool CanReceive()
