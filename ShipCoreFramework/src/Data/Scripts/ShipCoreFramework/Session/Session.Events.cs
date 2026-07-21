@@ -55,7 +55,7 @@ namespace ShipCoreFramework
 
         private static void MyCubeGridOnBlocksChangeFinishedGlobally(MyCubeGrid removedFrom, MyCubeGrid addedTo)
         {
-            if (IsShuttingDown) return;
+            if (IsShuttingDown || removedFrom == null || addedTo == null) return;
 
             // Split grids enter the scene after this event. Defer until both mechanical groups exist.
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
