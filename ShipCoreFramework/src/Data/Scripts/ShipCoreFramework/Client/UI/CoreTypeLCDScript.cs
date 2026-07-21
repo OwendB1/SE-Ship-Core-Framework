@@ -207,7 +207,7 @@ namespace ShipCoreFramework
                 var fail = group.GroupBlocksCount < core.MinBlocks;
                 var ratio = core.MinBlocks > 0 ? group.GroupBlocksCount / (double)core.MinBlocks : 0d;
                 snapshot.Metrics.Add(new MetricRow("Min Blocks", FormatInt(group.GroupBlocksCount), core.MinBlocks,
-                    ratio, fail));
+                    ratio, fail, true));
             }
 
             if (core.MaxMass > 1)
@@ -365,7 +365,7 @@ namespace ShipCoreFramework
                 if (metric.Max > 0d)
                 {
                     AddProgress(sprites, x + 11f * _fontScale, cardY + 61f * _fontScale, cardW - 22f * _fontScale,
-                        6f * _fontScale, metric.Ratio, metric.Failing);
+                        6f * _fontScale, metric.Ratio, metric.Failing, metric.MinimumTarget);
                 }
             }
 
@@ -1079,13 +1079,16 @@ namespace ShipCoreFramework
             AddText(sprites, text, new Vector2(position.X + 9f * _fontScale, position.Y + 6f * _fontScale), color, textScale);
         }
 
-        private void AddProgress(List<MySprite> sprites, float x, float y, float w, float h, double ratio, bool failing)
+        private void AddProgress(List<MySprite> sprites, float x, float y, float w, float h, double ratio, bool failing,
+            bool minimumTarget = false)
         {
             AddRect(sprites, x, y, w, h, Palette.BarBack);
             var clamped = Math.Max(0d, Math.Min(1d, ratio));
-            var color = failing ? Palette.Red : ratio >= 0.85d ? Palette.Amber : Palette.Green;
+            var color = minimumTarget
+                ? failing ? Palette.Amber : Palette.Green
+                : failing ? Palette.Red : ratio >= 0.85d ? Palette.Amber : Palette.Green;
             AddRect(sprites, x, y, (float)(w * clamped), h, color);
-            if (ratio > 1d)
+            if (!minimumTarget && ratio > 1d)
                 AddRect(sprites, x + w - 3f * _fontScale, y - 2f * _fontScale, 3f * _fontScale, h + 4f * _fontScale,
                     Palette.Red);
         }
@@ -1257,14 +1260,17 @@ namespace ShipCoreFramework
             internal readonly double Max;
             internal readonly double Ratio;
             internal readonly bool Failing;
+            internal readonly bool MinimumTarget;
 
-            internal MetricRow(string name, string value, double max, double ratio, bool failing)
+            internal MetricRow(string name, string value, double max, double ratio, bool failing,
+                bool minimumTarget = false)
             {
                 Name = name;
                 Value = value;
                 Max = max;
                 Ratio = ratio;
                 Failing = failing;
+                MinimumTarget = minimumTarget;
             }
         }
 
