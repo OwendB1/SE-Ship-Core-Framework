@@ -6,99 +6,43 @@ using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRage.Utils;
 
-// ReSharper disable InconsistentNaming
-// ReSharper disable MemberCanBePrivate.Global
-
 namespace ShipCoreFramework
 {
     /// <summary>
-    /// Ship Core Framework API client wrapper for other mods.
-    ///
-    /// Usage pattern:
-    /// - Call Register() in LoadData (or before first use).
-    /// - Call Unregister() in UnloadData.
-    ///
-    /// This wrapper:
-    /// - Receives the API payload broadcast by ShipCoreFramework.
-    /// - Validates API compatibility by major version.
-    /// - Exposes strongly-typed helper methods that internally call the method factory.
-    /// - Subscribes to framework events (byte[] payloads) and deserializes them.
+    /// Shared API v4 consumer implementation. Use ShipCoreFrameworkClientApi on remote clients and
+    /// ShipCoreFrameworkServerApi on server processes.
     /// </summary>
-    public class ShipCoreFrameworkClient
+    public abstract class ShipCoreFrameworkApiBase
     {
-        /// <summary>
-        /// True if the API payload has been received and the provider major version is compatible.
-        /// </summary>
-        public bool IsReady { get; private set; }
-
-        /// <summary>
-        /// The provider version received from the framework (ApiConstants.API_VERSION on the provider).
-        /// </summary>
-        public int ProviderApiVersion { get; private set; }
-
+        private readonly long _apiId;
+        private readonly ApiProviderRoleData _expectedRole;
         private Func<int, Func<object, object>> _factory;
 
-        // ===== Events (consumer-facing) =====
+        public bool ProviderReady { get; private set; }
+        public bool ConfigReady { get; private set; }
+        public bool RuntimeSnapshotReady { get; private set; }
+        public int ProviderApiVersion { get; private set; }
+        public ApiProviderRoleData ProviderRole { get; private set; }
+        public ApiCapabilityData Capabilities { get; private set; }
 
-        /// <summary>
-        /// Fired when a core becomes active for a grid group.
-        /// </summary>
+        [Obsolete("Use ProviderReady, ConfigReady, and RuntimeSnapshotReady explicitly.")]
+        public bool IsReady
+        {
+            get { return ProviderReady; }
+        }
+
         public event Action<CoreActivatedEventArgs> CoreActivated;
-
-        /// <summary>
-        /// Fired when a group loses its active core.
-        /// </summary>
         public event Action<CoreDeactivatedEventArgs> CoreDeactivated;
-
-        /// <summary>
-        /// Fired when block limits are recalculated.
-        /// </summary>
         public event Action<LimitsRecalculatedEventArgs> LimitsRecalculated;
-
-        /// <summary>
-        /// Fired when enforcement runs and blocks are punished.
-        /// </summary>
         public event Action<LimitsEnforcedEventArgs> LimitsEnforced;
-
-        /// <summary>
-        /// Fired when boost becomes active.
-        /// </summary>
         public event Action<BoostEventArgs> BoostActivated;
-
-        /// <summary>
-        /// Fired when boost ends.
-        /// </summary>
         public event Action<BoostEventArgs> BoostDeactivated;
-
-        /// <summary>
-        /// Fired when active defense becomes active.
-        /// </summary>
         public event Action<ActiveDefenseEventArgs> ActiveDefenseActivated;
-
-        /// <summary>
-        /// Fired when active defense ends.
-        /// </summary>
         public event Action<ActiveDefenseEventArgs> ActiveDefenseDeactivated;
-
-        /// <summary>
-        /// Fired when a grid is added to a logical group.
-        /// </summary>
         public event Action<GridGroupEventArgs> GridAddedToGroup;
-
-        /// <summary>
-        /// Fired when a grid is removed from a logical group.
-        /// </summary>
         public event Action<GridGroupEventArgs> GridRemovedFromGroup;
-
-        /// <summary>
-        /// Fired when synced config is received from server and applied locally.
-        /// </summary>
         public event Action<ConfigReceivedEventArgs> ConfigReceived;
-
-        // ===== Optional resolved events (convenience) =====
-        //
-        // These provide best-effort resolution of the involved grid(s) and logical group.
-        // Resolution can fail (e.g. entity not streamed in on the client), so parameters may be null.
+        public event Action<RuntimeSnapshotReadyEventArgs> RuntimeReady;
 
         public event Action<CoreActivatedEventArgs, IMyCubeGrid, IMyGridGroupData> CoreActivatedResolved;
         public event Action<CoreDeactivatedEventArgs, IMyCubeGrid, IMyGridGroupData> CoreDeactivatedResolved;
@@ -106,767 +50,1074 @@ namespace ShipCoreFramework
         public event Action<LimitsEnforcedEventArgs, IMyCubeGrid, IMyGridGroupData> LimitsEnforcedResolved;
         public event Action<BoostEventArgs, IMyCubeGrid, IMyGridGroupData> BoostActivatedResolved;
         public event Action<BoostEventArgs, IMyCubeGrid, IMyGridGroupData> BoostDeactivatedResolved;
-        public event Action<ActiveDefenseEventArgs, IMyCubeGrid, IMyGridGroupData> ActiveDefenseActivatedResolved;
-        public event Action<ActiveDefenseEventArgs, IMyCubeGrid, IMyGridGroupData> ActiveDefenseDeactivatedResolved;
-        public event Action<GridGroupEventArgs, IMyCubeGrid, IMyCubeGrid, IMyGridGroupData> GridAddedToGroupResolved;
-        public event Action<GridGroupEventArgs, IMyCubeGrid, IMyCubeGrid, IMyGridGroupData> GridRemovedFromGroupResolved;
+        public event Action<ActiveDefenseEventArgs, IMyCubeGrid, IMyGridGroupData>
+            ActiveDefenseActivatedResolved;
+        public event Action<ActiveDefenseEventArgs, IMyCubeGrid, IMyGridGroupData>
+            ActiveDefenseDeactivatedResolved;
+        public event Action<GridGroupEventArgs, IMyCubeGrid, IMyCubeGrid, IMyGridGroupData>
+            GridAddedToGroupResolved;
+        public event Action<GridGroupEventArgs, IMyCubeGrid, IMyCubeGrid, IMyGridGroupData>
+            GridRemovedFromGroupResolved;
 
-        // ===== Registration =====
+        protected ShipCoreFrameworkApiBase(long apiId, ApiProviderRoleData expectedRole)
+        {
+            _apiId = apiId;
+            _expectedRole = expectedRole;
+        }
 
-        /// <summary>
-        /// Registers message handlers to receive the API payload and all framework events.
-        /// Call this once during LoadData.
-        /// </summary>
         public void Register()
         {
-            MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.API_ID, OnApiPayloadReceived);
-
-            // Event payloads are byte[] (serialized via SerializeToBinary on provider).
+            MyAPIGateway.Utilities.RegisterMessageHandler(_apiId, OnApiPayloadReceived);
             MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_CORE_ACTIVATED, OnCoreActivated);
             MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_CORE_DEACTIVATED, OnCoreDeactivated);
-            MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_LIMITS_RECALCULATED, OnLimitsRecalculated);
+            MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_LIMITS_RECALCULATED,
+                OnLimitsRecalculated);
             MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_LIMITS_ENFORCED, OnLimitsEnforced);
             MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_BOOST_ACTIVATED, OnBoostActivated);
-            MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_BOOST_DEACTIVATED, OnBoostDeactivated);
-            MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_ACTIVE_DEFENSE_ACTIVATED, OnActiveDefenseActivated);
-            MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_ACTIVE_DEFENSE_DEACTIVATED, OnActiveDefenseDeactivated);
-            MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_GRID_ADDED_TO_GROUP, OnGridAddedToGroup);
-            MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_GRID_REMOVED_FROM_GROUP, OnGridRemovedFromGroup);
+            MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_BOOST_DEACTIVATED,
+                OnBoostDeactivated);
+            MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_ACTIVE_DEFENSE_ACTIVATED,
+                OnActiveDefenseActivated);
+            MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_ACTIVE_DEFENSE_DEACTIVATED,
+                OnActiveDefenseDeactivated);
+            MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_GRID_ADDED_TO_GROUP,
+                OnGridAddedToGroup);
+            MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_GRID_REMOVED_FROM_GROUP,
+                OnGridRemovedFromGroup);
             MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_CONFIG_RECEIVED, OnConfigReceived);
+            MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.EVENT_RUNTIME_SNAPSHOT_READY,
+                OnRuntimeReady);
         }
 
-        /// <summary>
-        /// Unregisters message handlers.
-        /// Call this once during UnloadData.
-        /// </summary>
         public void Unregister()
         {
-            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.API_ID, OnApiPayloadReceived);
-
+            MyAPIGateway.Utilities.UnregisterMessageHandler(_apiId, OnApiPayloadReceived);
             MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_CORE_ACTIVATED, OnCoreActivated);
-            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_CORE_DEACTIVATED, OnCoreDeactivated);
-            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_LIMITS_RECALCULATED, OnLimitsRecalculated);
-            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_LIMITS_ENFORCED, OnLimitsEnforced);
-            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_BOOST_ACTIVATED, OnBoostActivated);
-            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_BOOST_DEACTIVATED, OnBoostDeactivated);
-            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_ACTIVE_DEFENSE_ACTIVATED, OnActiveDefenseActivated);
-            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_ACTIVE_DEFENSE_DEACTIVATED, OnActiveDefenseDeactivated);
-            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_GRID_ADDED_TO_GROUP, OnGridAddedToGroup);
-            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_GRID_REMOVED_FROM_GROUP, OnGridRemovedFromGroup);
-            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_CONFIG_RECEIVED, OnConfigReceived);
-
-            IsReady = false;
-            ProviderApiVersion = 0;
-            _factory = null;
+            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_CORE_DEACTIVATED,
+                OnCoreDeactivated);
+            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_LIMITS_RECALCULATED,
+                OnLimitsRecalculated);
+            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_LIMITS_ENFORCED,
+                OnLimitsEnforced);
+            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_BOOST_ACTIVATED,
+                OnBoostActivated);
+            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_BOOST_DEACTIVATED,
+                OnBoostDeactivated);
+            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_ACTIVE_DEFENSE_ACTIVATED,
+                OnActiveDefenseActivated);
+            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_ACTIVE_DEFENSE_DEACTIVATED,
+                OnActiveDefenseDeactivated);
+            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_GRID_ADDED_TO_GROUP,
+                OnGridAddedToGroup);
+            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_GRID_REMOVED_FROM_GROUP,
+                OnGridRemovedFromGroup);
+            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_CONFIG_RECEIVED,
+                OnConfigReceived);
+            MyAPIGateway.Utilities.UnregisterMessageHandler(ApiConstants.EVENT_RUNTIME_SNAPSHOT_READY,
+                OnRuntimeReady);
+            Reset();
         }
 
-        // ===== API payload =====
-
-        /// <summary>
-        /// Receives the API payload from the framework.
-        /// Payload format: MyTuple&lt;int, Func&lt;int, Func&lt;object, object&gt;&gt;&gt;
-        /// Item1: provider ApiConstants.API_VERSION
-        /// Item2: method factory (methodId -> delegate)
-        /// </summary>
-        private void OnApiPayloadReceived(object obj)
+        public ApiReadResult<ApiReadinessData> RefreshReadiness()
         {
-            try
+            ApiReadResult<ApiReadinessData> result =
+                InvokeBinary<ApiReadinessData>(ApiMethodId.GetReadiness_Binary, null);
+            if (result.Success && result.Value != null)
             {
-                var payload = (MyTuple<int, Func<int, Func<object, object>>>)obj;
-
-                ProviderApiVersion = payload.Item1;
-
-                if (!ApiConstants.IsApiCompatible(ProviderApiVersion))
-                {
-                    IsReady = false;
-                    _factory = null;
-
-                    MyLog.Default.WriteLine(
-                        $"[SCF] API major version mismatch. Provider={ApiConstants.FormatApiVersion(ProviderApiVersion)}, Consumer={ApiConstants.FormatApiVersion(ApiConstants.API_VERSION)}"
-                    );
-                    return;
-                }
-
-                _factory = payload.Item2;
-                IsReady = _factory != null;
-
-                if (ProviderApiVersion == ApiConstants.API_VERSION)
-                {
-                    MyLog.Default.WriteLine($"[SCF] API connected. Version={ApiConstants.FormatApiVersion(ProviderApiVersion)}");
-                }
-                else
-                {
-                    MyLog.Default.WriteLine(
-                        $"[SCF] API connected with compatible minor version difference. Provider={ApiConstants.FormatApiVersion(ProviderApiVersion)}, Consumer={ApiConstants.FormatApiVersion(ApiConstants.API_VERSION)}"
-                    );
-                }
+                ProviderRole = result.Value.Role;
+                ConfigReady = result.Value.ConfigReady;
+                RuntimeSnapshotReady = result.Value.RuntimeSnapshotReady;
             }
-            catch (Exception e)
-            {
-                IsReady = false;
-                ProviderApiVersion = 0;
-                _factory = null;
-                MyLog.Default.WriteLine($"[SCF] Failed to read API payload: {e}");
-            }
+            return result;
         }
 
-        // ===== Resolution helpers =====
-
-        public static IMyCubeGrid ResolveGrid(long cubeGridEntityId)
+        public ApiReadResult<bool> TryGetRuntimeStateAvailability(long gridId)
         {
-            if (cubeGridEntityId == 0) return null;
-            IMyEntity ent;
-            if (!MyAPIGateway.Entities.TryGetEntityById(cubeGridEntityId, out ent)) return null;
-            return ent as IMyCubeGrid;
+            return InvokePrimitive<bool>(ApiMethodId.GetRuntimeStateAvailability, gridId);
         }
 
-        public static IMyGridGroupData ResolveLogicalGroup(IMyCubeGrid anyGridInGroup)
+        public ApiReadResult<bool> TryGetRuntimeStateAvailability(IMyCubeGrid grid)
         {
-            if (anyGridInGroup == null) return null;
-            return MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Mechanical, anyGridInGroup);
+            return TryGetRuntimeStateAvailability(GetEntityId(grid));
         }
 
-        private static long GetEntityId(IMyCubeGrid grid) => grid?.EntityId ?? 0L;
+        public ApiReadResult<ShipCoreData> TryGetGridCore(IMyCubeGrid grid)
+        {
+            return TryGetGridCore(GetEntityId(grid));
+        }
 
-        // ===== Public API helpers (strongly typed) =====
+        public ApiReadResult<ShipCoreData> TryGetGridCore(long gridId)
+        {
+            return InvokeBinary<ShipCoreData>(ApiMethodId.GetGridCore_Binary, gridId);
+        }
 
-        /// <summary>
-        /// Gets the active ShipCore configuration for a grid (deserialized DTO).
-        /// </summary>
+        public ApiReadResult<ShipCoreData> TryGetCoreBySubtypeId(string subtypeId)
+        {
+            return InvokeBinary<ShipCoreData>(ApiMethodId.GetCoreBySubtypeId_Binary, subtypeId);
+        }
+
+        public ApiReadResult<List<ShipCoreData>> TryGetAllCoreConfigs()
+        {
+            return InvokeBinary<List<ShipCoreData>>(ApiMethodId.GetAllCoreConfigs_Binary, null);
+        }
+
+        public ApiReadResult<Dictionary<string, LimitStatusData>> TryGetBlockLimitsStatus(IMyCubeGrid grid)
+        {
+            return TryGetBlockLimitsStatus(GetEntityId(grid));
+        }
+
+        public ApiReadResult<Dictionary<string, LimitStatusData>> TryGetBlockLimitsStatus(long gridId)
+        {
+            return InvokeBinary<Dictionary<string, LimitStatusData>>(
+                ApiMethodId.GetBlockLimitsStatus_Binary, gridId);
+        }
+
+        public ApiReadResult<bool> TryIsBlockAllowed(IMyCubeGrid grid, string typeId, string subtypeId,
+            int count)
+        {
+            return TryIsBlockAllowed(GetEntityId(grid), typeId, subtypeId, count);
+        }
+
+        public ApiReadResult<bool> TryIsBlockAllowed(long gridId, string typeId, string subtypeId, int count)
+        {
+            return InvokePrimitive<bool>(ApiMethodId.IsBlockAllowed,
+                MyTuple.Create(gridId, typeId, subtypeId, count));
+        }
+
+        public ApiReadResult<GridModifiersData> TryGetGridModifiers(IMyCubeGrid grid)
+        {
+            return TryGetGridModifiers(GetEntityId(grid));
+        }
+
+        public ApiReadResult<GridModifiersData> TryGetGridModifiers(long gridId)
+        {
+            return InvokeBinary<GridModifiersData>(ApiMethodId.GetGridModifiers_Binary, gridId);
+        }
+
+        public ApiReadResult<float> TryGetMaxSpeed(IMyCubeGrid grid)
+        {
+            return TryGetMaxSpeed(GetEntityId(grid));
+        }
+
+        public ApiReadResult<float> TryGetMaxSpeed(long gridId)
+        {
+            return InvokePrimitive<float>(ApiMethodId.GetMaxSpeed, gridId);
+        }
+
+        public ApiReadResult<bool> TryIsBoostActive(IMyCubeGrid grid)
+        {
+            return TryIsBoostActive(GetEntityId(grid));
+        }
+
+        public ApiReadResult<bool> TryIsBoostActive(long gridId)
+        {
+            return InvokePrimitive<bool>(ApiMethodId.IsBoostActive, gridId);
+        }
+
+        public ApiReadResult<ShipCoreData> TryGetNoCoreConfig()
+        {
+            return InvokeBinary<ShipCoreData>(ApiMethodId.GetNoCoreConfig_Binary, null);
+        }
+
+        public ApiReadResult<ModConfigData> TryGetFullConfig()
+        {
+            return InvokeBinary<ModConfigData>(ApiMethodId.GetFullConfig_Binary, null);
+        }
+
+        public ApiReadResult<SpeedModifiersData> TryGetSpeedModifiers(IMyCubeGrid grid)
+        {
+            return TryGetSpeedModifiers(GetEntityId(grid));
+        }
+
+        public ApiReadResult<SpeedModifiersData> TryGetSpeedModifiers(long gridId)
+        {
+            return InvokeBinary<SpeedModifiersData>(ApiMethodId.GetSpeedModifiers_Binary, gridId);
+        }
+
+        public ApiReadResult<float> TryGetBoostResistance(long gridId)
+        {
+            return InvokePrimitive<float>(ApiMethodId.GetBoostResistance, gridId);
+        }
+
+        public ApiReadResult<float> TryGetBoostResistance(IMyCubeGrid grid)
+        {
+            return TryGetBoostResistance(GetEntityId(grid));
+        }
+
+        public ApiReadResult<float> TryGetBaseMaxSpeed(long gridId)
+        {
+            return InvokePrimitive<float>(ApiMethodId.GetBaseMaxSpeed, gridId);
+        }
+
+        public ApiReadResult<float> TryGetBaseMaxSpeed(IMyCubeGrid grid)
+        {
+            return TryGetBaseMaxSpeed(GetEntityId(grid));
+        }
+
+        public ApiReadResult<float> TryGetMaxBoostMultiplier(long gridId)
+        {
+            return InvokePrimitive<float>(ApiMethodId.GetMaxBoostMultiplier, gridId);
+        }
+
+        public ApiReadResult<float> TryGetMaxBoostMultiplier(IMyCubeGrid grid)
+        {
+            return TryGetMaxBoostMultiplier(GetEntityId(grid));
+        }
+
+        public ApiReadResult<float> TryGetBoostDuration(long gridId)
+        {
+            return InvokePrimitive<float>(ApiMethodId.GetBoostDuration, gridId);
+        }
+
+        public ApiReadResult<float> TryGetBoostDuration(IMyCubeGrid grid)
+        {
+            return TryGetBoostDuration(GetEntityId(grid));
+        }
+
+        public ApiReadResult<float> TryGetBoostCooldown(long gridId)
+        {
+            return InvokePrimitive<float>(ApiMethodId.GetBoostCooldown, gridId);
+        }
+
+        public ApiReadResult<float> TryGetBoostCooldown(IMyCubeGrid grid)
+        {
+            return TryGetBoostCooldown(GetEntityId(grid));
+        }
+
+        public ApiReadResult<bool> TryGetFrictionEnabledForGroup(long gridId)
+        {
+            return InvokePrimitive<bool>(ApiMethodId.GetFrictionEnabledForGroup, gridId);
+        }
+
+        public ApiReadResult<bool> TryGetFrictionEnabledForGroup(IMyCubeGrid grid)
+        {
+            return TryGetFrictionEnabledForGroup(GetEntityId(grid));
+        }
+
+        public ApiReadResult<float> TryGetFrictionMaximumDecelerationForGroup(long gridId)
+        {
+            return InvokePrimitive<float>(ApiMethodId.GetFrictionMaximumDecelerationForGroup, gridId);
+        }
+
+        public ApiReadResult<float> TryGetFrictionMaximumDecelerationForGroup(IMyCubeGrid grid)
+        {
+            return TryGetFrictionMaximumDecelerationForGroup(GetEntityId(grid));
+        }
+
+        public ApiReadResult<int> TryGetFrictionSpeedValueMode()
+        {
+            return InvokePrimitive<int>(ApiMethodId.GetFrictionSpeedValueMode, null);
+        }
+
+        public ApiReadResult<float> TryGetFrictionMinimumSpeedAbsoluteForGroup(long gridId)
+        {
+            return InvokePrimitive<float>(ApiMethodId.GetFrictionMinimumSpeedAbsoluteForGroup, gridId);
+        }
+
+        public ApiReadResult<float> TryGetFrictionMinimumSpeedAbsoluteForGroup(IMyCubeGrid grid)
+        {
+            return TryGetFrictionMinimumSpeedAbsoluteForGroup(GetEntityId(grid));
+        }
+
+        public ApiReadResult<float> TryGetFrictionMaximumSpeedAbsoluteForGroup(long gridId)
+        {
+            return InvokePrimitive<float>(ApiMethodId.GetFrictionMaximumSpeedAbsoluteForGroup, gridId);
+        }
+
+        public ApiReadResult<float> TryGetFrictionMaximumSpeedAbsoluteForGroup(IMyCubeGrid grid)
+        {
+            return TryGetFrictionMaximumSpeedAbsoluteForGroup(GetEntityId(grid));
+        }
+
+        public ApiReadResult<float> TryGetFrictionMinimumSpeedModifierForGroup(long gridId)
+        {
+            return InvokePrimitive<float>(ApiMethodId.GetFrictionMinimumSpeedModifierForGroup, gridId);
+        }
+
+        public ApiReadResult<float> TryGetFrictionMinimumSpeedModifierForGroup(IMyCubeGrid grid)
+        {
+            return TryGetFrictionMinimumSpeedModifierForGroup(GetEntityId(grid));
+        }
+
+        public ApiReadResult<float> TryGetFrictionMaximumSpeedModifierForGroup(long gridId)
+        {
+            return InvokePrimitive<float>(ApiMethodId.GetFrictionMaximumSpeedModifierForGroup, gridId);
+        }
+
+        public ApiReadResult<float> TryGetFrictionMaximumSpeedModifierForGroup(IMyCubeGrid grid)
+        {
+            return TryGetFrictionMaximumSpeedModifierForGroup(GetEntityId(grid));
+        }
+
+        public ApiReadResult<bool> TryIsGroupDeactivated(long gridId)
+        {
+            return InvokePrimitive<bool>(ApiMethodId.IsGroupDeactivated, gridId);
+        }
+
+        public ApiReadResult<bool> TryIsGroupDeactivated(IMyCubeGrid grid)
+        {
+            return TryIsGroupDeactivated(GetEntityId(grid));
+        }
+
+        [Obsolete("Use TryGetGridCore and inspect ApiReadStatusData.")]
+        public ShipCoreData GetGridCore(long gridId)
+        {
+            return LegacyValue(TryGetGridCore(gridId), null);
+        }
+
+        [Obsolete("Use TryGetGridCore and inspect ApiReadStatusData.")]
         public ShipCoreData GetGridCore(IMyCubeGrid grid)
         {
             return GetGridCore(GetEntityId(grid));
         }
 
-        /// <summary>
-        /// Gets the active ShipCore configuration for a grid (deserialized DTO) by entityId.
-        /// </summary>
-        public ShipCoreData GetGridCore(long cubeGridEntityId)
-        {
-            var bytes = (byte[])Invoke(ApiMethodId.GetGridCore_Binary, cubeGridEntityId);
-            return bytes == null ? null : MyAPIGateway.Utilities.SerializeFromBinary<ShipCoreData>(bytes);
-        }
-
-        /// <summary>
-        /// Gets a specific ShipCore configuration by its subtypeId (deserialized DTO).
-        /// </summary>
+        [Obsolete("Use TryGetCoreBySubtypeId and inspect ApiReadStatusData.")]
         public ShipCoreData GetCoreBySubtypeId(string subtypeId)
         {
-            var bytes = (byte[])Invoke(ApiMethodId.GetCoreBySubtypeId_Binary, subtypeId);
-            return bytes == null ? null : MyAPIGateway.Utilities.SerializeFromBinary<ShipCoreData>(bytes);
+            return LegacyValue(TryGetCoreBySubtypeId(subtypeId), null);
         }
 
-        /// <summary>
-        /// Gets all available core configs (deserialized DTO list).
-        /// </summary>
+        [Obsolete("Use TryGetAllCoreConfigs and inspect ApiReadStatusData.")]
         public List<ShipCoreData> GetAllCoreConfigs()
         {
-            var bytes = (byte[])Invoke(ApiMethodId.GetAllCoreConfigs_Binary, null);
-            if (bytes == null) return new List<ShipCoreData>();
-
-            var list = MyAPIGateway.Utilities.SerializeFromBinary<List<ShipCoreData>>(bytes);
-            return list ?? new List<ShipCoreData>();
+            return LegacyValue(TryGetAllCoreConfigs(), new List<ShipCoreData>());
         }
 
-        /// <summary>
-        /// Gets block limit status (deserialized dictionary).
-        /// </summary>
+        [Obsolete("Use TryGetBlockLimitsStatus and inspect ApiReadStatusData.")]
+        public Dictionary<string, LimitStatusData> GetBlockLimitsStatus(long gridId)
+        {
+            return LegacyValue(TryGetBlockLimitsStatus(gridId),
+                new Dictionary<string, LimitStatusData>());
+        }
+
+        [Obsolete("Use TryGetBlockLimitsStatus and inspect ApiReadStatusData.")]
         public Dictionary<string, LimitStatusData> GetBlockLimitsStatus(IMyCubeGrid grid)
         {
             return GetBlockLimitsStatus(GetEntityId(grid));
         }
 
-        /// <summary>
-        /// Gets block limit status (deserialized dictionary) by entityId.
-        /// </summary>
-        public Dictionary<string, LimitStatusData> GetBlockLimitsStatus(long cubeGridEntityId)
+        [Obsolete("Use TryIsBlockAllowed and inspect ApiReadStatusData.")]
+        public bool IsBlockAllowed(long gridId, string typeId, string subtypeId, int count)
         {
-            var bytes = (byte[])Invoke(ApiMethodId.GetBlockLimitsStatus_Binary, cubeGridEntityId);
-            if (bytes == null) return new Dictionary<string, LimitStatusData>();
-
-            var dict = MyAPIGateway.Utilities.SerializeFromBinary<Dictionary<string, LimitStatusData>>(bytes);
-            return dict ?? new Dictionary<string, LimitStatusData>();
+            return LegacyValue(TryIsBlockAllowed(gridId, typeId, subtypeId, count), true);
         }
 
-        /// <summary>
-        /// Checks if adding blocks would violate limits.
-        /// </summary>
+        [Obsolete("Use TryIsBlockAllowed and inspect ApiReadStatusData.")]
         public bool IsBlockAllowed(IMyCubeGrid grid, string typeId, string subtypeId, int count)
         {
             return IsBlockAllowed(GetEntityId(grid), typeId, subtypeId, count);
         }
 
-        /// <summary>
-        /// Checks if adding blocks would violate limits by entityId.
-        /// </summary>
-        public bool IsBlockAllowed(long cubeGridEntityId, string typeId, string subtypeId, int count)
+        [Obsolete("Use TryGetGridModifiers and inspect ApiReadStatusData.")]
+        public GridModifiersData GetGridModifiers(long gridId)
         {
-            var args = MyTuple.Create(cubeGridEntityId, typeId, subtypeId, count);
-            var result = Invoke(ApiMethodId.IsBlockAllowed, args);
-            return result is bool && (bool)result;
+            return LegacyValue(TryGetGridModifiers(gridId), null);
         }
 
-        /// <summary>
-        /// Gets current grid modifiers (deserialized DTO).
-        /// </summary>
+        [Obsolete("Use TryGetGridModifiers and inspect ApiReadStatusData.")]
         public GridModifiersData GetGridModifiers(IMyCubeGrid grid)
         {
             return GetGridModifiers(GetEntityId(grid));
         }
 
-        /// <summary>
-        /// Gets current grid modifiers (deserialized DTO) by entityId.
-        /// </summary>
-        public GridModifiersData GetGridModifiers(long cubeGridEntityId)
+        [Obsolete("Use TryGetMaxSpeed and inspect ApiReadStatusData.")]
+        public float GetMaxSpeed(long gridId)
         {
-            var bytes = (byte[])Invoke(ApiMethodId.GetGridModifiers_Binary, cubeGridEntityId);
-            return bytes == null ? null : MyAPIGateway.Utilities.SerializeFromBinary<GridModifiersData>(bytes);
+            return LegacyValue(TryGetMaxSpeed(gridId), 100f);
         }
 
-        /// <summary>
-        /// Gets the maximum speed for a grid based on its core.
-        /// </summary>
+        [Obsolete("Use TryGetMaxSpeed and inspect ApiReadStatusData.")]
         public float GetMaxSpeed(IMyCubeGrid grid)
         {
             return GetMaxSpeed(GetEntityId(grid));
         }
 
-        /// <summary>
-        /// Gets the maximum speed for a grid based on its core by entityId.
-        /// </summary>
-        public float GetMaxSpeed(long cubeGridEntityId)
+        [Obsolete("Use TryIsBoostActive and inspect ApiReadStatusData.")]
+        public bool IsBoostActive(long gridId)
         {
-            var result = Invoke(ApiMethodId.GetMaxSpeed, cubeGridEntityId);
-            return result as float? ?? 0f;
+            return LegacyValue(TryIsBoostActive(gridId), false);
         }
 
-        /// <summary>
-        /// Checks if boost is active for a grid.
-        /// </summary>
+        [Obsolete("Use TryIsBoostActive and inspect ApiReadStatusData.")]
         public bool IsBoostActive(IMyCubeGrid grid)
         {
             return IsBoostActive(GetEntityId(grid));
         }
 
-        /// <summary>
-        /// Checks if boost is active for a grid by entityId.
-        /// </summary>
-        public bool IsBoostActive(long cubeGridEntityId)
-        {
-            var result = Invoke(ApiMethodId.IsBoostActive, cubeGridEntityId);
-            return result is bool && (bool)result;
-        }
-
-        /// <summary>
-        /// Gets the currently selected NoCore config (deserialized DTO).
-        /// </summary>
+        [Obsolete("Use TryGetNoCoreConfig and inspect ApiReadStatusData.")]
         public ShipCoreData GetNoCoreConfig()
         {
-            var bytes = (byte[])Invoke(ApiMethodId.GetNoCoreConfig_Binary, null);
-            return bytes == null ? null : MyAPIGateway.Utilities.SerializeFromBinary<ShipCoreData>(bytes);
+            return LegacyValue(TryGetNoCoreConfig(), null);
         }
 
-        /// <summary>
-        /// Gets a snapshot of the full effective framework configuration.
-        /// </summary>
+        [Obsolete("Use TryGetFullConfig and inspect ApiReadStatusData.")]
         public ModConfigData GetFullConfig()
         {
-            var bytes = (byte[])Invoke(ApiMethodId.GetFullConfig_Binary, null);
-            return bytes == null ? null : MyAPIGateway.Utilities.SerializeFromBinary<ModConfigData>(bytes);
+            return LegacyValue(TryGetFullConfig(), null);
         }
 
-        /// <summary>
-        /// Optional primitive getter: grid core subtypeId without DTO deserialization.
-        /// </summary>
+        [Obsolete("Use TryGetSpeedModifiers and inspect ApiReadStatusData.")]
+        public SpeedModifiersData GetSpeedModifiers(long gridId)
+        {
+            return LegacyValue(TryGetSpeedModifiers(gridId), null);
+        }
+
+        [Obsolete("Use TryGetSpeedModifiers and inspect ApiReadStatusData.")]
+        public SpeedModifiersData GetSpeedModifiers(IMyCubeGrid grid)
+        {
+            return GetSpeedModifiers(GetEntityId(grid));
+        }
+
+        [Obsolete("Use TryGetGridCore and inspect ApiReadStatusData.")]
         public string GetGridCoreSubtypeId(IMyCubeGrid grid)
         {
-            var result = Invoke(ApiMethodId.GetGridCore_SubtypeId, GetEntityId(grid));
-            return result as string ?? string.Empty;
+            ShipCoreData core = GetGridCore(grid);
+            return core == null ? string.Empty : core.SubtypeId ?? string.Empty;
         }
-        
-        /// <summary>
-        /// Gets SpeedModifiers for the grid's active core (deserialized DTO).
-        /// </summary>
-        public SpeedModifiersData GetSpeedModifiers(IMyCubeGrid grid) => GetSpeedModifiers(GetEntityId(grid));
 
-        public SpeedModifiersData GetSpeedModifiers(long cubeGridEntityId)
+        [Obsolete("Use TryGetBaseMaxSpeed and inspect ApiReadStatusData.")]
+        public float GetBaseMaxSpeed(long gridId)
         {
-            var bytes = (byte[])Invoke(ApiMethodId.GetSpeedModifiers_Binary, cubeGridEntityId);
-            return bytes == null ? null : MyAPIGateway.Utilities.SerializeFromBinary<SpeedModifiersData>(bytes);
+            return LegacyValue(TryGetBaseMaxSpeed(gridId), 100f);
         }
 
-        /// <summary>
-        /// Gets BoostResistance for the grid's active core.
-        /// </summary>
-        public float GetBoostResistance(IMyCubeGrid grid) => GetBoostResistance(GetEntityId(grid));
-
-        public float GetBoostResistance(long cubeGridEntityId)
+        [Obsolete("Use TryGetBoostResistance and inspect ApiReadStatusData.")]
+        public float GetBoostResistance(long gridId)
         {
-            var result = Invoke(ApiMethodId.GetBoostResistance, cubeGridEntityId);
-            return result as float? ?? 0f;
+            return LegacyValue(TryGetBoostResistance(gridId), 0f);
         }
 
-        /// <summary>
-        /// Gets base max speed in m/s (no boost applied).
-        /// </summary>
-        public float GetBaseMaxSpeed(IMyCubeGrid grid) => GetBaseMaxSpeed(GetEntityId(grid));
-
-        public float GetBaseMaxSpeed(long cubeGridEntityId)
+        [Obsolete("Use TryGetBoostResistance and inspect ApiReadStatusData.")]
+        public float GetBoostResistance(IMyCubeGrid grid)
         {
-            var result = Invoke(ApiMethodId.GetBaseMaxSpeed, cubeGridEntityId);
-            return result as float? ?? 0f;
+            return GetBoostResistance(GetEntityId(grid));
         }
 
-        /// <summary>
-        /// Gets max boost multiplier (core SpeedModifiers.MaxBoost).
-        /// </summary>
-        public float GetMaxBoostMultiplier(IMyCubeGrid grid) => GetMaxBoostMultiplier(GetEntityId(grid));
-
-        public float GetMaxBoostMultiplier(long cubeGridEntityId)
+        [Obsolete("Use TryGetBaseMaxSpeed and inspect ApiReadStatusData.")]
+        public float GetBaseMaxSpeed(IMyCubeGrid grid)
         {
-            var result = Invoke(ApiMethodId.GetMaxBoostMultiplier, cubeGridEntityId);
-            return result as float? ?? 0f;
+            return GetBaseMaxSpeed(GetEntityId(grid));
         }
 
-        /// <summary>
-        /// Gets boost duration in seconds.
-        /// </summary>
-        public float GetBoostDuration(IMyCubeGrid grid) => GetBoostDuration(GetEntityId(grid));
-
-        public float GetBoostDuration(long cubeGridEntityId)
+        [Obsolete("Use TryGetMaxBoostMultiplier and inspect ApiReadStatusData.")]
+        public float GetMaxBoostMultiplier(long gridId)
         {
-            var result = Invoke(ApiMethodId.GetBoostDuration, cubeGridEntityId);
-            return result as float? ?? 0f;
+            return LegacyValue(TryGetMaxBoostMultiplier(gridId), 0f);
         }
 
-        /// <summary>
-        /// Gets boost cooldown in seconds.
-        /// </summary>
-        public float GetBoostCooldown(IMyCubeGrid grid) => GetBoostCooldown(GetEntityId(grid));
-
-        public float GetBoostCooldown(long cubeGridEntityId)
+        [Obsolete("Use TryGetMaxBoostMultiplier and inspect ApiReadStatusData.")]
+        public float GetMaxBoostMultiplier(IMyCubeGrid grid)
         {
-            var result = Invoke(ApiMethodId.GetBoostCooldown, cubeGridEntityId);
-            return result as float? ?? 0f;
+            return GetMaxBoostMultiplier(GetEntityId(grid));
         }
 
-        /// <summary>
-        /// Enables/disables friction-based speed limiting for a logical grid group.
-        /// Friction cores are enabled by default; this is a runtime override.
-        /// </summary>
-        public bool SetFrictionEnabledForGroup(IMyCubeGrid grid, bool enabled) =>
-            SetFrictionEnabledForGroup(GetEntityId(grid), enabled);
-
-        public bool SetFrictionEnabledForGroup(long cubeGridEntityId, bool enabled)
+        [Obsolete("Use TryGetBoostDuration and inspect ApiReadStatusData.")]
+        public float GetBoostDuration(long gridId)
         {
-            var result = Invoke(ApiMethodId.SetFrictionEnabledForGroup, MyTuple.Create(cubeGridEntityId, enabled));
-            return result is bool && (bool)result;
+            return LegacyValue(TryGetBoostDuration(gridId), 0f);
         }
 
-        /// <summary>
-        /// Gets whether friction-based speed limiting is currently active for a logical grid group.
-        /// </summary>
-        public bool GetFrictionEnabledForGroup(IMyCubeGrid grid) => GetFrictionEnabledForGroup(GetEntityId(grid));
-
-        public bool GetFrictionEnabledForGroup(long cubeGridEntityId)
+        [Obsolete("Use TryGetBoostDuration and inspect ApiReadStatusData.")]
+        public float GetBoostDuration(IMyCubeGrid grid)
         {
-            var result = Invoke(ApiMethodId.GetFrictionEnabledForGroup, cubeGridEntityId);
-            return result is bool && (bool)result;
+            return GetBoostDuration(GetEntityId(grid));
         }
 
-        /// <summary>
-        /// Sets the maximum friction deceleration override (m/s^2) for a logical grid group.
-        /// </summary>
-        public bool SetFrictionMaximumDecelerationForGroup(IMyCubeGrid grid, float deceleration) =>
-            SetFrictionMaximumDecelerationForGroup(GetEntityId(grid), deceleration);
-
-        public bool SetFrictionMaximumDecelerationForGroup(long cubeGridEntityId, float deceleration)
+        [Obsolete("Use TryGetBoostCooldown and inspect ApiReadStatusData.")]
+        public float GetBoostCooldown(long gridId)
         {
-            var result = Invoke(ApiMethodId.SetFrictionMaximumDecelerationForGroup, MyTuple.Create(cubeGridEntityId, deceleration));
-            return result is bool && (bool)result;
+            return LegacyValue(TryGetBoostCooldown(gridId), 0f);
         }
 
-        /// <summary>
-        /// Clears the maximum friction deceleration override for a logical grid group.
-        /// </summary>
-        public bool ClearFrictionMaximumDecelerationForGroup(IMyCubeGrid grid) =>
-            ClearFrictionMaximumDecelerationForGroup(GetEntityId(grid));
-
-        public bool ClearFrictionMaximumDecelerationForGroup(long cubeGridEntityId)
+        [Obsolete("Use TryGetBoostCooldown and inspect ApiReadStatusData.")]
+        public float GetBoostCooldown(IMyCubeGrid grid)
         {
-            var result = Invoke(ApiMethodId.ClearFrictionMaximumDecelerationForGroup, cubeGridEntityId);
-            return result is bool && (bool)result;
+            return GetBoostCooldown(GetEntityId(grid));
         }
 
-        /// <summary>
-        /// Gets the maximum friction deceleration override (m/s^2) for a logical grid group, or -1 if none.
-        /// </summary>
-        public float GetFrictionMaximumDecelerationForGroup(IMyCubeGrid grid) =>
-            GetFrictionMaximumDecelerationForGroup(GetEntityId(grid));
-
-        public float GetFrictionMaximumDecelerationForGroup(long cubeGridEntityId)
+        [Obsolete("Use TryGetFrictionEnabledForGroup and inspect ApiReadStatusData.")]
+        public bool GetFrictionEnabledForGroup(long gridId)
         {
-            var result = Invoke(ApiMethodId.GetFrictionMaximumDecelerationForGroup, cubeGridEntityId);
-            return result as float? ?? -1f;
+            return LegacyValue(TryGetFrictionEnabledForGroup(gridId), false);
         }
 
-        /// <summary>
-        /// Gets the current world friction speed value mode (Modifier vs Absolute).
-        /// </summary>
+        [Obsolete("Use TryGetFrictionEnabledForGroup and inspect ApiReadStatusData.")]
+        public bool GetFrictionEnabledForGroup(IMyCubeGrid grid)
+        {
+            return GetFrictionEnabledForGroup(GetEntityId(grid));
+        }
+
+        [Obsolete("Use TryGetFrictionMaximumDecelerationForGroup and inspect ApiReadStatusData.")]
+        public float GetFrictionMaximumDecelerationForGroup(long gridId)
+        {
+            return LegacyValue(TryGetFrictionMaximumDecelerationForGroup(gridId), -1f);
+        }
+
+        [Obsolete("Use TryGetFrictionMaximumDecelerationForGroup and inspect ApiReadStatusData.")]
+        public float GetFrictionMaximumDecelerationForGroup(IMyCubeGrid grid)
+        {
+            return GetFrictionMaximumDecelerationForGroup(GetEntityId(grid));
+        }
+
+        [Obsolete("Use TryGetFrictionSpeedValueMode and inspect ApiReadStatusData.")]
         public FrictionSpeedValueModeData GetFrictionSpeedValueMode()
         {
-            var result = Invoke(ApiMethodId.GetFrictionSpeedValueMode, null);
-            if (result is int)
+            ApiReadResult<int> result = TryGetFrictionSpeedValueMode();
+            return result.Success
+                ? (FrictionSpeedValueModeData)result.Value
+                : FrictionSpeedValueModeData.Modifier;
+        }
+
+        [Obsolete("Use the ApiReadResult<float> overload and inspect ApiReadStatusData.")]
+        public bool TryGetFrictionMinimumSpeedAbsoluteForGroup(long gridId, out float speed,
+            out string error)
+        {
+            return LegacyTry(TryGetFrictionMinimumSpeedAbsoluteForGroup(gridId), out speed, out error);
+        }
+
+        [Obsolete("Use the ApiReadResult<float> overload and inspect ApiReadStatusData.")]
+        public bool TryGetFrictionMinimumSpeedAbsoluteForGroup(IMyCubeGrid grid, out float speed,
+            out string error)
+        {
+            return TryGetFrictionMinimumSpeedAbsoluteForGroup(GetEntityId(grid), out speed, out error);
+        }
+
+        [Obsolete("Use the ApiReadResult<float> overload and inspect ApiReadStatusData.")]
+        public bool TryGetFrictionMaximumSpeedAbsoluteForGroup(long gridId, out float speed,
+            out string error)
+        {
+            return LegacyTry(TryGetFrictionMaximumSpeedAbsoluteForGroup(gridId), out speed, out error);
+        }
+
+        [Obsolete("Use the ApiReadResult<float> overload and inspect ApiReadStatusData.")]
+        public bool TryGetFrictionMaximumSpeedAbsoluteForGroup(IMyCubeGrid grid, out float speed,
+            out string error)
+        {
+            return TryGetFrictionMaximumSpeedAbsoluteForGroup(GetEntityId(grid), out speed, out error);
+        }
+
+        [Obsolete("Use the ApiReadResult<float> overload and inspect ApiReadStatusData.")]
+        public bool TryGetFrictionMinimumSpeedModifierForGroup(long gridId, out float modifier,
+            out string error)
+        {
+            return LegacyTry(TryGetFrictionMinimumSpeedModifierForGroup(gridId), out modifier, out error);
+        }
+
+        [Obsolete("Use the ApiReadResult<float> overload and inspect ApiReadStatusData.")]
+        public bool TryGetFrictionMinimumSpeedModifierForGroup(IMyCubeGrid grid, out float modifier,
+            out string error)
+        {
+            return TryGetFrictionMinimumSpeedModifierForGroup(GetEntityId(grid), out modifier, out error);
+        }
+
+        [Obsolete("Use the ApiReadResult<float> overload and inspect ApiReadStatusData.")]
+        public bool TryGetFrictionMaximumSpeedModifierForGroup(long gridId, out float modifier,
+            out string error)
+        {
+            return LegacyTry(TryGetFrictionMaximumSpeedModifierForGroup(gridId), out modifier, out error);
+        }
+
+        [Obsolete("Use the ApiReadResult<float> overload and inspect ApiReadStatusData.")]
+        public bool TryGetFrictionMaximumSpeedModifierForGroup(IMyCubeGrid grid, out float modifier,
+            out string error)
+        {
+            return TryGetFrictionMaximumSpeedModifierForGroup(GetEntityId(grid), out modifier, out error);
+        }
+
+        [Obsolete("Use TryIsGroupDeactivated and inspect ApiReadStatusData.")]
+        public bool IsGroupDeactivated(long gridId)
+        {
+            return LegacyValue(TryIsGroupDeactivated(gridId), false);
+        }
+
+        [Obsolete("Use TryIsGroupDeactivated and inspect ApiReadStatusData.")]
+        public bool IsGroupDeactivated(IMyCubeGrid grid)
+        {
+            return IsGroupDeactivated(GetEntityId(grid));
+        }
+
+        protected ApiReadResult<bool> InvokeCommand(int methodId, object argument)
+        {
+            ApiReadStatusData status;
+            object value;
+            string error;
+            if (!TryInvoke(methodId, argument, out status, out value, out error))
+                return Result(status, false, error);
+            if (!(value is MyTuple<bool, string>))
+                return Result(ApiReadStatusData.Error, false, "Invalid command response.");
+            MyTuple<bool, string> command = (MyTuple<bool, string>)value;
+            return command.Item1
+                ? Result(ApiReadStatusData.Success, true, string.Empty)
+                : Result(ApiReadStatusData.Error, false, command.Item2);
+        }
+
+        private void OnApiPayloadReceived(object value)
+        {
+            try
             {
-                return (FrictionSpeedValueModeData)(int)result;
+                MyTuple<int, int, Func<int, Func<object, object>>> payload =
+                    (MyTuple<int, int, Func<int, Func<object, object>>>)value;
+                ProviderApiVersion = payload.Item1;
+                ProviderRole = (ApiProviderRoleData)payload.Item2;
+                if (!ApiConstants.IsApiCompatible(ProviderApiVersion) || ProviderRole != _expectedRole)
+                {
+                    Reset();
+                    return;
+                }
+
+                _factory = payload.Item3;
+                ProviderReady = _factory != null;
+                if (!ProviderReady) return;
+
+                ApiReadResult<int> capabilities = InvokePrimitive<int>(ApiMethodId.GetCapabilities, null);
+                if (capabilities.Success) Capabilities = (ApiCapabilityData)capabilities.Value;
+                RefreshReadiness();
             }
-            return FrictionSpeedValueModeData.Modifier;
-        }
-
-        public bool SetFrictionMinimumSpeedAbsoluteForGroup(IMyCubeGrid grid, float speedMetersPerSecond, out string error) =>
-            SetFrictionMinimumSpeedAbsoluteForGroup(GetEntityId(grid), speedMetersPerSecond, out error);
-
-        public bool SetFrictionMinimumSpeedAbsoluteForGroup(long cubeGridEntityId, float speedMetersPerSecond, out string error)
-        {
-            error = null;
-            var result = Invoke(ApiMethodId.SetFrictionMinimumSpeedAbsoluteForGroup, MyTuple.Create(cubeGridEntityId, speedMetersPerSecond));
-            if (result is MyTuple<bool, string>)
+            catch (Exception exception)
             {
-                var t = (MyTuple<bool, string>)result;
-                error = t.Item2;
-                return t.Item1;
+                MyLog.Default.WriteLine("[SCF] API v4 payload failed: " + exception);
+                Reset();
             }
-            error = "Invalid response.";
-            return false;
         }
 
-        public bool SetFrictionMaximumSpeedAbsoluteForGroup(IMyCubeGrid grid, float speedMetersPerSecond, out string error) =>
-            SetFrictionMaximumSpeedAbsoluteForGroup(GetEntityId(grid), speedMetersPerSecond, out error);
-
-        public bool SetFrictionMaximumSpeedAbsoluteForGroup(long cubeGridEntityId, float speedMetersPerSecond, out string error)
+        private ApiReadResult<T> InvokePrimitive<T>(int methodId, object argument)
         {
-            error = null;
-            var result = Invoke(ApiMethodId.SetFrictionMaximumSpeedAbsoluteForGroup, MyTuple.Create(cubeGridEntityId, speedMetersPerSecond));
-            if (result is MyTuple<bool, string>)
+            ApiReadStatusData status;
+            object value;
+            string error;
+            if (!TryInvoke(methodId, argument, out status, out value, out error))
+                return Result(status, default(T), error);
+            if (!(value is T))
+                return Result(ApiReadStatusData.Error, default(T), "Invalid primitive response.");
+            return Result(ApiReadStatusData.Success, (T)value, string.Empty);
+        }
+
+        private ApiReadResult<T> InvokeBinary<T>(int methodId, object argument) where T : class
+        {
+            ApiReadStatusData status;
+            object value;
+            string error;
+            if (!TryInvoke(methodId, argument, out status, out value, out error))
+                return Result(status, default(T), error);
+
+            byte[] bytes = value as byte[];
+            if (bytes == null || bytes.Length == 0)
+                return Result(ApiReadStatusData.Error, default(T), "Invalid serialized response.");
+            try
             {
-                var t = (MyTuple<bool, string>)result;
-                error = t.Item2;
-                return t.Item1;
+                T result = MyAPIGateway.Utilities.SerializeFromBinary<T>(bytes);
+                return result == null
+                    ? Result(ApiReadStatusData.Error, default(T), "Response deserialization failed.")
+                    : Result(ApiReadStatusData.Success, result, string.Empty);
             }
-            error = "Invalid response.";
-            return false;
-        }
-
-        public bool TryGetFrictionMinimumSpeedAbsoluteForGroup(IMyCubeGrid grid, out float speedMetersPerSecond, out string error) =>
-            TryGetFrictionMinimumSpeedAbsoluteForGroup(GetEntityId(grid), out speedMetersPerSecond, out error);
-
-        public bool TryGetFrictionMinimumSpeedAbsoluteForGroup(long cubeGridEntityId, out float speedMetersPerSecond, out string error)
-        {
-            speedMetersPerSecond = -1f;
-            error = null;
-
-            var result = Invoke(ApiMethodId.GetFrictionMinimumSpeedAbsoluteForGroup, cubeGridEntityId);
-            if (result is MyTuple<float, string>)
+            catch (Exception exception)
             {
-                var t = (MyTuple<float, string>)result;
-                speedMetersPerSecond = t.Item1;
-                error = t.Item2;
-                return string.IsNullOrEmpty(error);
+                return Result(ApiReadStatusData.Error, default(T), exception.Message);
             }
-
-            error = "Invalid response.";
-            return false;
         }
 
-        public bool TryGetFrictionMaximumSpeedAbsoluteForGroup(IMyCubeGrid grid, out float speedMetersPerSecond, out string error) =>
-            TryGetFrictionMaximumSpeedAbsoluteForGroup(GetEntityId(grid), out speedMetersPerSecond, out error);
-
-        public bool TryGetFrictionMaximumSpeedAbsoluteForGroup(long cubeGridEntityId, out float speedMetersPerSecond, out string error)
+        private bool TryInvoke(int methodId, object argument, out ApiReadStatusData status,
+            out object value, out string error)
         {
-            speedMetersPerSecond = -1f;
-            error = null;
-
-            var result = Invoke(ApiMethodId.GetFrictionMaximumSpeedAbsoluteForGroup, cubeGridEntityId);
-            if (result is MyTuple<float, string>)
+            value = null;
+            error = string.Empty;
+            if (!ProviderReady || _factory == null)
             {
-                var t = (MyTuple<float, string>)result;
-                speedMetersPerSecond = t.Item1;
-                error = t.Item2;
-                return string.IsNullOrEmpty(error);
+                status = ApiReadStatusData.ProviderNotReady;
+                return false;
             }
-
-            error = "Invalid response.";
-            return false;
-        }
-
-        public bool SetFrictionMinimumSpeedModifierForGroup(IMyCubeGrid grid, float modifier, out string error) =>
-            SetFrictionMinimumSpeedModifierForGroup(GetEntityId(grid), modifier, out error);
-
-        public bool SetFrictionMinimumSpeedModifierForGroup(long cubeGridEntityId, float modifier, out string error)
-        {
-            error = null;
-            var result = Invoke(ApiMethodId.SetFrictionMinimumSpeedModifierForGroup, MyTuple.Create(cubeGridEntityId, modifier));
-            if (result is MyTuple<bool, string>)
-            {
-                var t = (MyTuple<bool, string>)result;
-                error = t.Item2;
-                return t.Item1;
-            }
-            error = "Invalid response.";
-            return false;
-        }
-
-        public bool SetFrictionMaximumSpeedModifierForGroup(IMyCubeGrid grid, float modifier, out string error) =>
-            SetFrictionMaximumSpeedModifierForGroup(GetEntityId(grid), modifier, out error);
-
-        public bool SetFrictionMaximumSpeedModifierForGroup(long cubeGridEntityId, float modifier, out string error)
-        {
-            error = null;
-            var result = Invoke(ApiMethodId.SetFrictionMaximumSpeedModifierForGroup, MyTuple.Create(cubeGridEntityId, modifier));
-            if (result is MyTuple<bool, string>)
-            {
-                var t = (MyTuple<bool, string>)result;
-                error = t.Item2;
-                return t.Item1;
-            }
-            error = "Invalid response.";
-            return false;
-        }
-
-        public bool TryGetFrictionMinimumSpeedModifierForGroup(IMyCubeGrid grid, out float modifier, out string error) =>
-            TryGetFrictionMinimumSpeedModifierForGroup(GetEntityId(grid), out modifier, out error);
-
-        public bool TryGetFrictionMinimumSpeedModifierForGroup(long cubeGridEntityId, out float modifier, out string error)
-        {
-            modifier = -1f;
-            error = null;
-
-            var result = Invoke(ApiMethodId.GetFrictionMinimumSpeedModifierForGroup, cubeGridEntityId);
-            if (result is MyTuple<float, string>)
-            {
-                var t = (MyTuple<float, string>)result;
-                modifier = t.Item1;
-                error = t.Item2;
-                return string.IsNullOrEmpty(error);
-            }
-
-            error = "Invalid response.";
-            return false;
-        }
-
-        public bool TryGetFrictionMaximumSpeedModifierForGroup(IMyCubeGrid grid, out float modifier, out string error) =>
-            TryGetFrictionMaximumSpeedModifierForGroup(GetEntityId(grid), out modifier, out error);
-
-        public bool TryGetFrictionMaximumSpeedModifierForGroup(long cubeGridEntityId, out float modifier, out string error)
-        {
-            modifier = -1f;
-            error = null;
-
-            var result = Invoke(ApiMethodId.GetFrictionMaximumSpeedModifierForGroup, cubeGridEntityId);
-            if (result is MyTuple<float, string>)
-            {
-                var t = (MyTuple<float, string>)result;
-                modifier = t.Item1;
-                error = t.Item2;
-                return string.IsNullOrEmpty(error);
-            }
-
-            error = "Invalid response.";
-            return false;
-        }
-
-        /// <summary>
-        /// Gets whether the logical grid group has been deactivated.
-        /// </summary>
-        public bool IsGroupDeactivated(IMyCubeGrid grid) => IsGroupDeactivated(GetEntityId(grid));
-
-        public bool IsGroupDeactivated(long cubeGridEntityId)
-        {
-            var result = Invoke(ApiMethodId.IsGroupDeactivated, cubeGridEntityId);
-            return result is bool && (bool)result;
-        }
-
-
-        // ===== Internals =====
-
-        /// <summary>
-        /// Invokes a methodId on the provider via the method factory.
-        /// </summary>
-        private object Invoke(int methodId, object arg)
-        {
-            if (!IsReady || _factory == null)
-                return null;
 
             try
             {
-                var method = _factory(methodId);
-                return method?.Invoke(arg);
+                Func<object, object> method = _factory(methodId);
+                if (method == null)
+                {
+                    status = ApiReadStatusData.Unsupported;
+                    return false;
+                }
+
+                object raw = method.Invoke(argument);
+                if (!(raw is MyTuple<int, object>))
+                {
+                    status = ApiReadStatusData.Error;
+                    error = "Invalid API v4 response envelope.";
+                    return false;
+                }
+
+                MyTuple<int, object> response = (MyTuple<int, object>)raw;
+                status = (ApiReadStatusData)response.Item1;
+                value = response.Item2;
+                if (status == ApiReadStatusData.Success) return true;
+                error = status.ToString();
+                return false;
             }
-            catch (Exception e)
+            catch (Exception exception)
             {
-                MyLog.Default.WriteLine($"[SCF] API invoke failed. methodId={methodId} ex={e}");
-                return null;
+                status = ApiReadStatusData.Error;
+                error = exception.Message;
+                return false;
             }
         }
 
-        // ===== Event handlers (deserialize byte[] and raise typed events) =====
-
-        private void OnCoreActivated(object obj)
+        private static ApiReadResult<T> Result<T>(ApiReadStatusData status, T value, string error)
         {
-            var e = Deserialize<CoreActivatedEventArgs>(obj);
-            if (e == null) return;
-            CoreActivated?.Invoke(e);
+            return new ApiReadResult<T>
+            {
+                Status = status,
+                Value = value,
+                Error = error ?? string.Empty
+            };
+        }
 
+        private static T LegacyValue<T>(ApiReadResult<T> result, T fallback)
+        {
+            return result != null && result.Success ? result.Value : fallback;
+        }
+
+        private static bool LegacyTry(ApiReadResult<float> result, out float value, out string error)
+        {
+            value = result != null && result.Success ? result.Value : -1f;
+            error = result == null ? "Invalid response." : result.Error;
+            return result != null && result.Success;
+        }
+
+        private void Reset()
+        {
+            _factory = null;
+            ProviderReady = false;
+            ConfigReady = false;
+            RuntimeSnapshotReady = false;
+            ProviderApiVersion = 0;
+            ProviderRole = ApiProviderRoleData.Unknown;
+            Capabilities = ApiCapabilityData.None;
+        }
+
+        protected static long GetEntityId(IMyCubeGrid grid)
+        {
+            return grid == null ? 0L : grid.EntityId;
+        }
+
+        private static IMyCubeGrid ResolveGrid(long gridId)
+        {
+            IMyEntity entity;
+            return gridId != 0 && MyAPIGateway.Entities.TryGetEntityById(gridId, out entity)
+                ? entity as IMyCubeGrid
+                : null;
+        }
+
+        private static IMyGridGroupData ResolveLogicalGroup(IMyCubeGrid grid)
+        {
+            return grid == null
+                ? null
+                : MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Mechanical, grid);
+        }
+
+        private void OnCoreActivated(object value)
+        {
+            if (!ProviderReady) return;
+            CoreActivatedEventArgs eventData = Deserialize<CoreActivatedEventArgs>(value);
+            if (eventData == null) return;
+            if (CoreActivated != null) CoreActivated(eventData);
             if (CoreActivatedResolved == null) return;
-            
-            var grid = ResolveGrid(e.GroupGridId);
-            var group = ResolveLogicalGroup(grid);
-            CoreActivatedResolved(e, grid, group);
+            IMyCubeGrid grid = ResolveGrid(eventData.GroupGridId);
+            CoreActivatedResolved(eventData, grid, ResolveLogicalGroup(grid));
         }
 
-        private void OnCoreDeactivated(object obj)
+        private void OnCoreDeactivated(object value)
         {
-            var e = Deserialize<CoreDeactivatedEventArgs>(obj);
-            if (e == null) return;
-            CoreDeactivated?.Invoke(e);
-
+            if (!ProviderReady) return;
+            CoreDeactivatedEventArgs eventData = Deserialize<CoreDeactivatedEventArgs>(value);
+            if (eventData == null) return;
+            if (CoreDeactivated != null) CoreDeactivated(eventData);
             if (CoreDeactivatedResolved == null) return;
-            
-            var grid = ResolveGrid(e.GroupGridId);
-            var group = ResolveLogicalGroup(grid);
-            CoreDeactivatedResolved(e, grid, group);
+            IMyCubeGrid grid = ResolveGrid(eventData.GroupGridId);
+            CoreDeactivatedResolved(eventData, grid, ResolveLogicalGroup(grid));
         }
 
-        private void OnLimitsRecalculated(object obj)
+        private void OnLimitsRecalculated(object value)
         {
-            var e = Deserialize<LimitsRecalculatedEventArgs>(obj);
-            if (e == null) return;
-            LimitsRecalculated?.Invoke(e);
-
+            if (!ProviderReady) return;
+            LimitsRecalculatedEventArgs eventData = Deserialize<LimitsRecalculatedEventArgs>(value);
+            if (eventData == null) return;
+            if (LimitsRecalculated != null) LimitsRecalculated(eventData);
             if (LimitsRecalculatedResolved == null) return;
-            
-            var groupGrid = ResolveGrid(e.GroupGridId);
-            var group = ResolveLogicalGroup(groupGrid);
-            LimitsRecalculatedResolved(e, groupGrid, group);
+            IMyCubeGrid grid = ResolveGrid(eventData.GroupGridId);
+            LimitsRecalculatedResolved(eventData, grid, ResolveLogicalGroup(grid));
         }
 
-        private void OnLimitsEnforced(object obj)
+        private void OnLimitsEnforced(object value)
         {
-            var e = Deserialize<LimitsEnforcedEventArgs>(obj);
-            if (e == null) return;
-            LimitsEnforced?.Invoke(e);
-
+            if (!ProviderReady) return;
+            LimitsEnforcedEventArgs eventData = Deserialize<LimitsEnforcedEventArgs>(value);
+            if (eventData == null) return;
+            if (LimitsEnforced != null) LimitsEnforced(eventData);
             if (LimitsEnforcedResolved == null) return;
-            
-            var groupGrid = ResolveGrid(e.GroupGridId);
-            var group = ResolveLogicalGroup(groupGrid);
-            LimitsEnforcedResolved(e, groupGrid, group);
+            IMyCubeGrid grid = ResolveGrid(eventData.GroupGridId);
+            LimitsEnforcedResolved(eventData, grid, ResolveLogicalGroup(grid));
         }
 
-        private void OnBoostActivated(object obj)
+        private void OnBoostActivated(object value)
         {
-            var e = Deserialize<BoostEventArgs>(obj);
-            if (e == null) return;
-            BoostActivated?.Invoke(e);
-
+            if (!ProviderReady) return;
+            BoostEventArgs eventData = Deserialize<BoostEventArgs>(value);
+            if (eventData == null) return;
+            if (BoostActivated != null) BoostActivated(eventData);
             if (BoostActivatedResolved == null) return;
-            
-            var grid = ResolveGrid(e.GroupGridId);
-            var group = ResolveLogicalGroup(grid);
-            BoostActivatedResolved(e, grid, group);
+            IMyCubeGrid grid = ResolveGrid(eventData.GroupGridId);
+            BoostActivatedResolved(eventData, grid, ResolveLogicalGroup(grid));
         }
 
-        private void OnBoostDeactivated(object obj)
+        private void OnBoostDeactivated(object value)
         {
-            var e = Deserialize<BoostEventArgs>(obj);
-            if (e == null) return;
-            BoostDeactivated?.Invoke(e);
-
+            if (!ProviderReady) return;
+            BoostEventArgs eventData = Deserialize<BoostEventArgs>(value);
+            if (eventData == null) return;
+            if (BoostDeactivated != null) BoostDeactivated(eventData);
             if (BoostDeactivatedResolved == null) return;
-            
-            var grid = ResolveGrid(e.GroupGridId);
-            var group = ResolveLogicalGroup(grid);
-            BoostDeactivatedResolved(e, grid, group);
+            IMyCubeGrid grid = ResolveGrid(eventData.GroupGridId);
+            BoostDeactivatedResolved(eventData, grid, ResolveLogicalGroup(grid));
         }
 
-        private void OnActiveDefenseActivated(object obj)
+        private void OnActiveDefenseActivated(object value)
         {
-            var e = Deserialize<ActiveDefenseEventArgs>(obj);
-            if (e == null) return;
-            ActiveDefenseActivated?.Invoke(e);
-
+            if (!ProviderReady) return;
+            ActiveDefenseEventArgs eventData = Deserialize<ActiveDefenseEventArgs>(value);
+            if (eventData == null) return;
+            if (ActiveDefenseActivated != null) ActiveDefenseActivated(eventData);
             if (ActiveDefenseActivatedResolved == null) return;
-            
-            var grid = ResolveGrid(e.GroupGridId);
-            var group = ResolveLogicalGroup(grid);
-            ActiveDefenseActivatedResolved(e, grid, group);
+            IMyCubeGrid grid = ResolveGrid(eventData.GroupGridId);
+            ActiveDefenseActivatedResolved(eventData, grid, ResolveLogicalGroup(grid));
         }
 
-        private void OnActiveDefenseDeactivated(object obj)
+        private void OnActiveDefenseDeactivated(object value)
         {
-            var e = Deserialize<ActiveDefenseEventArgs>(obj);
-            if (e == null) return;
-            ActiveDefenseDeactivated?.Invoke(e);
-
+            if (!ProviderReady) return;
+            ActiveDefenseEventArgs eventData = Deserialize<ActiveDefenseEventArgs>(value);
+            if (eventData == null) return;
+            if (ActiveDefenseDeactivated != null) ActiveDefenseDeactivated(eventData);
             if (ActiveDefenseDeactivatedResolved == null) return;
-            
-            var grid = ResolveGrid(e.GroupGridId);
-            var group = ResolveLogicalGroup(grid);
-            ActiveDefenseDeactivatedResolved(e, grid, group);
+            IMyCubeGrid grid = ResolveGrid(eventData.GroupGridId);
+            ActiveDefenseDeactivatedResolved(eventData, grid, ResolveLogicalGroup(grid));
         }
 
-        private void OnGridAddedToGroup(object obj)
+        private void OnGridAddedToGroup(object value)
         {
-            var e = Deserialize<GridGroupEventArgs>(obj);
-            if (e == null) return;
-            GridAddedToGroup?.Invoke(e);
-
+            if (!ProviderReady) return;
+            GridGroupEventArgs eventData = Deserialize<GridGroupEventArgs>(value);
+            if (eventData == null) return;
+            if (GridAddedToGroup != null) GridAddedToGroup(eventData);
             if (GridAddedToGroupResolved == null) return;
-            
-            var grid = ResolveGrid(e.GroupGridId);
-            var groupGrid = ResolveGrid(e.GroupGridId);
-            var group = ResolveLogicalGroup(groupGrid ?? grid);
-            GridAddedToGroupResolved(e, grid, groupGrid, group);
+            IMyCubeGrid grid = ResolveGrid(eventData.GridId);
+            IMyCubeGrid groupGrid = ResolveGrid(eventData.GroupGridId);
+            GridAddedToGroupResolved(eventData, grid, groupGrid,
+                ResolveLogicalGroup(groupGrid ?? grid));
         }
 
-        private void OnGridRemovedFromGroup(object obj)
+        private void OnGridRemovedFromGroup(object value)
         {
-            var e = Deserialize<GridGroupEventArgs>(obj);
-            if (e == null) return;
-            GridRemovedFromGroup?.Invoke(e);
-
+            if (!ProviderReady) return;
+            GridGroupEventArgs eventData = Deserialize<GridGroupEventArgs>(value);
+            if (eventData == null) return;
+            if (GridRemovedFromGroup != null) GridRemovedFromGroup(eventData);
             if (GridRemovedFromGroupResolved == null) return;
-            
-            var grid = ResolveGrid(e.GroupGridId);
-            var groupGrid = ResolveGrid(e.GroupGridId);
-            var group = ResolveLogicalGroup(groupGrid ?? grid);
-            GridRemovedFromGroupResolved(e, grid, groupGrid, group);
+            IMyCubeGrid grid = ResolveGrid(eventData.GridId);
+            IMyCubeGrid groupGrid = ResolveGrid(eventData.GroupGridId);
+            GridRemovedFromGroupResolved(eventData, grid, groupGrid,
+                ResolveLogicalGroup(groupGrid ?? grid));
         }
 
-        private void OnConfigReceived(object obj)
+        private void OnConfigReceived(object value)
         {
-            var e = Deserialize<ConfigReceivedEventArgs>(obj);
-            if (e == null) return;
-            ConfigReceived?.Invoke(e);
+            if (!ProviderReady) return;
+            ConfigReceivedEventArgs eventData = Deserialize<ConfigReceivedEventArgs>(value);
+            if (eventData == null) return;
+            ConfigReady = true;
+            RuntimeSnapshotReady = false;
+            if (ConfigReceived != null) ConfigReceived(eventData);
         }
 
-        /// <summary>
-        /// Deserializes a binary event payload into a DTO instance.
-        /// </summary>
-        private static T Deserialize<T>(object obj) where T : class
+        private void OnRuntimeReady(object value)
+        {
+            if (!ProviderReady) return;
+            RuntimeSnapshotReadyEventArgs eventData = Deserialize<RuntimeSnapshotReadyEventArgs>(value);
+            if (eventData == null) return;
+            RuntimeSnapshotReady = true;
+            if (RuntimeReady != null) RuntimeReady(eventData);
+        }
+
+        private static T Deserialize<T>(object value) where T : class
         {
             try
             {
-                var bytes = obj as byte[];
-                if (bytes == null || bytes.Length == 0)
-                    return null;
-
-                return MyAPIGateway.Utilities.SerializeFromBinary<T>(bytes);
+                byte[] bytes = value as byte[];
+                return bytes == null || bytes.Length == 0
+                    ? null
+                    : MyAPIGateway.Utilities.SerializeFromBinary<T>(bytes);
             }
             catch
             {
                 return null;
             }
         }
+    }
+
+    /// <summary>
+    /// Read-only API backed by server-synchronized client replica data.
+    /// </summary>
+    public class ShipCoreFrameworkClientApi : ShipCoreFrameworkApiBase
+    {
+        public ShipCoreFrameworkClientApi()
+            : base(ApiConstants.CLIENT_REPLICA_API_ID, ApiProviderRoleData.ClientLocalReplica)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Authoritative API available only inside a server process.
+    /// </summary>
+    public sealed class ShipCoreFrameworkServerApi : ShipCoreFrameworkApiBase
+    {
+        public ShipCoreFrameworkServerApi()
+            : base(ApiConstants.SERVER_LOCAL_API_ID, ApiProviderRoleData.ServerLocalAuthority)
+        {
+        }
+
+        public ApiReadResult<bool> TrySetFrictionEnabledForGroup(long gridId, bool enabled)
+        {
+            return InvokeCommand(ApiMethodId.SetFrictionEnabledForGroup, MyTuple.Create(gridId, enabled));
+        }
+
+        public ApiReadResult<bool> TrySetFrictionMaximumDecelerationForGroup(long gridId, float deceleration)
+        {
+            return InvokeCommand(ApiMethodId.SetFrictionMaximumDecelerationForGroup,
+                MyTuple.Create(gridId, deceleration));
+        }
+
+        public ApiReadResult<bool> TryClearFrictionMaximumDecelerationForGroup(long gridId)
+        {
+            return InvokeCommand(ApiMethodId.ClearFrictionMaximumDecelerationForGroup, gridId);
+        }
+
+        public ApiReadResult<bool> TrySetFrictionMinimumSpeedAbsoluteForGroup(long gridId, float speed)
+        {
+            return InvokeCommand(ApiMethodId.SetFrictionMinimumSpeedAbsoluteForGroup,
+                MyTuple.Create(gridId, speed));
+        }
+
+        public ApiReadResult<bool> TrySetFrictionMaximumSpeedAbsoluteForGroup(long gridId, float speed)
+        {
+            return InvokeCommand(ApiMethodId.SetFrictionMaximumSpeedAbsoluteForGroup,
+                MyTuple.Create(gridId, speed));
+        }
+
+        public ApiReadResult<bool> TrySetFrictionMinimumSpeedModifierForGroup(long gridId, float modifier)
+        {
+            return InvokeCommand(ApiMethodId.SetFrictionMinimumSpeedModifierForGroup,
+                MyTuple.Create(gridId, modifier));
+        }
+
+        public ApiReadResult<bool> TrySetFrictionMaximumSpeedModifierForGroup(long gridId, float modifier)
+        {
+            return InvokeCommand(ApiMethodId.SetFrictionMaximumSpeedModifierForGroup,
+                MyTuple.Create(gridId, modifier));
+        }
+
+        [Obsolete("Use TrySetFrictionEnabledForGroup and inspect ApiReadStatusData.")]
+        public bool SetFrictionEnabledForGroup(long gridId, bool enabled)
+        {
+            return TrySetFrictionEnabledForGroup(gridId, enabled).Success;
+        }
+
+        [Obsolete("Use TrySetFrictionEnabledForGroup and inspect ApiReadStatusData.")]
+        public bool SetFrictionEnabledForGroup(IMyCubeGrid grid, bool enabled)
+        {
+            return SetFrictionEnabledForGroup(GetEntityId(grid), enabled);
+        }
+
+        [Obsolete("Use TrySetFrictionMaximumDecelerationForGroup and inspect ApiReadStatusData.")]
+        public bool SetFrictionMaximumDecelerationForGroup(long gridId, float deceleration)
+        {
+            return TrySetFrictionMaximumDecelerationForGroup(gridId, deceleration).Success;
+        }
+
+        [Obsolete("Use TrySetFrictionMaximumDecelerationForGroup and inspect ApiReadStatusData.")]
+        public bool SetFrictionMaximumDecelerationForGroup(IMyCubeGrid grid, float deceleration)
+        {
+            return SetFrictionMaximumDecelerationForGroup(GetEntityId(grid), deceleration);
+        }
+
+        [Obsolete("Use TryClearFrictionMaximumDecelerationForGroup and inspect ApiReadStatusData.")]
+        public bool ClearFrictionMaximumDecelerationForGroup(long gridId)
+        {
+            return TryClearFrictionMaximumDecelerationForGroup(gridId).Success;
+        }
+
+        [Obsolete("Use TryClearFrictionMaximumDecelerationForGroup and inspect ApiReadStatusData.")]
+        public bool ClearFrictionMaximumDecelerationForGroup(IMyCubeGrid grid)
+        {
+            return ClearFrictionMaximumDecelerationForGroup(GetEntityId(grid));
+        }
+
+        [Obsolete("Use TrySetFrictionMinimumSpeedAbsoluteForGroup and inspect ApiReadStatusData.")]
+        public bool SetFrictionMinimumSpeedAbsoluteForGroup(long gridId, float speed, out string error)
+        {
+            return LegacyCommand(TrySetFrictionMinimumSpeedAbsoluteForGroup(gridId, speed), out error);
+        }
+
+        [Obsolete("Use TrySetFrictionMinimumSpeedAbsoluteForGroup and inspect ApiReadStatusData.")]
+        public bool SetFrictionMinimumSpeedAbsoluteForGroup(IMyCubeGrid grid, float speed, out string error)
+        {
+            return SetFrictionMinimumSpeedAbsoluteForGroup(GetEntityId(grid), speed, out error);
+        }
+
+        [Obsolete("Use TrySetFrictionMaximumSpeedAbsoluteForGroup and inspect ApiReadStatusData.")]
+        public bool SetFrictionMaximumSpeedAbsoluteForGroup(long gridId, float speed, out string error)
+        {
+            return LegacyCommand(TrySetFrictionMaximumSpeedAbsoluteForGroup(gridId, speed), out error);
+        }
+
+        [Obsolete("Use TrySetFrictionMaximumSpeedAbsoluteForGroup and inspect ApiReadStatusData.")]
+        public bool SetFrictionMaximumSpeedAbsoluteForGroup(IMyCubeGrid grid, float speed, out string error)
+        {
+            return SetFrictionMaximumSpeedAbsoluteForGroup(GetEntityId(grid), speed, out error);
+        }
+
+        [Obsolete("Use TrySetFrictionMinimumSpeedModifierForGroup and inspect ApiReadStatusData.")]
+        public bool SetFrictionMinimumSpeedModifierForGroup(long gridId, float modifier, out string error)
+        {
+            return LegacyCommand(TrySetFrictionMinimumSpeedModifierForGroup(gridId, modifier), out error);
+        }
+
+        [Obsolete("Use TrySetFrictionMinimumSpeedModifierForGroup and inspect ApiReadStatusData.")]
+        public bool SetFrictionMinimumSpeedModifierForGroup(IMyCubeGrid grid, float modifier, out string error)
+        {
+            return SetFrictionMinimumSpeedModifierForGroup(GetEntityId(grid), modifier, out error);
+        }
+
+        [Obsolete("Use TrySetFrictionMaximumSpeedModifierForGroup and inspect ApiReadStatusData.")]
+        public bool SetFrictionMaximumSpeedModifierForGroup(long gridId, float modifier, out string error)
+        {
+            return LegacyCommand(TrySetFrictionMaximumSpeedModifierForGroup(gridId, modifier), out error);
+        }
+
+        [Obsolete("Use TrySetFrictionMaximumSpeedModifierForGroup and inspect ApiReadStatusData.")]
+        public bool SetFrictionMaximumSpeedModifierForGroup(IMyCubeGrid grid, float modifier, out string error)
+        {
+            return SetFrictionMaximumSpeedModifierForGroup(GetEntityId(grid), modifier, out error);
+        }
+
+        private static bool LegacyCommand(ApiReadResult<bool> result, out string error)
+        {
+            error = result == null ? "Invalid response." : result.Error;
+            return result != null && result.Success && result.Value;
+        }
+    }
+
+    /// <summary>
+    /// Temporary v4 source-compatibility alias. It is intentionally read-only.
+    /// </summary>
+    [Obsolete("Use ShipCoreFrameworkClientApi for replicas or ShipCoreFrameworkServerApi for authority.")]
+    public sealed class ShipCoreFrameworkClient : ShipCoreFrameworkClientApi
+    {
     }
 }

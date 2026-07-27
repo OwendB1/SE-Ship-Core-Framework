@@ -107,13 +107,18 @@ namespace ShipCoreFramework
                 }
 
                 ModConfig import = MyAPIGateway.Utilities.SerializeFromXML<ModConfig>(ConfigXml);
-                if (import != null)
-                    Session.Config.ApplyWorldSettingsFrom(import);
+                if (import == null)
+                {
+                    Utils.Log("Config sync skipped: payload could not be deserialized.", 1, "Config Sync");
+                    return;
+                }
+                Session.Config.ApplyWorldSettingsFrom(import);
 
                 Session.Config.EnsurePersistedWorldSettings();
                 Session.Config.ResolveSelectedNoCore();
                 Session.ApplyConfigToDefinitions();
                 Session.RefreshGroupsAfterConfigChanged();
+                ModAPI.MarkConfigReady(true);
                 ModAPI.BroadcastConfigReceived();
                 Session.RequestRuntimeState();
             }

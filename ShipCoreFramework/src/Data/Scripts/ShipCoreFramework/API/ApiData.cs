@@ -14,25 +14,27 @@ namespace ShipCoreFramework
     public static class ApiConstants
     {
         /// <summary>
-        /// Unique identifier for Ship Core Framework API messages.
-        /// Other mods should use this ID to register a message handler.
-        /// Example:
-        /// MyAPIGateway.Utilities.RegisterMessageHandler(ApiConstants.API_ID, OnApiReceived);
+        /// Process-local API ID for authoritative server consumers.
         /// </summary>
-        public const long API_ID = 3217652398L;
+        public const long SERVER_LOCAL_API_ID = 3217652398L;
+
+        /// <summary>
+        /// Process-local API ID for read-only remote-client consumers.
+        /// </summary>
+        public const long CLIENT_REPLICA_API_ID = 3217652410L;
 
         /// <summary>
         /// API Major version.
         /// Increment when you make breaking changes to the API contract.
         /// </summary>
-        public const int API_MAJOR = 3;
+        public const int API_MAJOR = 4;
 
         /// <summary>
         /// API Minor version.
         /// Increment when you add functionality in a backwards compatible way.
         /// Minor version changes remain compatible as long as the major version matches.
         /// </summary>
-        public const int API_MINOR = 10;
+        public const int API_MINOR = 0;
 
         /// <summary>
         /// Encoded API version (Major.Minor) packed into a single int.
@@ -87,224 +89,239 @@ namespace ShipCoreFramework
         public const long EVENT_GRID_ADDED_TO_GROUP = 3217652407L;
         public const long EVENT_GRID_REMOVED_FROM_GROUP = 3217652408L;
         public const long EVENT_CONFIG_RECEIVED = 3217652409L;
+        public const long EVENT_RUNTIME_SNAPSHOT_READY = 3217652411L;
     }
 
     /// <summary>
     /// Integer method IDs for the API method factory.
     /// Consumers should prefer these IDs over string keys.
+    /// All v4 delegates return MyTuple&lt;int, object&gt;: Item1 is ApiReadStatusData and Item2 is
+    /// the documented primitive/MyTuple payload or a serialized DTO byte array.
     /// </summary>
     public static class ApiMethodId
     {
         /// <summary>
         /// Returns <see cref="ApiConstants.API_VERSION"/> as int.
-        /// Signature: object -> int (arg ignored).
+        /// Argument ignored. Payload: int.
         /// </summary>
         public const int GetApiVersion = 0;
 
         /// <summary>
+        /// Gets the provider capability flags.
+        /// Signature: object -> MyTuple&lt;int, object&gt; containing an int.
+        /// </summary>
+        public const int GetCapabilities = 1;
+
+        /// <summary>
+        /// Gets provider/config/runtime readiness (serialized ApiReadinessData).
+        /// Signature: object -> MyTuple&lt;int, object&gt; containing byte[].
+        /// </summary>
+        public const int GetReadiness_Binary = 2;
+
+        /// <summary>
+        /// Checks whether authoritative/replicated runtime state exists for a grid.
+        /// Signature: long -> MyTuple&lt;int, object&gt; containing bool.
+        /// </summary>
+        public const int GetRuntimeStateAvailability = 3;
+
+        /// <summary>
         /// Gets the active ShipCore configuration for a grid (serialized).
-        /// Signature: IMyCubeGrid -> byte[] (ShipCoreData).
+        /// Argument: long grid entity ID. Payload: byte[] (ShipCoreData).
         /// </summary>
         public const int GetGridCore_Binary = 10;
 
         /// <summary>
         /// Gets a specific ShipCore configuration by its SubtypeId (serialized).
-        /// Signature: string -> byte[] (ShipCoreData).
+        /// Argument: string subtype ID. Payload: byte[] (ShipCoreData).
         /// </summary>
         public const int GetCoreBySubtypeId_Binary = 11;
 
         /// <summary>
         /// Gets all available ShipCore configurations loaded by the framework (serialized).
-        /// Signature: object -> byte[] (List&lt;ShipCoreData&gt;), arg ignored.
+        /// Argument ignored. Payload: byte[] (List&lt;ShipCoreData&gt;).
         /// </summary>
         public const int GetAllCoreConfigs_Binary = 12;
 
         /// <summary>
         /// Gets block limit status for a grid (serialized).
-        /// Signature: IMyCubeGrid -> byte[] (Dictionary&lt;string, LimitStatusData&gt;).
+        /// Argument: long grid entity ID. Payload: byte[] (Dictionary&lt;string, LimitStatusData&gt;).
         /// </summary>
         public const int GetBlockLimitsStatus_Binary = 13;
 
         /// <summary>
         /// Checks if adding blocks would violate limits.
-        /// Signature: object -> bool (expects MyTuple&lt;IMyCubeGrid, string, string, int&gt;).
+        /// Argument: MyTuple&lt;long, string, string, int&gt;. Payload: bool.
         /// </summary>
         public const int IsBlockAllowed = 14;
 
         /// <summary>
         /// Gets current grid modifiers (serialized).
-        /// Signature: IMyCubeGrid -> byte[] (GridModifiersData).
+        /// Argument: long grid entity ID. Payload: byte[] (GridModifiersData).
         /// </summary>
         public const int GetGridModifiers_Binary = 15;
 
         /// <summary>
         /// Gets the maximum speed allowed for a grid based on its core.
-        /// Signature: IMyCubeGrid -> float.
+        /// Argument: long grid entity ID. Payload: float.
         /// </summary>
         public const int GetMaxSpeed = 16;
 
         /// <summary>
         /// Checks if boost is currently active for a grid.
-        /// Signature: IMyCubeGrid -> bool.
+        /// Argument: long grid entity ID. Payload: bool.
         /// </summary>
         public const int IsBoostActive = 17;
 
         /// <summary>
         /// Gets the currently selected NoCore configuration (serialized).
-        /// Signature: object -> byte[] (ShipCoreData), arg ignored.
+        /// Argument ignored. Payload: byte[] (ShipCoreData).
         /// </summary>
         public const int GetNoCoreConfig_Binary = 18;
         
         /// <summary>
         /// Gets the SpeedModifiers for the grid's active core (serialized).
-        /// Signature: IMyCubeGrid -> byte[] (SpeedModifiersData).
+        /// Argument: long grid entity ID. Payload: byte[] (SpeedModifiersData).
         /// </summary>
         public const int GetSpeedModifiers_Binary = 19;
         
 
         /// <summary>
         /// Gets BoostResistance from the grid's active core SpeedModifiers.
-        /// Signature: IMyCubeGrid -> float.
+        /// Argument: long grid entity ID. Payload: float.
         /// </summary>
         public const int GetBoostResistance = 20;
 
         /// <summary>
         /// Gets base max speed in m/s (without boost), based on core SpeedModifiers.
-        /// Signature: IMyCubeGrid -> float.
+        /// Argument: long grid entity ID. Payload: float.
         /// </summary>
         public const int GetBaseMaxSpeed = 21;
 
         /// <summary>
         /// Gets max boost multiplier (core SpeedModifiers.MaxBoost).
-        /// Signature: IMyCubeGrid -> float.
+        /// Argument: long grid entity ID. Payload: float.
         /// </summary>
         public const int GetMaxBoostMultiplier = 22;
 
         /// <summary>
         /// Gets boost duration in seconds (core SpeedModifiers.BoostDuration).
-        /// Signature: IMyCubeGrid -> float.
+        /// Argument: long grid entity ID. Payload: float.
         /// </summary>
         public const int GetBoostDuration = 23;
 
         /// <summary>
         /// Gets boost cooldown in seconds (core SpeedModifiers.BoostCoolDown).
-        /// Signature: IMyCubeGrid -> float.
+        /// Argument: long grid entity ID. Payload: float.
         /// </summary>
         public const int GetBoostCooldown = 24;
 
         /// <summary>
         /// Enables/disables friction-based speed limiting for a logical grid group.
         /// Friction cores are enabled by default; this is a runtime override.
-        /// Signature: object -> bool (expects MyTuple&lt;IMyCubeGrid, bool&gt;).
+        /// Server only. Argument: MyTuple&lt;long, bool&gt;. Payload: MyTuple&lt;bool, string&gt;.
         /// </summary>
         public const int SetFrictionEnabledForGroup = 25;
 
         /// <summary>
         /// Gets whether friction-based speed limiting is currently active for a logical grid group.
-        /// Signature: IMyCubeGrid -> bool.
+        /// Argument: long grid entity ID. Payload: bool.
         /// </summary>
         public const int GetFrictionEnabledForGroup = 26;
 
         /// <summary>
         /// Sets the maximum friction deceleration (m/s^2) override for a logical grid group.
         /// Use a value &gt;= 0 to override the core/config value.
-        /// Signature: object -> bool (expects MyTuple&lt;IMyCubeGrid, float&gt;).
+        /// Server only. Argument: MyTuple&lt;long, float&gt;. Payload: MyTuple&lt;bool, string&gt;.
         /// </summary>
         public const int SetFrictionMaximumDecelerationForGroup = 27;
 
         /// <summary>
         /// Clears the maximum friction deceleration override for a logical grid group.
-        /// Signature: IMyCubeGrid -> bool.
+        /// Server only. Argument: long grid entity ID. Payload: MyTuple&lt;bool, string&gt;.
         /// </summary>
         public const int ClearFrictionMaximumDecelerationForGroup = 28;
 
         /// <summary>
         /// Gets the maximum friction deceleration override for a logical grid group.
         /// Returns -1 if no override is set.
-        /// Signature: IMyCubeGrid -> float.
+        /// Argument: long grid entity ID. Payload: float.
         /// </summary>
         public const int GetFrictionMaximumDecelerationForGroup = 29;
 
         /// <summary>
         /// Gets the current world setting for how friction speeds are interpreted.
         /// 0 = Modifier, 1 = Absolute.
-        /// Signature: object -> int (arg ignored).
+        /// Argument ignored. Payload: int.
         /// </summary>
         public const int GetFrictionSpeedValueMode = 30;
 
         /// <summary>
         /// Sets the minimum friction speed override (absolute m/s) for a logical grid group.
         /// Use a value &lt; 0 to clear the override.
-        /// Signature: object -> object (expects MyTuple&lt;IMyCubeGrid, float&gt;, returns MyTuple&lt;bool, string&gt;).
+        /// Server only. Argument: MyTuple&lt;long, float&gt;. Payload: MyTuple&lt;bool, string&gt;.
         /// </summary>
         public const int SetFrictionMinimumSpeedAbsoluteForGroup = 31;
 
         /// <summary>
         /// Sets the maximum friction speed override (absolute m/s) for a logical grid group.
         /// Use a value &lt; 0 to clear the override.
-        /// Signature: object -> object (expects MyTuple&lt;IMyCubeGrid, float&gt;, returns MyTuple&lt;bool, string&gt;).
+        /// Server only. Argument: MyTuple&lt;long, float&gt;. Payload: MyTuple&lt;bool, string&gt;.
         /// </summary>
         public const int SetFrictionMaximumSpeedAbsoluteForGroup = 32;
 
         /// <summary>
         /// Gets the minimum friction speed override (absolute m/s) for a logical grid group.
         /// Returns -1 if no override is set.
-        /// Signature: IMyCubeGrid -> object (returns MyTuple&lt;float, string&gt;).
+        /// Argument: long grid entity ID. Payload: float.
         /// </summary>
         public const int GetFrictionMinimumSpeedAbsoluteForGroup = 33;
 
         /// <summary>
         /// Gets the maximum friction speed override (absolute m/s) for a logical grid group.
         /// Returns -1 if no override is set.
-        /// Signature: IMyCubeGrid -> object (returns MyTuple&lt;float, string&gt;).
+        /// Argument: long grid entity ID. Payload: float.
         /// </summary>
         public const int GetFrictionMaximumSpeedAbsoluteForGroup = 34;
 
         /// <summary>
         /// Sets the minimum friction speed override (modifier) for a logical grid group.
         /// Use a value &lt; 0 to clear the override.
-        /// Signature: object -> object (expects MyTuple&lt;IMyCubeGrid, float&gt;, returns MyTuple&lt;bool, string&gt;).
+        /// Server only. Argument: MyTuple&lt;long, float&gt;. Payload: MyTuple&lt;bool, string&gt;.
         /// </summary>
         public const int SetFrictionMinimumSpeedModifierForGroup = 35;
 
         /// <summary>
         /// Sets the maximum friction speed override (modifier) for a logical grid group.
         /// Use a value &lt; 0 to clear the override.
-        /// Signature: object -> object (expects MyTuple&lt;IMyCubeGrid, float&gt;, returns MyTuple&lt;bool, string&gt;).
+        /// Server only. Argument: MyTuple&lt;long, float&gt;. Payload: MyTuple&lt;bool, string&gt;.
         /// </summary>
         public const int SetFrictionMaximumSpeedModifierForGroup = 36;
 
         /// <summary>
         /// Gets the minimum friction speed override (modifier) for a logical grid group.
         /// Returns -1 if no override is set.
-        /// Signature: IMyCubeGrid -> object (returns MyTuple&lt;float, string&gt;).
+        /// Argument: long grid entity ID. Payload: float.
         /// </summary>
         public const int GetFrictionMinimumSpeedModifierForGroup = 37;
 
         /// <summary>
         /// Gets the maximum friction speed override (modifier) for a logical grid group.
         /// Returns -1 if no override is set.
-        /// Signature: IMyCubeGrid -> object (returns MyTuple&lt;float, string&gt;).
+        /// Argument: long grid entity ID. Payload: float.
         /// </summary>
         public const int GetFrictionMaximumSpeedModifierForGroup = 38;
 
         /// <summary>
         /// Gets whether the logical grid group has been deactivated.
-        /// Signature: IMyCubeGrid -> bool.
+        /// Argument: long grid entity ID. Payload: bool.
         /// </summary>
         public const int IsGroupDeactivated = 39;
 
         /// <summary>
         /// Gets the full effective framework configuration (serialized).
-        /// Signature: object -> byte[] (ModConfigData), arg ignored.
+        /// Argument ignored. Payload: byte[] (ModConfigData).
         /// </summary>
         public const int GetFullConfig_Binary = 40;
-
-        // Optional: Field getters for "no parsing" access (primitives only).
-        // These can be handy if a consumer only needs a single field and wants to avoid deserializing a full DTO.
-        public const int GetGridCore_SubtypeId = 100;   // IMyCubeGrid -> string
-        public const int GetGridCore_UniqueName = 101;  // IMyCubeGrid -> string
-        public const int GetGridCore_MaxBlocks = 102;   // IMyCubeGrid -> int
     }
 
     // ===== Data Structures (DTOs) =====
@@ -315,6 +332,62 @@ namespace ShipCoreFramework
     //
     // ProtoBuf attributes are used because Space Engineers commonly supports protobuf-net serialization.
     // Fields remain public for simplicity.
+
+    public enum ApiProviderRoleData
+    {
+        Unknown = 0,
+        ServerLocalAuthority = 1,
+        ClientLocalReplica = 2
+    }
+
+    [Flags]
+    public enum ApiCapabilityData
+    {
+        None = 0,
+        ConfigQueries = 1,
+        RuntimeQueries = 2,
+        RuntimeMutations = 4,
+        Authoritative = 8,
+        Replicated = 16,
+        BestEffortPlacementChecks = 32
+    }
+
+    public enum ApiReadStatusData
+    {
+        Success = 0,
+        ProviderNotReady = 1,
+        ConfigPending = 2,
+        RuntimePending = 3,
+        GridNotReplicated = 4,
+        InvalidArgument = 5,
+        Unsupported = 6,
+        Error = 7
+    }
+
+    /// <summary>
+    /// Strongly typed local result returned by the supplied API wrappers.
+    /// Provider transport values remain cross-assembly-safe primitives/byte arrays.
+    /// </summary>
+    public sealed class ApiReadResult<T>
+    {
+        public ApiReadStatusData Status;
+        public T Value;
+        public string Error;
+
+        public bool Success
+        {
+            get { return Status == ApiReadStatusData.Success; }
+        }
+    }
+
+    [ProtoContract]
+    public class ApiReadinessData
+    {
+        [ProtoMember(1)] public ApiProviderRoleData Role;
+        [ProtoMember(2)] public bool ProviderReady;
+        [ProtoMember(3)] public bool ConfigReady;
+        [ProtoMember(4)] public bool RuntimeSnapshotReady;
+    }
 
     /// <summary>
     /// Ship Core configuration data.
@@ -761,5 +834,17 @@ namespace ShipCoreFramework
     {
         [ProtoMember(1)] public ModConfigData Config;
         [ProtoMember(2)] public DateTime Timestamp;
+    }
+
+    /// <summary>
+    /// Event arguments for the first complete authoritative runtime snapshot applied by a remote client.
+    /// Server-local consumers receive this after the initial group scan completes.
+    /// </summary>
+    [ProtoContract]
+    public class RuntimeSnapshotReadyEventArgs
+    {
+        [ProtoMember(1)] public int Sequence;
+        [ProtoMember(2)] public int SnapshotRevision;
+        [ProtoMember(3)] public DateTime Timestamp;
     }
 }

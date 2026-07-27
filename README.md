@@ -481,7 +481,9 @@ Recommended integration path:
 
 - copy `ApiData.cs`
 - copy `SCF_ModAPIClient.cs`
-- use the client wrapper instead of raw message handlers
+- use `ShipCoreFrameworkClientApi` for synchronized read-only client data
+- use `ShipCoreFrameworkServerApi` for authoritative server queries and mutations
+- wait for config/runtime readiness and inspect `ApiReadResult<T>` instead of trusting fallback values
 
 ## XML configurator
 

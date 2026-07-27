@@ -14,10 +14,9 @@ namespace ShipCoreFramework
     /// <summary>
     /// Ship Core Framework external API for other mods to interact with the system.
     ///
-    /// This implementation avoids cross-assembly type identity issues by:
-    /// - Broadcasting a method factory (Func&lt;int, Func&lt;object, object&gt;&gt;) via MyTuple.
-    /// - Returning primitives directly (int, float, bool, string).
-    /// - Returning custom DTOs as byte[] (SerializeToBinary) so consumers can deserialize locally.
+    /// API v4 publishes separate process-local factories for server authority and client replicas.
+    /// Every method returns MyTuple&lt;int, object&gt; where Item1 is ApiReadStatusData and Item2 is
+    /// a primitive, MyTuple, or serialized DTO byte[].
     ///
     /// IMPORTANT:
     /// Other mods should copy ApiData.cs and use the provided client wrapper (see below).
@@ -37,13 +36,24 @@ namespace ShipCoreFramework
 
             try
             {
-                var apiPayload = MyTuple.Create(
-                    ApiConstants.API_VERSION,
-                    new Func<int, Func<object, object>>(MethodFactory)
-                );
-
-                MyAPIGateway.Utilities.SendModMessage(ApiConstants.API_ID, apiPayload);
-                Utils.Log("ModAPI: Successfully broadcast API factory payload to other mods", 1);
+                if (Session.IsServer)
+                {
+                    MyTuple<int, int, Func<int, Func<object, object>>> serverPayload = MyTuple.Create(
+                        ApiConstants.API_VERSION,
+                        (int)ApiProviderRoleData.ServerLocalAuthority,
+                        new Func<int, Func<object, object>>(ServerMethodFactory));
+                    MyAPIGateway.Utilities.SendModMessage(ApiConstants.SERVER_LOCAL_API_ID, serverPayload);
+                    Utils.Log("ModAPI v4: broadcast server-local authority factory.", 1);
+                }
+                else if (Session.IsClient)
+                {
+                    MyTuple<int, int, Func<int, Func<object, object>>> clientPayload = MyTuple.Create(
+                        ApiConstants.API_VERSION,
+                        (int)ApiProviderRoleData.ClientLocalReplica,
+                        new Func<int, Func<object, object>>(ClientMethodFactory));
+                    MyAPIGateway.Utilities.SendModMessage(ApiConstants.CLIENT_REPLICA_API_ID, clientPayload);
+                    Utils.Log("ModAPI v4: broadcast client-local replica factory.", 1);
+                }
             }
             catch (Exception ex)
             {
@@ -57,196 +67,7 @@ namespace ShipCoreFramework
         internal static void Close()
         {
             _isInitialized = false;
-        }
-
-        /// <summary>
-        /// Produces an API method delegate for the requested method ID.
-        /// The returned delegate uses only object input/output to avoid cross-assembly issues.
-        /// </summary>
-        private static Func<object, object> MethodFactory(int methodId)
-        {
-            switch (methodId)
-            {
-                case ApiMethodId.GetApiVersion:
-                    return _ => ApiConstants.API_VERSION;
-
-                case ApiMethodId.GetGridCore_Binary:
-                    return arg =>
-                    {
-                        var dto = GetGridCore(arg as long? ?? 0);
-                        return MyAPIGateway.Utilities.SerializeToBinary(dto);
-                    };
-
-                case ApiMethodId.GetCoreBySubtypeId_Binary:
-                    return arg =>
-                    {
-                        var subtypeId = arg as string;
-                        var dto = GetCoreBySubtypeId(subtypeId);
-                        return MyAPIGateway.Utilities.SerializeToBinary(dto);
-                    };
-
-                case ApiMethodId.GetAllCoreConfigs_Binary:
-                    return _ =>
-                    {
-                        var list = GetAllCoreConfigs();
-                        return MyAPIGateway.Utilities.SerializeToBinary(list);
-                    };
-
-                case ApiMethodId.GetBlockLimitsStatus_Binary:
-                    return arg =>
-                    {
-                        var dict = GetBlockLimitsStatus(arg as long? ?? 0);
-                        return MyAPIGateway.Utilities.SerializeToBinary(dict);
-                    };
-
-                case ApiMethodId.IsBlockAllowed:
-                    return arg =>
-                    {
-                        // Expect MyTuple<MyCubeGrid, string, string, int>
-                        var t = (MyTuple<long, string, string, int>)arg;
-                        return IsBlockAllowed(t.Item1, t.Item2, t.Item3, t.Item4);
-                    };
-
-                case ApiMethodId.GetGridModifiers_Binary:
-                    return arg =>
-                    {
-                        var gridId = arg as long? ?? 0;
-                        var dto = GetGridModifiers(gridId);
-                        return MyAPIGateway.Utilities.SerializeToBinary(dto);
-                    };
-
-                case ApiMethodId.GetMaxSpeed:
-                    return arg => GetMaxSpeed(arg as long? ?? 0);
-
-                case ApiMethodId.IsBoostActive:
-                    return arg => IsBoostActive(arg as long? ?? 0);
-
-                case ApiMethodId.GetNoCoreConfig_Binary:
-                    return _ =>
-                    {
-                        var dto = GetNoCoreConfig();
-                        return MyAPIGateway.Utilities.SerializeToBinary(dto);
-                    };
-                
-                case ApiMethodId.GetSpeedModifiers_Binary:
-                    return arg =>
-                    {
-                        var dto = GetSpeedModifiers(arg as long? ?? 0);
-                        return MyAPIGateway.Utilities.SerializeToBinary(dto);
-                    };
-
-                case ApiMethodId.GetBoostResistance:
-                    return arg => GetBoostResistance(arg as long? ?? 0);
-
-                case ApiMethodId.GetBaseMaxSpeed:
-                    return arg => GetBaseMaxSpeed(arg as long? ?? 0);
-
-                case ApiMethodId.GetMaxBoostMultiplier:
-                    return arg => GetMaxBoostMultiplier(arg as long? ?? 0);
-
-                case ApiMethodId.GetBoostDuration:
-                    return arg => GetBoostDuration(arg as long? ?? 0);
-
-                case ApiMethodId.GetBoostCooldown:
-                    return arg => GetBoostCooldown(arg as long? ?? 0);
-
-                case ApiMethodId.SetFrictionEnabledForGroup:
-                    return arg =>
-                    {
-                        var t = (MyTuple<long, bool>)arg;
-                        return SetFrictionEnabledForGroup(t.Item1, t.Item2);
-                    };
-
-                case ApiMethodId.GetFrictionEnabledForGroup:
-                    return arg => GetFrictionEnabledForGroup(arg as long? ?? 0);
-
-                case ApiMethodId.SetFrictionMaximumDecelerationForGroup:
-                    return arg =>
-                    {
-                        var t = (MyTuple<long, float>)arg;
-                        return SetFrictionMaximumDecelerationForGroup(t.Item1, t.Item2);
-                    };
-
-                case ApiMethodId.ClearFrictionMaximumDecelerationForGroup:
-                    return arg => ClearFrictionMaximumDecelerationForGroup(arg as long? ?? 0);
-
-                case ApiMethodId.GetFrictionMaximumDecelerationForGroup:
-                    return arg => GetFrictionMaximumDecelerationForGroup(arg as long? ?? 0);
-
-                case ApiMethodId.GetFrictionSpeedValueMode:
-                    return _ => (int)Session.Config.FrictionSpeedValueMode;
-
-                case ApiMethodId.SetFrictionMinimumSpeedAbsoluteForGroup:
-                    return arg =>
-                    {
-                        var t = (MyTuple<long, float>)arg;
-                        return SetFrictionMinimumSpeedAbsoluteForGroup(t.Item1, t.Item2);
-                    };
-
-                case ApiMethodId.SetFrictionMaximumSpeedAbsoluteForGroup:
-                    return arg =>
-                    {
-                        var t = (MyTuple<long, float>)arg;
-                        return SetFrictionMaximumSpeedAbsoluteForGroup(t.Item1, t.Item2);
-                    };
-
-                case ApiMethodId.GetFrictionMinimumSpeedAbsoluteForGroup:
-                    return arg => GetFrictionMinimumSpeedAbsoluteForGroup(arg as long? ?? 0);
-
-                case ApiMethodId.GetFrictionMaximumSpeedAbsoluteForGroup:
-                    return arg => GetFrictionMaximumSpeedAbsoluteForGroup(arg as long? ?? 0);
-
-                case ApiMethodId.SetFrictionMinimumSpeedModifierForGroup:
-                    return arg =>
-                    {
-                        var t = (MyTuple<long, float>)arg;
-                        return SetFrictionMinimumSpeedModifierForGroup(t.Item1, t.Item2);
-                    };
-
-                case ApiMethodId.SetFrictionMaximumSpeedModifierForGroup:
-                    return arg =>
-                    {
-                        var t = (MyTuple<long, float>)arg;
-                        return SetFrictionMaximumSpeedModifierForGroup(t.Item1, t.Item2);
-                    };
-
-                case ApiMethodId.GetFrictionMinimumSpeedModifierForGroup:
-                    return arg => GetFrictionMinimumSpeedModifierForGroup(arg as long? ?? 0);
-
-                case ApiMethodId.GetFrictionMaximumSpeedModifierForGroup:
-                    return arg => GetFrictionMaximumSpeedModifierForGroup(arg as long? ?? 0);
-
-                case ApiMethodId.IsGroupDeactivated:
-                    return arg => IsGroupDeactivated(arg as long? ?? 0);
-
-                case ApiMethodId.GetFullConfig_Binary:
-                    return _ => MyAPIGateway.Utilities.SerializeToBinary(GetFullConfig());
-
-                // Optional primitive getters:
-                case ApiMethodId.GetGridCore_SubtypeId:
-                    return arg =>
-                    {
-                        var dto = GetGridCore(arg as long? ?? 0);
-                        return dto?.SubtypeId ?? string.Empty;
-                    };
-
-                case ApiMethodId.GetGridCore_UniqueName:
-                    return arg =>
-                    {
-                        var dto = GetGridCore(arg as long? ?? 0);
-                        return dto?.UniqueName ?? string.Empty;
-                    };
-
-                case ApiMethodId.GetGridCore_MaxBlocks:
-                    return arg =>
-                    {
-                        var dto = GetGridCore(arg as long? ?? 0);
-                        return dto?.MaxBlocks ?? 0;
-                    };
-
-                default:
-                    return null;
-            }
+            ResetReadiness();
         }
 
         // ===== Event Broadcasting Methods =====
