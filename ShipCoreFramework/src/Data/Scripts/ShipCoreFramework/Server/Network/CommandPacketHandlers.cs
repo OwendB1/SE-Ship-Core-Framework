@@ -112,8 +112,6 @@ namespace ShipCoreFramework
         {
             if (!MyAPIGateway.Multiplayer.IsServer) return;
 
-            IMyPlayer sender;
-            if (!TryGetSender(out sender)) return;
             if (!Session.CanServeConfigRequest(SenderSteamId)) return;
 
             PacketSendConfig response = new PacketSendConfig(
