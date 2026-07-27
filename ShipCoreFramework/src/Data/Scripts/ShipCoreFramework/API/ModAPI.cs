@@ -925,6 +925,7 @@ namespace ShipCoreFramework
                 SelectedNoCoreUniqueName = config.SelectedNoCoreUniqueName ?? string.Empty,
                 DebugMode = config.DebugMode,
                 CombatLogging = config.CombatLogging,
+                CombatLoggingBroadcastRangeMeters = config.CombatLoggingBroadcastRangeMeters,
                 LogLevel = config.LogLevel,
                 ClientOutputLogLevel = config.ClientOutputLogLevel,
                 MaxPossibleSpeedMetersPerSecond = config.MaxPossibleSpeedMetersPerSecond,

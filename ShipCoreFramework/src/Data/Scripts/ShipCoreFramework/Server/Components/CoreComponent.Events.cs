@@ -23,7 +23,7 @@ namespace ShipCoreFramework
                 IsMainCore
                     ? $"Main core of grid {grid.CustomName} was destroyed!"
                     : $"A backup core of grid {grid.CustomName} was destroyed!",
-                0, 5000, true);
+                0, 5000, true, combatLogPosition: grid.GetPosition());
 
             DetachBlockEvents();
             _groupComponent.CoreRemoved(this);

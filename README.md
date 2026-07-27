@@ -81,6 +81,7 @@ Root tag: `<ModConfig>`
 | `SelectedNoCoreUniqueName` | `string` | Chooses which loaded no-core profile becomes the active fallback profile. | Must match a loaded no-core `UniqueName`. |
 | `DebugMode` | `bool` | Enables debug-oriented behavior. | Also changes some player-count checks to count identities more aggressively. |
 | `CombatLogging` | `bool` | Enables combat logging behavior exposed by the framework. | Runtime toggle also exists through commands. |
+| `CombatLoggingBroadcastRangeMeters` | `double` | Maximum distance from a combat-log event at which players receive its notification. | Default is `20000` (20 km). |
 | `LOG_LEVEL` | `int` | Server/framework log verbosity. | `0` = essential only, `3` = debug; default is `2`. |
 | `CLIENT_OUTPUT_LOG_LEVEL` | `int` | Client-side log verbosity. | `0` = essential only, `3` = debug; default is `2`. |
 | `MaxPossibleSpeedMetersPerSecond` | `float` | World top-speed baseline in m/s. | Core `SpeedModifiers.MaxSpeed` and `MaxBoost` multiply against this value. |

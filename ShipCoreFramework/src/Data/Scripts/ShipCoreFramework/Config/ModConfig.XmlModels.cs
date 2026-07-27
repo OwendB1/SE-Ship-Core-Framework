@@ -15,6 +15,7 @@ namespace ShipCoreFramework
         [XmlIgnore] private const string LegacyIgnoreAiKey = "ShipCore.IgnoreAiV1";
         [XmlIgnore] private const string LegacyIgnoredFactionsKey = "ShipCore.IgnoredFactionsV1";
         [XmlIgnore] private const string LegacySelectedNoCoreKey = "ShipCore.SelectedNoCoreBlobV1";
+        [XmlIgnore] internal const double DefaultCombatLoggingBroadcastRangeMeters = 20000d;
         [XmlIgnore] private static readonly string[] DefaultIgnoredFactionTagValues =
         {
             "SPRT", "ADMIN", "FMCA", "BORG", "TERA"
@@ -41,6 +42,8 @@ namespace ShipCoreFramework
 
         [XmlElement("DebugMode")] public bool DebugMode;
         [XmlElement("CombatLogging")] public bool CombatLogging = true;
+        [XmlElement("CombatLoggingBroadcastRangeMeters")]
+        public double CombatLoggingBroadcastRangeMeters = DefaultCombatLoggingBroadcastRangeMeters;
         [XmlElement("LOG_LEVEL")] public int LogLevel = 2;
         [XmlElement("CLIENT_OUTPUT_LOG_LEVEL")] public int ClientOutputLogLevel = 2;
         [XmlElement("MaxPossibleSpeedMetersPerSecond")] public float MaxPossibleSpeedMetersPerSecond = 300;

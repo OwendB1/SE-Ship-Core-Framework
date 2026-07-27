@@ -4,6 +4,7 @@ using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.Utils;
+using VRageMath;
 
 namespace ShipCoreFramework
 {
@@ -57,7 +58,7 @@ namespace ShipCoreFramework
         }
 
         internal static void ShowNotification(string msg, long playerEntityId = 0, int disappearTime = 5000,
-            bool isCombatLog = false, string font = MyFontEnum.Red)
+            bool isCombatLog = false, string font = MyFontEnum.Red, Vector3D? combatLogPosition = null)
         {
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
@@ -66,8 +67,16 @@ namespace ShipCoreFramework
                     if (!Session.Config.CombatLogging) return;
                     var players = new List<IMyPlayer>();
                     MyAPIGateway.Players.GetPlayers(players);
+                    double range = Session.Config.CombatLoggingBroadcastRangeMeters;
+                    double rangeSquared = range * range;
                     foreach (var player in players)
+                    {
+                        if (player == null || player.SteamUserId == 0) continue;
+                        if (combatLogPosition.HasValue &&
+                            Vector3D.DistanceSquared(player.GetPosition(), combatLogPosition.Value) > rangeSquared)
+                            continue;
                         Session.Networking.SendToPlayer(new PacketNotify(msg, disappearTime, font), player.SteamUserId);
+                    }
                 }
                 else
                 {

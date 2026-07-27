@@ -401,6 +401,7 @@ namespace ShipCoreFramework
         [ProtoMember(19)] public bool AllowUnattachedUpgradeModules;
         [ProtoMember(20)] public int NoCoreGraceSeconds = 30;
         [ProtoMember(21)] public int MinimumBlocksGraceSeconds = 30;
+        [ProtoMember(22)] public double CombatLoggingBroadcastRangeMeters = 20000d;
     }
 
     [ProtoContract]

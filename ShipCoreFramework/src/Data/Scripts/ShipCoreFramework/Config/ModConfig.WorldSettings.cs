@@ -9,6 +9,18 @@ namespace ShipCoreFramework
             EnsurePersistedWorldSettings();
             DebugMode = import.DebugMode;
             CombatLogging = import.CombatLogging;
+            if (double.IsNaN(import.CombatLoggingBroadcastRangeMeters) ||
+                double.IsInfinity(import.CombatLoggingBroadcastRangeMeters) ||
+                import.CombatLoggingBroadcastRangeMeters <= 0d)
+            {
+                Utils.Log("CombatLoggingBroadcastRangeMeters validation failed - using default 20000", 1,
+                    "Config Validation");
+                CombatLoggingBroadcastRangeMeters = DefaultCombatLoggingBroadcastRangeMeters;
+            }
+            else
+            {
+                CombatLoggingBroadcastRangeMeters = import.CombatLoggingBroadcastRangeMeters;
+            }
             LogLevel = import.LogLevel;
             ClientOutputLogLevel = import.ClientOutputLogLevel;
             IgnoreAiFactions = import.IgnoreAiFactions;
