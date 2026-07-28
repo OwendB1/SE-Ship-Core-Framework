@@ -424,6 +424,7 @@ function pruneMissingBlockGroupReferences(status = null) {
     core.blockLimits.forEach((limit) => {
       if (!limit) return;
       limit.blockGroups = normalizeBlockGroupNames(limit.blockGroups || [], state.blockGroups, pruned);
+      limit.excludedBlockGroups = normalizeBlockGroupNames(limit.excludedBlockGroups || [], state.blockGroups, pruned);
     });
   };
 
@@ -784,7 +785,9 @@ function cloneLimit(limit = createDefaultLimit()) {
     ...limit,
     allowedDirections: Array.isArray(limit.allowedDirections) ? [...limit.allowedDirections] : [],
     blockGroups: Array.isArray(limit.blockGroups) ? [...limit.blockGroups] : [],
-    groupSearch: String(limit.groupSearch ?? "")
+    excludedBlockGroups: Array.isArray(limit.excludedBlockGroups) ? [...limit.excludedBlockGroups] : [],
+    groupSearch: String(limit.groupSearch ?? ""),
+    excludedGroupSearch: String(limit.excludedGroupSearch ?? "")
   };
 }
 
@@ -814,20 +817,26 @@ function createIncrementedDuplicateName(name, allNames, fallbackBase = "BlockGro
 
 function renameBlockGroupReferences(previousName, nextName) {
   if (!previousName || previousName === nextName) return;
-  state.shipCores.forEach((core) => {
+  [state.noCoreCore, ...state.shipCores].forEach((core) => {
+    if (!Array.isArray(core?.blockLimits)) return;
     core.blockLimits.forEach((limit) => {
-      if (!Array.isArray(limit.blockGroups)) return;
-      limit.blockGroups = limit.blockGroups.map((groupName) => (groupName === previousName ? nextName : groupName));
+      limit.blockGroups = (limit.blockGroups || [])
+        .map((groupName) => (groupName === previousName ? nextName : groupName));
+      limit.excludedBlockGroups = (limit.excludedBlockGroups || [])
+        .map((groupName) => (groupName === previousName ? nextName : groupName));
     });
   });
 }
 
 function removeBlockGroupReferences(groupNameToRemove) {
   if (!groupNameToRemove) return;
-  state.shipCores.forEach((core) => {
+  [state.noCoreCore, ...state.shipCores].forEach((core) => {
+    if (!Array.isArray(core?.blockLimits)) return;
     core.blockLimits.forEach((limit) => {
-      if (!Array.isArray(limit.blockGroups)) return;
-      limit.blockGroups = limit.blockGroups.filter((groupName) => groupName !== groupNameToRemove);
+      limit.blockGroups = (limit.blockGroups || [])
+        .filter((groupName) => groupName !== groupNameToRemove);
+      limit.excludedBlockGroups = (limit.excludedBlockGroups || [])
+        .filter((groupName) => groupName !== groupNameToRemove);
     });
   });
 }
@@ -945,7 +954,9 @@ function createDefaultLimit() {
     punishmentType: "ShutOff",
     allowedDirections: [],
     blockGroups: [],
-    groupSearch: ""
+    excludedBlockGroups: [],
+    groupSearch: "",
+    excludedGroupSearch: ""
   };
 }
 
@@ -1227,7 +1238,7 @@ function renderManifestGroups() {
   `;
 }
 
-function blockGroupCheckboxes(coreIndex, limitIndex, selected = [], searchText = "") {
+function blockGroupCheckboxes(coreIndex, limitIndex, selected = [], searchText = "", action = "limit-group-toggle") {
   const normalizedSearch = searchText.trim().toLowerCase();
   return state.blockGroups
     .filter((group) => group.name.trim())
@@ -1235,7 +1246,7 @@ function blockGroupCheckboxes(coreIndex, limitIndex, selected = [], searchText =
     .map((group) => {
       const isSelected = selected.includes(group.name);
       return `<label class="group-checklist-item ${isSelected ? "selected" : ""}">
-      <input data-action="limit-group-toggle" data-c="${coreIndex}" data-l="${limitIndex}" data-group-name="${escapeXml(group.name)}" type="checkbox" ${isSelected ? "checked" : ""} />
+      <input data-action="${action}" data-c="${coreIndex}" data-l="${limitIndex}" data-group-name="${escapeXml(group.name)}" type="checkbox" ${isSelected ? "checked" : ""} />
       <span>${escapeXml(group.name)}</span>
     </label>`;
     })
@@ -1512,10 +1523,18 @@ function renderShipCores() {
             </div>
           </div>
           <div>
-            <label>Reusable Block Groups</label>
+            <label>Included Reusable Block Groups</label>
             <input data-action="limit-group-search" data-c="${coreIndex}" data-l="${limitIndex}" class="small group-search" placeholder="Search block groups" value="${escapeXml(limit.groupSearch || "")}" />
             <div class="group-checklist" data-limit-group-list data-c="${coreIndex}" data-l="${limitIndex}">
               ${blockGroupCheckboxes(coreIndex, limitIndex, limit.blockGroups, limit.groupSearch || "")}
+            </div>
+          </div>
+          <div>
+            <label>Excluded Reusable Block Groups</label>
+            <p class="muted">Matching exclusions are subtracted before weight and direction checks.</p>
+            <input data-action="limit-excluded-group-search" data-c="${coreIndex}" data-l="${limitIndex}" class="small group-search" placeholder="Search excluded block groups" value="${escapeXml(limit.excludedGroupSearch || "")}" />
+            <div class="group-checklist" data-limit-excluded-group-list data-c="${coreIndex}" data-l="${limitIndex}">
+              ${blockGroupCheckboxes(coreIndex, limitIndex, limit.excludedBlockGroups, limit.excludedGroupSearch || "", "limit-excluded-group-toggle")}
             </div>
           </div>
           </div>
@@ -1530,9 +1549,13 @@ function renderLimitGroupChecklist(coreIndex, limitIndex) {
   if (!limit) return;
 
   const listElement = document.querySelector(`[data-limit-group-list][data-c="${coreIndex}"][data-l="${limitIndex}"]`);
-  if (!listElement) return;
+  if (listElement)
+    listElement.innerHTML = blockGroupCheckboxes(coreIndex, limitIndex, limit.blockGroups, limit.groupSearch || "");
 
-  listElement.innerHTML = blockGroupCheckboxes(coreIndex, limitIndex, limit.blockGroups, limit.groupSearch || "");
+  const excludedListElement = document.querySelector(`[data-limit-excluded-group-list][data-c="${coreIndex}"][data-l="${limitIndex}"]`);
+  if (excludedListElement)
+    excludedListElement.innerHTML = blockGroupCheckboxes(coreIndex, limitIndex,
+      limit.excludedBlockGroups, limit.excludedGroupSearch || "", "limit-excluded-group-toggle");
 }
 
 function renderUpgradeSelector() {
@@ -1717,7 +1740,9 @@ function parseCoreXml(text, originalFileName = "") {
       punishmentType: textOf(limitNode, "PunishmentType") || "ShutOff",
       allowedDirections: qselAll(limitNode, "AllowedDirections").map((node) => node.textContent.trim()).filter(Boolean),
       blockGroups: qselAll(limitNode, "BlockGroups").map((node) => node.textContent.trim()).filter(Boolean),
-      groupSearch: ""
+      excludedBlockGroups: qselAll(limitNode, "ExcludedBlockGroups").map((node) => node.textContent.trim()).filter(Boolean),
+      groupSearch: "",
+      excludedGroupSearch: ""
     }))
   };
 }
@@ -1797,6 +1822,7 @@ function writeBlockLimitXml(limit, indent = "  ") {
     `${indent}<BlockLimits>`,
     `${indent}  <Name>${escapeXml(limit.name)}</Name>`,
     ...(limit.blockGroups || []).map((groupName) => `${indent}  <BlockGroups>${escapeXml(groupName)}</BlockGroups>`),
+    ...(limit.excludedBlockGroups || []).map((groupName) => `${indent}  <ExcludedBlockGroups>${escapeXml(groupName)}</ExcludedBlockGroups>`),
     `${indent}  <MaxCount>${limit.maxCount}</MaxCount>`,
     `${indent}  <CrossConnectorPunishment>${limit.crossConnectorPunishment}</CrossConnectorPunishment>`,
     `${indent}  <PunishByNoFlyZone>${limit.punishByNoFlyZone}</PunishByNoFlyZone>`,
@@ -1983,7 +2009,9 @@ function parseLegacyLimit(limitNode) {
     allowedDirections: [],
     blockTypes: parseLegacyBlockTypes(limitNode),
     blockGroups: [],
-    groupSearch: ""
+    excludedBlockGroups: [],
+    groupSearch: "",
+    excludedGroupSearch: ""
   };
 }
 
@@ -2726,6 +2754,10 @@ document.addEventListener("input", (event) => {
     selectedCore.blockLimits[limitIndex].groupSearch = target.value;
     renderLimitGroupChecklist(coreIndex, limitIndex);
   }
+  if (action === "limit-excluded-group-search") {
+    selectedCore.blockLimits[limitIndex].excludedGroupSearch = target.value;
+    renderLimitGroupChecklist(coreIndex, limitIndex);
+  }
 
   if (action === "upgrade-type") selectedUpgrade.typeId = target.value;
   if (action === "upgrade-subtype") selectedUpgrade.subtypeId = target.value;
@@ -2902,6 +2934,17 @@ document.addEventListener("change", (event) => {
     if (inputElement.checked) selectedSet.add(groupName);
     else selectedSet.delete(groupName);
     limit.blockGroups = Array.from(selectedSet);
+    renderShipCores();
+  }
+  if (action === "limit-excluded-group-toggle" && inputElement) {
+    const limit = selectedCore.blockLimits[limitIndex];
+    const groupName = inputElement.dataset.groupName || "";
+    if (!groupName) return;
+
+    const selectedSet = new Set(limit.excludedBlockGroups || []);
+    if (inputElement.checked) selectedSet.add(groupName);
+    else selectedSet.delete(groupName);
+    limit.excludedBlockGroups = Array.from(selectedSet);
     renderShipCores();
   }
   if (action === "manifest-core-toggle" && inputElement) {

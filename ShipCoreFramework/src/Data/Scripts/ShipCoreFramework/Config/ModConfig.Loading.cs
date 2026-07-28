@@ -418,23 +418,40 @@ namespace ShipCoreFramework
                     Utils.Log("Config warning: A <BlockLimit> had null <BlockGroups>; treating as empty.", 2, "Config Validation");
                 }
 
-                limit.BlockGroups.Clear();
-                foreach (var shorthand in limit.BlockGroupsShortHand)
-                {
-                    var groupName = shorthand == null ? string.Empty : shorthand.Trim();
-                    var found = false;
-                    foreach (var group in BlockGroups.Where(group =>
-                                 group?.Name != null &&
-                                 group.Name.Equals(groupName, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        limit.BlockGroups.Add(group);
-                        found = true;
-                        Utils.Log($"{group.Name} Count: {limit.BlockGroups.Count}", 0, "Ship Core Config groups");
-                    }
+                if (limit.ExcludedBlockGroupsShortHand == null)
+                    limit.ExcludedBlockGroupsShortHand = Array.Empty<string>();
+                if (limit.BlockGroups == null)
+                    limit.BlockGroups = new List<BlockGroup>();
+                if (limit.ExcludedBlockGroups == null)
+                    limit.ExcludedBlockGroups = new List<BlockGroup>();
 
-                    if (!found && !string.IsNullOrWhiteSpace(groupName))
-                        Utils.Log($"Config warning: ShipCore '{core.UniqueName}' references unknown BlockGroup '{groupName}' in limit '{limit.Name}'.", 2, "Config Validation");
+                ResolveBlockGroupReferences(core, limit, limit.BlockGroupsShortHand, limit.BlockGroups,
+                    "BlockGroups");
+                ResolveBlockGroupReferences(core, limit, limit.ExcludedBlockGroupsShortHand,
+                    limit.ExcludedBlockGroups, "ExcludedBlockGroups");
+            }
+        }
+
+        private void ResolveBlockGroupReferences(ShipCore core, BlockLimit limit, IEnumerable<string> names,
+            List<BlockGroup> resolvedGroups, string elementName)
+        {
+            resolvedGroups.Clear();
+            foreach (string shorthand in names)
+            {
+                string groupName = shorthand == null ? string.Empty : shorthand.Trim();
+                bool found = false;
+                foreach (BlockGroup group in BlockGroups)
+                {
+                    if (group?.Name == null ||
+                        !group.Name.Equals(groupName, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    resolvedGroups.Add(group);
+                    found = true;
                 }
+
+                if (!found && !string.IsNullOrWhiteSpace(groupName))
+                    Utils.Log($"Config warning: ShipCore '{core.UniqueName}' references unknown BlockGroup '{groupName}' in <{elementName}> for limit '{limit.Name}'.", 2, "Config Validation");
             }
         }
     }

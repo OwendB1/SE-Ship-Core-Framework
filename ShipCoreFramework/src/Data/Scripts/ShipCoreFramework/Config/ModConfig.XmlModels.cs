@@ -703,6 +703,12 @@ namespace ShipCoreFramework
         [XmlIgnore]
         public List<BlockGroup> BlockGroups = new List<BlockGroup>();
 
+        [XmlElement("ExcludedBlockGroups")]
+        public string[] ExcludedBlockGroupsShortHand = Array.Empty<string>();
+
+        [XmlIgnore]
+        public List<BlockGroup> ExcludedBlockGroups = new List<BlockGroup>();
+
         [XmlElement("MaxCount")]
         public float MaxCount;
 
@@ -729,13 +735,21 @@ namespace ShipCoreFramework
 
         internal BlockType GetMatchingBlockType(BlockKey key)
         {
-            if (BlockGroups == null) return null;
+            if (FindMatchingBlockType(ExcludedBlockGroups, key) != null)
+                return null;
 
-            foreach (var group in BlockGroups)
+            return FindMatchingBlockType(BlockGroups, key);
+        }
+
+        private static BlockType FindMatchingBlockType(List<BlockGroup> groups, BlockKey key)
+        {
+            if (groups == null) return null;
+
+            foreach (BlockGroup group in groups)
             {
                 if (group?.BlockTypes == null) continue;
 
-                foreach (var blockType in group.BlockTypes)
+                foreach (BlockType blockType in group.BlockTypes)
                 {
                     if (blockType == null) continue;
                     if (blockType.Matches(key))

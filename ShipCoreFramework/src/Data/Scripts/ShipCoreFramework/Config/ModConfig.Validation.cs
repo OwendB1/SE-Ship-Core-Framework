@@ -76,15 +76,38 @@ namespace ShipCoreFramework
                 }
                 else
                 {
-                    limit.BlockGroupsShortHand = limit.BlockGroupsShortHand
-                        .Where(groupName => !string.IsNullOrWhiteSpace(groupName))
-                        .Select(groupName => groupName.Trim())
-                        .Distinct(StringComparer.OrdinalIgnoreCase)
-                        .ToArray();
+                    limit.BlockGroupsShortHand = NormalizeBlockGroupReferences(limit.BlockGroupsShortHand);
+                }
+
+                if (limit.ExcludedBlockGroupsShortHand == null)
+                {
+                    limit.ExcludedBlockGroupsShortHand = Array.Empty<string>();
+                    Utils.Log($"Config warning: ShipCore '{core.UniqueName}' from {source} ({coreFileOrKey}) has a <BlockLimit> with null <ExcludedBlockGroups>; treating as empty.", 2, "Config Validation");
+                }
+                else
+                {
+                    limit.ExcludedBlockGroupsShortHand =
+                        NormalizeBlockGroupReferences(limit.ExcludedBlockGroupsShortHand);
                 }
 
                 if (limit.BlockGroups == null) limit.BlockGroups = new List<BlockGroup>();
+                if (limit.ExcludedBlockGroups == null) limit.ExcludedBlockGroups = new List<BlockGroup>();
+
+                string[] overlaps = limit.BlockGroupsShortHand
+                    .Intersect(limit.ExcludedBlockGroupsShortHand, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+                if (overlaps.Length > 0)
+                    Utils.Log($"Config warning: ShipCore '{core.UniqueName}' limit '{limit.Name}' includes and excludes BlockGroup(s) {string.Join(", ", overlaps)}; exclusion wins.", 2, "Config Validation");
             }
+        }
+
+        private static string[] NormalizeBlockGroupReferences(IEnumerable<string> groupNames)
+        {
+            return groupNames
+                .Where(groupName => !string.IsNullOrWhiteSpace(groupName))
+                .Select(groupName => groupName.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
         }
 
         private static void NormalizeSpeedModifiers(ShipCore core, string source, string coreFileOrKey)
