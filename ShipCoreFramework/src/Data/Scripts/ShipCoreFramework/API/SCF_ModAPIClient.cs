@@ -962,7 +962,7 @@ namespace ShipCoreFramework
     }
 
     /// <summary>
-    /// Read-only API backed by server-synchronized client replica data.
+    /// Read-only API backed by synchronized replicas on remote clients and local authority on hosts.
     /// </summary>
     public class ShipCoreFrameworkClientApi : ShipCoreFrameworkApiBase
     {

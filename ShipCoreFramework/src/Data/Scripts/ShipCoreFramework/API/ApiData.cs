@@ -19,7 +19,8 @@ namespace ShipCoreFramework
         public const long SERVER_LOCAL_API_ID = 3217652398L;
 
         /// <summary>
-        /// Process-local API ID for read-only remote-client consumers.
+        /// Process-local API ID for read-only client consumers.
+        /// Listen hosts and single-player publish this alongside the server-local API.
         /// </summary>
         public const long CLIENT_REPLICA_API_ID = 3217652410L;
 

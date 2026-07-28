@@ -8,6 +8,16 @@ namespace ShipCoreFramework
     {
         private static Func<object, object> ClientMethodFactory(int methodId)
         {
+            Func<object, object> clientRead = ClientReplicaMethodFactory(methodId);
+            if (!Session.IsServer || clientRead == null ||
+                methodId == ApiMethodId.GetCapabilities ||
+                methodId == ApiMethodId.GetReadiness_Binary)
+                return clientRead;
+            return ServerMethodFactory(methodId);
+        }
+
+        private static Func<object, object> ClientReplicaMethodFactory(int methodId)
+        {
             switch (methodId)
             {
                 case ApiMethodId.GetApiVersion:
@@ -15,7 +25,9 @@ namespace ShipCoreFramework
                 case ApiMethodId.GetCapabilities:
                     return ignored => Success((int)(ApiCapabilityData.ConfigQueries |
                                                      ApiCapabilityData.RuntimeQueries |
-                                                     ApiCapabilityData.Replicated |
+                                                     (Session.IsServer
+                                                         ? ApiCapabilityData.Authoritative
+                                                         : ApiCapabilityData.Replicated) |
                                                      ApiCapabilityData.BestEffortPlacementChecks));
                 case ApiMethodId.GetReadiness_Binary:
                     return ignored => SerializedSuccess(

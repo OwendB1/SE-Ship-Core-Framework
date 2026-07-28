@@ -28,11 +28,16 @@ assert.match(data, /CLIENT_REPLICA_API_ID/);
 assert.match(data, /EVENT_RUNTIME_SNAPSHOT_READY/);
 
 assert.match(provider, /Session\.IsServer[\s\S]*SERVER_LOCAL_API_ID/);
-assert.match(provider, /else if \(Session\.IsClient\)[\s\S]*CLIENT_REPLICA_API_ID/);
+assert.match(provider, /if \(Session\.IsClient\)[\s\S]*CLIENT_REPLICA_API_ID/);
+assert.doesNotMatch(provider, /else if \(Session\.IsClient\)/);
 
 assert.doesNotMatch(clientFactory, /case ApiMethodId\.SetFriction/);
 assert.doesNotMatch(clientFactory, /case ApiMethodId\.ClearFriction/);
 assert.match(clientFactory, /RuntimeStateStore\.TryGetByGrid/);
+assert.match(
+  clientFactory,
+  /ClientReplicaMethodFactory\(methodId\)[\s\S]*clientRead == null[\s\S]*ServerMethodFactory\(methodId\)/,
+);
 assert.match(serverFactory, /case ApiMethodId\.SetFrictionEnabledForGroup/);
 assert.match(serverFactory, /ApiCapabilityData\.RuntimeMutations/);
 

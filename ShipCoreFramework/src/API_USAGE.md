@@ -3,7 +3,8 @@
 API v4 separates process-local consumers by authority:
 
 - `ShipCoreFrameworkServerApi`: authoritative server queries and runtime mutations.
-- `ShipCoreFrameworkClientApi`: read-only queries backed by server-synchronized client replicas.
+- `ShipCoreFrameworkClientApi`: read-only queries backed by synchronized replicas on remote clients
+  and local authority on a listen host or in single-player.
 - `ShipCoreFrameworkClient`: temporary obsolete alias for `ShipCoreFrameworkClientApi`.
 
 There is no generic client-to-server API. A future remote operation must use a dedicated secure packet
@@ -75,8 +76,9 @@ private void DisableFriction(long gridEntityId)
 }
 ```
 
-Register only the wrapper appropriate to the process role. Dedicated servers publish only the
-server-local factory. Remote clients publish only the client-replica factory.
+Register only the wrapper appropriate to the consumer role. Dedicated servers publish only the
+server-local factory, remote clients publish only the client-replica factory, and listen hosts and
+single-player publish both. The client surface remains read-only when it is backed by local authority.
 
 ## Readiness
 

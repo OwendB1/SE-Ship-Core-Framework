@@ -45,7 +45,7 @@ namespace ShipCoreFramework
                     MyAPIGateway.Utilities.SendModMessage(ApiConstants.SERVER_LOCAL_API_ID, serverPayload);
                     Utils.Log("ModAPI v4: broadcast server-local authority factory.", 1);
                 }
-                else if (Session.IsClient)
+                if (Session.IsClient)
                 {
                     MyTuple<int, int, Func<int, Func<object, object>>> clientPayload = MyTuple.Create(
                         ApiConstants.API_VERSION,
