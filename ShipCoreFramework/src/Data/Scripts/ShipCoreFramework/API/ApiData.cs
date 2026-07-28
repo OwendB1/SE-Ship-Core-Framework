@@ -559,6 +559,7 @@ namespace ShipCoreFramework
         [ProtoMember(6)] public PunishmentTypeData PunishmentType;
         [ProtoMember(7)] public DirectionTypeData[] AllowedDirections = Array.Empty<DirectionTypeData>();
         [ProtoMember(8)] public bool IsCriticalLimit;
+        [ProtoMember(9)] public string[] ExcludedBlockGroupNames = Array.Empty<string>();
     }
 
     [ProtoContract]

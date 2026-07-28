@@ -952,6 +952,7 @@ namespace ShipCoreFramework
                 {
                     Name = string.Empty,
                     BlockGroupNames = Array.Empty<string>(),
+                    ExcludedBlockGroupNames = Array.Empty<string>(),
                     AllowedDirections = Array.Empty<DirectionTypeData>()
                 };
             }
@@ -960,6 +961,9 @@ namespace ShipCoreFramework
             {
                 Name = limit.Name ?? string.Empty,
                 BlockGroupNames = (limit.BlockGroupsShortHand ?? Array.Empty<string>())
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .ToArray(),
+                ExcludedBlockGroupNames = (limit.ExcludedBlockGroupsShortHand ?? Array.Empty<string>())
                     .Where(name => !string.IsNullOrWhiteSpace(name))
                     .ToArray(),
                 MaxCount = limit.MaxCount,

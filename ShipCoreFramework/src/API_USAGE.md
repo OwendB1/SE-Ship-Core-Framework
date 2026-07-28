@@ -127,6 +127,10 @@ Runtime-ready queries:
 `TryIsBlockAllowed` is authoritative on the server API and best-effort on the client replica API.
 The replica answer uses synchronized counts and may become stale between server updates.
 
+`BlockLimitData.BlockGroupNames` lists included reusable groups.
+`BlockLimitData.ExcludedBlockGroupNames` lists groups subtracted from those matches; exclusions
+take precedence when a block belongs to both.
+
 Runtime mutations exist only on `ShipCoreFrameworkServerApi`.
 
 ## Events

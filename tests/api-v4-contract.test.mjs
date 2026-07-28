@@ -28,10 +28,18 @@ assert.match(data, /GetApiMajor\(apiVersion\) == API_MAJOR/);
 assert.match(data, /SERVER_LOCAL_API_ID/);
 assert.match(data, /CLIENT_REPLICA_API_ID/);
 assert.match(data, /EVENT_RUNTIME_SNAPSHOT_READY/);
+assert.match(
+  data,
+  /ProtoMember\(9\)\]\s*public string\[\] ExcludedBlockGroupNames/,
+);
 
 assert.match(provider, /Session\.IsServer[\s\S]*SERVER_LOCAL_API_ID/);
 assert.match(provider, /if \(Session\.IsClient\)[\s\S]*CLIENT_REPLICA_API_ID/);
 assert.doesNotMatch(provider, /else if \(Session\.IsClient\)/);
+assert.match(
+  provider,
+  /ExcludedBlockGroupNames\s*=\s*\(limit\.ExcludedBlockGroupsShortHand/,
+);
 
 assert.doesNotMatch(clientFactory, /case ApiMethodId\.SetFriction/);
 assert.doesNotMatch(clientFactory, /case ApiMethodId\.ClearFriction/);
