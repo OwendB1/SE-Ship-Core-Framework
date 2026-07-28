@@ -124,6 +124,9 @@ Runtime-ready queries:
 - Friction state and overrides
 - Group deactivation
 
+Grid-targeted methods accept only `long gridId`. Consumers that already have an `IMyCubeGrid`
+should pass `grid.EntityId`.
+
 `TryIsBlockAllowed` is authoritative on the server API and best-effort on the client replica API.
 The replica answer uses synchronized counts and may become stale between server updates.
 

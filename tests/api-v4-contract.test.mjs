@@ -63,6 +63,11 @@ assert.match(wrapper, /class ShipCoreFrameworkServerApi/);
 assert.doesNotMatch(wrapper, /\[Obsolete/);
 assert.doesNotMatch(wrapper, /class ShipCoreFrameworkClient\b/);
 assert.doesNotMatch(wrapper, /Legacy(Value|Try|Command)/);
+assert.doesNotMatch(
+  wrapper,
+  /public ApiReadResult<[^\r\n]*\([^\r\n]*IMyCubeGrid\b/,
+);
+assert.doesNotMatch(wrapper, /GetEntityId\s*\(\s*IMyCubeGrid\b/);
 assert.match(wrapper, /!ApiConstants\.IsApiCompatible\(ProviderApiVersion\)/);
 assert.notEqual((3 << 8) | 10, (4 << 8) | 0, "v3.10 must not match the v4 provider version");
 assert.match(wrapper, /RuntimeSnapshotReady = false;[\s\S]*ConfigReceived/);

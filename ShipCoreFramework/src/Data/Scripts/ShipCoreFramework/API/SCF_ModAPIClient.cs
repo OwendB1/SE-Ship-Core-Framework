@@ -130,16 +130,6 @@ namespace ShipCoreFramework
             return InvokePrimitive<bool>(ApiMethodId.GetRuntimeStateAvailability, gridId);
         }
 
-        public ApiReadResult<bool> TryGetRuntimeStateAvailability(IMyCubeGrid grid)
-        {
-            return TryGetRuntimeStateAvailability(GetEntityId(grid));
-        }
-
-        public ApiReadResult<ShipCoreData> TryGetGridCore(IMyCubeGrid grid)
-        {
-            return TryGetGridCore(GetEntityId(grid));
-        }
-
         public ApiReadResult<ShipCoreData> TryGetGridCore(long gridId)
         {
             return InvokeBinary<ShipCoreData>(ApiMethodId.GetGridCore_Binary, gridId);
@@ -155,21 +145,10 @@ namespace ShipCoreFramework
             return InvokeBinary<List<ShipCoreData>>(ApiMethodId.GetAllCoreConfigs_Binary, null);
         }
 
-        public ApiReadResult<Dictionary<string, LimitStatusData>> TryGetBlockLimitsStatus(IMyCubeGrid grid)
-        {
-            return TryGetBlockLimitsStatus(GetEntityId(grid));
-        }
-
         public ApiReadResult<Dictionary<string, LimitStatusData>> TryGetBlockLimitsStatus(long gridId)
         {
             return InvokeBinary<Dictionary<string, LimitStatusData>>(
                 ApiMethodId.GetBlockLimitsStatus_Binary, gridId);
-        }
-
-        public ApiReadResult<bool> TryIsBlockAllowed(IMyCubeGrid grid, string typeId, string subtypeId,
-            int count)
-        {
-            return TryIsBlockAllowed(GetEntityId(grid), typeId, subtypeId, count);
         }
 
         public ApiReadResult<bool> TryIsBlockAllowed(long gridId, string typeId, string subtypeId, int count)
@@ -178,29 +157,14 @@ namespace ShipCoreFramework
                 MyTuple.Create(gridId, typeId, subtypeId, count));
         }
 
-        public ApiReadResult<GridModifiersData> TryGetGridModifiers(IMyCubeGrid grid)
-        {
-            return TryGetGridModifiers(GetEntityId(grid));
-        }
-
         public ApiReadResult<GridModifiersData> TryGetGridModifiers(long gridId)
         {
             return InvokeBinary<GridModifiersData>(ApiMethodId.GetGridModifiers_Binary, gridId);
         }
 
-        public ApiReadResult<float> TryGetMaxSpeed(IMyCubeGrid grid)
-        {
-            return TryGetMaxSpeed(GetEntityId(grid));
-        }
-
         public ApiReadResult<float> TryGetMaxSpeed(long gridId)
         {
             return InvokePrimitive<float>(ApiMethodId.GetMaxSpeed, gridId);
-        }
-
-        public ApiReadResult<bool> TryIsBoostActive(IMyCubeGrid grid)
-        {
-            return TryIsBoostActive(GetEntityId(grid));
         }
 
         public ApiReadResult<bool> TryIsBoostActive(long gridId)
@@ -218,11 +182,6 @@ namespace ShipCoreFramework
             return InvokeBinary<ModConfigData>(ApiMethodId.GetFullConfig_Binary, null);
         }
 
-        public ApiReadResult<SpeedModifiersData> TryGetSpeedModifiers(IMyCubeGrid grid)
-        {
-            return TryGetSpeedModifiers(GetEntityId(grid));
-        }
-
         public ApiReadResult<SpeedModifiersData> TryGetSpeedModifiers(long gridId)
         {
             return InvokeBinary<SpeedModifiersData>(ApiMethodId.GetSpeedModifiers_Binary, gridId);
@@ -233,19 +192,9 @@ namespace ShipCoreFramework
             return InvokePrimitive<float>(ApiMethodId.GetBoostResistance, gridId);
         }
 
-        public ApiReadResult<float> TryGetBoostResistance(IMyCubeGrid grid)
-        {
-            return TryGetBoostResistance(GetEntityId(grid));
-        }
-
         public ApiReadResult<float> TryGetBaseMaxSpeed(long gridId)
         {
             return InvokePrimitive<float>(ApiMethodId.GetBaseMaxSpeed, gridId);
-        }
-
-        public ApiReadResult<float> TryGetBaseMaxSpeed(IMyCubeGrid grid)
-        {
-            return TryGetBaseMaxSpeed(GetEntityId(grid));
         }
 
         public ApiReadResult<float> TryGetMaxBoostMultiplier(long gridId)
@@ -253,19 +202,9 @@ namespace ShipCoreFramework
             return InvokePrimitive<float>(ApiMethodId.GetMaxBoostMultiplier, gridId);
         }
 
-        public ApiReadResult<float> TryGetMaxBoostMultiplier(IMyCubeGrid grid)
-        {
-            return TryGetMaxBoostMultiplier(GetEntityId(grid));
-        }
-
         public ApiReadResult<float> TryGetBoostDuration(long gridId)
         {
             return InvokePrimitive<float>(ApiMethodId.GetBoostDuration, gridId);
-        }
-
-        public ApiReadResult<float> TryGetBoostDuration(IMyCubeGrid grid)
-        {
-            return TryGetBoostDuration(GetEntityId(grid));
         }
 
         public ApiReadResult<float> TryGetBoostCooldown(long gridId)
@@ -273,29 +212,14 @@ namespace ShipCoreFramework
             return InvokePrimitive<float>(ApiMethodId.GetBoostCooldown, gridId);
         }
 
-        public ApiReadResult<float> TryGetBoostCooldown(IMyCubeGrid grid)
-        {
-            return TryGetBoostCooldown(GetEntityId(grid));
-        }
-
         public ApiReadResult<bool> TryGetFrictionEnabledForGroup(long gridId)
         {
             return InvokePrimitive<bool>(ApiMethodId.GetFrictionEnabledForGroup, gridId);
         }
 
-        public ApiReadResult<bool> TryGetFrictionEnabledForGroup(IMyCubeGrid grid)
-        {
-            return TryGetFrictionEnabledForGroup(GetEntityId(grid));
-        }
-
         public ApiReadResult<float> TryGetFrictionMaximumDecelerationForGroup(long gridId)
         {
             return InvokePrimitive<float>(ApiMethodId.GetFrictionMaximumDecelerationForGroup, gridId);
-        }
-
-        public ApiReadResult<float> TryGetFrictionMaximumDecelerationForGroup(IMyCubeGrid grid)
-        {
-            return TryGetFrictionMaximumDecelerationForGroup(GetEntityId(grid));
         }
 
         public ApiReadResult<int> TryGetFrictionSpeedValueMode()
@@ -308,19 +232,9 @@ namespace ShipCoreFramework
             return InvokePrimitive<float>(ApiMethodId.GetFrictionMinimumSpeedAbsoluteForGroup, gridId);
         }
 
-        public ApiReadResult<float> TryGetFrictionMinimumSpeedAbsoluteForGroup(IMyCubeGrid grid)
-        {
-            return TryGetFrictionMinimumSpeedAbsoluteForGroup(GetEntityId(grid));
-        }
-
         public ApiReadResult<float> TryGetFrictionMaximumSpeedAbsoluteForGroup(long gridId)
         {
             return InvokePrimitive<float>(ApiMethodId.GetFrictionMaximumSpeedAbsoluteForGroup, gridId);
-        }
-
-        public ApiReadResult<float> TryGetFrictionMaximumSpeedAbsoluteForGroup(IMyCubeGrid grid)
-        {
-            return TryGetFrictionMaximumSpeedAbsoluteForGroup(GetEntityId(grid));
         }
 
         public ApiReadResult<float> TryGetFrictionMinimumSpeedModifierForGroup(long gridId)
@@ -328,29 +242,14 @@ namespace ShipCoreFramework
             return InvokePrimitive<float>(ApiMethodId.GetFrictionMinimumSpeedModifierForGroup, gridId);
         }
 
-        public ApiReadResult<float> TryGetFrictionMinimumSpeedModifierForGroup(IMyCubeGrid grid)
-        {
-            return TryGetFrictionMinimumSpeedModifierForGroup(GetEntityId(grid));
-        }
-
         public ApiReadResult<float> TryGetFrictionMaximumSpeedModifierForGroup(long gridId)
         {
             return InvokePrimitive<float>(ApiMethodId.GetFrictionMaximumSpeedModifierForGroup, gridId);
         }
 
-        public ApiReadResult<float> TryGetFrictionMaximumSpeedModifierForGroup(IMyCubeGrid grid)
-        {
-            return TryGetFrictionMaximumSpeedModifierForGroup(GetEntityId(grid));
-        }
-
         public ApiReadResult<bool> TryIsGroupDeactivated(long gridId)
         {
             return InvokePrimitive<bool>(ApiMethodId.IsGroupDeactivated, gridId);
-        }
-
-        public ApiReadResult<bool> TryIsGroupDeactivated(IMyCubeGrid grid)
-        {
-            return TryIsGroupDeactivated(GetEntityId(grid));
         }
 
         protected ApiReadResult<bool> InvokeCommand(int methodId, object argument)
@@ -495,11 +394,6 @@ namespace ShipCoreFramework
             ProviderApiVersion = 0;
             ProviderRole = ApiProviderRoleData.Unknown;
             Capabilities = ApiCapabilityData.None;
-        }
-
-        protected static long GetEntityId(IMyCubeGrid grid)
-        {
-            return grid == null ? 0L : grid.EntityId;
         }
 
         private static IMyCubeGrid ResolveGrid(long gridId)
