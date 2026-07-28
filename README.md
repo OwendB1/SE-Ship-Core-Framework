@@ -342,12 +342,30 @@ Each entry uses `<BlockLimit>`.
 | --- | --- | --- | --- |
 | `Name` | `string` | Limit name. | Referenced by upgrade-module `BlockLimitModifiers`. |
 | `BlockGroups` | `string[]` | Names of `BlockGroup` definitions included in this limit. | A block matches the limit if it matches any referenced group entry. |
+| `ExcludedBlockGroups` | `string[]` | Names of `BlockGroup` definitions subtracted from this limit. | Exclusion wins when a block matches both an included and excluded group. |
 | `MaxCount` | `float` | Maximum allowed total weight for this limit. | Weight comes from matched `BlockType.CountWeight`. |
 | `CrossConnectorPunishment` | `bool` | Pulls blocks from connected no-core groups into this limit's bucket. | Only affects this limit. Does not control min-block or manifest-blacklist limited-block gates. |
 | `PunishByNoFlyZone` | `bool` | Applies this limit's punishment inside no-fly zones. | Only used when the zone itself is not forcing everything off. |
 | `IsCriticalLimit` | `bool` | Marks this limit as exempt from total limited-block shutoff gates. | Min-block and manifest-blacklist shutoff skip this limit. Normal limit overflow, directional checks, and no-fly-zone punishment still work normally. |
 | `PunishmentType` | `ShutOff`, `Damage`, `Delete`, `Explode` | Punishment for blocks in this limit when the limit is violated. | Limited-block gate punishment always uses `ShutOff`, regardless of this setting. |
 | `AllowedDirections` | `List<DirectionType>` | Directional lock for this limit. | If set, mismatched blocks are punished even if count is under cap. Directions are relative to the main core and compare the matched `BlockType.PrimaryDirection` axis. Subgrid behavior is controlled by world setting `BlockDirectionalPlacementOnSubgrids`. |
+
+Reusable groups can be combined as set subtraction without changing their definitions. For example,
+the following limit counts every block in `AllHydrogenEngines` except blocks classified by
+`SpecialHydrogenEngine`:
+
+```xml
+<BlockLimits>
+  <Name>General Hydrogen Engines</Name>
+  <BlockGroups>AllHydrogenEngines</BlockGroups>
+  <ExcludedBlockGroups>SpecialHydrogenEngine</ExcludedBlockGroups>
+  <MaxCount>10</MaxCount>
+</BlockLimits>
+```
+
+`ExcludedBlockGroups` only determines membership. Its `CountWeight` and `PrimaryDirection` values are
+not subtracted; an excluded block contributes nothing to this limit. Existing limits without exclusions
+keep their current behavior.
 
 ### Direction values
 

@@ -119,11 +119,7 @@ namespace ShipCoreFramework
                 {
                     if (limit?.BlockGroups == null || !limit.PunishByNoFlyZone) continue;
 
-                    var match = limit.BlockGroups
-                        .SelectMany(g => g.BlockTypes)
-                        .Any(b => b != null && b.Matches(blockKey));
-
-                    if (match)
+                    if (limit.GetMatchingBlockType(blockKey) != null)
                         punishments.Add(new PendingNoFlyPunishment(block, limit.PunishmentType));
                 }
             }
