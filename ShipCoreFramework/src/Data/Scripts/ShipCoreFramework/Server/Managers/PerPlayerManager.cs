@@ -30,14 +30,18 @@ namespace ShipCoreFramework
                 return false;
             }
 
-            var maxAllowedGrids = Config.GetShipCoreByTypeId(coreType).MaxPerPlayer;
+            var core = Config.GetShipCoreByTypeId(coreType);
+            var maxAllowedGrids = core.MaxPerPlayer;
             if (maxAllowedGrids < 0) return true;
 
             var currentCount = GetCurrentCount(ownerId, coreType);
             if (currentCount <= maxAllowedGrids) return true;
 
             if (notify)
-                Utils.ShowChatMessage($"Player limit reached, you already have {currentCount - 1}/{maxAllowedGrids} {coreType} built!", playerEntityId: ownerId);
+            {
+                var coreName = string.IsNullOrWhiteSpace(core.UniqueName) ? coreType : core.UniqueName;
+                Utils.ShowChatMessage($"Player limit reached, you already have {currentCount - 1}/{maxAllowedGrids} {coreName} built!", playerEntityId: ownerId);
+            }
             return false;
         }
 
