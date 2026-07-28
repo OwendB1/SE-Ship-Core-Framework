@@ -5,7 +5,6 @@ API v4 separates process-local consumers by authority:
 - `ShipCoreFrameworkServerApi`: authoritative server queries and runtime mutations.
 - `ShipCoreFrameworkClientApi`: read-only queries backed by synchronized replicas on remote clients
   and local authority on a listen host or in single-player.
-- `ShipCoreFrameworkClient`: temporary obsolete alias for `ShipCoreFrameworkClientApi`.
 
 There is no generic client-to-server API. A future remote operation must use a dedicated secure packet
 with player, permission, ownership, argument, and rate-limit validation.
@@ -105,8 +104,7 @@ All `Try...` methods return `ApiReadResult<T>`:
 - `Unsupported`
 - `Error`
 
-Do not use the obsolete default-returning methods in new integrations. Their fallback values cannot
-distinguish missing data from real values.
+All queries return an `ApiReadResult<T>` so unavailable data cannot be confused with a real value.
 
 ## Query classification
 

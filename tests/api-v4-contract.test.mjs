@@ -23,6 +23,8 @@ const [
 ]);
 
 assert.match(data, /API_MAJOR\s*=\s*4/);
+assert.doesNotMatch(data, /API_MAJOR\s*=\s*3/);
+assert.match(data, /GetApiMajor\(apiVersion\) == API_MAJOR/);
 assert.match(data, /SERVER_LOCAL_API_ID/);
 assert.match(data, /CLIENT_REPLICA_API_ID/);
 assert.match(data, /EVENT_RUNTIME_SNAPSHOT_READY/);
@@ -50,6 +52,11 @@ assert.match(runtimeConsumer, /ModAPI\.MarkRuntimeSnapshotReady\(sequence, snaps
 
 assert.match(wrapper, /class ShipCoreFrameworkClientApi/);
 assert.match(wrapper, /class ShipCoreFrameworkServerApi/);
+assert.doesNotMatch(wrapper, /\[Obsolete/);
+assert.doesNotMatch(wrapper, /class ShipCoreFrameworkClient\b/);
+assert.doesNotMatch(wrapper, /Legacy(Value|Try|Command)/);
+assert.match(wrapper, /!ApiConstants\.IsApiCompatible\(ProviderApiVersion\)/);
+assert.notEqual((3 << 8) | 10, (4 << 8) | 0, "v3.10 must not match the v4 provider version");
 assert.match(wrapper, /RuntimeSnapshotReady = false;[\s\S]*ConfigReceived/);
 
 console.log("API v4 role/readiness contract checks passed.");
