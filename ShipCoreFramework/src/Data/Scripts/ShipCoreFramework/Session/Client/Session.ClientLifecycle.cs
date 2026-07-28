@@ -22,6 +22,7 @@ namespace ShipCoreFramework
         private static void UnloadClientData()
         {
             MyAPIGateway.Utilities.MessageEnteredSender -= Commands.OnChatCommand;
+            ResetTerminalGridCloseGuard();
             RevertHighResolutionLcdDefinitions();
             CoreTerminalControls.Unregister();
             RuntimeStateStore.Clear();
