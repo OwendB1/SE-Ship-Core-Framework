@@ -1,3 +1,4 @@
+using System.Linq;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
@@ -93,7 +94,77 @@ namespace ShipCoreFramework
         {
             var block = core?.CoreBlock;
             if (block == null || block.MarkedForClose || block.Closed) return false;
+            var grid = block.CubeGrid as MyCubeGrid;
+            var slim = block.SlimBlock;
+            if (grid == null || slim == null || !ReferenceEquals(grid.GetCubeBlock(slim.Position), slim))
+                return false;
             return !requireWorking || block.IsWorking;
+        }
+
+        internal void ReconcileAfterBlockTransfer()
+        {
+            if (!Session.IsServer || _closing || Session.IsShuttingDown) return;
+
+            foreach (var gridComponent in GridDictionary.Values)
+            {
+                foreach (var pair in gridComponent.CoreDictionary.ToArray())
+                {
+                    if (IsSelectableCore(pair.Value, false)) continue;
+
+                    CoreComponent removed;
+                    if (gridComponent.CoreDictionary.TryRemove(pair.Key, out removed) && removed != null)
+                        removed.Clean();
+                }
+            }
+
+            var best = GetBestMainCoreCandidate(false);
+            if (best == null)
+            {
+                if (MainCoreComponent != null)
+                {
+                    ResetCore();
+                    return;
+                }
+
+                ScheduleMissingCoreRescan();
+            }
+            else if (!ReferenceEquals(best, MainCoreComponent))
+            {
+                Activate(best);
+                return;
+            }
+
+            IncrementLimitGeneration();
+            InvalidateGameThreadStateCache(true);
+            InvalidateModifierStateCache();
+            InvalidateSpeedStateCache();
+            OnUpgradeModulesChanged();
+        }
+
+        internal void ScheduleBlockTransferReconcile()
+        {
+            if (_closing || Session.IsShuttingDown) return;
+
+            var reconcileTick = Session.CurrentTick + 1;
+            if (_pendingBlockTransferReconcileTick == 0 ||
+                reconcileTick < _pendingBlockTransferReconcileTick)
+                _pendingBlockTransferReconcileTick = reconcileTick;
+        }
+
+        internal void RunBlockTransferReconcileTick()
+        {
+            if (_pendingBlockTransferReconcileTick == 0 ||
+                Session.CurrentTick < _pendingBlockTransferReconcileTick)
+                return;
+
+            if (IsLimitPunishmentDeferred())
+            {
+                _pendingBlockTransferReconcileTick = Session.CurrentTick + 1;
+                return;
+            }
+
+            _pendingBlockTransferReconcileTick = 0;
+            ReconcileAfterBlockTransfer();
         }
 
         private static int GetCoreSelectionPriority(ShipCore core)

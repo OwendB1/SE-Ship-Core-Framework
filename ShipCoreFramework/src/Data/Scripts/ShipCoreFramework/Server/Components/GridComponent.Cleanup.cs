@@ -1,6 +1,7 @@
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using IMyShipConnector = Sandbox.ModAPI.IMyShipConnector;
+using IMyShipMergeBlock = SpaceEngineers.Game.ModAPI.IMyShipMergeBlock;
 
 namespace ShipCoreFramework
 {
@@ -16,6 +17,10 @@ namespace ShipCoreFramework
             var shipController = functionalBlock as IMyShipController;
             if (shipController != null)
                 shipController.PropertiesChanged -= ShipControllerOnPropertiesChanged;
+
+            var mergeBlock = fatBlock as IMyShipMergeBlock;
+            if (mergeBlock != null)
+                mergeBlock.MergeStateChanged -= MergeBlockOnStateChanged;
 
             var connector = fatBlock as IMyShipConnector;
             if (connector == null) return;

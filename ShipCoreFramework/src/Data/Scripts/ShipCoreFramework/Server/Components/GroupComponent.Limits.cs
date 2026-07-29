@@ -316,7 +316,13 @@ namespace ShipCoreFramework
 
         internal bool IsLimitPunishmentDeferred()
         {
-            return IsInitializingGrids;
+            if (IsInitializingGrids) return true;
+
+            foreach (var grid in GridDictionary.Keys)
+                if (grid != null && grid.IsBlockTrasferInProgress)
+                    return true;
+
+            return false;
         }
 
         internal void OnBlockAddedToGroup()
@@ -502,6 +508,7 @@ namespace ShipCoreFramework
         private void EnforceGroupPunishment(bool forceShutOffPunishment = false)
         {
             if (!Session.IsServer) return;
+            if (IsLimitPunishmentDeferred()) return;
             if (IsCoreRecoveryGraceActive()) return;
             if (Deactivated || IsIgnoredGroup()) return;
 
@@ -626,6 +633,7 @@ namespace ShipCoreFramework
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
                 if (_closing || Session.IsShuttingDown) return;
+                if (IsLimitPunishmentDeferred()) return;
 
                 var appliedPunishments = 0;
                 foreach (var punishment in punishments)
@@ -652,10 +660,16 @@ namespace ShipCoreFramework
 
         private float ComputeEffectiveMaxCount(BlockLimit limit)
         {
+            return ComputeEffectiveMaxCount(ShipCore, limit, GetEffectiveUpgradeModules(true));
+        }
+
+        private static float ComputeEffectiveMaxCount(ShipCore shipCore, BlockLimit limit,
+            IEnumerable<UpgradeModuleComponent> modules)
+        {
             if (limit == null) return 0f;
 
             var maxCount = limit.MaxCount;
-            foreach (var module in GetEffectiveUpgradeModules(true))
+            foreach (var module in modules)
             {
                 var config = module.GetConfig();
                 if (config?.BlockLimitModifiers == null) continue;
@@ -674,9 +688,15 @@ namespace ShipCoreFramework
 
         private int ComputeEffectiveMaxBlocks()
         {
-            var max = ShipCore.MaxBlocks;
+            return ComputeEffectiveMaxBlocks(ShipCore, GetEffectiveUpgradeModules(true));
+        }
+
+        private static int ComputeEffectiveMaxBlocks(ShipCore shipCore,
+            IEnumerable<UpgradeModuleComponent> modules)
+        {
+            var max = shipCore.MaxBlocks;
             if (max <= 0) return max;
-            foreach (var module in GetEffectiveUpgradeModules(true))
+            foreach (var module in modules)
             {
                 var config = module.GetConfig();
                 if (config?.CapacityModifiers == null) continue;
@@ -691,9 +711,15 @@ namespace ShipCoreFramework
 
         private float ComputeEffectiveMaxMass()
         {
-            var max = ShipCore.MaxMass;
+            return ComputeEffectiveMaxMass(ShipCore, GetEffectiveUpgradeModules(true));
+        }
+
+        private static float ComputeEffectiveMaxMass(ShipCore shipCore,
+            IEnumerable<UpgradeModuleComponent> modules)
+        {
+            var max = shipCore.MaxMass;
             if (max <= 0) return max;
-            foreach (var module in GetEffectiveUpgradeModules(true))
+            foreach (var module in modules)
             {
                 var config = module.GetConfig();
                 if (config?.CapacityModifiers == null) continue;
@@ -708,9 +734,15 @@ namespace ShipCoreFramework
 
         private int ComputeEffectiveMaxPCU()
         {
-            var max = ShipCore.MaxPCU;
+            return ComputeEffectiveMaxPCU(ShipCore, GetEffectiveUpgradeModules(true));
+        }
+
+        private static int ComputeEffectiveMaxPCU(ShipCore shipCore,
+            IEnumerable<UpgradeModuleComponent> modules)
+        {
+            var max = shipCore.MaxPCU;
             if (max <= 0) return max;
-            foreach (var module in GetEffectiveUpgradeModules(true))
+            foreach (var module in modules)
             {
                 var config = module.GetConfig();
                 if (config?.CapacityModifiers == null) continue;

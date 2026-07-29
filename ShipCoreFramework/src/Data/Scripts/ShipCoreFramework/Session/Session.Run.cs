@@ -90,6 +90,7 @@ namespace ShipCoreFramework
             {
                 kvp.Value.Clean();
             }
+            GroupComponent.ClearPendingMergeValidations();
             GroupDict.Clear();
             GameThreadId = 0;
             Utils.Log("UnloadData: Ship Core Framework session unloaded.", 1);

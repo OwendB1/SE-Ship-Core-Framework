@@ -39,6 +39,7 @@ namespace ShipCoreFramework
         private readonly HashSet<long> _coreRecoveryGraceNotificationRecipients = new HashSet<long>();
         private int _nextMissingCoreRescanTick;
         private int _missingCoreRescanAttempts;
+        private int _pendingBlockTransferReconcileTick;
         internal int LastSpeedStateUpdateTick = -1;
 
         private static int SecondsToTicks(int seconds)

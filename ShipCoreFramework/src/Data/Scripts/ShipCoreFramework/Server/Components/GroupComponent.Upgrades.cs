@@ -141,7 +141,7 @@ namespace ShipCoreFramework
             ApplyModifiers(Modifiers);
             DefenseValuesChanged();
 
-            if (IsInitializingGrids)
+            if (IsLimitPunishmentDeferred())
             {
                 QueueRecalculateAllLimits(false, false);
                 return;

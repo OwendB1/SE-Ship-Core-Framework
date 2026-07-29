@@ -3,6 +3,7 @@ using System.Linq;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using IMyTerminalBlock = Sandbox.ModAPI.IMyTerminalBlock;
+using IMyShipMergeBlock = SpaceEngineers.Game.ModAPI.IMyShipMergeBlock;
 
 namespace ShipCoreFramework
 {
@@ -20,7 +21,11 @@ namespace ShipCoreFramework
         private bool AddBlockAuthoritative(IMySlimBlock block, GroupComponent groupComponent,
             bool limitBasedPunish)
         {
+            if (Grid.IsBlockTrasferInProgress)
+                groupComponent.ScheduleBlockTransferReconcile();
+
             var builderId = block.BuiltBy;
+            var bypassLimits = false;
 
             var players = new List<IMyPlayer>();
             MyAPIGateway.Players.GetPlayers(players);
@@ -32,7 +37,7 @@ namespace ShipCoreFramework
                     && MyAPIGateway.Session.IsUserIgnorePCULimit(myPlayer.SteamUserId))
                 {
                     Utils.ShowNotification("Block Was Placed By Admin, Block limits NOT Applied.");
-                    return false;
+                    bypassLimits = true;
                 }
             }
 
@@ -66,7 +71,7 @@ namespace ShipCoreFramework
 
                 if (!alreadyTrackedBlock)
                 {
-                    if (!TryApplyLimitsOnAdd(block, limitBasedPunish))
+                    if (!bypassLimits && !TryApplyLimitsOnAdd(block, limitBasedPunish))
                     {
                         CoreComponent removedCore;
                         CoreDictionary.TryRemove(block.FatBlock, out removedCore);
@@ -84,7 +89,7 @@ namespace ShipCoreFramework
                 if (IsTrackedBlock(block)) return false;
                 if (functionalBlock is IMyBeacon) TrackBeacon(functionalBlock, groupComponent);
                 if (isTrackedUpgradeModule) TrackUpgradeModule(functionalBlock, groupComponent);
-                if (!limitBasedPunish)
+                if (!bypassLimits && !limitBasedPunish && !groupComponent.IsLimitPunishmentDeferred())
                 {
                     var firstBigOwner = Grid.BigOwners.FirstOrDefault();
                     var maxBlocks = groupComponent.GetEffectiveMaxBlocks();
@@ -114,7 +119,7 @@ namespace ShipCoreFramework
                     }
                 }
 
-                if (!TryApplyLimitsOnAdd(block, limitBasedPunish)) return false;
+                if (!bypassLimits && !TryApplyLimitsOnAdd(block, limitBasedPunish)) return false;
 
                 AddTrackedBlock(block);
 
@@ -126,6 +131,9 @@ namespace ShipCoreFramework
 
                 var connector = block.FatBlock as IMyShipConnector;
                 if (connector != null) TrackConnector(connector);
+
+                var mergeBlock = block.FatBlock as IMyShipMergeBlock;
+                if (mergeBlock != null) mergeBlock.MergeStateChanged += MergeBlockOnStateChanged;
             }
 
             if (Utils.IsCoreBlock(functionalBlock) || isTrackedUpgradeModule ||
@@ -139,6 +147,9 @@ namespace ShipCoreFramework
 
         private void RemoveBlockAuthoritative(IMySlimBlock block, GroupComponent groupComponent)
         {
+            if (Grid.IsBlockTrasferInProgress)
+                groupComponent.ScheduleBlockTransferReconcile();
+
             var functionalBlock = block.FatBlock as IMyFunctionalBlock;
             var shipController = functionalBlock as IMyShipController;
             CoreComponent value = null;
@@ -209,6 +220,10 @@ namespace ShipCoreFramework
 
             var removedConnector = block.FatBlock as IMyShipConnector;
             if (removedConnector != null) UntrackConnector(removedConnector);
+
+            var removedMergeBlock = block.FatBlock as IMyShipMergeBlock;
+            if (removedMergeBlock != null) removedMergeBlock.MergeStateChanged -= MergeBlockOnStateChanged;
+
             if (value != null || removedUpgradeModule || removedNoCoreDirectionReferenceCandidate)
                 groupComponent.OnUpgradeModulesChanged();
             else

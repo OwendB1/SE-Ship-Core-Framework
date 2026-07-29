@@ -6,6 +6,8 @@ namespace ShipCoreFramework
     {
         private void RunServerSimulationTick()
         {
+            GroupComponent.RunPendingMergeValidationTick();
+
             foreach (var kvp in GroupDict)
             {
                 GroupComponent group = kvp.Value;
@@ -13,6 +15,7 @@ namespace ShipCoreFramework
                 {
                     group.RefreshGameThreadStateCache();
                     group.RunMissingCoreRescanTick();
+                    group.RunBlockTransferReconcileTick();
                 }
             }
 
