@@ -1,141 +1,157 @@
-# Ship Core Framework - External API Documentation
+# Ship Core Framework API v4
 
-The Ship Core Framework provides an external API that allows other mods to interact with the core system, check block limits, retrieve grid modifiers, and query core configurations.
+API v4 separates process-local consumers by authority:
 
-## Getting Started (Recommended)
+- `ShipCoreFrameworkServerApi`: authoritative server queries and runtime mutations.
+- `ShipCoreFrameworkClientApi`: read-only queries backed by synchronized replicas on remote clients
+  and local authority on a listen host or in single-player.
 
-Use the **provided sample client** (`ShipCoreFrameworkClient`) instead of re-implementing message handlers or copying raw API delegate signatures into your mod.
+There is no generic client-to-server API. A future remote operation must use a dedicated secure packet
+with player, permission, ownership, argument, and rate-limit validation.
 
-### 1) Copy the client + DTOs into your mod
+## Install
 
-Copy these two files into your mod project (keep them in the same namespace):
-- `ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/API/ApiData.cs` (constants + DTOs + event args)
-- `ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/API/SCF_ModAPIClient.cs` (the client wrapper)
+Copy these files into the consuming mod:
 
-This keeps your mod strongly-typed without referencing the Ship Core Framework assembly.
+- `Data/Scripts/ShipCoreFramework/API/ApiData.cs`
+- `Data/Scripts/ShipCoreFramework/API/SCF_ModAPIClient.cs`
 
-### 2) Register / Unregister once per session
+API v3 wrappers do not connect to v4. The transport is intentionally major-version breaking.
 
-Create a single `ShipCoreFrameworkClient`, call `Register()` in `LoadData()`, and `Unregister()` in `UnloadData()`:
-
-Note: Ship Core Framework broadcasts its API payload in `BeforeStart()`, so `IsReady` may still be false during your `LoadData()`. Use `IsReady` checks in `BeforeStart()`/`Update...()` before calling API methods.
+## Client replica example
 
 ```csharp
-using System;
-using Sandbox.ModAPI;
-using VRage.Game.Components;
-using VRage.Game.ModAPI;
-using ShipCoreFramework; // After copying ApiData.cs to your project
+private readonly ShipCoreFrameworkClientApi _scf = new ShipCoreFrameworkClientApi();
 
-namespace YourModNamespace
+public override void LoadData()
 {
-    [MySessionComponentDescriptor(MyUpdateOrder.BeforeSimulation)]
-    public class YourModSession : MySessionComponentBase
-    {
-        private readonly ShipCoreFrameworkClient _scf = new ShipCoreFrameworkClient();
+    _scf.Register();
+}
 
-        public override void LoadData()
-        {
-            _scf.Register();
-        }
+protected override void UnloadData()
+{
+    _scf.Unregister();
+}
 
-        protected override void UnloadData()
-        {
-            _scf.Unregister();
-        }
+public override void UpdateAfterSimulation()
+{
+    if (!_scf.ProviderReady || !_scf.ConfigReady || !_scf.RuntimeSnapshotReady)
+        return;
 
-        public override void UpdateBeforeSimulation()
-        {
-            if (!_scf.IsReady)
-                return;
+    ApiReadResult<float> speed = _scf.TryGetMaxSpeed(_gridEntityId);
+    if (!speed.Success)
+        return;
 
-            // Safe to call API methods here (or from any point after IsReady == true).
-        }
-    }
+    float maximumSpeed = speed.Value;
 }
 ```
 
-### 3) Version compatibility
+The client replica API can answer by grid entity ID even when that grid entity is not streamed locally,
+provided its server runtime snapshot is present.
 
-The client requires a matching **major** API version. Minor version differences are treated as compatible, so backwards-compatible additions do not block connection.
+## Server authority example
 
-If you want to use API members added in a newer minor version, re-copy `ApiData.cs` and `SCF_ModAPIClient.cs` into your mod first.
+```csharp
+private readonly ShipCoreFrameworkServerApi _scf = new ShipCoreFrameworkServerApi();
 
-## Using the API (through the client)
+public override void LoadData()
+{
+    _scf.Register();
+}
 
-Once `IsReady` is true, call the methods on `ShipCoreFrameworkClient`. Prefer the `long cubeGridEntityId` overloads when you are responding to events (event args already contain entity IDs).
+protected override void UnloadData()
+{
+    _scf.Unregister();
+}
 
-The full, up-to-date method surface is intentionally maintained in the sample client:
-- `ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/API/SCF_ModAPIClient.cs`
+private void DisableFriction(long gridEntityId)
+{
+    if (!_scf.ProviderReady || !_scf.RuntimeSnapshotReady)
+        return;
 
-Common calls include:
-- Core/config: `GetGridCore(...)`, `GetCoreBySubtypeId(...)`, `GetAllCoreConfigs()`, `GetNoCoreConfig()`, `GetFullConfig()`
-- Limits: `GetBlockLimitsStatus(...)`, `IsBlockAllowed(...)`
-- Modifiers/speed: `GetGridModifiers(...)`, `GetMaxSpeed(...)`, `IsBoostActive(...)`, `GetSpeedModifiers(...)`
-- Boost tuning: `GetBoostResistance(...)`, `GetBaseMaxSpeed(...)`, `GetBoostDuration(...)`, `GetBoostCooldown(...)`
-- Friction (group-scoped): `SetFrictionEnabledForGroup(...)`, `GetFrictionEnabledForGroup(...)`, and related friction settings
+    ApiReadResult<bool> result = _scf.TrySetFrictionEnabledForGroup(gridEntityId, false);
+    if (!result.Success)
+        MyLog.Default.WriteLine("[MyMod] SCF mutation failed: " + result.Error);
+}
+```
 
-## Events (through the client)
+Register only the wrapper appropriate to the consumer role. Dedicated servers publish only the
+server-local factory, remote clients publish only the client-replica factory, and listen hosts and
+single-player publish both. The client surface remains read-only when it is backed by local authority.
 
-The Ship Core Framework broadcasts events when significant actions occur. The sample client automatically registers all event message handlers and deserializes payloads into strongly typed event args.
+## Readiness
 
-Subscribe to the client events you care about (instead of registering message handlers yourself):
-- Core lifecycle: `CoreActivated`, `CoreDeactivated`
-- Limits: `LimitsRecalculated`, `LimitsEnforced`
-- Boost: `BoostActivated`, `BoostDeactivated`
-- Active defense: `ActiveDefenseActivated`, `ActiveDefenseDeactivated`
-- Logical groups: `GridAddedToGroup`, `GridRemovedFromGroup`
+Readiness has four distinct levels:
 
-For convenience, the client also exposes “resolved” variants that attempt to resolve `IMyCubeGrid` and `IMyGridGroupData` for you (resolution can fail if the entity isn’t available).
+- `ProviderReady`: compatible factory received.
+- `ConfigReady`: server-selected world config applied.
+- `RuntimeSnapshotReady`: initial authority scan or complete client runtime snapshot applied.
+- `TryGetRuntimeStateAvailability(gridId)`: runtime state exists for one grid.
 
-### Event use cases
+`ConfigReceived` fires before the replacement runtime snapshot is requested. It therefore resets
+`RuntimeSnapshotReady` to false. `RuntimeReady` fires after the complete snapshot is applied.
 
-**Core Activated/Deactivated Events**: Use these to react when a grid gains or loses its main core. This is triggered when:
-- A core beacon is placed and becomes the main core
-- All core beacons are destroyed (CoreDeactivated)
-- The main core failover occurs to a different beacon
+## Result statuses
 
-**Boost Events**: React to boost activation/deactivation for:
-- Visual effects (engine trails, particle effects)
-- Sound effects
-- Speed limit adjustments in your mod
+All `Try...` methods return `ApiReadResult<T>`:
 
-**Active Defense Events**: Monitor when active defense is engaged/disengaged for:
-- Shield visual effects
-- HUD notifications
-- Combat logging
+- `Success`
+- `ProviderNotReady`
+- `ConfigPending`
+- `RuntimePending`
+- `GridNotReplicated`
+- `InvalidArgument`
+- `Unsupported`
+- `Error`
 
-**Grid Group Events**: Track when grids are added/removed from groups due to:
-- Connectors connecting/disconnecting
-- Pistons/rotors creating sub-grids
-- Grid splits from damage
+All queries return an `ApiReadResult<T>` so unavailable data cannot be confused with a real value.
 
-**Limits Events**: Monitor when block limits are recalculated or enforced (advanced usage).
+## Query classification
 
-### Important notes
+Config-ready queries:
 
-1. **Thread Safety**: Event broadcasts occur on the game thread, so it's safe to interact with game objects in event handlers.
+- `TryGetCoreBySubtypeId`
+- `TryGetAllCoreConfigs`
+- `TryGetNoCoreConfig`
+- `TryGetFullConfig`
+- `TryGetFrictionSpeedValueMode`
 
-2. **Event Ordering**: Events are broadcast immediately when they occur, but the order of multiple events in the same tick is not guaranteed.
+Runtime-ready queries:
 
-3. **Null Checks**: Always assume grids may not be resolved (use the `...Resolved` events if you want best-effort resolution).
+- Grid core and block-limit state
+- Grid and speed modifiers
+- Base/effective speed and boost state
+- Friction state and overrides
+- Group deactivation
 
-4. **Performance**: Event handlers should be lightweight. Heavy operations should be queued for later processing.
+Grid-targeted methods accept only `long gridId`. Consumers that already have an `IMyCubeGrid`
+should pass `grid.EntityId`.
 
-5. **Unsubscribe**: Always unsubscribe from events in `UnloadData()` to prevent memory leaks.
+`TryIsBlockAllowed` is authoritative on the server API and best-effort on the client replica API.
+The replica answer uses synchronized counts and may become stale between server updates.
 
-## Best practices
+`BlockLimitData.BlockGroupNames` lists included reusable groups.
+`BlockLimitData.ExcludedBlockGroupNames` lists groups subtracted from those matches; exclusions
+take precedence when a block belongs to both.
 
-- **Wait for readiness**: only call methods after `IsReady == true`.
-- **Avoid “core drift”**: don’t scan for core beacons yourself; use `GetGridCore(...)`/`GetGridCoreSubtypeId(...)` (or react to `CoreActivated`/`CoreDeactivated`) so your mod stays consistent with the framework.
-- **No-core handling**: grids without a core use the NoCore config; use `GetNoCoreConfig()` if you need the default values.
-- **Full config snapshots**: `GetFullConfig()` returns the current effective config as `ModConfigData`; request it after `IsReady` becomes true.
-- **Group volatility**: logical groups can change due to connectors/rotors/pistons/splits; prefer entityId-based overloads and event-driven updates.
+Runtime mutations exist only on `ShipCoreFrameworkServerApi`.
 
-## Support
+## Events
 
-For questions or issues with the API, please contact:
-- Blues-Hailfire
-- OwendB (OB / ODB-Tech)
+Both wrappers expose:
 
-Or open an issue in the mod's development repository.
+- `CoreActivated` / `CoreDeactivated`
+- `LimitsRecalculated` / `LimitsEnforced`
+- `BoostActivated` / `BoostDeactivated`
+- `ActiveDefenseActivated` / `ActiveDefenseDeactivated`
+- `GridAddedToGroup` / `GridRemovedFromGroup`
+- `ConfigReceived`
+- `RuntimeReady`
+
+Resolved event variants remain best-effort because the relevant entity might not be streamed locally.
+
+## Security boundary
+
+Space Engineers mod messages are process-local and provide no caller identity. Separate factories stop
+remote client mods from receiving server mutation delegates. They cannot sandbox an untrusted native
+plugin already executing inside a listen-server or dedicated-server process.

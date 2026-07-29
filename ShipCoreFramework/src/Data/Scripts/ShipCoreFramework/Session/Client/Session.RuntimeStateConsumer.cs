@@ -18,6 +18,8 @@ namespace ShipCoreFramework
 
             foreach (var pair in GroupDict)
                 if (!ApplyRuntimeStateForGroup(pair.Value)) pair.Value.ClearRuntimeState();
+
+            ModAPI.MarkRuntimeSnapshotReady(sequence, snapshotRevision);
         }
 
         internal static void ApplyRuntimeStateDelta(GroupRuntimeState[] states)

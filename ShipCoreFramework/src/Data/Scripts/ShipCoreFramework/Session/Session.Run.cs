@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Sandbox.ModAPI;
-using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
 
@@ -35,6 +34,9 @@ namespace ShipCoreFramework
             {
                 IsInitialGroupScan = false;
             }
+
+            if (IsServer)
+                ModAPI.MarkRuntimeSnapshotReady();
         }
         
         public override void LoadData()
@@ -46,11 +48,14 @@ namespace ShipCoreFramework
             MpActive = MyAPIGateway.Multiplayer.MultiplayerActive;
             IsServer = (MpActive && MyAPIGateway.Multiplayer.IsServer) || !MpActive;
             IsClient = (MpActive && !MyAPIGateway.Utilities.IsDedicated) || !MpActive;
+            ModAPI.ResetReadiness();
 
             if (Networking == null)
                 Networking = new Networking(32124);
             Networking.Register();
             Config.LoadConfig(IsServer);
+            if (IsServer)
+                ModAPI.MarkConfigReady();
             if (IsClient)
                 LoadClientData();
             if (IsServer)
