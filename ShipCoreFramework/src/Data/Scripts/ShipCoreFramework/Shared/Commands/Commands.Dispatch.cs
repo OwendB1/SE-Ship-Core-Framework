@@ -22,6 +22,7 @@ namespace ShipCoreFramework
             var sub = allArgs[1];
             return sub.Equals("help", StringComparison.OrdinalIgnoreCase) ||
                    sub.Equals("info", StringComparison.OrdinalIgnoreCase) ||
+                   sub.Equals("limits", StringComparison.OrdinalIgnoreCase) ||
                    sub.Equals("listcores", StringComparison.OrdinalIgnoreCase) ||
                    sub.Equals("coreinfo", StringComparison.OrdinalIgnoreCase) ||
                    sub.Equals("listnocores", StringComparison.OrdinalIgnoreCase) ||

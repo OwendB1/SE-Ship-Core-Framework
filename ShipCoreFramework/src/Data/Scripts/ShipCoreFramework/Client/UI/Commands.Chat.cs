@@ -46,6 +46,9 @@ namespace ShipCoreFramework
                 case "info":
                     if (Session.LocalPlayer != null) CoreInfo(playerId);
                     return;
+                case "limits":
+                    if (Session.LocalPlayer != null) CoreLimits(playerId);
+                    return;
                 default:
                     modMessage += "The command you have typed was not recognized. Did you make a typo?";
                     break;

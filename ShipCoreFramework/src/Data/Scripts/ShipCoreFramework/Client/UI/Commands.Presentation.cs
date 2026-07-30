@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text;
 using Sandbox.Game;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
@@ -75,40 +76,12 @@ namespace ShipCoreFramework
 
         private static void CoreInfo(long playerId)
         {
-             var targetGrid = Utils.RaycastForGrid();
+            IMyCubeGrid targetGrid;
+            GroupComponent groupComponent;
+            if (!TryGetTargetCoreGroup(playerId, out targetGrid, out groupComponent)) return;
 
-            if (targetGrid == null)
-            {
-                Utils.ShowChatMessage("No grid found within 50m of crosshairs.");
-                return;
-            }
-
-            var player = MyAPIGateway.Session?.Player;
-            if (player == null) return;
-
-            // Check if player owns the grid
-            if (!targetGrid.BigOwners.Contains(player.IdentityId))
-            {
-                if(CheckLocalAdmin(playerId))
-                {
-                    Utils.ShowChatMessage($"This Grid is owned by: {player.DisplayName}");
-                }
-                else
-                {
-                    Utils.ShowChatMessage("You don't own this grid.");
-                    return;
-                }
-            }
-
-            var groupComponent = targetGrid.GetGroupComponent();
-            if (groupComponent == null)
-            {
-                Utils.ShowChatMessage($"Grid '{targetGrid.CustomName}' has no ship core or configuration.");
-                return;
-            }
-
-            var shipCore = groupComponent.ShipCore;
-            var body = GetCoreInfo(targetGrid, shipCore, groupComponent);
+            ShipCore shipCore = groupComponent.ShipCore;
+            string body = GetCoreInfo(targetGrid, shipCore, groupComponent);
             MyAPIGateway.Utilities.ShowMissionScreen(
                 "Ship Core Framework",
                 $"Ship Class Limits - {targetGrid.CustomName}",
@@ -117,6 +90,152 @@ namespace ShipCoreFramework
                 null,
                 ClientConsent()
             );
+        }
+
+        private static void CoreLimits(long playerId)
+        {
+            IMyCubeGrid targetGrid;
+            GroupComponent groupComponent;
+            if (!TryGetTargetCoreGroup(playerId, out targetGrid, out groupComponent)) return;
+
+            string body = GetCoreLimits(targetGrid, groupComponent.ShipCore, groupComponent);
+            MyAPIGateway.Utilities.ShowMissionScreen(
+                "Ship Core Framework",
+                $"Ship Class Limits - {targetGrid.CustomName}",
+                "Block Limits & Usage",
+                body,
+                null,
+                ClientConsent()
+            );
+        }
+
+        private static bool TryGetTargetCoreGroup(long playerId, out IMyCubeGrid targetGrid,
+            out GroupComponent groupComponent)
+        {
+            targetGrid = Utils.RaycastForGrid();
+            groupComponent = null;
+
+            if (targetGrid == null)
+            {
+                Utils.ShowChatMessage("No grid found within 50m of crosshairs.");
+                return false;
+            }
+
+            IMyPlayer player = MyAPIGateway.Session?.Player;
+            if (player == null) return false;
+
+            if (!targetGrid.BigOwners.Contains(player.IdentityId))
+            {
+                if (CheckLocalAdmin(playerId))
+                {
+                    Utils.ShowChatMessage($"This Grid is owned by: {player.DisplayName}");
+                }
+                else
+                {
+                    Utils.ShowChatMessage("You don't own this grid.");
+                    return false;
+                }
+            }
+
+            groupComponent = targetGrid.GetGroupComponent();
+            if (groupComponent != null && groupComponent.ShipCore != null) return true;
+
+            Utils.ShowChatMessage($"Grid '{targetGrid.CustomName}' has no ship core or configuration.");
+            return false;
+        }
+
+        internal static string GetCoreLimits(IMyCubeGrid targetGrid, ShipCore shipCore,
+            GroupComponent groupComponent)
+        {
+            StringBuilder body = new StringBuilder();
+            body.Append("Grid: ").Append(targetGrid.CustomName).Append('\n');
+            body.Append("Ship Class: ").Append(shipCore.UniqueName).Append("\n\n");
+
+            BlockLimit[] blockLimits = shipCore.BlockLimits;
+            if (blockLimits == null || blockLimits.Length == 0)
+            {
+                body.Append("No block limits configured for this ship class.");
+                return body.ToString();
+            }
+
+            for (int limitIndex = 0; limitIndex < blockLimits.Length; limitIndex++)
+            {
+                BlockLimit blockLimit = blockLimits[limitIndex];
+                if (blockLimit == null) continue;
+
+                double totalWeight = 0d;
+                LimitBucket bucket;
+                if (groupComponent.Limits.TryGetValue(blockLimit, out bucket))
+                {
+                    lock (bucket.BucketLock)
+                        totalWeight = bucket.TotalWeight;
+                }
+
+                float effectiveMaxCount = groupComponent.GetEffectiveMaxCount(blockLimit);
+                double percentage = effectiveMaxCount > 0f
+                    ? totalWeight / effectiveMaxCount * 100d
+                    : 0d;
+
+                body.Append(blockLimit.Name.ToUpperInvariant()).Append(" — ")
+                    .Append(totalWeight.ToString("F1", CultureInfo.InvariantCulture)).Append(" / ")
+                    .Append(effectiveMaxCount.ToString("F1", CultureInfo.InvariantCulture)).Append(" (")
+                    .Append(percentage.ToString("F1", CultureInfo.InvariantCulture)).Append("%)\n");
+                body.Append("Punishment: ").Append(blockLimit.PunishmentType).Append('\n');
+
+                Dictionary<string, Dictionary<double, int>> usage =
+                    new Dictionary<string, Dictionary<double, int>>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (KeyValuePair<IMyCubeGrid, GridComponent> gridEntry in groupComponent.GridDictionary)
+                {
+                    GridComponent gridComponent = gridEntry.Value;
+                    if (gridComponent == null) continue;
+
+                    List<IMySlimBlock> blocks = gridComponent.GetBlocksCopy();
+                    for (int blockIndex = 0; blockIndex < blocks.Count; blockIndex++)
+                    {
+                        IMySlimBlock block = blocks[blockIndex];
+                        if (block == null || block.IsMovedBySplit || block.CubeGrid == null) continue;
+
+                        double weight = blockLimit.GetWeight(GridComponent.KeyOf(block));
+                        if (weight <= 0d) continue;
+
+                        string displayName = Utils.GetLocalizedBlockName(block);
+                        Dictionary<double, int> countsByWeight;
+                        if (!usage.TryGetValue(displayName, out countsByWeight))
+                        {
+                            countsByWeight = new Dictionary<double, int>();
+                            usage.Add(displayName, countsByWeight);
+                        }
+
+                        int count;
+                        countsByWeight[weight] = countsByWeight.TryGetValue(weight, out count) ? count + 1 : 1;
+                    }
+                }
+
+                foreach (KeyValuePair<string, Dictionary<double, int>> displayEntry in usage
+                             .OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
+                {
+                    foreach (KeyValuePair<double, int> weightEntry in displayEntry.Value.OrderBy(pair => pair.Key))
+                    {
+                        double weight = weightEntry.Key;
+                        int count = weightEntry.Value;
+                        double used = weight * count;
+
+                        body.Append("  ").Append(displayEntry.Key).Append(" (")
+                            .Append(weight.ToString("0.###", CultureInfo.InvariantCulture)).Append("pt x")
+                            .Append(count.ToString(CultureInfo.InvariantCulture)).Append(") | ")
+                            .Append(used.ToString("F1", CultureInfo.InvariantCulture)).Append('\n');
+                    }
+                }
+
+                if (usage.Count == 0)
+                    body.Append("  No blocks in use.\n");
+
+                if (limitIndex < blockLimits.Length - 1)
+                    body.Append('\n');
+            }
+
+            return body.ToString();
         }
 
         internal static string GetCoreInfo(IMyCubeGrid targetGrid, ShipCore shipCore, GroupComponent groupComponent)
@@ -483,7 +602,10 @@ Shows current unattached upgrade modules mode. (Admin Required)
 Enables or disables unattached upgrade module mode. When ON, upgrade modules do not need to be physically adjacent to a core. (Admin Required)
 
 /core info
-Raycasts from crosshairs to find a grid and displays all its core information.";
+Raycasts from crosshairs to find a grid and displays all its core information.
+
+/core limits
+Raycasts from crosshairs to find a grid and displays per-limit block usage by display name.";
 
             MyAPIGateway.Utilities.ShowMissionScreen(
                 "ShipCore Framework",
