@@ -376,3 +376,9 @@ ShipCoreFramework/Bin64
 
 graphify-out/cache/
 graphify-out/cost.json
+
+graphify-out/memory/
+
+graphify-out/reflections/
+
+graphify-out/.graphify_learning.json

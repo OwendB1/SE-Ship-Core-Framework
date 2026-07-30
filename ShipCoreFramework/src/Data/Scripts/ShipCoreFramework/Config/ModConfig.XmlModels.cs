@@ -226,7 +226,7 @@ namespace ShipCoreFramework
         public SpeedOverrideMode SpeedOverrideMode = SpeedOverrideMode.OnlyIfHeavier;
 
         [XmlElement("SpeedOverridePriority")]
-        public int SpeedOverridePriority = 0;
+        public int SpeedOverridePriority;
 
         [XmlElement("SpeedModifiers")]
         public SpeedModifiers SpeedModifiers = new SpeedModifiers();
