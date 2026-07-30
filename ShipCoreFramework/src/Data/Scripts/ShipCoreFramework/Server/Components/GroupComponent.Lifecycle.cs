@@ -171,6 +171,14 @@ namespace ShipCoreFramework
         internal void Activate(CoreComponent coreComponent)
         {
             if (!Session.IsServer) return;
+            if (!HasSameOrientationAsMain(coreComponent))
+            {
+                coreComponent.IsMainCore = false;
+                Utils.Log("Activate: rejected core " + coreComponent.SubtypeId +
+                          " because its orientation differs from the active main core.", 1);
+                return;
+            }
+
             if (Deactivated)
             {
                 coreComponent.IsMainCore = false;
@@ -324,7 +332,7 @@ namespace ShipCoreFramework
                 return;
             }
 
-            var newMain = GetBestMainCoreCandidate(false);
+            var newMain = GetBestReplacementMainCoreCandidate(lost, false);
             if (newMain == null)
             {
                 Utils.Log("MainCoreLeftGroup: no replacement core found after " + oldType +
@@ -378,7 +386,7 @@ namespace ShipCoreFramework
                 return;
             }
 
-            var newMain = GetBestMainCoreCandidate(false);
+            var newMain = GetBestReplacementMainCoreCandidate(lost, false);
             if (newMain == null)
             {
                 Utils.Log("CoreRemoved: main core " + lost.SubtypeId +

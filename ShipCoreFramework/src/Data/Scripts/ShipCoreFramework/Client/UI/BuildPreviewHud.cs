@@ -21,7 +21,8 @@ namespace ShipCoreFramework
     ///  - a capacity panel (screen-space text anchored to the block), and
     ///  - a directional indicator when a facing constraint is violated: a red arrow for the
     ///    block's current facing, a green arrow for the required facing, and a blue 90-degree
-    ///    rotation arrow between them (reusing the game's own rotation-gizmo arrow textures).
+    ///    rotation arrow between them (reusing the game's own rotation-gizmo arrow textures), and
+    ///  - the same indicator when a backup core does not match the active main core's orientation.
     ///
     /// Renders through Text HUD API when present, falling back to a HUD notification.
     /// </summary>
@@ -84,6 +85,7 @@ namespace ShipCoreFramework
         private bool _fullHud;
         private bool _hasViolation;
         private bool _drawIndicators;
+        private bool _coreOrientationMismatch;
         private readonly List<DirectionIndicator> _indicators = new List<DirectionIndicator>();
 
         // When placing the first core on a coreless grid, show its forward (green) and up (blue) so
@@ -95,8 +97,8 @@ namespace ShipCoreFramework
         // Panel title reflects the governing config: "<core name> Limits" for an active core, or the
         // SelectedNoCore config's name for a coreless grid.
         private string _panelTitle = "Ship Core Limits";
-        // When the group is deactivated or ignored the live engine enforces nothing; the preview
-        // then shows a "limits waived" note instead of pass/fail, and draws no box/arrows.
+        // When the group is deactivated or the local builder is exempt, block limits are waived;
+        // the preview then shows a "limits waived" note. Core orientation remains mandatory.
         private bool _limitsWaived;
         private string _waivedReason = string.Empty;
 
@@ -236,10 +238,15 @@ namespace ShipCoreFramework
 
             // Qualify the mod's static Session - the MySessionComponentBase.Session property shadows it.
             var modConfig = ShipCoreFramework.Session.Config;
+            var isCoreType = modConfig != null && modConfig.IsValidCoreType(def.Id.SubtypeName);
+            var mainCoreBlock = group.MainCoreComponent?.CoreBlock;
             _drawCoreOrientation = _fullHud
-                                   && modConfig != null
-                                   && modConfig.IsValidCoreType(def.Id.SubtypeName)
+                                   && isCoreType
                                    && group.CoreCount == 0;
+            _coreOrientationMismatch = isCoreType
+                                       && mainCoreBlock != null
+                                       && !GroupComponent.HasSameCoreOrientation(
+                                           orientation, mainCoreBlock.WorldMatrix);
             if (_drawCoreOrientation)
             {
                 _coreForward = orientation.Forward;
@@ -264,11 +271,11 @@ namespace ShipCoreFramework
 
             _results = LimitEvaluation.Evaluate(group, proposed);
 
-            _hasViolation = false;
+            _hasViolation = _coreOrientationMismatch;
             if (_limitsWaived)
             {
                 _waivedReason = group.Deactivated ? "core deactivated" : "admin exempt";
-                return; // no violation box while waived
+                return; // only mandatory core orientation can keep the violation box active
             }
 
             for (var i = 0; i < _results.Count; i++)
@@ -315,22 +322,45 @@ namespace ShipCoreFramework
         {
             _indicators.Clear();
             _drawIndicators = false;
-            if (!_fullHud || _limitsWaived || _results == null) return; // arrows only on the Full HUD, never while waived
+            if (!_fullHud || _results == null) return; // arrows only on the Full HUD
 
-            IMyCubeBlock referenceBlock = null;
-            for (var i = 0; i < _results.Count; i++)
+            var mainCoreBlock = group.MainCoreComponent?.CoreBlock;
+            if (_coreOrientationMismatch && mainCoreBlock != null)
             {
-                var result = _results[i];
-                if (result.Kind != LimitCheckKind.Direction || result.Pass || result.SubgridBlocked
-                    || result.AllowedDirections == null)
-                    continue; // no corrective arrow for subgrid-blocked (rotating wouldn't help)
+                var correct = mainCoreBlock.WorldMatrix;
+                if (Vector3D.Dot(_boxWorld.Forward, correct.Forward) <
+                    GroupComponent.CoreOrientationAlignmentDot)
+                    _indicators.Add(new DirectionIndicator
+                    {
+                        Current = _boxWorld.Forward,
+                        Correct = correct.Forward
+                    });
+                if (Vector3D.Dot(_boxWorld.Up, correct.Up) <
+                    GroupComponent.CoreOrientationAlignmentDot)
+                    _indicators.Add(new DirectionIndicator
+                    {
+                        Current = _boxWorld.Up,
+                        Correct = correct.Up
+                    });
+            }
 
-                if (referenceBlock == null) referenceBlock = group.GetDirectionLockReferenceBlock();
-                if (referenceBlock == null) break;
+            if (!_limitsWaived)
+            {
+                IMyCubeBlock referenceBlock = null;
+                for (var i = 0; i < _results.Count; i++)
+                {
+                    var result = _results[i];
+                    if (result.Kind != LimitCheckKind.Direction || result.Pass || result.SubgridBlocked
+                        || result.AllowedDirections == null)
+                        continue; // no corrective arrow for subgrid-blocked (rotating wouldn't help)
 
-                var current = LimitEvaluation.DirectionToWorld(referenceBlock, result.Facing);
-                var correct = ClosestAllowedWorld(referenceBlock, result.AllowedDirections, current);
-                _indicators.Add(new DirectionIndicator { Current = current, Correct = correct });
+                    if (referenceBlock == null) referenceBlock = group.GetDirectionLockReferenceBlock();
+                    if (referenceBlock == null) break;
+
+                    var current = LimitEvaluation.DirectionToWorld(referenceBlock, result.Facing);
+                    var correct = ClosestAllowedWorld(referenceBlock, result.AllowedDirections, current);
+                    _indicators.Add(new DirectionIndicator { Current = current, Correct = correct });
+                }
             }
 
             _drawIndicators = _indicators.Count > 0;
@@ -362,7 +392,8 @@ namespace ShipCoreFramework
             // While waived we still show the panel (title + waived note) so the player understands
             // why nothing is being enforced. (The violation box is handled in Draw so it can also
             // appear on the Minimal HUD.)
-            if (!_fullHud || (!_limitsWaived && (_results == null || !HasDisplayableResults())))
+            if (!_fullHud || (!_limitsWaived && !_coreOrientationMismatch
+                              && (_results == null || !HasDisplayableResults())))
             {
                 HidePanel();
                 return;
@@ -442,6 +473,10 @@ namespace ShipCoreFramework
             // Text HUD API has no closing tag; a <color=...> persists until the next one.
             _sb.Clear();
             _sb.Append("<color=").Append(TitleColor).Append('>').Append(_panelTitle).Append('\n');
+
+            if (_coreOrientationMismatch)
+                _sb.Append("<color=").Append(FailColor)
+                    .Append(">Core orientation: must match active main core\n");
 
             if (_limitsWaived)
             {
@@ -622,7 +657,7 @@ namespace ShipCoreFramework
             // Degraded mode when Text HUD API isn't installed: a single-line screen notification.
             _sb.Clear();
 
-            if (_limitsWaived)
+            if (_limitsWaived && !_coreOrientationMismatch)
             {
                 if (_fallback == null)
                     _fallback = MyAPIGateway.Utilities.CreateNotification(string.Empty, 1000, "White");
@@ -633,13 +668,22 @@ namespace ShipCoreFramework
             }
 
             var anyFail = false;
-            for (var i = 0; i < _results.Count; i++)
+            if (_coreOrientationMismatch)
             {
-                if (_results[i].Pass) continue;
-                if (anyFail) _sb.Append(", ");
-                else _sb.Append("Ship Core OVER: ");
-                _sb.Append(_results[i].Name);
+                _sb.Append("Ship Core OVER: core orientation");
                 anyFail = true;
+            }
+
+            if (!_limitsWaived)
+            {
+                for (var i = 0; i < _results.Count; i++)
+                {
+                    if (_results[i].Pass) continue;
+                    if (anyFail) _sb.Append(", ");
+                    else _sb.Append("Ship Core OVER: ");
+                    _sb.Append(_results[i].Name);
+                    anyFail = true;
+                }
             }
 
             if (!anyFail) _sb.Append("Ship Core: within limits");
@@ -657,6 +701,7 @@ namespace ShipCoreFramework
             _drawIndicators = false;
             _hasViolation = false;
             _drawCoreOrientation = false;
+            _coreOrientationMismatch = false;
             HidePanel();
         }
 

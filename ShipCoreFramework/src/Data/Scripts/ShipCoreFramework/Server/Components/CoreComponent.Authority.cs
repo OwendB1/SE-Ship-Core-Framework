@@ -66,6 +66,15 @@ namespace ShipCoreFramework
             var existingMainCore = _groupComponent.MainCoreComponent;
             var groupHasMain = existingMainCore != null;
 
+            if (groupHasMain && !_groupComponent.HasSameOrientationAsMain(this))
+            {
+                Utils.Log($"Core init rejected for {SubtypeId} on {CoreBlock.CubeGrid.CustomName}: orientation differs from active main core.", 1);
+                Utils.ShowNotification("Core must match the active main core orientation: " +
+                                       CoreBlock.CubeGrid.CustomName, builder);
+                CoreBlock.SlimBlock.RemoveAndRefund();
+                return false;
+            }
+
             if (CheckIfCoreOfOtherTypeExists())
             {
                 Utils.Log($"Core init rejected for {SubtypeId} on {CoreBlock.CubeGrid.CustomName}: other core type exists in mechanical group.", 1);

@@ -2,12 +2,15 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
+using VRageMath;
 using MyCubeGrid = Sandbox.Game.Entities.MyCubeGrid;
 
 namespace ShipCoreFramework
 {
     internal partial class GroupComponent
     {
+        internal const double CoreOrientationAlignmentDot = 0.999999d;
+
         internal ShipCore ShipCore => Session.Config.GetShipCoreByTypeId(
             !Session.IsServer && _runtimeStateReceived
                 ? _runtimeCoreSubtypeId
@@ -46,6 +49,12 @@ namespace ShipCoreFramework
         private void ClearGridDictionary()
         {
             GridDictionary.Clear();
+        }
+
+        internal static bool HasSameCoreOrientation(MatrixD left, MatrixD right)
+        {
+            return Vector3D.Dot(left.Forward, right.Forward) >= CoreOrientationAlignmentDot &&
+                   Vector3D.Dot(left.Up, right.Up) >= CoreOrientationAlignmentDot;
         }
 
         internal string GetGroupKey()

@@ -10,7 +10,7 @@ namespace ShipCoreFramework
         internal bool ShouldCoreBecomeMain(CoreComponent candidate, bool candidatePersistedMain)
         {
             var current = MainCoreComponent;
-            if (!IsSelectableCore(candidate, false)) return false;
+            if (!IsSelectableCore(candidate, false) || !HasSameOrientationAsMain(candidate)) return false;
             if (current == null) return true;
             if (ReferenceEquals(candidate, current)) return false;
 
@@ -29,6 +29,7 @@ namespace ShipCoreFramework
             foreach (var candidate in CoreDictionary.Values)
             {
                 if (!IsSelectableCore(candidate, requireWorking)) continue;
+                if (!HasSameOrientationAsMain(candidate)) continue;
                 if (CompareCoreCandidates(candidate, best, true) > 0)
                     best = candidate;
             }
@@ -43,11 +44,26 @@ namespace ShipCoreFramework
             {
                 if (ReferenceEquals(candidate, currentMain)) continue;
                 if (!IsSelectableCore(candidate, requireWorking)) continue;
+                if (!HasSameCoreOrientation(candidate, currentMain)) continue;
                 if (CompareCoreCandidates(candidate, best, true) > 0)
                     best = candidate;
             }
 
             return best;
+        }
+
+        internal bool HasSameOrientationAsMain(CoreComponent candidate)
+        {
+            return MainCoreComponent == null || HasSameCoreOrientation(candidate, MainCoreComponent);
+        }
+
+        private static bool HasSameCoreOrientation(CoreComponent left, CoreComponent right)
+        {
+            IMyFunctionalBlock leftBlock = left?.CoreBlock;
+            IMyFunctionalBlock rightBlock = right?.CoreBlock;
+            if (leftBlock == null || rightBlock == null) return false;
+
+            return HasSameCoreOrientation(leftBlock.WorldMatrix, rightBlock.WorldMatrix);
         }
 
         private static int CompareCoreCandidates(CoreComponent left, CoreComponent right, bool includeEntityTieBreaker)
