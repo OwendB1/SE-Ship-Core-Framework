@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-07-19T08:29:04.339394+00:00",
+  "generated_at": "2026-07-29T22:47:47.545150+00:00",
   "nodes": {
     "api_apidata_modconfigdata": {
-      "code_fingerprint": "16ff7f6bab00bbb0ac361d79bfb69d93d0a26adf898983517eed028fe74da66a",
+      "code_fingerprint": "a09932edea94c4300fb0880b54ed3814013fd3167983fd71f759ad1e04da92c0",
       "label": "ModConfigData",
       "last": "2026-07-15T16:00:40.508340+00:00",
       "provenance": [
@@ -12,13 +12,13 @@
           "q": "I see that SCF mod API is currently lacking the ability for other mods to request the full config through the mod API. Could you add that?"
         }
       ],
-      "score": 0.918352823,
+      "score": 0.718923078,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/API/ApiData.cs",
       "status": "tentative",
       "uses": 1
     },
     "api_modapi_modapi": {
-      "code_fingerprint": "be98c1be12a3eca1e5d43009ddd8cc082d0db6193600c906bcb70a5da29f77e9",
+      "code_fingerprint": "b3097e78625882560d947068f5677aebc47dd61d4d4ea386ddd304c1f3dcc919",
       "label": "ModAPI",
       "last": "2026-07-15T16:00:40.508340+00:00",
       "provenance": [
@@ -28,13 +28,13 @@
           "q": "I see that SCF mod API is currently lacking the ability for other mods to request the full config through the mod API. Could you add that?"
         }
       ],
-      "score": 0.918352823,
+      "score": 0.718923078,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/API/ModAPI.cs",
       "status": "tentative",
       "uses": 1
     },
     "api_scf_modapiclient_shipcoreframeworkclient": {
-      "code_fingerprint": "c55cbec9bfa272c16542d8a608de9c641d58d17c081e2c3b7c7a987386ad98ef",
+      "code_fingerprint": "b925dcb85f19fb5fcf566572f39c4f432a6ae694363263610f855106d15e8146",
       "label": "ShipCoreFrameworkClient",
       "last": "2026-07-15T16:00:40.508340+00:00",
       "provenance": [
@@ -44,7 +44,7 @@
           "q": "I see that SCF mod API is currently lacking the ability for other mods to request the full config through the mod API. Could you add that?"
         }
       ],
-      "score": 0.918352823,
+      "score": 0.718923078,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/API/SCF_ModAPIClient.cs",
       "status": "tentative",
       "uses": 1
@@ -60,7 +60,7 @@
           "q": "Can we make it so connector blacklist checks through all connected connectors by diffing the mechanically linked group against the logically linked group and then based off that decide the priority across multiple gridgroups? Come up with a plan for this. Use $ponytail and other relevant skills."
         }
       ],
-      "score": 0.833136738,
+      "score": 0.652212542,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Components/GroupComponent.Connectors.cs",
       "status": "tentative",
       "uses": 1
@@ -76,26 +76,31 @@
           "q": "Can we make it so connector blacklist checks through all connected connectors by diffing the mechanically linked group against the logically linked group and then based off that decide the priority across multiple gridgroups? Come up with a plan for this. Use $ponytail and other relevant skills."
         }
       ],
-      "score": 0.833136738,
+      "score": 0.652212542,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Components/GroupComponent.CoreSelection.cs",
       "status": "tentative",
       "uses": 1
     },
     "configurator_app": {
-      "code_fingerprint": "627deba08698919f27bcaff3b4ba91600360920832786928ceb359d15f2602ce",
+      "code_fingerprint": "dedf801b73d6e3de727d878112ac38318688e7acca8c0cb5eab8f40d48f672da",
       "label": "app.js",
-      "last": "2026-07-19T08:19:23.913189+00:00",
+      "last": "2026-07-19T08:39:45.821064+00:00",
       "provenance": [
+        {
+          "date": "2026-07-19T08:39:45.821064+00:00",
+          "outcome": "useful",
+          "q": "Can we add an update in place folder picker function to the XML web config? We do the same for the viewer /home/owendb/Documents/GitHub/viewer/"
+        },
         {
           "date": "2026-07-19T08:19:23.913189+00:00",
           "outcome": "useful",
           "q": "Reorder the XML web editor UI numbering. First section number starts at 2 instead of 1"
         }
       ],
-      "score": 0.999844796,
+      "score": 1.565692268,
       "source_file": "docs/configurator/app.js",
-      "status": "tentative",
-      "uses": 1
+      "status": "preferred",
+      "uses": 2
     },
     "helpers_cubegridmodifiers_cubegridmodifiers": {
       "code_fingerprint": "",
@@ -108,7 +113,7 @@
           "q": "Use $ponytail and $caveman and implement this feature."
         }
       ],
-      "score": 0.815590556,
+      "score": 0.638476693,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Helpers/CubeGridModifiers.cs",
       "status": "tentative",
       "uses": 1
@@ -124,7 +129,7 @@
           "q": "Why does GroupComponent connect Speed Rules to many runtime rule communities?"
         }
       ],
-      "score": 0.581595344,
+      "score": 0.455295943,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Helpers/NoFlyZoneEnforcement.cs",
       "status": "tentative",
       "uses": 1
@@ -140,7 +145,7 @@
           "q": "Why does GroupComponent connect Speed Rules to many runtime rule communities?"
         }
       ],
-      "score": 0.581595344,
+      "score": 0.455295943,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Helpers/SpeedEnforcement.cs",
       "status": "tentative",
       "uses": 1
@@ -156,7 +161,7 @@
           "q": "The text is super unclear now. Is there a way to make it sharper? I also think that 1/3 render scale is a bit too much"
         }
       ],
-      "score": 0.944376129,
+      "score": 0.739295157,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Helpers/TextUtils.cs",
       "status": "tentative",
       "uses": 1
@@ -172,7 +177,7 @@
           "q": "Use $ponytail and $caveman and implement this feature."
         }
       ],
-      "score": 0.815590556,
+      "score": 0.638476693,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Network/PacketBase.cs",
       "status": "tentative",
       "uses": 1
@@ -188,7 +193,7 @@
           "q": "Use $ponytail and $caveman and implement this feature."
         }
       ],
-      "score": 0.815590556,
+      "score": 0.638476693,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/UI/CoreTerminalControls.cs",
       "status": "tentative",
       "uses": 1
@@ -225,7 +230,7 @@
           "q": "I think we forgot to implement the LCD scaling that we were planning to add. The 3x3 massively zooms in because the relative scale of the layout/pixels is not kept."
         }
       ],
-      "score": 2.833558797,
+      "score": 2.218222412,
       "source_file": "ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/UI/CoreTypeLCDScript.cs",
       "status": "contested",
       "uses": 4,
