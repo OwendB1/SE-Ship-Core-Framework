@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using Sandbox.Game;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRageMath;
@@ -66,7 +67,7 @@ namespace ShipCoreFramework
 
             MyAPIGateway.Utilities.ShowMissionScreen(
                 "ShipCore Framework",
-                "/core listnoflyzones",
+                "/core listnoflyzones ",
                 "No-Fly Zones",
                 body,
                 null,
@@ -84,7 +85,7 @@ namespace ShipCoreFramework
             string body = GetCoreInfo(targetGrid, shipCore, groupComponent);
             MyAPIGateway.Utilities.ShowMissionScreen(
                 "Ship Core Framework",
-                $"Ship Class Limits - {targetGrid.CustomName}",
+                $"Ship Class Limits - {targetGrid.CustomName} ",
                 "Block Limits & Usage",
                 body,
                 null,
@@ -101,7 +102,7 @@ namespace ShipCoreFramework
             string body = GetCoreLimits(targetGrid, groupComponent.ShipCore, groupComponent);
             MyAPIGateway.Utilities.ShowMissionScreen(
                 "Ship Core Framework",
-                $"Ship Class Limits - {targetGrid.CustomName}",
+                $"Ship Class Limits - {targetGrid.CustomName} ",
                 "Block Limits & Usage",
                 body,
                 null,
@@ -185,7 +186,7 @@ namespace ShipCoreFramework
                 Dictionary<string, Dictionary<double, int>> usage =
                     new Dictionary<string, Dictionary<double, int>>(StringComparer.OrdinalIgnoreCase);
 
-                foreach (KeyValuePair<IMyCubeGrid, GridComponent> gridEntry in groupComponent.GridDictionary)
+                foreach (KeyValuePair<MyCubeGrid, GridComponent> gridEntry in groupComponent.GridDictionary)
                 {
                     GridComponent gridComponent = gridEntry.Value;
                     if (gridComponent == null) continue;
@@ -609,7 +610,7 @@ Raycasts from crosshairs to find a grid and displays per-limit block usage by di
 
             MyAPIGateway.Utilities.ShowMissionScreen(
                 "ShipCore Framework",
-                "/core help",
+                "/core help ",
                 "Command Reference",
                 body,
                 null,
