@@ -697,8 +697,11 @@ namespace ShipCoreFramework
         [XmlElement("Name")]
         public string Name = string.Empty;
 
-        [XmlElement("BlockGroups")]
+        [XmlIgnore]
         public string[] BlockGroupsShortHand = Array.Empty<string>();
+
+        [XmlElement("BlockGroups")]
+        public BlockGroupReference[] BlockGroupReferences = Array.Empty<BlockGroupReference>();
 
         [XmlIgnore]
         public List<BlockGroup> BlockGroups = new List<BlockGroup>();
@@ -741,8 +744,35 @@ namespace ShipCoreFramework
             return FindMatchingBlockType(BlockGroups, key);
         }
 
+        internal List<DirectionType> GetAllowedDirections(BlockKey key)
+        {
+            BlockGroup matchedGroup;
+            FindMatchingBlockType(BlockGroups, key, out matchedGroup);
+            if (matchedGroup == null || BlockGroupReferences == null)
+                return AllowedDirections;
+
+            foreach (BlockGroupReference reference in BlockGroupReferences)
+            {
+                if (reference == null || !reference.HasDirectionsOverride ||
+                    !string.Equals(reference.Name, matchedGroup.Name, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                return reference.AllowedDirections;
+            }
+
+            return AllowedDirections;
+        }
+
         private static BlockType FindMatchingBlockType(List<BlockGroup> groups, BlockKey key)
         {
+            BlockGroup ignored;
+            return FindMatchingBlockType(groups, key, out ignored);
+        }
+
+        private static BlockType FindMatchingBlockType(List<BlockGroup> groups, BlockKey key,
+            out BlockGroup matchedGroup)
+        {
+            matchedGroup = null;
             if (groups == null) return null;
 
             foreach (BlockGroup group in groups)
@@ -753,12 +783,30 @@ namespace ShipCoreFramework
                 {
                     if (blockType == null) continue;
                     if (blockType.Matches(key))
+                    {
+                        matchedGroup = group;
                         return blockType;
+                    }
                 }
             }
 
             return null;
         }
+    }
+
+    public class BlockGroupReference
+    {
+        [XmlText]
+        public string Name = string.Empty;
+
+        [XmlAttribute("Directions")]
+        public string Directions;
+
+        [XmlIgnore]
+        public List<DirectionType> AllowedDirections = new List<DirectionType>();
+
+        [XmlIgnore]
+        public bool HasDirectionsOverride => Directions != null;
     }
 
     [XmlRoot("BlockGroup")]
@@ -914,12 +962,13 @@ namespace ShipCoreFramework
     [XmlRoot("DirectionType")]
     public enum DirectionType
     {
-        Forward,
-        Backward,
-        Up,
-        Down,
-        Left,
-        Right
+        Forward = 0,
+        Backward = 1,
+        Up = 2,
+        Down = 3,
+        Left = 4,
+        Right = 5,
+        Any = 6
     }
 
     [XmlRoot("FactionRank")]

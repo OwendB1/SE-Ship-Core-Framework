@@ -17,6 +17,7 @@ namespace ShipCoreFramework
             if (directionReferenceBlock?.Orientation == null || block?.Orientation == null ||
                 allowedDirections == null || allowedDirections.Count == 0)
                 return true;
+            if (allowedDirections.Contains(DirectionType.Any)) return true;
 
             if (directionReferenceBlock.CubeGrid != block.CubeGrid)
                 return Session.Config != null && !Session.Config.BlockDirectionalPlacementOnSubgrids;
@@ -594,12 +595,13 @@ namespace ShipCoreFramework
         private static bool DoesBlockViolateAllowedDirection(IMyCubeBlock directionReferenceBlock, BlockLimit limit,
             IMySlimBlock block)
         {
-            if (limit?.AllowedDirections == null || directionReferenceBlock == null || block == null) return false;
+            if (limit == null || directionReferenceBlock == null || block == null) return false;
 
-            var matchedBlockType = limit.GetMatchingBlockType(GridComponent.KeyOf(block));
+            BlockKey blockKey = GridComponent.KeyOf(block);
+            BlockType matchedBlockType = limit.GetMatchingBlockType(blockKey);
             if (matchedBlockType == null) return false;
 
-            return !IsValidDirection(directionReferenceBlock, block, limit.AllowedDirections, false,
+            return !IsValidDirection(directionReferenceBlock, block, limit.GetAllowedDirections(blockKey), false,
                 matchedBlockType.PrimaryDirection);
         }
 

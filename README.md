@@ -341,7 +341,7 @@ Each entry uses `<BlockLimit>`.
 | Tag | Type | Meaning | Notes |
 | --- | --- | --- | --- |
 | `Name` | `string` | Limit name. | Referenced by upgrade-module `BlockLimitModifiers`. |
-| `BlockGroups` | `string[]` | Names of `BlockGroup` definitions included in this limit. | A block matches the limit if it matches any referenced group entry. |
+| `BlockGroups` | `BlockGroupReference[]` | Names of `BlockGroup` definitions included in this limit. | Optional `Directions` attribute accepts comma-separated direction names or enum integers and overrides this limit's `AllowedDirections` for blocks matched through that group. |
 | `ExcludedBlockGroups` | `string[]` | Names of `BlockGroup` definitions subtracted from this limit. | Exclusion wins when a block matches both an included and excluded group. |
 | `MaxCount` | `float` | Maximum allowed total weight for this limit. | Weight comes from matched `BlockType.CountWeight`. |
 | `CrossConnectorPunishment` | `bool` | Pulls blocks from connected no-core groups into this limit's bucket. | Only affects this limit. Does not control min-block or manifest-blacklist limited-block gates. |
@@ -367,16 +367,33 @@ the following limit counts every block in `AllHydrogenEngines` except blocks cla
 not subtracted; an excluded block contributes nothing to this limit. Existing limits without exclusions
 keep their current behavior.
 
+Included groups can override the limit-wide directional lock:
+
+```xml
+<BlockLimits>
+  <Name>Tools</Name>
+  <BlockGroups Directions="Forward,Backward">Welders</BlockGroups>
+  <BlockGroups>Grinders</BlockGroups>
+  <AllowedDirections>Up</AllowedDirections>
+  <MaxCount>10</MaxCount>
+</BlockLimits>
+```
+
+Here, welders may face forward or backward, while grinders use the limit-wide `Up` direction.
+`Directions="0,1"` is equivalent to `Directions="Forward,Backward"`. An omitted attribute falls
+back to `AllowedDirections`; an explicit empty attribute or `Any` allows every direction.
+
 ### Direction values
 
 `AllowedDirections` may use:
 
-- `Forward`
-- `Backward`
-- `Up`
-- `Down`
-- `Left`
-- `Right`
+- `Forward` (`0`)
+- `Backward` (`1`)
+- `Up` (`2`)
+- `Down` (`3`)
+- `Left` (`4`)
+- `Right` (`5`)
+- `Any` (`6`)
 
 ## Upgrade-module reference (per-upgrade XML files)
 

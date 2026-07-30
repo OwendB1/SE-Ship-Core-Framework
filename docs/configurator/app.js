@@ -144,6 +144,7 @@ const DEFAULT_CAPACITY_MODIFIER = {
 };
 
 const VALID_DIRECTIONS = ["Forward", "Backward", "Up", "Down", "Left", "Right"];
+const VALID_ALLOWED_DIRECTIONS = [...VALID_DIRECTIONS, "Any"];
 const FACTION_RANKS = ["None", "Member", "Leader", "Founder"];
 const DRAFT_STORAGE_KEY = "ship-core-configurator-draft-v1";
 
@@ -424,6 +425,14 @@ function pruneMissingBlockGroupReferences(status = null) {
     core.blockLimits.forEach((limit) => {
       if (!limit) return;
       limit.blockGroups = normalizeBlockGroupNames(limit.blockGroups || [], state.blockGroups, pruned);
+      const previousDirections = limit.blockGroupDirections || {};
+      limit.blockGroupDirections = {};
+      limit.blockGroups.forEach((groupName) => {
+        const previousName = Object.keys(previousDirections)
+          .find((name) => name.toLowerCase() === groupName.toLowerCase());
+        if (previousName !== undefined)
+          limit.blockGroupDirections[groupName] = previousDirections[previousName];
+      });
       limit.excludedBlockGroups = normalizeBlockGroupNames(limit.excludedBlockGroups || [], state.blockGroups, pruned);
     });
   };
@@ -785,6 +794,7 @@ function cloneLimit(limit = createDefaultLimit()) {
     ...limit,
     allowedDirections: Array.isArray(limit.allowedDirections) ? [...limit.allowedDirections] : [],
     blockGroups: Array.isArray(limit.blockGroups) ? [...limit.blockGroups] : [],
+    blockGroupDirections: { ...(limit.blockGroupDirections || {}) },
     excludedBlockGroups: Array.isArray(limit.excludedBlockGroups) ? [...limit.excludedBlockGroups] : [],
     groupSearch: String(limit.groupSearch ?? ""),
     excludedGroupSearch: String(limit.excludedGroupSearch ?? "")
@@ -822,6 +832,10 @@ function renameBlockGroupReferences(previousName, nextName) {
     core.blockLimits.forEach((limit) => {
       limit.blockGroups = (limit.blockGroups || [])
         .map((groupName) => (groupName === previousName ? nextName : groupName));
+      if (Object.prototype.hasOwnProperty.call(limit.blockGroupDirections || {}, previousName)) {
+        limit.blockGroupDirections[nextName] = limit.blockGroupDirections[previousName];
+        delete limit.blockGroupDirections[previousName];
+      }
       limit.excludedBlockGroups = (limit.excludedBlockGroups || [])
         .map((groupName) => (groupName === previousName ? nextName : groupName));
     });
@@ -835,6 +849,7 @@ function removeBlockGroupReferences(groupNameToRemove) {
     core.blockLimits.forEach((limit) => {
       limit.blockGroups = (limit.blockGroups || [])
         .filter((groupName) => groupName !== groupNameToRemove);
+      delete (limit.blockGroupDirections || {})[groupNameToRemove];
       limit.excludedBlockGroups = (limit.excludedBlockGroups || [])
         .filter((groupName) => groupName !== groupNameToRemove);
     });
@@ -954,6 +969,7 @@ function createDefaultLimit() {
     punishmentType: "ShutOff",
     allowedDirections: [],
     blockGroups: [],
+    blockGroupDirections: {},
     excludedBlockGroups: [],
     groupSearch: "",
     excludedGroupSearch: ""
@@ -1238,23 +1254,30 @@ function renderManifestGroups() {
   `;
 }
 
-function blockGroupCheckboxes(coreIndex, limitIndex, selected = [], searchText = "", action = "limit-group-toggle") {
+function blockGroupCheckboxes(coreIndex, limitIndex, selected = [], searchText = "",
+  action = "limit-group-toggle", directionOverrides = null) {
   const normalizedSearch = searchText.trim().toLowerCase();
   return state.blockGroups
     .filter((group) => group.name.trim())
     .filter((group) => !normalizedSearch || group.name.toLowerCase().includes(normalizedSearch))
     .map((group) => {
       const isSelected = selected.includes(group.name);
+      const hasOverride = directionOverrides &&
+        Object.prototype.hasOwnProperty.call(directionOverrides, group.name);
+      const directionInput = action === "limit-group-toggle" && isSelected
+        ? `<input data-action="limit-group-directions" data-c="${coreIndex}" data-l="${limitIndex}" data-group-name="${escapeXml(group.name)}" class="small" placeholder="Directions override" title="Comma-separated names or enum integers" value="${escapeXml(hasOverride ? directionOverrides[group.name] : "")}" />`
+        : "";
       return `<label class="group-checklist-item ${isSelected ? "selected" : ""}">
       <input data-action="${action}" data-c="${coreIndex}" data-l="${limitIndex}" data-group-name="${escapeXml(group.name)}" type="checkbox" ${isSelected ? "checked" : ""} />
       <span>${escapeXml(group.name)}</span>
+      ${directionInput}
     </label>`;
     })
     .join("");
 }
 
 function directionCheckboxes(coreIndex, limitIndex, selected = []) {
-  return VALID_DIRECTIONS
+  return VALID_ALLOWED_DIRECTIONS
     .map((direction) => `<label class="group-checklist-item">
       <input data-action="limit-direction-toggle" data-c="${coreIndex}" data-l="${limitIndex}" data-direction="${escapeXml(direction)}" type="checkbox" ${selected.includes(direction) ? "checked" : ""} />
       <span>${escapeXml(direction)}</span>
@@ -1526,7 +1549,7 @@ function renderShipCores() {
             <label>Included Reusable Block Groups</label>
             <input data-action="limit-group-search" data-c="${coreIndex}" data-l="${limitIndex}" class="small group-search" placeholder="Search block groups" value="${escapeXml(limit.groupSearch || "")}" />
             <div class="group-checklist" data-limit-group-list data-c="${coreIndex}" data-l="${limitIndex}">
-              ${blockGroupCheckboxes(coreIndex, limitIndex, limit.blockGroups, limit.groupSearch || "")}
+              ${blockGroupCheckboxes(coreIndex, limitIndex, limit.blockGroups, limit.groupSearch || "", "limit-group-toggle", limit.blockGroupDirections)}
             </div>
           </div>
           <div>
@@ -1550,7 +1573,8 @@ function renderLimitGroupChecklist(coreIndex, limitIndex) {
 
   const listElement = document.querySelector(`[data-limit-group-list][data-c="${coreIndex}"][data-l="${limitIndex}"]`);
   if (listElement)
-    listElement.innerHTML = blockGroupCheckboxes(coreIndex, limitIndex, limit.blockGroups, limit.groupSearch || "");
+    listElement.innerHTML = blockGroupCheckboxes(coreIndex, limitIndex, limit.blockGroups,
+      limit.groupSearch || "", "limit-group-toggle", limit.blockGroupDirections);
 
   const excludedListElement = document.querySelector(`[data-limit-excluded-group-list][data-c="${coreIndex}"][data-l="${limitIndex}"]`);
   if (excludedListElement)
@@ -1731,19 +1755,25 @@ function parseCoreXml(text, originalFileName = "") {
     speedModifiers: parseSpeedModifiersNode(childElement(coreNode, "SpeedModifiers")),
     passiveDefenseModifiers: parseModifierNode(qsel(coreNode, "PassiveDefenseModifiers"), DEFAULT_DEFENSE_MODIFIERS),
     activeDefenseModifiers: parseModifierNode(qsel(coreNode, "ActiveDefenseModifiers"), DEFAULT_DEFENSE_MODIFIERS),
-    blockLimits: qselAll(coreNode, "BlockLimits").map((limitNode) => ({
-      name: textOf(limitNode, "Name"),
-      maxCount: numberOf(limitNode, "MaxCount", 0),
-      crossConnectorPunishment: boolOf(limitNode, "CrossConnectorPunishment", false),
-      punishByNoFlyZone: boolOf(limitNode, "PunishByNoFlyZone", boolOf(limitNode, "TurnedOffByNoFlyZone", false)),
-      isCriticalLimit: boolOf(limitNode, "IsCriticalLimit", false),
-      punishmentType: textOf(limitNode, "PunishmentType") || "ShutOff",
-      allowedDirections: qselAll(limitNode, "AllowedDirections").map((node) => node.textContent.trim()).filter(Boolean),
-      blockGroups: qselAll(limitNode, "BlockGroups").map((node) => node.textContent.trim()).filter(Boolean),
-      excludedBlockGroups: qselAll(limitNode, "ExcludedBlockGroups").map((node) => node.textContent.trim()).filter(Boolean),
-      groupSearch: "",
-      excludedGroupSearch: ""
-    }))
+    blockLimits: qselAll(coreNode, "BlockLimits").map((limitNode) => {
+      const blockGroupNodes = qselAll(limitNode, "BlockGroups");
+      return {
+        name: textOf(limitNode, "Name"),
+        maxCount: numberOf(limitNode, "MaxCount", 0),
+        crossConnectorPunishment: boolOf(limitNode, "CrossConnectorPunishment", false),
+        punishByNoFlyZone: boolOf(limitNode, "PunishByNoFlyZone", boolOf(limitNode, "TurnedOffByNoFlyZone", false)),
+        isCriticalLimit: boolOf(limitNode, "IsCriticalLimit", false),
+        punishmentType: textOf(limitNode, "PunishmentType") || "ShutOff",
+        allowedDirections: qselAll(limitNode, "AllowedDirections").map((node) => node.textContent.trim()).filter(Boolean),
+        blockGroups: blockGroupNodes.map((node) => node.textContent.trim()).filter(Boolean),
+        blockGroupDirections: Object.fromEntries(blockGroupNodes
+          .filter((node) => node.hasAttribute("Directions"))
+          .map((node) => [node.textContent.trim(), node.getAttribute("Directions") || ""])),
+        excludedBlockGroups: qselAll(limitNode, "ExcludedBlockGroups").map((node) => node.textContent.trim()).filter(Boolean),
+        groupSearch: "",
+        excludedGroupSearch: ""
+      };
+    })
   };
 }
 
@@ -1818,10 +1848,17 @@ function writeMinFactionRankXml(core, indent = "  ") {
 }
 
 function writeBlockLimitXml(limit, indent = "  ") {
+  const directionOverrides = limit.blockGroupDirections || {};
   const lines = [
     `${indent}<BlockLimits>`,
     `${indent}  <Name>${escapeXml(limit.name)}</Name>`,
-    ...(limit.blockGroups || []).map((groupName) => `${indent}  <BlockGroups>${escapeXml(groupName)}</BlockGroups>`),
+    ...(limit.blockGroups || []).map((groupName) => {
+      const hasOverride = Object.prototype.hasOwnProperty.call(directionOverrides, groupName);
+      const attribute = hasOverride
+        ? ` Directions="${escapeXml(directionOverrides[groupName])}"`
+        : "";
+      return `${indent}  <BlockGroups${attribute}>${escapeXml(groupName)}</BlockGroups>`;
+    }),
     ...(limit.excludedBlockGroups || []).map((groupName) => `${indent}  <ExcludedBlockGroups>${escapeXml(groupName)}</ExcludedBlockGroups>`),
     `${indent}  <MaxCount>${limit.maxCount}</MaxCount>`,
     `${indent}  <CrossConnectorPunishment>${limit.crossConnectorPunishment}</CrossConnectorPunishment>`,
@@ -2009,6 +2046,7 @@ function parseLegacyLimit(limitNode) {
     allowedDirections: [],
     blockTypes: parseLegacyBlockTypes(limitNode),
     blockGroups: [],
+    blockGroupDirections: {},
     excludedBlockGroups: [],
     groupSearch: "",
     excludedGroupSearch: ""
@@ -2922,8 +2960,15 @@ document.addEventListener("change", (event) => {
     const selectedSet = new Set(limit.allowedDirections || []);
     if (inputElement.checked) selectedSet.add(direction);
     else selectedSet.delete(direction);
-    limit.allowedDirections = VALID_DIRECTIONS.filter((value) => selectedSet.has(value));
+    limit.allowedDirections = VALID_ALLOWED_DIRECTIONS.filter((value) => selectedSet.has(value));
     renderShipCores();
+  }
+  if (action === "limit-group-directions" && inputElement) {
+    const limit = selectedCore.blockLimits[limitIndex];
+    const groupName = inputElement.dataset.groupName || "";
+    if (!groupName) return;
+
+    limit.blockGroupDirections[groupName] = inputElement.value;
   }
   if (action === "limit-group-toggle" && inputElement) {
     const limit = selectedCore.blockLimits[limitIndex];
@@ -2932,7 +2977,10 @@ document.addEventListener("change", (event) => {
 
     const selectedSet = new Set(limit.blockGroups || []);
     if (inputElement.checked) selectedSet.add(groupName);
-    else selectedSet.delete(groupName);
+    else {
+      selectedSet.delete(groupName);
+      delete limit.blockGroupDirections[groupName];
+    }
     limit.blockGroups = Array.from(selectedSet);
     renderShipCores();
   }

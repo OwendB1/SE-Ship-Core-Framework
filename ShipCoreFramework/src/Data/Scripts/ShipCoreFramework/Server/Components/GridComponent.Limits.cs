@@ -34,7 +34,8 @@ namespace ShipCoreFramework
                 if (forceShutOff) block.WhackABlock(PunishmentType.ShutOff);
                 
                 if (directionReferenceBlock != null &&
-                    !GroupComponent.IsValidDirection(directionReferenceBlock, block, limit.AllowedDirections, authoritative,
+                    !GroupComponent.IsValidDirection(directionReferenceBlock, block,
+                        limit.GetAllowedDirections(blockKey), authoritative,
                         matchedBlockType.PrimaryDirection))
                 {
                     if (authoritative && !deferPunishment)

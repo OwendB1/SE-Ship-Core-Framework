@@ -69,15 +69,7 @@ namespace ShipCoreFramework
             {
                 if (limit == null) continue;
 
-                if (limit.BlockGroupsShortHand == null)
-                {
-                    limit.BlockGroupsShortHand = Array.Empty<string>();
-                    Utils.Log($"Config warning: ShipCore '{core.UniqueName}' from {source} ({coreFileOrKey}) has a <BlockLimit> with null <BlockGroups>; treating as empty.", 2, "Config Validation");
-                }
-                else
-                {
-                    limit.BlockGroupsShortHand = NormalizeBlockGroupReferences(limit.BlockGroupsShortHand);
-                }
+                NormalizeIncludedBlockGroupReferences(limit, core, source, coreFileOrKey);
 
                 if (limit.ExcludedBlockGroupsShortHand == null)
                 {
@@ -99,6 +91,80 @@ namespace ShipCoreFramework
                 if (overlaps.Length > 0)
                     Utils.Log($"Config warning: ShipCore '{core.UniqueName}' limit '{limit.Name}' includes and excludes BlockGroup(s) {string.Join(", ", overlaps)}; exclusion wins.", 2, "Config Validation");
             }
+        }
+
+        private static void NormalizeIncludedBlockGroupReferences(BlockLimit limit, ShipCore core, string source,
+            string coreFileOrKey)
+        {
+            if (limit.BlockGroupReferences == null)
+                limit.BlockGroupReferences = Array.Empty<BlockGroupReference>();
+
+            if (limit.BlockGroupReferences.Length == 0)
+            {
+                if (limit.BlockGroupsShortHand == null)
+                {
+                    limit.BlockGroupsShortHand = Array.Empty<string>();
+                    Utils.Log($"Config warning: ShipCore '{core.UniqueName}' from {source} ({coreFileOrKey}) has a <BlockLimit> with null <BlockGroups>; treating as empty.", 2, "Config Validation");
+                }
+                else
+                {
+                    limit.BlockGroupsShortHand = NormalizeBlockGroupReferences(limit.BlockGroupsShortHand);
+                }
+
+                limit.BlockGroupReferences = limit.BlockGroupsShortHand
+                    .Select(groupName => new BlockGroupReference { Name = groupName })
+                    .ToArray();
+                return;
+            }
+
+            List<BlockGroupReference> normalizedReferences = new List<BlockGroupReference>();
+            HashSet<string> seenNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (BlockGroupReference reference in limit.BlockGroupReferences)
+            {
+                if (reference == null) continue;
+
+                reference.Name = reference.Name == null ? string.Empty : reference.Name.Trim();
+                if (string.IsNullOrWhiteSpace(reference.Name) || !seenNames.Add(reference.Name)) continue;
+
+                string[] invalidDirections;
+                reference.AllowedDirections = ParseDirectionList(reference.Directions, out invalidDirections);
+                if (invalidDirections.Length > 0)
+                    Utils.Log($"Config warning: ShipCore '{core.UniqueName}' limit '{limit.Name}' has invalid Directions value(s) {string.Join(", ", invalidDirections)} on BlockGroup '{reference.Name}'; ignoring invalid values.", 2, "Config Validation");
+                if (invalidDirections.Length > 0 && reference.AllowedDirections.Count == 0)
+                    reference.Directions = null;
+
+                normalizedReferences.Add(reference);
+            }
+
+            limit.BlockGroupReferences = normalizedReferences.ToArray();
+            limit.BlockGroupsShortHand = normalizedReferences.Select(reference => reference.Name).ToArray();
+        }
+
+        private static List<DirectionType> ParseDirectionList(string directions, out string[] invalidDirections)
+        {
+            List<DirectionType> parsed = new List<DirectionType>();
+            List<string> invalid = new List<string>();
+            if (directions != null)
+            {
+                foreach (string rawToken in directions.Split(','))
+                {
+                    string token = rawToken.Trim();
+                    if (token.Length == 0) continue;
+
+                    DirectionType direction;
+                    if (!Enum.TryParse(token, true, out direction) ||
+                        !Enum.IsDefined(typeof(DirectionType), direction))
+                    {
+                        invalid.Add(token);
+                        continue;
+                    }
+
+                    if (!parsed.Contains(direction)) parsed.Add(direction);
+                }
+            }
+
+            invalidDirections = invalid.ToArray();
+            return parsed;
         }
 
         private static string[] NormalizeBlockGroupReferences(IEnumerable<string> groupNames)

@@ -224,10 +224,13 @@ namespace ShipCoreFramework
                 foreach (var kvp in group.Limits)
                 {
                     var limit = kvp.Key;
-                    if (limit?.AllowedDirections == null || limit.AllowedDirections.Count == 0) continue;
-
-                    var matched = limit.GetMatchingBlockType(block.Key);
+                    if (limit == null) continue;
+                    BlockType matched = limit.GetMatchingBlockType(block.Key);
                     if (matched == null) continue;
+                    List<DirectionType> allowedDirections = limit.GetAllowedDirections(block.Key);
+                    if (allowedDirections == null || allowedDirections.Count == 0 ||
+                        allowedDirections.Contains(DirectionType.Any))
+                        continue;
 
                     if (onSubgrid)
                     {
@@ -239,7 +242,7 @@ namespace ShipCoreFramework
                             Limit = limit,
                             Pass = false,
                             SubgridBlocked = true,
-                            AllowedDirections = limit.AllowedDirections
+                            AllowedDirections = allowedDirections
                         });
                         continue;
                     }
@@ -251,9 +254,9 @@ namespace ShipCoreFramework
                         Kind = LimitCheckKind.Direction,
                         Name = limit.Name,
                         Limit = limit,
-                        Pass = limit.AllowedDirections.Contains(facing),
+                        Pass = allowedDirections.Contains(facing),
                         Facing = facing,
-                        AllowedDirections = limit.AllowedDirections
+                        AllowedDirections = allowedDirections
                     });
                 }
             }

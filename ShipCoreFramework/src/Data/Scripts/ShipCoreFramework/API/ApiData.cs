@@ -731,7 +731,8 @@ namespace ShipCoreFramework
         Up = 2,
         Down = 3,
         Left = 4,
-        Right = 5
+        Right = 5,
+        Any = 6
     }
 
     public enum FactionRankData
