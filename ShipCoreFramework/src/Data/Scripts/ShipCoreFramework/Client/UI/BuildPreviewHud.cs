@@ -72,6 +72,7 @@ namespace ShipCoreFramework
 
         private bool _isClient;
         private HudAPIv2 _hudApi;
+        private CoreStatusHud _coreStatusHud;
         private bool _hudReady;
         private HudAPIv2.HUDMessage _panel;
         private IMyHudNotification _fallback;
@@ -115,6 +116,8 @@ namespace ShipCoreFramework
             _isClient = !MyAPIGateway.Utilities.IsDedicated;
             if (!_isClient) return;
 
+            _coreStatusHud = new CoreStatusHud();
+            _coreStatusHud.Load();
             _hudApi = new HudAPIv2(OnHudReady);
         }
 
@@ -125,12 +128,14 @@ namespace ShipCoreFramework
             {
                 Visible = false
             };
+            _coreStatusHud.OnHudReady();
         }
 
         protected override void UnloadData()
         {
             try
             {
+                _coreStatusHud?.Unload();
                 _hudApi?.Unload();
             }
             catch (Exception ex)
@@ -141,6 +146,7 @@ namespace ShipCoreFramework
             _hudApi = null;
             _panel = null;
             _fallback = null;
+            _coreStatusHud = null;
         }
 
         public override void UpdateAfterSimulation()
@@ -151,6 +157,7 @@ namespace ShipCoreFramework
 
             try
             {
+                _coreStatusHud?.Update();
                 UpdatePreview();
             }
             catch (Exception ex)

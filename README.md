@@ -30,6 +30,7 @@ Developer guidance for the runtime client/server boundary is in
   - Manifest blacklist for connected core groups.
 - Critical limits that stay exempt from min-block and manifest-blacklist total limited-block shutoff.
 - Minimum-block limited-block gate with periodic recheck.
+- Live Core HUD for piloted or aimed friendly grids, with a persistent configurable toggle key.
 - External mod API.
 
 ## Config file map
