@@ -3,11 +3,16 @@ name: Upload Steam Workshop
 permissions:
   contents: read
 
+concurrency:
+  group: steam-workshop-upload
+  cancel-in-progress: false
+
 on:
   push:
     branches:
       - main
     paths:
+      - .github/workflows/steam-workshop-upload.yml
       - ArcaneShipCores/src/**
       - ArcaneShipCores/workshop/**
       - ShipCoreFramework/src/**
@@ -37,6 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         include:
           - key: arcane-cores
@@ -72,7 +78,7 @@ jobs:
 
             if [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
               if git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
-                if git diff --name-only "$BEFORE_SHA" "$CURRENT_SHA" -- "${{ matrix.src_dir }}/" "${{ matrix.workshop_dir }}/" | grep -q .; then
+                if git diff --name-only "$BEFORE_SHA" "$CURRENT_SHA" -- ".github/workflows/steam-workshop-upload.yml" "${{ matrix.src_dir }}/" "${{ matrix.workshop_dir }}/" | grep -q .; then
                   SHOULD_UPLOAD=true
                 fi
               else
@@ -179,7 +185,7 @@ jobs:
               return value.replace("\r\n", "\n").replace("\r", "\n").rstrip("\n")
 
           def escape_vdf(value):
-              return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+              return value.replace("\\", "\\\\").replace('"', '\\"')
 
           base_title = read_single_line(os.environ["WORKSHOP_TITLE_FILE"], "Workshop title")
           version = read_single_line(os.environ["WORKSHOP_VERSION_FILE"], "Workshop version")

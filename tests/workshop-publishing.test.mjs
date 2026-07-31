@@ -24,10 +24,14 @@ for (const mod of ["ShipCoreFramework", "ArcaneShipCores"]) {
 
 const workflow = await read(".github/workflows/steam-workshop-upload.yml");
 assert.match(workflow, /default: main/);
+assert.match(workflow, /group: steam-workshop-upload/);
+assert.match(workflow, /max-parallel: 1/);
 assert.match(workflow, /matrix\.workshop_dir/);
+assert.match(workflow, /\.github\/workflows\/steam-workshop-upload\.yml/);
 assert.match(workflow, /\("title", title\)/);
 assert.match(workflow, /\("description", description\)/);
 assert.match(workflow, /description_bytes >= 8000/);
+assert.doesNotMatch(workflow, /replace\("\\n", "\\\\n"\)/);
 assert.doesNotMatch(workflow, /GetPublishedFileDetails\/v1\//);
 
 console.log("Workshop publishing contract checks passed.");
