@@ -1,0 +1,112 @@
+[img]https://i.imgur.com/fVVaDCS.gif[/img]
+[i]If you enjoy this mod, please rate it! Thank You.[/i]
+
+[h1]Ship Core Framework[/h1]
+
+Ship Core Framework is a modular, multiplayer-focused alternative to Keen's block-limit system, inspired by [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3193738565]Ship Classes[/url] and rebuilt from the ground up.
+
+Physical Ship Core blocks define what a grid may build and how it performs. Profiles can control block limits, size, mass, PCU, speed, friction, production, power, defense, abilities, ownership, upgrades, and connector behavior.
+
+[b]This is a framework, not a core pack.[/b] Use a dependent core mod, create your own configuration, or configure the No Core profile.
+
+[h2]Features[/h2]
+
+[list]
+[*]Deterministic main and backup cores across mechanical grid groups
+[*]Block, mass, PCU, minimum-size, player, faction, and manifest limits
+[*]Reusable block groups, exclusions, weights, and directional rules
+[*]Shutoff, damage, delete/refund, and explosion punishments
+[*]Thruster, gyro, refinery, assembler, drill, and power modifiers
+[*]Speed limits, boosts, friction curves, cruise behavior, and atmospheric friction
+[*]Passive/active defense and power-overclock abilities
+[*]Upgrade modules with stat, capacity, and block-limit modifiers
+[*]Faction-rank requirements and ownership validation
+[*]Connector blacklists and connected-grid punishment rules
+[*]No-fly zones and optional Nexus multi-sector synchronization
+[*]Server-authoritative, cached, event-driven enforcement
+[/list]
+
+[h2]Player Tools[/h2]
+
+[list]
+[*]Live build preview for limits, mass, PCU, and projected capacity
+[*]Direction arrows, invalid-placement boxes, and first-core axes
+[*]Backup-core guidance; backups must match the main core orientation
+[*]Core Status LCD dashboards with limits, modifiers, and punishment reasons
+[*][b]/core info[/b], [b]/core limits[/b], and grace countdowns
+[/list]
+
+[h2]Example Core Pack[/h2]
+
+[url=https://steamcommunity.com/sharedfiles/filedetails/?id=3552605473]Arcane Cores[/url] demonstrates combat, fighter, utility, and station profiles with specialized limits, modifiers, abilities, upgrades, and docking rules.
+
+[h2]Mod API v4[/h2]
+
+SCF includes separate role-specific APIs:
+
+[list]
+[*][b]ShipCoreFrameworkServerApi[/b] for authoritative server access
+[*][b]ShipCoreFrameworkClientApi[/b] for synchronized read-only client data
+[*]Configuration, runtime, readiness, core, grid, limit, modifier, speed, ability, ownership, and event data
+[/list]
+
+[b]API v4 is a breaking upgrade.[/b] API v3 integrations must migrate.
+
+Community API example:
+[url=https://steamcommunity.com/sharedfiles/filedetails/?id=3655663978]CoreHudMod[/url] by [url=https://steamcommunity.com/id/OUMGUN]Primordial[/url].
+
+[h2]Configurator and Documentation[/h2]
+
+The configurator creates, imports, validates, and exports complete SCF configurations. It can also open an existing mod/Data folder and update generated XML files in place.
+
+[url=https://owendb1.github.io/SE-Ship-Core-Framework/configurator/]Open the XML Configurator[/url]
+
+The README contains the current XML reference, commands, examples, upgrade stats, API instructions, and runtime behavior:
+
+[url=https://github.com/OwendB1/SE-Ship-Core-Framework/blob/main/README.md]Read the Ship Core Framework README[/url]
+
+[h2]Common Questions[/h2]
+
+[b]How do I select a class?[/b]
+Build a physical core supplied by a dependent mod. Grids without one use the configured No Core profile.
+
+[b]How do I see limits?[/b]
+Use the build-preview HUD, Core Status LCD, [b]/core info[/b], or [b]/core limits[/b].
+
+[b]Does it support servers and subgrids?[/b]
+Yes. SCF is server-authoritative and tracks mechanical grid groups, including rotors, hinges, and pistons. Connector behavior is configurable.
+
+[b]Can this replace a block limiter?[/b]
+Yes. Limits can apply per grid group, core, player, faction, and manifest.
+
+[b]Are minimum limits supported?[/b]
+Yes, with a configurable grace countdown.
+
+[b]Can I make a core pack?[/b]
+Yes. Start with the configurator, README, and Arcane Cores example.
+
+[h2]Support[/h2]
+
+Join our [url=https://discord.com/invite/EUDeV4xhBC]Discord[/url].
+[url=https://github.com/OwendB1/SE-Ship-Core-Framework/issues]Report Bugs on GitHub[/url]
+
+[h2]Credits[/h2]
+
+Thanks to [url=https://steamcommunity.com/profiles/76561198116768722]Kuvat[/url] for the Arcane Core models.
+Thanks to [url=https://steamcommunity.com/id/sargonnas509]Sargonas[/url] for raycasting and early GUI tooling.
+Thanks to [url=https://steamcommunity.com/id/hunterdigi]Digi[/url] for answering our Keen API questions.
+
+Kuvat: [url=https://discord.gg/TugAzsxfyv]Life-Tech Discord[/url]
+
+[h2]Other Mods[/h2]
+
+[url=https://steamcommunity.com/sharedfiles/filedetails/?id=3260685471]The Inhibitor[/url] - Multiplayer base protection.
+[url=https://steamcommunity.com/sharedfiles/filedetails/?id=3053521044]RamBreaker[/url] - Prevents ramming damage.
+[url=https://steamcommunity.com/sharedfiles/filedetails/?id=2905820756]Hydrogen Plus[/url] - Multiplayer-friendly visual effects.
+[url=https://steamcommunity.com/sharedfiles/filedetails/?id=2854025571]SOBST[/url] - Owen's weapon mod.
+
+[B]COPYRIGHT exclusive ODB-TECH and BLUES-HAILFIRE[/B]
+
+[u]This Workshop item may not be redistributed or reposted on Steam or mod.io without explicit permission.[/u]
+
+#Shipcores #Shipclasses #Gridcores #Gridclasses #Shiptypes #Gridtypes

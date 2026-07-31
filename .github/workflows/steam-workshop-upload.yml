@@ -9,7 +9,9 @@ on:
       - main
     paths:
       - ArcaneShipCores/src/**
+      - ArcaneShipCores/workshop/**
       - ShipCoreFramework/src/**
+      - ShipCoreFramework/workshop/**
   workflow_dispatch:
     inputs:
       target:
@@ -24,11 +26,11 @@ on:
       sbmi_profile:
         description: "Metadata profile file to use"
         required: true
-        default: beta
+        default: main
         type: choice
         options:
-          - beta
           - main
+          - beta
 
 jobs:
   upload:
@@ -40,9 +42,11 @@ jobs:
           - key: arcane-cores
             mod_dir: ArcaneShipCores
             src_dir: ArcaneShipCores/src
+            workshop_dir: ArcaneShipCores/workshop
           - key: shipcore-framework
             mod_dir: ShipCoreFramework
             src_dir: ShipCoreFramework/src
+            workshop_dir: ShipCoreFramework/workshop
 
     steps:
       - name: Checkout
@@ -68,7 +72,7 @@ jobs:
 
             if [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
               if git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
-                if git diff --name-only "$BEFORE_SHA" "$CURRENT_SHA" -- "${{ matrix.src_dir }}/" | grep -q .; then
+                if git diff --name-only "$BEFORE_SHA" "$CURRENT_SHA" -- "${{ matrix.src_dir }}/" "${{ matrix.workshop_dir }}/" | grep -q .; then
                   SHOULD_UPLOAD=true
                 fi
               else
@@ -76,7 +80,7 @@ jobs:
                 SHOULD_UPLOAD=true
               fi
             else
-              if git ls-tree -r --name-only "$CURRENT_SHA" -- "${{ matrix.src_dir }}/" | grep -q .; then
+              if git ls-tree -r --name-only "$CURRENT_SHA" -- "${{ matrix.src_dir }}/" "${{ matrix.workshop_dir }}/" | grep -q .; then
                 SHOULD_UPLOAD=true
               fi
             fi
@@ -95,10 +99,10 @@ jobs:
           echo "::add-mask::$STEAM_CONFIG_VDF"
           echo "Using cached SteamCMD host config authentication for workshop upload."
 
-      - name: Build upload content from src only
+      - name: Build upload content and metadata
         if: ${{ steps.matrix_gate.outputs.should_upload == 'true' }}
         env:
-          SBMI_PROFILE: ${{ github.event.inputs.sbmi_profile || 'beta' }}
+          SBMI_PROFILE: ${{ github.event.inputs.sbmi_profile || 'main' }}
         run: |
           set -euo pipefail
           STAGING="${RUNNER_TEMP}/${{ matrix.mod_dir }}-upload"
@@ -112,6 +116,16 @@ jobs:
             echo "Expected metadata profile not found: $PROFILE_FILE"
             exit 1
           fi
+
+          TITLE_FILE="${{ matrix.workshop_dir }}/title.txt"
+          VERSION_FILE="${{ matrix.workshop_dir }}/version.txt"
+          DESCRIPTION_FILE="${{ matrix.workshop_dir }}/description.bbcode"
+          for FILE in "$TITLE_FILE" "$VERSION_FILE" "$DESCRIPTION_FILE"; do
+            if [ ! -f "$FILE" ]; then
+              echo "Expected Workshop metadata file not found: $FILE"
+              exit 1
+            fi
+          done
 
           cp "$PROFILE_FILE" "$STAGING/modinfo.sbmi"
 
@@ -129,8 +143,12 @@ jobs:
           fi
 
           echo "WORKSHOP_ID=$WORKSHOP_ID" >> "$GITHUB_ENV"
+          echo "WORKSHOP_PROFILE=$SBMI_PROFILE" >> "$GITHUB_ENV"
           echo "STAGING_DIR=$STAGING" >> "$GITHUB_ENV"
           echo "PREVIEW_FILE=$THUMBNAIL_FILE" >> "$GITHUB_ENV"
+          echo "WORKSHOP_TITLE_FILE=$TITLE_FILE" >> "$GITHUB_ENV"
+          echo "WORKSHOP_VERSION_FILE=$VERSION_FILE" >> "$GITHUB_ENV"
+          echo "WORKSHOP_DESCRIPTION_FILE=$DESCRIPTION_FILE" >> "$GITHUB_ENV"
 
       - name: Setup SteamCMD
         if: ${{ steps.matrix_gate.outputs.should_upload == 'true' }}
@@ -145,16 +163,69 @@ jobs:
       - name: Create SteamCMD upload script
         if: ${{ steps.matrix_gate.outputs.should_upload == 'true' }}
         run: |
-          cat > "$RUNNER_TEMP/workshop_item.vdf" <<EOF
-          "workshopitem"
-          {
-            "appid" "244850"
-            "publishedfileid" "${WORKSHOP_ID}"
-            "contentfolder" "${STAGING_DIR}"
-            "previewfile" "${PREVIEW_FILE}"
-            "changenote" "GitHub Actions build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA})"
-          }
-          EOF
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          def read_single_line(path, label):
+              value = Path(path).read_text(encoding="utf-8").strip()
+              if not value or "\n" in value or "\r" in value:
+                  raise SystemExit("%s must contain exactly one non-empty line" % label)
+              return value
+
+          def normalize_description(value):
+              return value.replace("\r\n", "\n").replace("\r", "\n").rstrip("\n")
+
+          def escape_vdf(value):
+              return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+
+          base_title = read_single_line(os.environ["WORKSHOP_TITLE_FILE"], "Workshop title")
+          version = read_single_line(os.environ["WORKSHOP_VERSION_FILE"], "Workshop version")
+          if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
+              raise SystemExit("Workshop version must use semantic version format: " + version)
+
+          title = "%s (%s)" % (base_title, version)
+          if os.environ["WORKSHOP_PROFILE"] == "beta":
+              title = "[BETA] " + title
+
+          description = normalize_description(
+              Path(os.environ["WORKSHOP_DESCRIPTION_FILE"]).read_text(encoding="utf-8")
+          )
+          title_bytes = len(title.encode("utf-8"))
+          description_bytes = len(description.encode("utf-8"))
+          if title_bytes > 128:
+              raise SystemExit("Workshop title exceeds Steam's 128-byte limit: %d" % title_bytes)
+          if description_bytes >= 8000:
+              raise SystemExit("Workshop description must be smaller than Steam's 8000-byte limit: %d" % description_bytes)
+
+          values = (
+              ("appid", "244850"),
+              ("publishedfileid", os.environ["WORKSHOP_ID"]),
+              ("contentfolder", os.environ["STAGING_DIR"]),
+              ("previewfile", os.environ["PREVIEW_FILE"]),
+              ("title", title),
+              ("description", description),
+              ("changenote", "GitHub Actions build %s (%s)" % (
+                  os.environ["GITHUB_RUN_NUMBER"], os.environ["GITHUB_SHA"]
+              )),
+          )
+          lines = ['"workshopitem"', "{"]
+          lines.extend('  "%s" "%s"' % (key, escape_vdf(value)) for key, value in values)
+          lines.append("}")
+          Path(os.environ["RUNNER_TEMP"], "workshop_item.vdf").write_text(
+              "\n".join(lines) + "\n", encoding="utf-8"
+          )
+          with Path(os.environ["GITHUB_ENV"]).open("a", encoding="utf-8") as env_file:
+              env_file.write("WORKSHOP_TITLE=%s\n" % title)
+
+          print("Publishing %s profile to Workshop item %s" % (
+              os.environ["WORKSHOP_PROFILE"], os.environ["WORKSHOP_ID"]
+          ))
+          print("Title: %s (%d bytes)" % (title, title_bytes))
+          print("Description: %d bytes" % description_bytes)
+          PY
 
       - name: Install SteamCMD cached credentials config
         if: ${{ steps.matrix_gate.outputs.should_upload == 'true' }}
