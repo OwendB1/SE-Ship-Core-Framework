@@ -39,7 +39,7 @@ namespace ShipCoreFramework
         private HudAPIv2.MenuKeybindInput _keybindMenuItem;
         private IMyHudNotification _fallback;
 
-        private bool _enabled = true;
+        private bool _enabled;
         private MyKeys _toggleKey = MyKeys.NumPad0;
         private bool _toggleShift;
         private bool _toggleControl;
