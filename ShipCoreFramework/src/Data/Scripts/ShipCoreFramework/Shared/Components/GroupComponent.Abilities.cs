@@ -63,6 +63,56 @@ namespace ShipCoreFramework
             }
         }
 
+        internal void GetAbilityTimers(out bool boostActive, out float boostDuration,
+            out float boostCooldown, out bool defenseActive, out float defenseDuration,
+            out float defenseCooldown, out bool powerActive, out float powerDuration,
+            out float powerCooldown)
+        {
+            float elapsed = Session.IsServer || !_runtimeStateReceived
+                ? 0f
+                : System.Math.Max(0, Session.CurrentTick - _runtimeAbilityStateTick);
+
+            lock (SpeedStateLock)
+            {
+                boostActive = BoostEnabled;
+                boostDuration = System.Math.Max(0f, _boostDurationTimer - (boostActive ? elapsed : 0f));
+                boostCooldown = System.Math.Max(0f, _boostCooldownTimer - (boostActive ? 0f : elapsed));
+            }
+
+            lock (_abilityStateLock)
+            {
+                defenseActive = _activeDefenseEnabled;
+                defenseDuration = System.Math.Max(0f,
+                    _activeDefenseDurationTimer - (defenseActive ? elapsed : 0f));
+                defenseCooldown = System.Math.Max(0f,
+                    _activeDefenseCooldownTimer - (defenseActive ? 0f : elapsed));
+                powerActive = _powerOverclockActive;
+                powerDuration = System.Math.Max(0f,
+                    _powerOverclockDurationTimer - (powerActive ? elapsed : 0f));
+                powerCooldown = System.Math.Max(0f,
+                    _powerOverclockCooldownTimer - (powerActive ? 0f : elapsed));
+            }
+        }
+
+        internal bool HasRunningAbilityTimer()
+        {
+            bool boostActive;
+            float boostDuration;
+            float boostCooldown;
+            bool defenseActive;
+            float defenseDuration;
+            float defenseCooldown;
+            bool powerActive;
+            float powerDuration;
+            float powerCooldown;
+            GetAbilityTimers(out boostActive, out boostDuration, out boostCooldown,
+                out defenseActive, out defenseDuration, out defenseCooldown,
+                out powerActive, out powerDuration, out powerCooldown);
+            return boostActive && boostDuration > 0f || boostCooldown > 0f ||
+                   defenseActive && defenseDuration > 0f || defenseCooldown > 0f ||
+                   powerActive && powerDuration > 0f || powerCooldown > 0f;
+        }
+
         internal GridDefenseModifiers GetActiveDefenseModifiers()
         {
             return Session.IsServer && Session.IsGameThread

@@ -59,6 +59,7 @@ namespace ShipCoreFramework
                 _powerOverclockDurationTimer = state.PowerOverclockDurationTimer;
                 _powerOverclockCooldownTimer = state.PowerOverclockCooldownTimer;
             }
+            _runtimeAbilityStateTick = Session.CurrentTick;
 
             Interlocked.Exchange(ref _groupBlocksCount, Math.Max(0, state.BlockCount));
             Interlocked.Exchange(ref _cachedGroupPCU, Math.Max(0, state.Pcu));
@@ -231,6 +232,7 @@ namespace ShipCoreFramework
             _powerOverclockActive = false;
             _powerOverclockDurationTimer = 0f;
             _powerOverclockCooldownTimer = 0f;
+            _runtimeAbilityStateTick = 0;
             FrictionEnforcementEnabled = true;
             FrictionMaximumDecelerationOverride = -1f;
             MinimumFrictionSpeedAbsoluteOverride = -1f;

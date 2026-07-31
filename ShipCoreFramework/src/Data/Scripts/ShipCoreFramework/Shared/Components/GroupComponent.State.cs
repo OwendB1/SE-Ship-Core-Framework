@@ -65,6 +65,7 @@ namespace ShipCoreFramework
         private float _powerOverclockCooldownTimer;
         private float _powerOverclockDurationTimer;
         private float _powerOverclockDamageTimer;
+        private int _runtimeAbilityStateTick;
         private int _groupBlocksCount;
 
         private bool _closing;

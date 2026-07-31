@@ -22,6 +22,7 @@ namespace ShipCoreFramework
         private const string SettingsFile = "CoreStatusHud.cfg";
         private const int UpdateIntervalTicks = 10;
         private const int RefreshIntervalUpdates = 30;
+        private const int AbilityRefreshIntervalUpdates = 6;
         private const double RaycastDistance = 300d;
 
         private const string White = "<color=255,255,255>";
@@ -97,8 +98,11 @@ namespace ShipCoreFramework
             }
 
             _refreshCounter++;
+            int refreshInterval = group.HasRunningAbilityTimer()
+                ? AbilityRefreshIntervalUpdates
+                : RefreshIntervalUpdates;
             bool refresh = group != _lastGroup || grid != _lastGrid || _lastText == null ||
-                           _refreshCounter >= RefreshIntervalUpdates;
+                           _refreshCounter >= refreshInterval;
             if (refresh)
             {
                 _refreshCounter = 0;
@@ -222,6 +226,7 @@ namespace ShipCoreFramework
 
             AppendLimits(group, core);
             AppendSpeed(grid, group);
+            AppendAbilities(group, core);
             return _text.ToString();
         }
 
@@ -287,6 +292,51 @@ namespace ShipCoreFramework
                 _text.Append("Fwd Speed: ").Append(Green)
                     .Append(forwardSpeed.Value.ToString("F0", CultureInfo.InvariantCulture))
                     .AppendLine(" m/s").Append(White);
+        }
+
+        private void AppendAbilities(GroupComponent group, ShipCore core)
+        {
+            if (core == null) return;
+
+            bool boostActive;
+            float boostDuration;
+            float boostCooldown;
+            bool defenseActive;
+            float defenseDuration;
+            float defenseCooldown;
+            bool powerActive;
+            float powerDuration;
+            float powerCooldown;
+            group.GetAbilityTimers(out boostActive, out boostDuration, out boostCooldown,
+                out defenseActive, out defenseDuration, out defenseCooldown,
+                out powerActive, out powerDuration, out powerCooldown);
+
+            if (core.SpeedBoostEnabled)
+                AppendAbility("Boost", boostActive, boostDuration, boostCooldown);
+            if (core.EnableActiveDefenseModifiers)
+                AppendAbility("Active Defense", defenseActive, defenseDuration, defenseCooldown);
+            if (core.PowerOverclockEnabled)
+                AppendAbility("Power Increase", powerActive, powerDuration, powerCooldown);
+        }
+
+        private void AppendAbility(string label, bool active, float duration, float cooldown)
+        {
+            _text.Append(label).Append(": ");
+            if (active)
+                _text.Append(Cyan).Append("ACTIVE ").Append(FormatTimer(duration));
+            else if (cooldown > 0f)
+                _text.Append(Yellow).Append("COOLDOWN ").Append(FormatTimer(cooldown));
+            else
+                _text.Append(Green).Append("READY");
+            _text.AppendLine().Append(White);
+        }
+
+        private static string FormatTimer(float ticks)
+        {
+            int seconds = (int)Math.Ceiling(Math.Max(0f, ticks) / 60f);
+            if (seconds < 60) return seconds.ToString(CultureInfo.InvariantCulture) + "s";
+            return (seconds / 60).ToString(CultureInfo.InvariantCulture) + ":" +
+                   (seconds % 60).ToString("00", CultureInfo.InvariantCulture);
         }
 
         private static float? CalculateForwardFrictionSpeed(IMyCubeGrid grid, GroupComponent group)
