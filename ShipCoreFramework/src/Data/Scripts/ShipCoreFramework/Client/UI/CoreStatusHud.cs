@@ -40,6 +40,7 @@ namespace ShipCoreFramework
         private IMyHudNotification _fallback;
 
         private bool _enabled;
+        private int _infoLevel = 1;
         private MyKeys _toggleKey = MyKeys.NumPad0;
         private bool _toggleShift;
         private bool _toggleControl;
@@ -135,9 +136,31 @@ namespace ShipCoreFramework
 
         private void OnMessageEntered(ulong sender, string messageText, ref bool sendToOthers)
         {
-            if (!string.Equals(messageText?.Trim(), "/corehud", StringComparison.OrdinalIgnoreCase)) return;
+            string[] parts = messageText?.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts == null || parts.Length == 0 ||
+                !string.Equals(parts[0], "/corehud", StringComparison.OrdinalIgnoreCase)) return;
+
             sendToOthers = false;
-            Toggle();
+            if (parts.Length == 1)
+            {
+                Toggle();
+                return;
+            }
+
+            string value = parts.Length == 2
+                ? parts[1]
+                : parts.Length == 3 && string.Equals(parts[1], "level", StringComparison.OrdinalIgnoreCase)
+                    ? parts[2]
+                    : null;
+            int level;
+            if (!TryParseInfoLevel(value, out level))
+            {
+                MyAPIGateway.Utilities.ShowNotification(
+                    "Usage: /corehud [1|2|3|standard|detailed|full]", 4000);
+                return;
+            }
+
+            SetInfoLevel(level);
         }
 
         private bool IsTogglePressed()
@@ -172,10 +195,31 @@ namespace ShipCoreFramework
             MyAPIGateway.Utilities.ShowNotification("Core HUD key: " + FormatKeybind(), 2000);
         }
 
+        private void SetInfoLevel(int level)
+        {
+            _infoLevel = level;
+            _lastText = null;
+            SaveSettings();
+            UpdateMenuText();
+            MyAPIGateway.Utilities.ShowNotification("Core HUD info: " + FormatInfoLevel(), 2000);
+        }
+
+        private static bool TryParseInfoLevel(string value, out int level)
+        {
+            if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out level))
+                return level >= 1 && level <= 3;
+            if (string.Equals(value, "standard", StringComparison.OrdinalIgnoreCase)) level = 1;
+            else if (string.Equals(value, "detailed", StringComparison.OrdinalIgnoreCase)) level = 2;
+            else if (string.Equals(value, "full", StringComparison.OrdinalIgnoreCase)) level = 3;
+            else return false;
+            return true;
+        }
+
         private void UpdateMenuText()
         {
             if (_toggleMenuItem != null)
-                _toggleMenuItem.Text = "Core HUD: " + (_enabled ? "Enabled" : "Disabled");
+                _toggleMenuItem.Text = "Core HUD: " + (_enabled ? "Enabled" : "Disabled") +
+                                       " (" + FormatInfoLevel() + ")";
             if (_keybindMenuItem != null)
                 _keybindMenuItem.Text = "Toggle key: " + FormatKeybind();
         }
@@ -188,6 +232,13 @@ namespace ShipCoreFramework
             if (_toggleAlt) value.Append("Alt+");
             value.Append(_toggleKey == MyKeys.None ? "Disabled" : _toggleKey.ToString());
             return value.ToString();
+        }
+
+        private string FormatInfoLevel()
+        {
+            if (_infoLevel == 1) return "Standard";
+            if (_infoLevel == 2) return "Detailed";
+            return "Full";
         }
 
         private string BuildText(IMyCubeGrid grid, GroupComponent group, Vector3D? hitPosition,
@@ -207,25 +258,29 @@ namespace ShipCoreFramework
             if (group.Deactivated)
                 _text.Append(Red).AppendLine("[DEACTIVATED - limits inactive]").Append(White);
 
-            if (hitPosition.HasValue && MyAPIGateway.Session?.Camera != null)
+            if (_infoLevel >= 3 && hitPosition.HasValue && MyAPIGateway.Session?.Camera != null)
             {
                 double distance = Vector3D.Distance(MyAPIGateway.Session.Camera.WorldMatrix.Translation,
                     hitPosition.Value);
                 _text.Append(Gray).Append(distance.ToString("F0", CultureInfo.InvariantCulture))
                     .AppendLine("m away").Append(White);
             }
-            else if (controlled)
+            else if (_infoLevel >= 3 && controlled)
             {
                 _text.Append(Gray).AppendLine("(Piloting)").Append(White);
             }
 
-            _text.AppendLine();
-            AppendUsage("Blocks", group.GroupBlocksCount, group.GetEffectiveMaxBlocks(), string.Empty);
-            AppendUsage("Mass", group.GroupMass, group.GetEffectiveMaxMass(), " kg");
-            AppendUsage("PCU", group.GroupPCU, group.GetEffectiveMaxPCU(), string.Empty);
+            if (_infoLevel >= 2)
+            {
+                _text.AppendLine();
+                AppendUsage("Blocks", group.GroupBlocksCount, group.GetEffectiveMaxBlocks(), string.Empty);
+                AppendUsage("Mass", group.GroupMass, group.GetEffectiveMaxMass(), " kg");
+                AppendUsage("PCU", group.GroupPCU, group.GetEffectiveMaxPCU(), string.Empty);
+            }
 
-            AppendLimits(group, core);
-            AppendSpeed(grid, group);
+            if (_infoLevel >= 3) AppendLimits(group, core);
+            _text.AppendLine().Append(Gray).AppendLine("--- Status ---").Append(White);
+            if (_infoLevel >= 2) AppendSpeed(grid, group, _infoLevel >= 3);
             AppendAbilities(group, core);
             return _text.ToString();
         }
@@ -271,7 +326,7 @@ namespace ShipCoreFramework
             }
         }
 
-        private void AppendSpeed(IMyCubeGrid grid, GroupComponent group)
+        private void AppendSpeed(IMyCubeGrid grid, GroupComponent group, bool includeForwardSpeed)
         {
             float effectiveSpeed;
             bool boostActive;
@@ -281,12 +336,12 @@ namespace ShipCoreFramework
                 boostActive = group.EffectiveBoostEnabled;
             }
 
-            _text.AppendLine().Append(Gray).AppendLine("--- Status ---").Append(White)
-                .Append("Max Speed: ").Append(boostActive ? Cyan : White)
+            _text.Append("Max Speed: ").Append(boostActive ? Cyan : White)
                 .Append(effectiveSpeed.ToString("F0", CultureInfo.InvariantCulture)).Append(" m/s");
             if (boostActive) _text.Append(" [BOOST]");
             _text.AppendLine().Append(White);
 
+            if (!includeForwardSpeed) return;
             float? forwardSpeed = CalculateForwardFrictionSpeed(grid, group);
             if (forwardSpeed.HasValue)
                 _text.Append("Fwd Speed: ").Append(Green)
@@ -525,7 +580,11 @@ namespace ShipCoreFramework
                         if (pair.Length != 2) continue;
                         bool flag;
                         int key;
+                        int level;
                         if (pair[0] == "Enabled" && bool.TryParse(pair[1], out flag)) _enabled = flag;
+                        else if (pair[0] == "Level" && int.TryParse(pair[1], NumberStyles.Integer,
+                                     CultureInfo.InvariantCulture, out level) && level >= 1 && level <= 3)
+                            _infoLevel = level;
                         else if (pair[0] == "Key" && int.TryParse(pair[1], NumberStyles.Integer,
                                      CultureInfo.InvariantCulture, out key) &&
                                  Enum.IsDefined(typeof(MyKeys), (MyKeys)key))
@@ -550,6 +609,7 @@ namespace ShipCoreFramework
                            typeof(CoreStatusHud)))
                 {
                     writer.WriteLine("Enabled=" + _enabled);
+                    writer.WriteLine("Level=" + _infoLevel.ToString(CultureInfo.InvariantCulture));
                     writer.WriteLine("Key=" + ((int)_toggleKey).ToString(CultureInfo.InvariantCulture));
                     writer.WriteLine("Shift=" + _toggleShift);
                     writer.WriteLine("Control=" + _toggleControl);
