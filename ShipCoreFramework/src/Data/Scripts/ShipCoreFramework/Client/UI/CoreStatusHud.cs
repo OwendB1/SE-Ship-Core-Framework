@@ -40,7 +40,7 @@ namespace ShipCoreFramework
         private IMyHudNotification _fallback;
 
         private bool _enabled;
-        private int _infoLevel = 1;
+        private int _infoLevel = 2;
         private MyKeys _toggleKey = MyKeys.NumPad0;
         private bool _toggleShift;
         private bool _toggleControl;
@@ -50,6 +50,7 @@ namespace ShipCoreFramework
         private int _refreshCounter;
         private GroupComponent _lastGroup;
         private IMyCubeGrid _lastGrid;
+        private bool _lastCockpit;
         private string _lastText;
 
         internal void Load()
@@ -98,18 +99,21 @@ namespace ShipCoreFramework
                 return;
             }
 
+            bool cockpit = MyAPIGateway.Session?.Player?.Controller?.ControlledEntity as IMyCockpit != null;
             _refreshCounter++;
-            int refreshInterval = group.HasRunningAbilityTimer()
+            int refreshInterval = group.HasRunningAbilityTimer() || _infoLevel >= 2
                 ? AbilityRefreshIntervalUpdates
                 : RefreshIntervalUpdates;
             bool refresh = group != _lastGroup || grid != _lastGrid || _lastText == null ||
+                           cockpit != _lastCockpit ||
                            _refreshCounter >= refreshInterval;
             if (refresh)
             {
                 _refreshCounter = 0;
                 _lastGroup = group;
                 _lastGrid = grid;
-                _lastText = BuildText(grid, group, hitPosition, controlled);
+                _lastCockpit = cockpit;
+                _lastText = BuildText(grid, group, hitPosition, controlled, cockpit);
             }
 
             Show(_lastText);
@@ -156,7 +160,7 @@ namespace ShipCoreFramework
             if (!TryParseInfoLevel(value, out level))
             {
                 MyAPIGateway.Utilities.ShowNotification(
-                    "Usage: /corehud [1|2|3|standard|detailed|full]", 4000);
+                    "Usage: /corehud [1-3|standard|detailed|full]", 4000);
                 return;
             }
 
@@ -242,10 +246,11 @@ namespace ShipCoreFramework
         }
 
         private string BuildText(IMyCubeGrid grid, GroupComponent group, Vector3D? hitPosition,
-            bool controlled)
+            bool controlled, bool cockpit)
         {
             _text.Clear();
             ShipCore core = group.ShipCore;
+            int infoLevel = cockpit ? 0 : _infoLevel;
 
             _text.Append(Cyan).AppendLine(grid.CustomName).Append(White);
             if (core != null && !string.IsNullOrWhiteSpace(core.UniqueName))
@@ -257,31 +262,41 @@ namespace ShipCoreFramework
             }
             if (group.Deactivated)
                 _text.Append(Red).AppendLine("[DEACTIVATED - limits inactive]").Append(White);
+            else if (group.IsIgnoredGroup())
+                _text.Append(Yellow).AppendLine("[IGNORED - enforcement inactive]").Append(White);
+            AppendPunishmentWarning(group);
 
-            if (_infoLevel >= 3 && hitPosition.HasValue && MyAPIGateway.Session?.Camera != null)
+            if (infoLevel >= 2 && hitPosition.HasValue && MyAPIGateway.Session?.Camera != null)
             {
                 double distance = Vector3D.Distance(MyAPIGateway.Session.Camera.WorldMatrix.Translation,
                     hitPosition.Value);
                 _text.Append(Gray).Append(distance.ToString("F0", CultureInfo.InvariantCulture))
                     .AppendLine("m away").Append(White);
             }
-            else if (_infoLevel >= 3 && controlled)
+            else if (infoLevel >= 2 && controlled)
             {
                 _text.Append(Gray).AppendLine("(Piloting)").Append(White);
             }
 
-            if (_infoLevel >= 2)
+            if (infoLevel >= 1)
             {
                 _text.AppendLine();
                 AppendUsage("Blocks", group.GroupBlocksCount, group.GetEffectiveMaxBlocks(), string.Empty);
                 AppendUsage("Mass", group.GroupMass, group.GetEffectiveMaxMass(), " kg");
                 AppendUsage("PCU", group.GroupPCU, group.GetEffectiveMaxPCU(), string.Empty);
+                AppendMinimumBlocks(group, core);
             }
 
-            if (_infoLevel >= 3) AppendLimits(group, core);
+            if (infoLevel >= 2) AppendCoreLimits(group, core);
+            if (infoLevel >= 1) AppendLimits(group, core);
             _text.AppendLine().Append(Gray).AppendLine("--- Status ---").Append(White);
-            if (_infoLevel >= 2) AppendSpeed(grid, group, _infoLevel >= 3);
+            AppendSpeed(grid, group, infoLevel);
             AppendAbilities(group, core);
+            if (infoLevel >= 3)
+            {
+                AppendEnforcement(group);
+                AppendModifiers(group);
+            }
             return _text.ToString();
         }
 
@@ -298,6 +313,17 @@ namespace ShipCoreFramework
             {
                 _text.Append(suffix);
             }
+            _text.AppendLine();
+        }
+
+        private void AppendMinimumBlocks(GroupComponent group, ShipCore core)
+        {
+            if (core == null || core.MinBlocks <= 0) return;
+            bool below = group.GroupBlocksCount < core.MinBlocks;
+            _text.Append("Min Blocks: ").Append(below ? Red : Green)
+                .Append(group.GroupBlocksCount.ToString("N0", CultureInfo.InvariantCulture)).Append(White)
+                .Append(" / ").Append(core.MinBlocks.ToString("N0", CultureInfo.InvariantCulture));
+            if (below) _text.Append(" !");
             _text.AppendLine();
         }
 
@@ -326,27 +352,130 @@ namespace ShipCoreFramework
             }
         }
 
-        private void AppendSpeed(IMyCubeGrid grid, GroupComponent group, bool includeForwardSpeed)
+        private void AppendCoreLimits(GroupComponent group, ShipCore core)
         {
+            if (core == null) return;
+            bool hasFactionLimit = core.MaxPerFaction >= 0 || core.FactionPlayersNeededPerCore > 0;
+            bool hasManifestLimit = core.ManifestGroupNames != null && core.ManifestGroupNames.Count > 0;
+            if (core.MaxBackupCores < 0 && core.MaxPerPlayer < 0 && !hasFactionLimit && !hasManifestLimit) return;
+
+            _text.AppendLine().Append(Gray).AppendLine("--- Core Limits ---").Append(White);
+            if (core.MaxBackupCores >= 0)
+                AppendQuota("Backup Cores", Math.Max(0, group.CoreCount - 1), core.MaxBackupCores);
+            if (core.MaxPerPlayer >= 0)
+                AppendQuota("Player Cores", group.GetCurrentPlayerCoreCount(), core.MaxPerPlayer);
+            if (hasFactionLimit)
+            {
+                if (group.OwningFaction == null)
+                    _text.Append(Red).AppendLine("Faction Cores: faction required").Append(White);
+                else
+                    AppendQuota("Faction Cores", group.GetCurrentFactionCoreCount(),
+                        group.GetCurrentEffectiveFactionCoreLimit());
+            }
+            if (hasManifestLimit)
+            {
+                for (int index = 0; index < core.ManifestGroupNames.Count; index++)
+                {
+                    string name = core.ManifestGroupNames[index];
+                    ManifestCoreGroup manifest = Session.Config.GetManifestGroupByName(name);
+                    if (manifest != null && manifest.MaxCount >= 0)
+                        AppendQuota(manifest.Name, group.GetCurrentManifestCoreCount(manifest.Name),
+                            manifest.MaxCount);
+                }
+            }
+        }
+
+        private void AppendQuota(string label, int current, int max)
+        {
+            string color = max >= 0 && current > max ? Red : max >= 0 && current == max ? Yellow : Green;
+            _text.Append(label).Append(": ").Append(color)
+                .Append(current.ToString(CultureInfo.InvariantCulture)).Append(White);
+            if (max >= 0)
+            {
+                _text.Append(" / ").Append(max.ToString(CultureInfo.InvariantCulture));
+                if (current > max) _text.Append(" !");
+            }
+            _text.AppendLine();
+        }
+
+        private void AppendSpeed(IMyCubeGrid grid, GroupComponent group, int infoLevel)
+        {
+            float baseSpeed;
             float effectiveSpeed;
             bool boostActive;
+            bool frictionEnabled;
             lock (group.SpeedStateLock)
             {
+                baseSpeed = group.BaseSpeedLimitMetersPerSecond;
                 effectiveSpeed = group.EffectiveSpeedLimitMetersPerSecond;
                 boostActive = group.EffectiveBoostEnabled;
+                frictionEnabled = group.FrictionEnforcementEnabled;
             }
 
-            _text.Append("Max Speed: ").Append(boostActive ? Cyan : White)
+            double currentSpeed = grid?.Physics == null ? 0d : grid.Physics.LinearVelocity.Length();
+            _text.Append("Speed: ").Append(SpeedColor(currentSpeed, effectiveSpeed))
+                .Append(currentSpeed.ToString("F0", CultureInfo.InvariantCulture)).Append(White)
+                .Append(" / ").Append(boostActive ? Cyan : White)
                 .Append(effectiveSpeed.ToString("F0", CultureInfo.InvariantCulture)).Append(" m/s");
             if (boostActive) _text.Append(" [BOOST]");
             _text.AppendLine().Append(White);
 
-            if (!includeForwardSpeed) return;
-            float? forwardSpeed = CalculateForwardFrictionSpeed(grid, group);
-            if (forwardSpeed.HasValue)
-                _text.Append("Fwd Speed: ").Append(Green)
-                    .Append(forwardSpeed.Value.ToString("F0", CultureInfo.InvariantCulture))
-                    .AppendLine(" m/s").Append(White);
+            if (infoLevel >= 2)
+            {
+                float? forwardSpeed = CalculateForwardFrictionSpeed(grid, group);
+                if (forwardSpeed.HasValue)
+                    _text.Append("Fwd Speed Cap: ").Append(Green)
+                        .Append(forwardSpeed.Value.ToString("F0", CultureInfo.InvariantCulture))
+                        .AppendLine(" m/s").Append(White);
+            }
+            if (infoLevel >= 3)
+                _text.Append("Base Speed: ").Append(baseSpeed.ToString("F0", CultureInfo.InvariantCulture))
+                    .Append(" m/s | Friction: ").AppendLine(frictionEnabled ? "On" : "Off");
+        }
+
+        private void AppendEnforcement(GroupComponent group)
+        {
+            _text.AppendLine().Append(Gray).AppendLine("--- Enforcement ---").Append(White);
+            AppendPunishment("Speed", group.PunishSpeed, group.GetSpeedPunishmentGateDescriptions());
+            AppendPunishment("Modifiers", group.PunishModifiers, group.GetModifierPunishmentGateDescriptions());
+            AppendPunishment("Limited Blocks", group.PunishLimitedBlocks,
+                group.GetLimitedBlockPunishmentGateDescriptions());
+        }
+
+        private void AppendPunishmentWarning(GroupComponent group)
+        {
+            if (!group.PunishSpeed && !group.PunishModifiers && !group.PunishLimitedBlocks) return;
+            _text.Append(Red).Append("[PUNISHMENT:");
+            if (group.PunishSpeed) _text.Append(" SPEED");
+            if (group.PunishModifiers) _text.Append(" MODIFIERS");
+            if (group.PunishLimitedBlocks) _text.Append(" BLOCKS");
+            _text.AppendLine("]").Append(White);
+        }
+
+        private void AppendPunishment(string label, bool active, List<string> reasons)
+        {
+            _text.Append(label).Append(": ").Append(active ? Red : Green)
+                .AppendLine(active ? "ON" : "OFF").Append(White);
+            for (int index = 0; index < reasons.Count; index++)
+                _text.Append(Yellow).Append("  - ").AppendLine(reasons[index]).Append(White);
+        }
+
+        private void AppendModifiers(GroupComponent group)
+        {
+            List<ModifierNameValue> modifiers = group.Modifiers.GetModifierValues();
+            bool header = false;
+            for (int index = 0; index < modifiers.Count; index++)
+            {
+                ModifierNameValue modifier = modifiers[index];
+                if (Math.Abs(modifier.Value - 1f) < 0.001f) continue;
+                if (!header)
+                {
+                    _text.AppendLine().Append(Gray).AppendLine("--- Effective Modifiers ---").Append(White);
+                    header = true;
+                }
+                _text.Append(modifier.Name).Append(": x")
+                    .AppendLine(modifier.Value.ToString("0.##", CultureInfo.InvariantCulture));
+            }
         }
 
         private void AppendAbilities(GroupComponent group, ShipCore core)
@@ -467,6 +596,13 @@ namespace ShipCoreFramework
             return ratio >= 0.9d ? Yellow : Green;
         }
 
+        private static string SpeedColor(double current, double max)
+        {
+            if (max <= 0d) return White;
+            if (current > max + 0.5d) return Red;
+            return current >= max * 0.9d ? Yellow : Green;
+        }
+
         private void Show(string value)
         {
             if (string.IsNullOrWhiteSpace(value))
@@ -496,6 +632,7 @@ namespace ShipCoreFramework
             _fallback?.Hide();
             _lastGroup = null;
             _lastGrid = null;
+            _lastCockpit = false;
             _lastText = null;
             _refreshCounter = 0;
         }
