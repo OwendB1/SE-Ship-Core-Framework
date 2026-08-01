@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Sandbox.Game.Entities;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using VRage.Game;
+using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ObjectBuilders;
 using VRage.Utils;
+using VRageMath;
 
 namespace ShipCoreFramework
 {
@@ -39,30 +42,25 @@ namespace ShipCoreFramework
             var thisCargo = block.FatBlock as IMyCargoContainer;
             if (thisCargo != null) cargoContainers.Remove(thisCargo);
 
-            IMyInventory selectedInventory = null;
-            var maxAvailableVolume = -1f;
+            var inventories = new List<IMyInventory>();
             foreach (var cargo in cargoContainers)
             {
                 var inv = cargo.GetInventory();
                 if (inv == null) continue;
 
-                var avail = (float)inv.MaxVolume - (float)inv.CurrentVolume;
-                if (avail <= maxAvailableVolume) continue;
-
-                maxAvailableVolume = avail;
-                selectedInventory = inv;
+                inventories.Add(inv);
             }
 
-            if (selectedInventory != null)
-            {
-                var refund = ComputeRefundComponents(block);
-                PutComponentsIntoInventory(selectedInventory, refund);
-            }
+            Dictionary<string, int> refund = ComputeRefundComponents(block);
+            Vector3D refundPosition = grid.GridIntegerToWorld(block.Position);
+            Vector3D refundForward = grid.WorldMatrix.Forward;
+            Vector3D refundUp = grid.WorldMatrix.Up;
 
             MyAPIGateway.Utilities.InvokeOnGameThread(() =>
             {
                 if (grid.MarkedForClose || grid.Closed) return;
                 grid.RemoveBlock(block, Session.HasStarted);
+                PutComponentsIntoInventories(inventories, refund, refundPosition, refundForward, refundUp);
                 var projectors = grid.GetFatBlocks<IMyProjector>().ToList();
                 foreach (var projector in projectors) projector.Enabled = false;
             });
@@ -99,16 +97,44 @@ namespace ShipCoreFramework
             return result;
         }
 
-        private static void PutComponentsIntoInventory(IMyInventory inv, Dictionary<string, int> refund)
+        private static void PutComponentsIntoInventories(List<IMyInventory> inventories,
+            Dictionary<string, int> refund, Vector3D position, Vector3D forward, Vector3D up)
         {
             foreach (var kv in refund)
             {
-                var id = new MyDefinitionId(typeof(MyObjectBuilder_Component), kv.Key);
-                var builder = (MyObjectBuilder_PhysicalObject)MyObjectBuilderSerializer.CreateNewObject(id);
+                MyDefinitionId id = new MyDefinitionId(typeof(MyObjectBuilder_Component), kv.Key);
+                MyObjectBuilder_PhysicalObject builder =
+                    (MyObjectBuilder_PhysicalObject)MyObjectBuilderSerializer.CreateNewObject(id);
                 if (builder == null) continue;
 
-                inv.AddItems(kv.Value, builder);
+                int remaining = kv.Value;
+                foreach (var inventory in inventories)
+                {
+                    int amount = AmountThatFits(inventory, id, remaining);
+                    if (amount == 0) continue;
+
+                    inventory.AddItems(amount, builder);
+                    remaining -= amount;
+                    if (remaining == 0) break;
+                }
+
+                if (remaining > 0)
+                    MyFloatingObjects.Spawn(new MyPhysicalInventoryItem(remaining, builder), position, forward, up);
             }
+        }
+
+        private static int AmountThatFits(IMyInventory inventory, MyDefinitionId id, int requested)
+        {
+            int minimum = 0;
+            int maximum = requested;
+            while (minimum < maximum)
+            {
+                int amount = minimum + (maximum - minimum + 1) / 2;
+                if (inventory.CanItemsBeAdded(amount, id)) minimum = amount;
+                else maximum = amount - 1;
+            }
+
+            return minimum;
         }
 
         internal static void WhackABlock(this IMySlimBlock block, PunishmentType harm,
