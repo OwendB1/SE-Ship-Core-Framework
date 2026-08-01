@@ -606,7 +606,22 @@ Enables or disables unattached upgrade module mode. When ON, upgrade modules do 
 Raycasts from crosshairs to find a grid and displays all its core information.
 
 /core limits
-Raycasts from crosshairs to find a grid and displays per-limit block usage by display name.";
+Raycasts from crosshairs to find a grid and displays per-limit block usage by display name.
+
+/core inventory
+Shows your player and faction core counts.
+
+/core inventory <player|p|faction|f> <identityId>
+Shows core counts for a player or faction. (Admin Required)
+
+/corehud
+Toggles the client Core HUD on or off.
+
+/corehud <1-3|standard|detailed|full>
+Sets and saves the client HUD detail level. Cockpits automatically use the minimal combat view.
+
+/corehud level <1-3|standard|detailed|full>
+Alternative syntax for setting the saved client HUD detail level.";
 
             MyAPIGateway.Utilities.ShowMissionScreen(
                 "ShipCore Framework",

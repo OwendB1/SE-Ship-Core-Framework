@@ -17,6 +17,10 @@ const replica = fs.readFileSync(
   'ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Client/Components/GroupComponent.Replica.cs',
   'utf8',
 );
+const commands = fs.readFileSync(
+  'ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Client/UI/Commands.Presentation.cs',
+  'utf8',
+);
 
 assert.doesNotMatch(hud, /SCFApi|API_ID|RegisterMessageHandler/);
 assert.match(hud, /grid\?\.GetGroupComponent\(\)/);
@@ -53,6 +57,9 @@ assert.match(hud, /AppendPunishmentWarning/);
 assert.match(hud, /if \(infoLevel >= 2\) AppendCoreLimits/);
 assert.match(hud, /if \(infoLevel >= 3\).*AppendEnforcement/s);
 assert.match(hud, /AppendModifiers\(group\)/);
+assert.match(commands, /\/corehud <1-3\|standard\|detailed\|full>/);
+assert.match(commands, /\/corehud level <1-3\|standard\|detailed\|full>/);
+assert.match(commands, /\/core inventory/);
 assert.match(host, /_coreStatusHud\.OnHudReady\(\)/);
 assert.match(host, /_coreStatusHud\?\.Update\(\)/);
 
