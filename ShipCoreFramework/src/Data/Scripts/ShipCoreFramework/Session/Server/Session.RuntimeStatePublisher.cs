@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
+using VRageMath;
 
 namespace ShipCoreFramework
 {
@@ -11,6 +12,13 @@ namespace ShipCoreFramework
         private const int RuntimeStatePacketTargetBytes = Networking.MaxPacketBytes - 64 * 1024;
         private const int RuntimeStateSyncIntervalTicks = 120;
         private const int RuntimeStateRequestCooldownTicks = 300;
+        // Scanning every group for liveness is O(groups + grids); at 60Hz that is pure overhead.
+        // 120 is a multiple of this, so the full-snapshot tick always includes a fresh scan.
+        private const int RuntimeStateRemovalScanIntervalTicks = 30;
+        // Used only when session settings are unavailable, and matches the stock SyncDistance
+        // default. Never fall back to "no filtering", because that would publish the whole
+        // world to every client.
+        private const double RuntimeStateFallbackRangeMeters = 3000d;
         private static int _runtimeStateSequence;
         private static int _runtimeStateRevision;
         private static readonly ConcurrentDictionary<GroupComponent, byte> RuntimeStateDirty =
@@ -21,25 +29,22 @@ namespace ShipCoreFramework
             new Dictionary<ulong, int>();
         private static readonly Dictionary<ulong, int> ConfigRequestTicks =
             new Dictionary<ulong, int>();
+        // Reused scratch buffers. Everything here runs on the game thread, and the delta path
+        // runs every tick, so per-tick allocation is worth avoiding.
+        private static readonly List<IMyPlayer> RuntimeStatePlayerBuffer = new List<IMyPlayer>();
+        private static readonly List<RuntimeStateRecipient> RuntimeStateRecipientBuffer =
+            new List<RuntimeStateRecipient>();
+        private static readonly List<GroupRuntimeState> RuntimeStateVisibleBuffer =
+            new List<GroupRuntimeState>();
 
         private void RunRuntimeStateSyncTick()
         {
             if (!IsServer || !MpActive) return;
-            QueueRemovedRuntimeStates();
+            if (CurrentTick % RuntimeStateRemovalScanIntervalTicks == 0) QueueRemovedRuntimeStates();
             var fullSnapshot = CurrentTick % RuntimeStateSyncIntervalTicks == 0;
             if (!fullSnapshot && RuntimeStateDirty.IsEmpty) return;
 
-            var players = new List<IMyPlayer>();
-            MyAPIGateway.Players.GetPlayers(players);
-            var recipients = new List<ulong>();
-            for (var i = 0; i < players.Count; i++)
-            {
-                var player = players[i];
-                if (player == null || player.SteamUserId == 0) continue;
-                if (LocalPlayer != null && player.SteamUserId == LocalPlayer.SteamUserId) continue;
-                recipients.Add(player.SteamUserId);
-            }
-
+            var recipients = CollectRuntimeStateRecipients();
             var dirtyGroups = CaptureRuntimeStateDirty();
             if (recipients.Count == 0)
             {
@@ -47,18 +52,37 @@ namespace ShipCoreFramework
                 return;
             }
 
+            var rangeSquared = GetRuntimeStateRangeSquared();
+
             if (fullSnapshot)
             {
-                var fullPackets = BuildRuntimeStatePackets();
+                int sequence;
+                int revision;
+                var entries = BuildRuntimeStateEntries(out sequence, out revision);
                 for (var i = 0; i < recipients.Count; i++)
-                    SendRuntimeStatePacketsTo(fullPackets, recipients[i]);
+                {
+                    var recipient = recipients[i];
+                    var visible = FilterRuntimeStates(entries, recipient.Position, rangeSquared);
+                    // An empty snapshot still has to go out: the client clears and rebuilds its
+                    // store on every snapshot, so this is what drops states left behind by a
+                    // player who moved away from everything.
+                    SendRuntimeStatePacketsTo(BuildRuntimeStatePackets(visible, sequence, revision),
+                        recipient.SteamId);
+                }
                 return;
             }
 
-            var deltaPackets = BuildRuntimeStateDeltaPackets(dirtyGroups);
+            var deltaEntries = BuildRuntimeStateDeltaEntries(dirtyGroups);
+            if (deltaEntries.Count == 0) return;
             for (var i = 0; i < recipients.Count; i++)
-                SendRuntimeStateDeltaPacketsTo(deltaPackets, recipients[i]);
+            {
+                var recipient = recipients[i];
+                var visible = FilterRuntimeStates(deltaEntries, recipient.Position, rangeSquared);
+                if (visible.Count == 0) continue;
+                SendRuntimeStateDeltaPacketsTo(BuildRuntimeStateDeltaPackets(visible), recipient.SteamId);
+            }
         }
+
         internal static void SendRuntimeStateTo(ulong steamId)
         {
             if (!IsServer || steamId == 0 || Networking == null) return;
@@ -66,8 +90,17 @@ namespace ShipCoreFramework
             if (RuntimeStateRequestTicks.TryGetValue(steamId, out lastRequestTick) &&
                 CurrentTick - lastRequestTick < RuntimeStateRequestCooldownTicks)
                 return;
+            // Only burn the cooldown once we can actually answer. A client that asks before
+            // its player entity is registered would otherwise wait out the full cooldown.
+            Vector3D viewer;
+            if (!TryGetPlayerPosition(steamId, out viewer)) return;
             RuntimeStateRequestTicks[steamId] = CurrentTick;
-            SendRuntimeStatePacketsTo(BuildRuntimeStatePackets(), steamId);
+
+            int sequence;
+            int revision;
+            var entries = BuildRuntimeStateEntries(out sequence, out revision);
+            var visible = FilterRuntimeStates(entries, viewer, GetRuntimeStateRangeSquared());
+            SendRuntimeStatePacketsTo(BuildRuntimeStatePackets(visible, sequence, revision), steamId);
         }
 
         internal static bool CanServeConfigRequest(ulong steamId)
@@ -130,11 +163,91 @@ namespace ShipCoreFramework
             return false;
         }
 
-        private static PacketRuntimeState[] BuildRuntimeStatePackets()
+        // ---- relevance ----------------------------------------------------------------
+
+        /// <summary>
+        /// Squared broadcast radius, bounded by SyncDistance. That is the radius at which the
+        /// engine replicates grid entities to a client, so beyond it the client has no entity
+        /// to attach state to and could not observe the grid by any means.
+        /// </summary>
+        private static double GetRuntimeStateRangeSquared()
         {
-            var sequence = ++_runtimeStateSequence;
-            var revision = ++_runtimeStateRevision;
-            var states = new List<GroupRuntimeState>();
+            var settings = MyAPIGateway.Session == null ? null : MyAPIGateway.Session.SessionSettings;
+            double range = settings == null ? 0 : settings.SyncDistance;
+            if (range <= 0d) range = RuntimeStateFallbackRangeMeters;
+            return range * range;
+        }
+
+        private static List<RuntimeStateRecipient> CollectRuntimeStateRecipients()
+        {
+            RuntimeStatePlayerBuffer.Clear();
+            MyAPIGateway.Players.GetPlayers(RuntimeStatePlayerBuffer);
+            var recipients = RuntimeStateRecipientBuffer;
+            recipients.Clear();
+            for (var i = 0; i < RuntimeStatePlayerBuffer.Count; i++)
+            {
+                var player = RuntimeStatePlayerBuffer[i];
+                if (player == null || player.SteamUserId == 0) continue;
+                if (LocalPlayer != null && player.SteamUserId == LocalPlayer.SteamUserId) continue;
+                recipients.Add(new RuntimeStateRecipient
+                {
+                    SteamId = player.SteamUserId,
+                    Position = player.GetPosition()
+                });
+            }
+            return recipients;
+        }
+
+        private static bool TryGetPlayerPosition(ulong steamId, out Vector3D position)
+        {
+            position = Vector3D.Zero;
+            if (steamId == 0) return false;
+            RuntimeStatePlayerBuffer.Clear();
+            MyAPIGateway.Players.GetPlayers(RuntimeStatePlayerBuffer);
+            for (var i = 0; i < RuntimeStatePlayerBuffer.Count; i++)
+            {
+                var player = RuntimeStatePlayerBuffer[i];
+                if (player == null || player.SteamUserId != steamId) continue;
+                position = player.GetPosition();
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Selects the states visible to one viewer. The distance test is written inline on
+        /// purpose: the mod profiler rewriter wraps every mod method, property and lambda in a
+        /// try/finally with two profiler calls, which also blocks JIT inlining, so a leaf
+        /// helper called once per entry per player would cost far more than the arithmetic.
+        /// Vector3D comes from the game binaries and is not rewritten.
+        /// Returns a shared buffer, valid until the next call.
+        /// </summary>
+        private static List<GroupRuntimeState> FilterRuntimeStates(List<RuntimeStateEntry> entries,
+            Vector3D viewer, double rangeSquared)
+        {
+            var visible = RuntimeStateVisibleBuffer;
+            visible.Clear();
+            for (var i = 0; i < entries.Count; i++)
+            {
+                var grids = entries[i].Grids;
+                if (grids == null) continue;
+                for (var j = 0; j < grids.Length; j++)
+                {
+                    if (Vector3D.DistanceSquared(grids[j].Position, viewer) > rangeSquared) continue;
+                    visible.Add(entries[i].State);
+                    break;
+                }
+            }
+            return visible;
+        }
+
+        // ---- snapshot building --------------------------------------------------------
+
+        private static List<RuntimeStateEntry> BuildRuntimeStateEntries(out int sequence, out int revision)
+        {
+            sequence = ++_runtimeStateSequence;
+            revision = ++_runtimeStateRevision;
+            var entries = new List<RuntimeStateEntry>();
             var knownStates = new Dictionary<GroupComponent, RuntimeStateIdentity>();
             foreach (var pair in GroupDict)
             {
@@ -142,13 +255,21 @@ namespace ShipCoreFramework
                 if (group == null) continue;
                 var state = group.BuildRuntimeState(revision);
                 if (state == null) continue;
-                states.Add(state);
-                knownStates[group] = new RuntimeStateIdentity(state.GroupId, state.GridIds);
+                var grids = group.GetCachedGridStates();
+                entries.Add(new RuntimeStateEntry { State = state, Grids = grids });
+                knownStates[group] = new RuntimeStateIdentity(state.GroupId, state.GridIds, grids);
             }
             RuntimeStateKnown.Clear();
             foreach (var pair in knownStates) RuntimeStateKnown[pair.Key] = pair.Value;
-            states.Sort((left, right) => left.GroupId.CompareTo(right.GroupId));
+            // Non-capturing lambda, so Roslyn caches the delegate in a static. Naming
+            // Comparison<T> directly is rejected by the mod whitelist.
+            entries.Sort((left, right) => left.State.GroupId.CompareTo(right.State.GroupId));
+            return entries;
+        }
 
+        private static PacketRuntimeState[] BuildRuntimeStatePackets(List<GroupRuntimeState> states,
+            int sequence, int revision)
+        {
             if (states.Count == 0)
             {
                 return new[]
@@ -214,34 +335,59 @@ namespace ShipCoreFramework
             Utils.Log("Runtime state skipped for oversized group " + states[offset].GroupId + ".", 1);
         }
 
-        private static PacketRuntimeStateDelta[] BuildRuntimeStateDeltaPackets(List<GroupComponent> dirtyGroups)
+        // ---- delta building -----------------------------------------------------------
+
+        private static List<RuntimeStateEntry> BuildRuntimeStateDeltaEntries(List<GroupComponent> dirtyGroups)
         {
             var revision = ++_runtimeStateRevision;
-            var states = new List<GroupRuntimeState>();
+            var entries = new List<RuntimeStateEntry>();
             for (var i = 0; i < dirtyGroups.Count; i++)
             {
                 var group = dirtyGroups[i];
                 var state = group.BuildRuntimeState(revision);
                 if (state != null)
                 {
-                    states.Add(state);
-                    RuntimeStateKnown[group] = new RuntimeStateIdentity(state.GroupId, state.GridIds);
+                    var grids = group.GetCachedGridStates();
+                    entries.Add(new RuntimeStateEntry { State = state, Grids = grids });
+                    RuntimeStateKnown[group] = new RuntimeStateIdentity(state.GroupId, state.GridIds, grids);
                     continue;
                 }
 
                 RuntimeStateIdentity identity;
                 if (!RuntimeStateKnown.TryRemove(group, out identity)) continue;
-                states.Add(new GroupRuntimeState
+                // A tombstone is filtered against the group's last known position, so a removal
+                // is only announced to players who were close enough to have been told about it.
+                entries.Add(new RuntimeStateEntry
                 {
-                    GroupId = identity.GroupId,
-                    Revision = revision,
-                    GridIds = identity.GridIds,
-                    Removed = true
+                    State = new GroupRuntimeState
+                    {
+                        GroupId = identity.GroupId,
+                        Revision = revision,
+                        GridIds = identity.GridIds,
+                        Removed = true
+                    },
+                    Grids = identity.Grids
                 });
             }
-            RemoveSupersededTombstones(states);
-            states.Sort((left, right) => left.GroupId.CompareTo(right.GroupId));
+            RemoveSupersededTombstones(entries);
+            // Non-capturing lambda, so Roslyn caches the delegate in a static. Naming
+            // Comparison<T> directly is rejected by the mod whitelist.
+            entries.Sort((left, right) => left.State.GroupId.CompareTo(right.State.GroupId));
+            return entries;
+        }
 
+        private static void RemoveSupersededTombstones(List<RuntimeStateEntry> entries)
+        {
+            var activeGroupIds = new HashSet<long>();
+            for (var i = 0; i < entries.Count; i++)
+                if (!entries[i].State.Removed) activeGroupIds.Add(entries[i].State.GroupId);
+            for (var i = entries.Count - 1; i >= 0; i--)
+                if (entries[i].State.Removed && activeGroupIds.Contains(entries[i].State.GroupId))
+                    entries.RemoveAt(i);
+        }
+
+        private static PacketRuntimeStateDelta[] BuildRuntimeStateDeltaPackets(List<GroupRuntimeState> states)
+        {
             var packets = new List<PacketRuntimeStateDelta>();
             for (var offset = 0; offset < states.Count; offset += RuntimeStateBatchSize)
             {
@@ -249,15 +395,6 @@ namespace ShipCoreFramework
                 AddSizedRuntimeStateDelta(packets, states, offset, count);
             }
             return packets.ToArray();
-        }
-
-        private static void RemoveSupersededTombstones(List<GroupRuntimeState> states)
-        {
-            var activeGroupIds = new HashSet<long>();
-            for (var i = 0; i < states.Count; i++)
-                if (!states[i].Removed) activeGroupIds.Add(states[i].GroupId);
-            for (var i = states.Count - 1; i >= 0; i--)
-                if (states[i].Removed && activeGroupIds.Contains(states[i].GroupId)) states.RemoveAt(i);
         }
 
         private static void AddSizedRuntimeStateDelta(List<PacketRuntimeStateDelta> packets,
@@ -282,6 +419,8 @@ namespace ShipCoreFramework
             Utils.Log("Runtime delta skipped for oversized group " + states[offset].GroupId + ".", 1);
         }
 
+        // ---- sending ------------------------------------------------------------------
+
         private static void SendRuntimeStatePacketsTo(PacketRuntimeState[] packets, ulong steamId)
         {
             if (packets == null || Networking == null) return;
@@ -292,18 +431,36 @@ namespace ShipCoreFramework
         private static void SendRuntimeStateDeltaPacketsTo(PacketRuntimeStateDelta[] packets, ulong steamId)
         {
             if (packets == null || Networking == null) return;
-            for (var i = 0; i < packets.Length; i++) Networking.SendToPlayer(packets[i], steamId);
+            for (var i = 0; i < packets.Length; i++)
+                Networking.SendToPlayer(packets[i], steamId);
+        }
+
+        private struct RuntimeStateRecipient
+        {
+            internal ulong SteamId;
+            internal Vector3D Position;
+        }
+
+        private struct RuntimeStateEntry
+        {
+            internal GroupRuntimeState State;
+            internal GroupComponent.CachedGridState[] Grids;
         }
 
         private sealed class RuntimeStateIdentity
         {
             internal readonly long GroupId;
             internal readonly long[] GridIds;
+            internal readonly GroupComponent.CachedGridState[] Grids;
 
-            internal RuntimeStateIdentity(long groupId, long[] gridIds)
+            internal RuntimeStateIdentity(long groupId, long[] gridIds,
+                GroupComponent.CachedGridState[] grids)
             {
                 GroupId = groupId;
                 GridIds = gridIds == null ? Array.Empty<long>() : (long[])gridIds.Clone();
+                // Not cloned: the cache is replaced wholesale rather than mutated in place, so
+                // holding the reference gives a stable view of the group as it last existed.
+                Grids = grids ?? Array.Empty<GroupComponent.CachedGridState>();
             }
         }
     }

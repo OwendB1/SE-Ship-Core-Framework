@@ -54,7 +54,10 @@ namespace ShipCoreFramework
             var speedModifiers = SpeedModifiers;
             var ownerId = OwnerId;
             var faction = OwningFaction;
-            var subtypeId = MainCoreComponent == null ? string.Empty : MainCoreComponent.SubtypeId;
+            // Read the field once: failover can null or swap it while this snapshot is being
+            // built, and every consumer below must see the same core.
+            var mainCore = MainCoreComponent;
+            var subtypeId = mainCore == null ? string.Empty : mainCore.SubtypeId;
             var countSubtypeId = ShipCore == null ? subtypeId : ShipCore.SubtypeId;
             var factionPlayerCount = PerFactionManager.GetFactionPlayerCount(faction, ownerId);
             var effectiveFactionCoreLimit = PerFactionManager.GetEffectiveFactionCoreLimit(ShipCore,
@@ -119,7 +122,7 @@ namespace ShipCoreFramework
                 Revision = revision,
                 GridIds = gridIds.ToArray(),
                 CoreSubtypeId = subtypeId,
-                MainCoreBlockId = MainCoreComponent == null ? 0L : MainCoreComponent.CoreBlock.EntityId,
+                MainCoreBlockId = mainCore?.CoreBlock?.EntityId ?? 0L,
                 CoreCount = CoreDictionary.Count,
                 DirectionReferenceBlockId = directionReference?.EntityId ?? 0L,
                 OwnerId = ownerId,

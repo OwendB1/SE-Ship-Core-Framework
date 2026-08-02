@@ -189,8 +189,8 @@ namespace ShipCoreFramework
             }
 
             var group = block.GetGroupComponent();
-            return group?.MainCoreComponent != null &&
-                   group.MainCoreComponent.CoreBlock.EntityId == block.EntityId;
+            var mainCore = group?.MainCoreComponent;
+            return mainCore?.CoreBlock?.EntityId == block.EntityId;
         }
     }
 }

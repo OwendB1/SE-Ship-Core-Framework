@@ -246,12 +246,16 @@ namespace ShipCoreFramework
             old.IsMainCore = false;
 
             var type = ShipCore.SubtypeId;
-            var grid = old.CoreBlock.CubeGrid;
-            Utils.Log($"Reset: Resetting logic for {grid.CustomName}!", 2);
+            // CoreBlock can already be gone when the core is reset because its block was
+            // destroyed; the reset itself must still run, so only the logging degrades.
+            var coreBlock = old.CoreBlock;
+            var grid = coreBlock?.CubeGrid;
+            Utils.Log($"Reset: Resetting logic for {grid?.CustomName ?? "<unknown grid>"}!", 2);
 
             UnregisterCoreLimitTracking();
 
-            ModAPI.BroadcastCoreDeactivated(GetRepresentativeGridId(), type, old.CoreBlock.CustomName);
+            ModAPI.BroadcastCoreDeactivated(GetRepresentativeGridId(), type,
+                coreBlock?.CustomName ?? string.Empty);
 
             MainCoreComponent = null;
             InvalidateGameThreadStateCache(true);
