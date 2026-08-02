@@ -60,7 +60,8 @@ namespace ShipCoreFramework
             {
                 if (grid.MarkedForClose || grid.Closed) return;
                 grid.RemoveBlock(block, Session.HasStarted);
-                PutComponentsIntoInventories(inventories, refund, refundPosition, refundForward, refundUp);
+                if (!MyAPIGateway.Session.CreativeMode)
+                    PutComponentsIntoInventories(inventories, refund, refundPosition, refundForward, refundUp);
                 var projectors = grid.GetFatBlocks<IMyProjector>().ToList();
                 foreach (var projector in projectors) projector.Enabled = false;
             });
