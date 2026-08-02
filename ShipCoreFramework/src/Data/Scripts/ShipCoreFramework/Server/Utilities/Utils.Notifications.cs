@@ -34,14 +34,17 @@ namespace ShipCoreFramework
                         LogTooltip = tooltip
                     };
 
+                    var admins = new List<ulong>();
                     foreach (var player in players)
                     {
                         if (player == null || player.SteamUserId == 0 || player.SteamUserId == localSteamId) continue;
                         if (player.PromoteLevel != MyPromoteLevel.Admin &&
                             player.PromoteLevel != MyPromoteLevel.Owner) continue;
 
-                        Session.Networking.SendToPlayer(packet, player.SteamUserId);
+                        admins.Add(player.SteamUserId);
                     }
+
+                    Session.Networking.SendToPlayers(packet, admins);
                 });
             }
             catch
@@ -69,14 +72,17 @@ namespace ShipCoreFramework
                     MyAPIGateway.Players.GetPlayers(players);
                     double range = Session.Config.CombatLoggingBroadcastRangeMeters;
                     double rangeSquared = range * range;
+                    var inRange = new List<ulong>();
                     foreach (var player in players)
                     {
                         if (player == null || player.SteamUserId == 0) continue;
                         if (combatLogPosition.HasValue &&
                             Vector3D.DistanceSquared(player.GetPosition(), combatLogPosition.Value) > rangeSquared)
                             continue;
-                        Session.Networking.SendToPlayer(new PacketNotify(msg, disappearTime, font), player.SteamUserId);
+                        inRange.Add(player.SteamUserId);
                     }
+
+                    Session.Networking.SendToPlayers(new PacketNotify(msg, disappearTime, font), inRange);
                 }
                 else
                 {

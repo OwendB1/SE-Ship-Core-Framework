@@ -11,6 +11,9 @@ namespace ShipCoreFramework
         private const int RuntimeStatePacketTargetBytes = Networking.MaxPacketBytes - 64 * 1024;
         private const int RuntimeStateSyncIntervalTicks = 120;
         private const int RuntimeStateRequestCooldownTicks = 300;
+        // Scanning every group for liveness is O(groups + grids); at 60Hz that is pure overhead.
+        // 120 is a multiple of this, so the full-snapshot tick always includes a fresh scan.
+        private const int RuntimeStateRemovalScanIntervalTicks = 30;
         private static int _runtimeStateSequence;
         private static int _runtimeStateRevision;
         private static readonly ConcurrentDictionary<GroupComponent, byte> RuntimeStateDirty =
@@ -25,7 +28,7 @@ namespace ShipCoreFramework
         private void RunRuntimeStateSyncTick()
         {
             if (!IsServer || !MpActive) return;
-            QueueRemovedRuntimeStates();
+            if (CurrentTick % RuntimeStateRemovalScanIntervalTicks == 0) QueueRemovedRuntimeStates();
             var fullSnapshot = CurrentTick % RuntimeStateSyncIntervalTicks == 0;
             if (!fullSnapshot && RuntimeStateDirty.IsEmpty) return;
 
@@ -49,15 +52,11 @@ namespace ShipCoreFramework
 
             if (fullSnapshot)
             {
-                var fullPackets = BuildRuntimeStatePackets();
-                for (var i = 0; i < recipients.Count; i++)
-                    SendRuntimeStatePacketsTo(fullPackets, recipients[i]);
+                SendRuntimeStatePacketsToAll(BuildRuntimeStatePackets(), recipients);
                 return;
             }
 
-            var deltaPackets = BuildRuntimeStateDeltaPackets(dirtyGroups);
-            for (var i = 0; i < recipients.Count; i++)
-                SendRuntimeStateDeltaPacketsTo(deltaPackets, recipients[i]);
+            SendRuntimeStateDeltaPacketsToAll(BuildRuntimeStateDeltaPackets(dirtyGroups), recipients);
         }
         internal static void SendRuntimeStateTo(ulong steamId)
         {
@@ -289,10 +288,21 @@ namespace ShipCoreFramework
                 Networking.SendToPlayer(packets[i], steamId);
         }
 
-        private static void SendRuntimeStateDeltaPacketsTo(PacketRuntimeStateDelta[] packets, ulong steamId)
+        // Loop packets on the outside and recipients on the inside: each packet is serialized
+        // once and the buffer is reused, instead of re-encoding it per player.
+        private static void SendRuntimeStatePacketsToAll(PacketRuntimeState[] packets, List<ulong> recipients)
         {
-            if (packets == null || Networking == null) return;
-            for (var i = 0; i < packets.Length; i++) Networking.SendToPlayer(packets[i], steamId);
+            if (packets == null || recipients == null || Networking == null) return;
+            for (var i = 0; i < packets.Length; i++)
+                Networking.SendToPlayers(packets[i], recipients);
+        }
+
+        private static void SendRuntimeStateDeltaPacketsToAll(PacketRuntimeStateDelta[] packets,
+            List<ulong> recipients)
+        {
+            if (packets == null || recipients == null || Networking == null) return;
+            for (var i = 0; i < packets.Length; i++)
+                Networking.SendToPlayers(packets[i], recipients);
         }
 
         private sealed class RuntimeStateIdentity

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Sandbox.ModAPI;
 
 namespace ShipCoreFramework
@@ -58,10 +59,32 @@ namespace ShipCoreFramework
         {
             if (!MyAPIGateway.Multiplayer.IsServer || packet == null ||
                 packet.Direction != PacketDirection.ServerToClient) return;
-            var bytes = MyAPIGateway.Utilities.SerializeToBinary(packet);
+            // Serialize as PacketBase so the ProtoInclude subtype header is emitted; the
+            // receiver deserializes via SerializeFromBinary<PacketBase>.
+            var bytes = MyAPIGateway.Utilities.SerializeToBinary<PacketBase>(packet);
             MyAPIGateway.Multiplayer.SendMessageTo(_channelId, bytes, steamId);
         }
-        
+
+        /// <summary>
+        /// Serializes <paramref name="packet"/> once and reuses that buffer for every recipient.
+        /// Keen copies the array into a per-call BitStream synchronously inside
+        /// MyReplicationLayer.DispatchEvent, so the transport never retains our array and
+        /// sharing it across sends is safe.
+        /// </summary>
+        internal void SendToPlayers(PacketBase packet, List<ulong> steamIds)
+        {
+            if (!MyAPIGateway.Multiplayer.IsServer || packet == null || steamIds == null ||
+                steamIds.Count == 0 || packet.Direction != PacketDirection.ServerToClient) return;
+            var bytes = MyAPIGateway.Utilities.SerializeToBinary<PacketBase>(packet);
+            if (bytes == null) return;
+            for (var i = 0; i < steamIds.Count; i++)
+            {
+                var steamId = steamIds[i];
+                if (steamId == 0) continue;
+                MyAPIGateway.Multiplayer.SendMessageTo(_channelId, bytes, steamId);
+            }
+        }
+
         internal void SendToServer(PacketBase packet, bool onlyToServer = false)
         {
             if (packet == null || packet.Direction != PacketDirection.ClientToServer) return;
@@ -85,7 +108,7 @@ namespace ShipCoreFramework
                 return;
             }
 
-            var bytes = MyAPIGateway.Utilities.SerializeToBinary(packet);
+            var bytes = MyAPIGateway.Utilities.SerializeToBinary<PacketBase>(packet);
             MyAPIGateway.Multiplayer.SendMessageToServer(_channelId, bytes);
         }
     }
