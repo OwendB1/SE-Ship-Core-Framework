@@ -27,7 +27,8 @@ function methodBody(source, signature) {
   throw new Error(`unbalanced braces for ${signature}`);
 }
 
-// --- the core invariant: one serialization, reused across every recipient ---------
+// --- shared-buffer fan-out: one serialization reused across recipients ------------
+// Still used by the notification paths, where every recipient gets identical bytes.
 const fanout = methodBody(networking, 'internal void SendToPlayers(');
 
 const serializeAt = fanout.indexOf('SerializeToBinary');
@@ -49,34 +50,58 @@ assert.equal(
 assert.match(networking, /SerializeToBinary<PacketBase>\(packet\)/);
 assert.doesNotMatch(networking, /SerializeToBinary\(packet\)/);
 
-// --- bulk runtime-state sends must go through the shared-buffer path --------------
-assert.match(publisher, /SendRuntimeStatePacketsToAll\(/);
-assert.match(publisher, /SendRuntimeStateDeltaPacketsToAll\(/);
-assert.doesNotMatch(
-  publisher,
-  /SendRuntimeStateDeltaPacketsTo\(/,
-  'per-recipient delta send should be gone; use the ToAll variant',
-);
-
-for (const sig of [
-  'private static void SendRuntimeStatePacketsToAll(',
-  'private static void SendRuntimeStateDeltaPacketsToAll(',
-]) {
-  const body = methodBody(publisher, sig);
-  assert.match(body, /Networking\.SendToPlayers\(/, `${sig} must use SendToPlayers`);
-  assert.doesNotMatch(
-    body,
-    /Networking\.SendToPlayer\(/,
-    `${sig} must not fall back to the single-recipient send`,
-  );
+for (const sig of ['static partial void ForwardServerLogMessage(', 'internal static void ShowNotification(']) {
+  const body = methodBody(notifications, sig);
+  assert.match(body, /SendToPlayers\(/, `${sig} must batch its fan-out`);
 }
 
-// The single-recipient path is still needed for join-time state requests.
-assert.match(publisher, /private static void SendRuntimeStatePacketsTo\(/);
+// --- runtime state must be range filtered per recipient ---------------------------
+// Clients may only be told about groups they could observe in game.
+const syncTick = methodBody(publisher, 'private void RunRuntimeStateSyncTick()');
+
+assert.match(syncTick, /GetRuntimeStateRangeSquared\(\)/);
+assert.equal(
+  (syncTick.match(/FilterRuntimeStates\(/g) || []).length,
+  2,
+  'both the snapshot and delta paths must filter by range',
+);
+// Range filtering is per player, so the shared-buffer helper must not be used here:
+// it would send one recipient's visible set to everybody.
+assert.doesNotMatch(
+  syncTick,
+  /SendToPlayers\(/,
+  'runtime state must not use the shared-buffer fan-out after filtering',
+);
+
+const filter = methodBody(publisher, 'private static List<GroupRuntimeState> FilterRuntimeStates(');
+assert.match(filter, /IsWithinRange\(/, 'filtering must be a distance test');
+
+// Falling back to an unbounded radius would silently restore the leak.
+const range = methodBody(publisher, 'private static double GetRuntimeStateRangeSquared()');
+assert.match(range, /ViewDistance/);
+assert.match(range, /RuntimeStateFallbackRangeMeters/);
+assert.doesNotMatch(
+  range,
+  /double\.MaxValue|MaxValue/,
+  'range must never fall back to unbounded',
+);
+
+// The join-time request path is a full snapshot too, so it needs the same filter.
+const onRequest = methodBody(publisher, 'internal static void SendRuntimeStateTo(');
+assert.match(onRequest, /TryGetPlayerPosition\(/);
+assert.match(onRequest, /FilterRuntimeStates\(/);
+
+// Tombstones carry the group's last known position so removals are filtered as well.
+const identity = methodBody(publisher, 'private sealed class RuntimeStateIdentity');
+assert.match(identity, /Vector3D\[\] Positions/);
+const deltaEntries = methodBody(publisher, 'private static List<RuntimeStateEntry> BuildRuntimeStateDeltaEntries(');
+assert.match(
+  deltaEntries,
+  /Positions = identity\.Positions/,
+  'tombstones must reuse the last known position for filtering',
+);
 
 // --- the O(groups) liveness scan must not run every tick --------------------------
-assert.match(publisher, /RuntimeStateRemovalScanIntervalTicks/);
-const syncTick = methodBody(publisher, 'private void RunRuntimeStateSyncTick()');
 assert.match(
   syncTick,
   /CurrentTick % RuntimeStateRemovalScanIntervalTicks == 0\) QueueRemovedRuntimeStates\(\)/,
@@ -84,22 +109,12 @@ assert.match(
 );
 
 // The full-snapshot tick must always coincide with a fresh removal scan.
-const interval = Number(
-  /RuntimeStateSyncIntervalTicks = (\d+)/.exec(publisher)[1],
-);
-const scan = Number(
-  /RuntimeStateRemovalScanIntervalTicks = (\d+)/.exec(publisher)[1],
-);
+const interval = Number(/RuntimeStateSyncIntervalTicks = (\d+)/.exec(publisher)[1]);
+const scan = Number(/RuntimeStateRemovalScanIntervalTicks = (\d+)/.exec(publisher)[1]);
 assert.equal(
   interval % scan,
   0,
   'snapshot interval must be a multiple of the removal-scan interval',
 );
-
-// --- notification fan-outs share one buffer too -----------------------------------
-for (const sig of ['static partial void ForwardServerLogMessage(', 'internal static void ShowNotification(']) {
-  const body = methodBody(notifications, sig);
-  assert.match(body, /SendToPlayers\(/, `${sig} must batch its fan-out`);
-}
 
 console.log('runtime-state-fanout: ok');
