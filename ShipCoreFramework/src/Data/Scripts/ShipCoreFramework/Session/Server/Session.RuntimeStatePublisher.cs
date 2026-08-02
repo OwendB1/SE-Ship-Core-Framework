@@ -28,6 +28,13 @@ namespace ShipCoreFramework
             new Dictionary<ulong, int>();
         private static readonly Dictionary<ulong, int> ConfigRequestTicks =
             new Dictionary<ulong, int>();
+        // Reused scratch buffers. Everything here runs on the game thread, and the delta path
+        // runs every tick, so per-tick allocation is worth avoiding.
+        private static readonly List<IMyPlayer> RuntimeStatePlayerBuffer = new List<IMyPlayer>();
+        private static readonly List<RuntimeStateRecipient> RuntimeStateRecipientBuffer =
+            new List<RuntimeStateRecipient>();
+        private static readonly List<GroupRuntimeState> RuntimeStateVisibleBuffer =
+            new List<GroupRuntimeState>();
 
         private void RunRuntimeStateSyncTick()
         {
@@ -171,12 +178,13 @@ namespace ShipCoreFramework
 
         private static List<RuntimeStateRecipient> CollectRuntimeStateRecipients()
         {
-            var players = new List<IMyPlayer>();
-            MyAPIGateway.Players.GetPlayers(players);
-            var recipients = new List<RuntimeStateRecipient>();
-            for (var i = 0; i < players.Count; i++)
+            RuntimeStatePlayerBuffer.Clear();
+            MyAPIGateway.Players.GetPlayers(RuntimeStatePlayerBuffer);
+            var recipients = RuntimeStateRecipientBuffer;
+            recipients.Clear();
+            for (var i = 0; i < RuntimeStatePlayerBuffer.Count; i++)
             {
-                var player = players[i];
+                var player = RuntimeStatePlayerBuffer[i];
                 if (player == null || player.SteamUserId == 0) continue;
                 if (LocalPlayer != null && player.SteamUserId == LocalPlayer.SteamUserId) continue;
                 recipients.Add(new RuntimeStateRecipient
@@ -192,42 +200,41 @@ namespace ShipCoreFramework
         {
             position = Vector3D.Zero;
             if (steamId == 0) return false;
-            var players = new List<IMyPlayer>();
-            MyAPIGateway.Players.GetPlayers(players);
-            for (var i = 0; i < players.Count; i++)
+            RuntimeStatePlayerBuffer.Clear();
+            MyAPIGateway.Players.GetPlayers(RuntimeStatePlayerBuffer);
+            for (var i = 0; i < RuntimeStatePlayerBuffer.Count; i++)
             {
-                if (players[i] == null || players[i].SteamUserId != steamId) continue;
-                position = players[i].GetPosition();
+                var player = RuntimeStatePlayerBuffer[i];
+                if (player == null || player.SteamUserId != steamId) continue;
+                position = player.GetPosition();
                 return true;
             }
             return false;
         }
 
-        private static Vector3D[] GetGroupPositions(GroupComponent group)
-        {
-            var gridStates = group.GetCachedGridStates();
-            if (gridStates == null || gridStates.Length == 0) return Array.Empty<Vector3D>();
-            var positions = new Vector3D[gridStates.Length];
-            for (var i = 0; i < gridStates.Length; i++) positions[i] = gridStates[i].Position;
-            return positions;
-        }
-
-        private static bool IsWithinRange(Vector3D[] positions, Vector3D viewer, double rangeSquared)
-        {
-            if (positions == null) return false;
-            for (var i = 0; i < positions.Length; i++)
-                if (Vector3D.DistanceSquared(positions[i], viewer) <= rangeSquared) return true;
-            return false;
-        }
-
+        /// <summary>
+        /// Selects the states visible to one viewer. The distance test is written inline on
+        /// purpose: the mod profiler rewriter wraps every mod method, property and lambda in a
+        /// try/finally with two profiler calls, which also blocks JIT inlining, so a leaf
+        /// helper called once per entry per player would cost far more than the arithmetic.
+        /// Vector3D comes from the game binaries and is not rewritten.
+        /// Returns a shared buffer, valid until the next call.
+        /// </summary>
         private static List<GroupRuntimeState> FilterRuntimeStates(List<RuntimeStateEntry> entries,
             Vector3D viewer, double rangeSquared)
         {
-            var visible = new List<GroupRuntimeState>();
+            var visible = RuntimeStateVisibleBuffer;
+            visible.Clear();
             for (var i = 0; i < entries.Count; i++)
             {
-                if (!IsWithinRange(entries[i].Positions, viewer, rangeSquared)) continue;
-                visible.Add(entries[i].State);
+                var grids = entries[i].Grids;
+                if (grids == null) continue;
+                for (var j = 0; j < grids.Length; j++)
+                {
+                    if (Vector3D.DistanceSquared(grids[j].Position, viewer) > rangeSquared) continue;
+                    visible.Add(entries[i].State);
+                    break;
+                }
             }
             return visible;
         }
@@ -246,19 +253,16 @@ namespace ShipCoreFramework
                 if (group == null) continue;
                 var state = group.BuildRuntimeState(revision);
                 if (state == null) continue;
-                var positions = GetGroupPositions(group);
-                entries.Add(new RuntimeStateEntry { State = state, Positions = positions });
-                knownStates[group] = new RuntimeStateIdentity(state.GroupId, state.GridIds, positions);
+                var grids = group.GetCachedGridStates();
+                entries.Add(new RuntimeStateEntry { State = state, Grids = grids });
+                knownStates[group] = new RuntimeStateIdentity(state.GroupId, state.GridIds, grids);
             }
             RuntimeStateKnown.Clear();
             foreach (var pair in knownStates) RuntimeStateKnown[pair.Key] = pair.Value;
-            entries.Sort(CompareEntriesByGroupId);
+            // Non-capturing lambda, so Roslyn caches the delegate in a static. Naming
+            // Comparison<T> directly is rejected by the mod whitelist.
+            entries.Sort((left, right) => left.State.GroupId.CompareTo(right.State.GroupId));
             return entries;
-        }
-
-        private static int CompareEntriesByGroupId(RuntimeStateEntry left, RuntimeStateEntry right)
-        {
-            return left.State.GroupId.CompareTo(right.State.GroupId);
         }
 
         private static PacketRuntimeState[] BuildRuntimeStatePackets(List<GroupRuntimeState> states,
@@ -341,9 +345,9 @@ namespace ShipCoreFramework
                 var state = group.BuildRuntimeState(revision);
                 if (state != null)
                 {
-                    var positions = GetGroupPositions(group);
-                    entries.Add(new RuntimeStateEntry { State = state, Positions = positions });
-                    RuntimeStateKnown[group] = new RuntimeStateIdentity(state.GroupId, state.GridIds, positions);
+                    var grids = group.GetCachedGridStates();
+                    entries.Add(new RuntimeStateEntry { State = state, Grids = grids });
+                    RuntimeStateKnown[group] = new RuntimeStateIdentity(state.GroupId, state.GridIds, grids);
                     continue;
                 }
 
@@ -360,11 +364,13 @@ namespace ShipCoreFramework
                         GridIds = identity.GridIds,
                         Removed = true
                     },
-                    Positions = identity.Positions
+                    Grids = identity.Grids
                 });
             }
             RemoveSupersededTombstones(entries);
-            entries.Sort(CompareEntriesByGroupId);
+            // Non-capturing lambda, so Roslyn caches the delegate in a static. Naming
+            // Comparison<T> directly is rejected by the mod whitelist.
+            entries.Sort((left, right) => left.State.GroupId.CompareTo(right.State.GroupId));
             return entries;
         }
 
@@ -436,20 +442,23 @@ namespace ShipCoreFramework
         private struct RuntimeStateEntry
         {
             internal GroupRuntimeState State;
-            internal Vector3D[] Positions;
+            internal GroupComponent.CachedGridState[] Grids;
         }
 
         private sealed class RuntimeStateIdentity
         {
             internal readonly long GroupId;
             internal readonly long[] GridIds;
-            internal readonly Vector3D[] Positions;
+            internal readonly GroupComponent.CachedGridState[] Grids;
 
-            internal RuntimeStateIdentity(long groupId, long[] gridIds, Vector3D[] positions)
+            internal RuntimeStateIdentity(long groupId, long[] gridIds,
+                GroupComponent.CachedGridState[] grids)
             {
                 GroupId = groupId;
                 GridIds = gridIds == null ? Array.Empty<long>() : (long[])gridIds.Clone();
-                Positions = positions == null ? Array.Empty<Vector3D>() : (Vector3D[])positions.Clone();
+                // Not cloned: the cache is replaced wholesale rather than mutated in place, so
+                // holding the reference gives a stable view of the group as it last existed.
+                Grids = grids ?? Array.Empty<GroupComponent.CachedGridState>();
             }
         }
     }

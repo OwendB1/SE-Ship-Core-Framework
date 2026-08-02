@@ -74,7 +74,20 @@ assert.doesNotMatch(
 );
 
 const filter = methodBody(publisher, 'private static List<GroupRuntimeState> FilterRuntimeStates(');
-assert.match(filter, /IsWithinRange\(/, 'filtering must be a distance test');
+// The distance test runs once per entry per player, and the mod profiler rewriter wraps
+// every mod method in a try/finally that also blocks JIT inlining. Keep it inline, and
+// keep it on the game-binary Vector3D helper, which is not rewritten.
+assert.match(filter, /Vector3D\.DistanceSquared\(/, 'distance test must be inline');
+assert.doesNotMatch(
+  filter,
+  /IsWithinRange\(|IsRelevant\w*\(/,
+  'do not reintroduce a per-entry helper in the filter loop',
+);
+assert.match(
+  filter,
+  /RuntimeStateVisibleBuffer/,
+  'filter must reuse its output buffer rather than allocate per player',
+);
 
 // Falling back to an unbounded radius would silently restore the leak.
 const range = methodBody(publisher, 'private static double GetRuntimeStateRangeSquared()');
@@ -93,11 +106,11 @@ assert.match(onRequest, /FilterRuntimeStates\(/);
 
 // Tombstones carry the group's last known position so removals are filtered as well.
 const identity = methodBody(publisher, 'private sealed class RuntimeStateIdentity');
-assert.match(identity, /Vector3D\[\] Positions/);
+assert.match(identity, /CachedGridState\[\] Grids/);
 const deltaEntries = methodBody(publisher, 'private static List<RuntimeStateEntry> BuildRuntimeStateDeltaEntries(');
 assert.match(
   deltaEntries,
-  /Positions = identity\.Positions/,
+  /Grids = identity\.Grids/,
   'tombstones must reuse the last known position for filtering',
 );
 
