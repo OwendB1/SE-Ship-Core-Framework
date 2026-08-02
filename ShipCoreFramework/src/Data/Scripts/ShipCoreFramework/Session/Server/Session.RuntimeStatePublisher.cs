@@ -15,9 +15,10 @@ namespace ShipCoreFramework
         // Scanning every group for liveness is O(groups + grids); at 60Hz that is pure overhead.
         // 120 is a multiple of this, so the full-snapshot tick always includes a fresh scan.
         private const int RuntimeStateRemovalScanIntervalTicks = 30;
-        // Used only when session settings are unavailable. Never fall back to "no filtering",
-        // because that would publish the whole world to every client.
-        private const double RuntimeStateFallbackRangeMeters = 15000d;
+        // Used only when session settings are unavailable, and matches the stock SyncDistance
+        // default. Never fall back to "no filtering", because that would publish the whole
+        // world to every client.
+        private const double RuntimeStateFallbackRangeMeters = 3000d;
         private static int _runtimeStateSequence;
         private static int _runtimeStateRevision;
         private static readonly ConcurrentDictionary<GroupComponent, byte> RuntimeStateDirty =
@@ -165,13 +166,14 @@ namespace ShipCoreFramework
         // ---- relevance ----------------------------------------------------------------
 
         /// <summary>
-        /// Squared broadcast radius. Clients are only told about groups they could observe
-        /// in game, so runtime state cannot be used to see past render range.
+        /// Squared broadcast radius, bounded by SyncDistance. That is the radius at which the
+        /// engine replicates grid entities to a client, so beyond it the client has no entity
+        /// to attach state to and could not observe the grid by any means.
         /// </summary>
         private static double GetRuntimeStateRangeSquared()
         {
             var settings = MyAPIGateway.Session == null ? null : MyAPIGateway.Session.SessionSettings;
-            double range = settings == null ? 0 : settings.ViewDistance;
+            double range = settings == null ? 0 : settings.SyncDistance;
             if (range <= 0d) range = RuntimeStateFallbackRangeMeters;
             return range * range;
         }

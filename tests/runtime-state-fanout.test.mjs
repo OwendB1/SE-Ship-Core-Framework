@@ -91,7 +91,10 @@ assert.match(
 
 // Falling back to an unbounded radius would silently restore the leak.
 const range = methodBody(publisher, 'private static double GetRuntimeStateRangeSquared()');
-assert.match(range, /ViewDistance/);
+// SyncDistance, not ViewDistance: it is the engine's grid replication radius, so it is
+// the tightest defensible bound on what a client could observe.
+assert.match(range, /SyncDistance/);
+assert.doesNotMatch(range, /ViewDistance/);
 assert.match(range, /RuntimeStateFallbackRangeMeters/);
 assert.doesNotMatch(
   range,
