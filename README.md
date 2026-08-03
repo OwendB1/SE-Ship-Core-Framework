@@ -86,6 +86,7 @@ Root tag: `<ModConfig>`
 | `LOG_LEVEL` | `int` | Server/framework log verbosity. | `0` = essential only, `3` = debug; default is `2`. |
 | `CLIENT_OUTPUT_LOG_LEVEL` | `int` | Client-side log verbosity. | `0` = essential only, `3` = debug; default is `2`. |
 | `MaxPossibleSpeedMetersPerSecond` | `float` | World top-speed baseline in m/s. | Core `SpeedModifiers.MaxSpeed` and `MaxBoost` multiply against this value. |
+| `SpeedRampDownPercentage` | `float` | Percentage used to derive linear speed-cap interpolation after core loss or `PunishSpeed` activation. | Accepts `0`–`100`; default `5`. Cached internally as 12 five-tick steps. Set to `0` to apply the target cap immediately. |
 | `MassTypeMode` | `Dry` or `Wet` | Chooses which grid mass reading is used for `MaxMass`. | `Dry` ignores inventory/fuel mass; `Wet` includes it. |
 | `FrictionSpeedValueMode` | `Modifier` or `Absolute` | Chooses how friction min/max speed fields are interpreted. | In `Modifier` mode they scale against world max speed; in `Absolute` mode they are m/s values. |
 | `BlockDirectionalPlacementOnSubgrids` | `bool` | Controls whether directional block limits treat subgrid placement as invalid. | Default is `true`. When `true`, a limited block with `AllowedDirections` cannot be placed on a different grid than the main core. When `false`, subgrids bypass the directional lock. |

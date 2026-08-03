@@ -476,6 +476,7 @@ namespace ShipCoreFramework
         [ProtoMember(20)] public int NoCoreGraceSeconds = 30;
         [ProtoMember(21)] public int MinimumBlocksGraceSeconds = 30;
         [ProtoMember(22)] public double CombatLoggingBroadcastRangeMeters = 20000d;
+        [ProtoMember(23)] public float SpeedRampDownPercentage = 5f;
     }
 
     [ProtoContract]

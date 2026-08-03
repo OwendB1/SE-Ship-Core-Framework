@@ -16,6 +16,8 @@ namespace ShipCoreFramework
 
         internal static void ApplyConfigToDefinitions()
         {
+            SpeedEnforcement.CacheSpeedRampDownStep(Config.SpeedRampDownPercentage);
+
             if (MyDefinitionManager.Static?.EnvironmentDefinition != null)
             {
                 MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed =

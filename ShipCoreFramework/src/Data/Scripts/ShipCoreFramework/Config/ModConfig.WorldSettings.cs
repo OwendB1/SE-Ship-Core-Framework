@@ -40,6 +40,19 @@ namespace ShipCoreFramework
                 MaxPossibleSpeedMetersPerSecond = import.MaxPossibleSpeedMetersPerSecond;
             }
 
+            if (float.IsNaN(import.SpeedRampDownPercentage) ||
+                float.IsInfinity(import.SpeedRampDownPercentage) ||
+                import.SpeedRampDownPercentage < 0f || import.SpeedRampDownPercentage > 100f)
+            {
+                Utils.Log("SpeedRampDownPercentage validation failed - using default 5", 1,
+                    "Config Validation");
+                SpeedRampDownPercentage = 5f;
+            }
+            else
+            {
+                SpeedRampDownPercentage = import.SpeedRampDownPercentage;
+            }
+
             MassTypeMode = import.MassTypeMode;
             FrictionSpeedValueMode = import.FrictionSpeedValueMode;
             BlockDirectionalPlacementOnSubgrids = import.BlockDirectionalPlacementOnSubgrids;

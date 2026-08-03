@@ -154,7 +154,11 @@ namespace ShipCoreFramework
             _nextCoreRecoveryGraceNotificationTick = 0;
             _lastCoreRecoveryGraceNotificationSeconds = -1;
             if (confirmedAbsent)
+            {
                 _missingCoreConfirmedAbsent = true;
+                SpeedEnforcementDeferred = false;
+                InvalidateSpeedStateCache();
+            }
             else if (MainCoreComponent != null)
                 _missingCoreConfirmedAbsent = false;
 
@@ -194,6 +198,9 @@ namespace ShipCoreFramework
             }
 
             MainCoreComponent = coreComponent;
+            SpeedEnforcementDeferred = false;
+            ClearSpeedRampDown();
+            if (PunishSpeed) BeginSpeedRampDown();
             Session.MarkRuntimeStateDirty(this);
             ClearCoreRecoveryGrace("main core activated", false);
             InvalidateGameThreadStateCache(true);
@@ -244,6 +251,9 @@ namespace ShipCoreFramework
             }
 
             old.IsMainCore = false;
+
+            if (!Deactivated)
+                BeginSpeedRampDown();
 
             var type = ShipCore.SubtypeId;
             // CoreBlock can already be gone when the core is reset because its block was
@@ -324,12 +334,15 @@ namespace ShipCoreFramework
             var oldType = lost.SubtypeId;
             var oldName = lost.CoreBlock?.CustomName ?? string.Empty;
 
+            if (!Deactivated)
+                BeginSpeedRampDown();
             MainCoreComponent = null;
             InvalidateGameThreadStateCache(true);
             InvalidateModifierStateCache();
 
             if (Deactivated)
             {
+                ClearSpeedRampDown();
                 SyncBeaconComponents();
                 OnUpgradeModulesChanged();
                 QueueConnectorNetworkRefresh();
@@ -353,6 +366,8 @@ namespace ShipCoreFramework
             {
                 MainCoreComponent = newMain;
                 MainCoreComponent.IsMainCore = true;
+                ClearSpeedRampDown();
+                if (PunishSpeed) BeginSpeedRampDown();
                 Utils.Log("MainCoreLeftGroup: switched main core from " + oldType + " to " +
                           MainCoreComponent.SubtypeId + " for group " + GetGroupKey() + ".", 1);
                 InvalidateGameThreadStateCache(true);

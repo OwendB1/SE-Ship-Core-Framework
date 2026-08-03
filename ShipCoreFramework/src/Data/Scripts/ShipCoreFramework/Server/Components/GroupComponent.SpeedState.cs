@@ -7,6 +7,36 @@ namespace ShipCoreFramework
             LastSpeedStateUpdateTick = -1;
         }
 
+        private void BeginSpeedRampDown()
+        {
+            lock (SpeedStateLock)
+            {
+                float worldSpeedLimit = Session.Config.MaxPossibleSpeedMetersPerSecond;
+                float currentCap = EffectiveSpeedLimitMetersPerSecond;
+                if (float.IsNaN(currentCap) || float.IsInfinity(currentCap) || currentCap < 0f)
+                    currentCap = worldSpeedLimit;
+                if (currentCap > worldSpeedLimit)
+                    currentCap = worldSpeedLimit;
+
+                SpeedRampDownActive = Session.Config.SpeedRampDownPercentage > 0f;
+                SpeedRampDownCap = currentCap;
+                SpeedRampDownLastTick = Session.CurrentTick;
+                PostBoostRampActive = false;
+                PostBoostRampCap = -1f;
+                InvalidateSpeedStateCache();
+            }
+        }
+
+        private void ClearSpeedRampDown()
+        {
+            lock (SpeedStateLock)
+            {
+                SpeedRampDownActive = false;
+                SpeedRampDownCap = -1f;
+                SpeedRampDownLastTick = -1;
+            }
+        }
+
         internal void SetFrictionEnforcementEnabled(bool enabled)
         {
             lock (SpeedStateLock)

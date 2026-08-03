@@ -16,6 +16,8 @@ namespace ShipCoreFramework
         private const int AtmosphereDensityCacheTicks = 30;
         private const int RuntimeSampleRetentionTicks = 3600;
         private const int RuntimeSampleCleanupIntervalTicks = 600;
+        private const int SpeedRampDownIntervalTicks = 5;
+        private static volatile float _speedRampDownLerpStep = 5f / 12f * 0.01f;
         private static readonly ConcurrentDictionary<long, SpeedSample> SpeedSamples =
             new ConcurrentDictionary<long, SpeedSample>();
         private static readonly ConcurrentDictionary<long, AtmosphereDensitySample> AtmosphereDensitySamples =
@@ -92,6 +94,11 @@ namespace ShipCoreFramework
             return new EnforcementBatch();
         }
 
+        internal static void CacheSpeedRampDownStep(float speedRampDownPercentage)
+        {
+            _speedRampDownLerpStep = speedRampDownPercentage / 12f * 0.01f;
+        }
+
         internal static bool ShouldEnforceForGroup(GroupComponent groupComponent)
         {
             if (groupComponent == null) return false;
@@ -160,6 +167,7 @@ namespace ShipCoreFramework
             }
 
             if (context.SourceGroup == null || context.SourceGroup.IsIgnoredGroup()) return;
+            if (context.SourceGroup.SpeedEnforcementDeferred) return;
             if (context.ActiveCore == null) return;
 
             var targetGrids = context.TargetGrids;
@@ -530,16 +538,17 @@ namespace ShipCoreFramework
             {
                 if (Interlocked.CompareExchange(ref sourceGroup.LastSpeedStateUpdateTick, 0, 0) == Session.CurrentTick) return;
 
-                var activeCore = sourceGroup.ShipCore;
-                var speedModifiers = sourceGroup.SpeedModifiers;
-                var baseMaxSpeed = 100f;
-                var effectiveMaxSpeed = 100f;
-                var boostActive = sourceGroup.BoostEnabled;
+                ShipCore activeCore = sourceGroup.ShipCore;
+                SpeedModifiers speedModifiers = sourceGroup.SpeedModifiers;
+                float worldSpeedLimit = Session.Config.MaxPossibleSpeedMetersPerSecond;
+                float baseMaxSpeed = worldSpeedLimit;
+                float effectiveMaxSpeed = worldSpeedLimit;
+                bool boostActive = !sourceGroup.SpeedEnforcementDeferred && sourceGroup.BoostEnabled;
 
-                if (speedModifiers != null)
+                if (!sourceGroup.SpeedEnforcementDeferred && speedModifiers != null)
                 {
-                    baseMaxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * speedModifiers.MaxSpeed;
-                    var boostMaxSpeed = Session.Config.MaxPossibleSpeedMetersPerSecond * speedModifiers.MaxBoost;
+                    baseMaxSpeed = worldSpeedLimit * speedModifiers.MaxSpeed;
+                    float boostMaxSpeed = worldSpeedLimit * speedModifiers.MaxBoost;
                     effectiveMaxSpeed = boostActive ? boostMaxSpeed : baseMaxSpeed;
 
                     if (sourceGroup.PunishSpeed)
@@ -549,22 +558,40 @@ namespace ShipCoreFramework
                         && activeCore.SpeedLimitType == SpeedLimitType.Normal
                         && sourceGroup.PostBoostRampActive)
                     {
-                        var cap = sourceGroup.PostBoostRampCap;
-                        if (cap < 0f) cap = boostMaxSpeed;
+                        float rampSeconds = MathHelper.Clamp(speedModifiers.BoostDuration, 0.5f, 10f);
+                        float stepPerTick = (boostMaxSpeed - baseMaxSpeed) / (rampSeconds * 60f);
+                        bool rampActive;
+                        float cap = RampDownSpeedCap(sourceGroup.PostBoostRampCap, boostMaxSpeed,
+                            baseMaxSpeed, stepPerTick, out rampActive);
+                        sourceGroup.PostBoostRampActive = rampActive;
+                        sourceGroup.PostBoostRampCap = cap;
+                        effectiveMaxSpeed = cap;
+                    }
 
-                        var rampSeconds = MathHelper.Clamp(speedModifiers.BoostDuration, 0.5f, 10f);
-                        var stepPerTick = (boostMaxSpeed - baseMaxSpeed) / (rampSeconds * 60f);
-                        if (stepPerTick < 0f) stepPerTick = 0f;
+                    if (sourceGroup.SpeedRampDownActive)
+                    {
+                        bool rampActive = true;
+                        float cap = sourceGroup.SpeedRampDownCap;
+                        if (cap < 0f) cap = worldSpeedLimit;
 
-                        cap -= stepPerTick;
-
-                        if (cap <= baseMaxSpeed)
+                        int elapsedTicks = Session.CurrentTick - sourceGroup.SpeedRampDownLastTick;
+                        int elapsedPeriods = elapsedTicks / SpeedRampDownIntervalTicks;
+                        if (_speedRampDownLerpStep <= 0f || cap <= effectiveMaxSpeed)
                         {
-                            cap = baseMaxSpeed;
-                            sourceGroup.PostBoostRampActive = false;
+                            rampActive = false;
+                            cap = effectiveMaxSpeed;
+                        }
+                        else if (elapsedPeriods > 0)
+                        {
+                            float lerpAmount = MathHelper.Clamp(_speedRampDownLerpStep * elapsedPeriods, 0f, 1f);
+                            float nextCap = MathHelper.Lerp(cap, effectiveMaxSpeed, lerpAmount);
+                            float decrement = cap - nextCap;
+                            cap = RampDownSpeedCap(cap, cap, effectiveMaxSpeed, decrement, out rampActive);
+                            sourceGroup.SpeedRampDownLastTick += elapsedPeriods * SpeedRampDownIntervalTicks;
                         }
 
-                        sourceGroup.PostBoostRampCap = cap;
+                        sourceGroup.SpeedRampDownActive = rampActive;
+                        sourceGroup.SpeedRampDownCap = cap;
                         effectiveMaxSpeed = cap;
                     }
                 }
@@ -575,6 +602,29 @@ namespace ShipCoreFramework
                 sourceGroup.SpeedSourceGroupGridId = GetSpeedSourceGridId(sourceGroup, sourceGroup);
                 Interlocked.Exchange(ref sourceGroup.LastSpeedStateUpdateTick, Session.CurrentTick);
             }
+        }
+
+        private static float RampDownSpeedCap(float currentCap, float initialCap, float targetCap,
+            float decrement, out bool rampActive)
+        {
+            if (float.IsNaN(currentCap) || float.IsInfinity(currentCap) || currentCap < 0f)
+                currentCap = initialCap;
+
+            if (currentCap <= targetCap)
+            {
+                rampActive = false;
+                return targetCap;
+            }
+
+            currentCap -= Math.Max(0f, decrement);
+            if (currentCap <= targetCap)
+            {
+                rampActive = false;
+                return targetCap;
+            }
+
+            rampActive = true;
+            return currentCap;
         }
 
         private static long GetSpeedSourceGridId(GroupComponent sourceGroup, GroupComponent fallbackGroup)

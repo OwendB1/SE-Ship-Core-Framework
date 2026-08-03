@@ -307,6 +307,9 @@ namespace ShipCoreFramework
             PunishSpeed = punishSpeed;
             PunishModifiers = punishModifiers;
 
+            if (!previousPunishSpeed && PunishSpeed)
+                BeginSpeedRampDown();
+
             if (previousPunishSpeed != PunishSpeed)
             {
                 var reasons = GetSpeedPunishmentGateDescriptions();

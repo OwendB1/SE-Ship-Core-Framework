@@ -38,6 +38,9 @@ namespace ShipCoreFramework
 
         internal bool PostBoostRampActive;
         internal float PostBoostRampCap = -1f;
+        internal bool SpeedRampDownActive;
+        internal float SpeedRampDownCap = -1f;
+        internal int SpeedRampDownLastTick = -1;
 
 
         private readonly object _abilityStateLock = new object();

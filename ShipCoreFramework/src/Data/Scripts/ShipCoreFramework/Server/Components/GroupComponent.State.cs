@@ -41,6 +41,8 @@ namespace ShipCoreFramework
         private int _missingCoreRescanAttempts;
         private int _pendingBlockTransferReconcileTick;
         internal int LastSpeedStateUpdateTick = -1;
+        // True only while a new group awaits its first authoritative core/no-core selection.
+        internal volatile bool SpeedEnforcementDeferred = true;
 
         private static int SecondsToTicks(int seconds)
         {

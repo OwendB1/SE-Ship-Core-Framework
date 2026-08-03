@@ -724,6 +724,7 @@ namespace ShipCoreFramework
                 return new ModConfigData
                 {
                     BlockDirectionalPlacementOnSubgrids = true,
+                    SpeedRampDownPercentage = 5f,
                     NoCoreGraceSeconds = 30,
                     MinimumBlocksGraceSeconds = 30,
                     IgnoredFactionTags = Array.Empty<string>(),
@@ -750,6 +751,7 @@ namespace ShipCoreFramework
                 LogLevel = config.LogLevel,
                 ClientOutputLogLevel = config.ClientOutputLogLevel,
                 MaxPossibleSpeedMetersPerSecond = config.MaxPossibleSpeedMetersPerSecond,
+                SpeedRampDownPercentage = config.SpeedRampDownPercentage,
                 MassTypeMode = (MassTypeModeData)(int)config.MassTypeMode,
                 FrictionSpeedValueMode = (FrictionSpeedValueModeData)(int)config.FrictionSpeedValueMode,
                 BlockDirectionalPlacementOnSubgrids = config.BlockDirectionalPlacementOnSubgrids,
