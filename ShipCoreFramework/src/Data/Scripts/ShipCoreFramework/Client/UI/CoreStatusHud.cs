@@ -24,6 +24,8 @@ namespace ShipCoreFramework
         private const int RefreshIntervalUpdates = 12;
         private const int AbilityRefreshIntervalUpdates = 2;
         private const double RaycastDistance = 300d;
+        private const double HorizontalAnchor = 0.98d;
+        private const double VerticalAnchor = 0.9d;
 
         private const string White = "<color=255,255,255>";
         private const string Green = "<color=100,255,100>";
@@ -45,6 +47,7 @@ namespace ShipCoreFramework
         private bool _toggleShift;
         private bool _toggleControl;
         private bool _toggleAlt;
+        private HudPosition _position = HudPosition.TopLeft;
 
         private int _tick;
         private int _refreshCounter;
@@ -52,6 +55,16 @@ namespace ShipCoreFramework
         private IMyCubeGrid _lastGrid;
         private bool _lastCockpit;
         private string _lastText;
+
+        private enum HudPosition
+        {
+            TopLeft,
+            TopRight,
+            CenterLeft,
+            CenterRight,
+            BottomLeft,
+            BottomRight
+        }
 
         internal void Load()
         {
@@ -61,7 +74,7 @@ namespace ShipCoreFramework
 
         internal void OnHudReady()
         {
-            _panel = new HudAPIv2.HUDMessage(_text, new Vector2D(-0.98d, 0.55d), null, -1, 1d, true, true)
+            _panel = new HudAPIv2.HUDMessage(_text, GetHudAnchor(_position), null, -1, 1d, true, true)
             {
                 Visible = false
             };
@@ -151,6 +164,15 @@ namespace ShipCoreFramework
                 return;
             }
 
+            HudPosition position;
+            if (parts.Length == 3 &&
+                string.Equals(parts[1], "position", StringComparison.OrdinalIgnoreCase) &&
+                TryParseHudPosition(parts[2], out position))
+            {
+                SetHudPosition(position);
+                return;
+            }
+
             string value = parts.Length == 2
                 ? parts[1]
                 : parts.Length == 3 && string.Equals(parts[1], "level", StringComparison.OrdinalIgnoreCase)
@@ -160,7 +182,8 @@ namespace ShipCoreFramework
             if (!TryParseInfoLevel(value, out level))
             {
                 MyAPIGateway.Utilities.ShowNotification(
-                    "Usage: /corehud [1-3|standard|detailed|full]", 4000);
+                    "Usage: /corehud [1-3|standard|detailed|full] or /corehud position <top-left|top-right|center-left|center-right|bottom-left|bottom-right>",
+                    6000);
                 return;
             }
 
@@ -208,6 +231,14 @@ namespace ShipCoreFramework
             MyAPIGateway.Utilities.ShowNotification("Core HUD info: " + FormatInfoLevel(), 2000);
         }
 
+        private void SetHudPosition(HudPosition position)
+        {
+            _position = position;
+            ApplyPanelPosition();
+            SaveSettings();
+            MyAPIGateway.Utilities.ShowNotification("Core HUD position: " + FormatHudPosition(position), 2000);
+        }
+
         private static bool TryParseInfoLevel(string value, out int level)
         {
             if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out level))
@@ -217,6 +248,12 @@ namespace ShipCoreFramework
             else if (string.Equals(value, "full", StringComparison.OrdinalIgnoreCase)) level = 3;
             else return false;
             return true;
+        }
+
+        private static bool TryParseHudPosition(string value, out HudPosition position)
+        {
+            string normalized = value == null ? string.Empty : value.Replace("-", string.Empty);
+            return Enum.TryParse(normalized, true, out position) && Enum.IsDefined(typeof(HudPosition), position);
         }
 
         private void UpdateMenuText()
@@ -243,6 +280,19 @@ namespace ShipCoreFramework
             if (_infoLevel == 1) return "Standard";
             if (_infoLevel == 2) return "Detailed";
             return "Full";
+        }
+
+        private static string FormatHudPosition(HudPosition position)
+        {
+            switch (position)
+            {
+                case HudPosition.TopLeft: return "Top-left";
+                case HudPosition.TopRight: return "Top-right";
+                case HudPosition.CenterLeft: return "Center-left";
+                case HudPosition.CenterRight: return "Center-right";
+                case HudPosition.BottomLeft: return "Bottom-left";
+                default: return "Bottom-right";
+            }
         }
 
         private string BuildText(IMyCubeGrid grid, GroupComponent group, Vector3D? hitPosition,
@@ -614,6 +664,7 @@ namespace ShipCoreFramework
             if (_panel != null)
             {
                 _text.Clear().Append(value);
+                ApplyPanelPosition();
                 _panel.Visible = true;
                 return;
             }
@@ -623,6 +674,37 @@ namespace ShipCoreFramework
             _fallback.Text = preview;
             _fallback.ResetAliveTime();
             _fallback.Show();
+        }
+
+        private void ApplyPanelPosition()
+        {
+            if (_panel == null) return;
+
+            Vector2D anchor = GetHudAnchor(_position);
+            Vector2D textLength = _panel.GetTextLength();
+            double width = Math.Max(0d, textLength.X);
+            double height = Math.Max(0d, -textLength.Y);
+            bool right = _position == HudPosition.TopRight ||
+                         _position == HudPosition.CenterRight ||
+                         _position == HudPosition.BottomRight;
+            bool center = _position == HudPosition.CenterLeft || _position == HudPosition.CenterRight;
+            bool bottom = _position == HudPosition.BottomLeft || _position == HudPosition.BottomRight;
+
+            _panel.Origin = anchor;
+            _panel.Offset = new Vector2D(right ? -width : 0d, center ? height / 2d : bottom ? height : 0d);
+        }
+
+        private static Vector2D GetHudAnchor(HudPosition position)
+        {
+            bool right = position == HudPosition.TopRight ||
+                         position == HudPosition.CenterRight ||
+                         position == HudPosition.BottomRight;
+            double y = position == HudPosition.TopLeft || position == HudPosition.TopRight
+                ? VerticalAnchor
+                : position == HudPosition.CenterLeft || position == HudPosition.CenterRight
+                    ? 0d
+                    : -VerticalAnchor;
+            return new Vector2D(right ? HorizontalAnchor : -HorizontalAnchor, y);
         }
 
         private void Hide()
@@ -718,6 +800,7 @@ namespace ShipCoreFramework
                         bool flag;
                         int key;
                         int level;
+                        HudPosition position;
                         if (pair[0] == "Enabled" && bool.TryParse(pair[1], out flag)) _enabled = flag;
                         else if (pair[0] == "Level" && int.TryParse(pair[1], NumberStyles.Integer,
                                      CultureInfo.InvariantCulture, out level) && level >= 1 && level <= 3)
@@ -729,6 +812,8 @@ namespace ShipCoreFramework
                         else if (pair[0] == "Shift" && bool.TryParse(pair[1], out flag)) _toggleShift = flag;
                         else if (pair[0] == "Control" && bool.TryParse(pair[1], out flag)) _toggleControl = flag;
                         else if (pair[0] == "Alt" && bool.TryParse(pair[1], out flag)) _toggleAlt = flag;
+                        else if (pair[0] == "Position" && TryParseHudPosition(pair[1], out position))
+                            _position = position;
                     }
                 }
             }
@@ -751,6 +836,7 @@ namespace ShipCoreFramework
                     writer.WriteLine("Shift=" + _toggleShift);
                     writer.WriteLine("Control=" + _toggleControl);
                     writer.WriteLine("Alt=" + _toggleAlt);
+                    writer.WriteLine("Position=" + FormatHudPosition(_position));
                 }
             }
             catch (Exception exception)

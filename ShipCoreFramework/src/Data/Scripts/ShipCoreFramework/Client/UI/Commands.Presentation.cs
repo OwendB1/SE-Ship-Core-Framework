@@ -621,7 +621,10 @@ Toggles the client Core HUD on or off.
 Sets and saves the client HUD detail level. Cockpits automatically use the minimal combat view.
 
 /corehud level <1-3|standard|detailed|full>
-Alternative syntax for setting the saved client HUD detail level.";
+Alternative syntax for setting the saved client HUD detail level.
+
+/corehud position <top-left|top-right|center-left|center-right|bottom-left|bottom-right>
+Sets and saves the client HUD screen position.";
 
             MyAPIGateway.Utilities.ShowMissionScreen(
                 "ShipCore Framework",

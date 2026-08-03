@@ -39,17 +39,35 @@ assert.match(replica, /_runtimeAbilityStateTick = Session\.CurrentTick/);
 assert.match(hud, /MenuKeybindInput/);
 assert.match(hud, /private bool _enabled;/);
 assert.match(hud, /private int _infoLevel = 2;/);
+assert.match(hud, /private HudPosition _position = HudPosition\.TopLeft;/);
 assert.match(hud, /ReadFileInLocalStorage/);
 assert.match(hud, /pair\[0\] == "Enabled".*_enabled = flag/);
 assert.match(hud, /pair\[0\] == "Level".*int\.TryParse/s);
 assert.match(hud, /WriteLine\("Enabled=" \+ _enabled\)/);
 assert.match(hud, /WriteLine\("Level=" \+ _infoLevel/);
+assert.match(hud, /pair\[0\] == "Position".*TryParseHudPosition/s);
+assert.match(hud, /WriteLine\("Position=" \+ FormatHudPosition\(_position\)\)/);
 assert.match(hud, /WriteFileInLocalStorage/);
 assert.match(hud, /MyKeys\.NumPad0/);
 assert.match(hud, /TryParseInfoLevel/);
 assert.match(hud, /"standard".*level = 1/s);
 assert.match(hud, /"detailed".*level = 2/s);
 assert.match(hud, /"full".*level = 3/s);
+for (const position of [
+  'TopLeft',
+  'TopRight',
+  'CenterLeft',
+  'CenterRight',
+  'BottomLeft',
+  'BottomRight',
+]) {
+  assert.match(hud, new RegExp(`HudPosition\\.${position}`));
+}
+assert.match(hud, /parts\[1\], "position"/);
+assert.match(hud, /TryParseHudPosition\(parts\[2\], out position\)/);
+assert.match(hud, /_panel\.Origin = anchor/);
+assert.match(hud, /_panel\.Offset = new Vector2D/);
+assert.match(hud, /_panel\.GetTextLength\(\)/);
 assert.match(hud, /int infoLevel = cockpit \? 0 : _infoLevel/);
 assert.match(hud, /cockpit != _lastCockpit/);
 assert.match(hud, /if \(infoLevel >= 1\).*AppendUsage/s);
@@ -61,6 +79,7 @@ assert.match(hud, /if \(infoLevel >= 3\).*AppendEnforcement/s);
 assert.match(hud, /AppendModifiers\(group\)/);
 assert.match(commands, /\/corehud <1-3\|standard\|detailed\|full>/);
 assert.match(commands, /\/corehud level <1-3\|standard\|detailed\|full>/);
+assert.match(commands, /\/corehud position <top-left\|top-right\|center-left\|center-right\|bottom-left\|bottom-right>/);
 assert.match(commands, /\/core inventory/);
 assert.match(host, /_coreStatusHud\.OnHudReady\(\)/);
 assert.match(host, /_coreStatusHud\?\.Update\(\)/);
