@@ -26,6 +26,8 @@ assert.doesNotMatch(blockInterceptor + groupInterceptor, /BeforeMerge|OnGridMerg
 
 assert.match(groupInterceptor, /Session\.CurrentTick \+ \(deferOneTick \? 1 : 0\)/);
 assert.match(groupInterceptor, /Utils\.IsCoreBlock\(block\)/);
+assert.match(groupInterceptor, /HasSameCoreOrientation\(coreBlocks\[0\]\.WorldMatrix, coreBlocks\[i\]\.WorldMatrix\)/);
+assert.match(groupInterceptor, /Ship Cores have conflicting orientations; align them before merging/);
 assert.match(groupInterceptor, /GetProjectedUpgradeModules/);
 assert.match(groupInterceptor, /ComputeEffectiveMaxCount\(shipCore, limit, projectedModules\)/);
 assert.match(groupInterceptor, /first\.Enabled = false/);

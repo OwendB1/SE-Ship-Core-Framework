@@ -136,8 +136,8 @@ namespace ShipCoreFramework
             AddProjectedGrid(second.CubeGrid as MyCubeGrid, gridIds, grids);
 
             var blocks = new List<IMySlimBlock>();
+            var coreBlocks = new List<IMyFunctionalBlock>();
             var coreSubtypeIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var coreCount = 0;
             var totalPcu = 0;
             foreach (var grid in grids)
             {
@@ -149,7 +149,7 @@ namespace ShipCoreFramework
                 foreach (var block in gridBlocks)
                 {
                     if (!Utils.IsCoreBlock(block)) continue;
-                    coreCount++;
+                    coreBlocks.Add((IMyFunctionalBlock)block.FatBlock);
                     coreSubtypeIds.Add(Utils.GetBlockSubtypeId(block));
                 }
             }
@@ -161,6 +161,14 @@ namespace ShipCoreFramework
                 return true;
             }
 
+            for (var i = 1; i < coreBlocks.Count; i++)
+            {
+                if (HasSameCoreOrientation(coreBlocks[0].WorldMatrix, coreBlocks[i].WorldMatrix)) continue;
+
+                violation = "Ship Cores have conflicting orientations; align them before merging.";
+                return true;
+            }
+
             var liveCoreSubtypeId = coreSubtypeIds.FirstOrDefault() ?? string.Empty;
             var shipCore = Session.Config?.GetShipCoreByTypeId(liveCoreSubtypeId);
             if (shipCore == null)
@@ -169,9 +177,9 @@ namespace ShipCoreFramework
                 return true;
             }
 
-            if (shipCore.MaxBackupCores > 0 && coreCount > shipCore.MaxBackupCores + 1)
+            if (shipCore.MaxBackupCores > 0 && coreBlocks.Count > shipCore.MaxBackupCores + 1)
             {
-                violation = "projected backup cores " + (coreCount - 1) + "/" + shipCore.MaxBackupCores +
+                violation = "projected backup cores " + (coreBlocks.Count - 1) + "/" + shipCore.MaxBackupCores +
                             " for " + shipCore.UniqueName + ".";
                 return true;
             }
