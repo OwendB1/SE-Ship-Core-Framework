@@ -20,9 +20,9 @@ namespace ShipCoreFramework
     internal sealed class CoreStatusHud
     {
         private const string SettingsFile = "CoreStatusHud.cfg";
-        private const int UpdateIntervalTicks = 10;
-        private const int RefreshIntervalUpdates = 30;
-        private const int AbilityRefreshIntervalUpdates = 6;
+        private const int UpdateIntervalTicks = 5;
+        private const int RefreshIntervalUpdates = 12;
+        private const int AbilityRefreshIntervalUpdates = 2;
         private const double RaycastDistance = 300d;
 
         private const string White = "<color=255,255,255>";
