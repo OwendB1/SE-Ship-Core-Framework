@@ -92,6 +92,9 @@ namespace ShipCoreFramework
                 EffectiveSpeedLimitMetersPerSecond = state.EffectiveSpeed;
                 SpeedSourceGroupGridId = state.SpeedSourceGridId;
                 EffectiveBoostEnabled = state.EffectiveBoostActive;
+                EffectiveSpeedRampDownActive = state.SpeedRampDownActive;
+                EffectiveSpeedRampDownTargetCap = state.SpeedRampDownTarget;
+                _runtimeSpeedRampDownLastTick = Session.CurrentTick;
                 FrictionEnforcementEnabled = state.FrictionEnabled;
                 FrictionMaximumDecelerationOverride = state.FrictionMaximumDecelerationOverride;
                 MinimumFrictionSpeedAbsoluteOverride = state.MinimumFrictionSpeedAbsoluteOverride;
@@ -110,6 +113,26 @@ namespace ShipCoreFramework
                 BroadcastRuntimeStateChanges(state, previousCoreBlockId, previousCoreSubtypeId,
                     previousBoostActive, previousDefenseActive, previousGridIds,
                     previousLimitRevision, previousLimitEnforcementRevision);
+        }
+
+        internal void RunRuntimeSpeedRampDownTick()
+        {
+            if (Session.IsServer || !EffectiveSpeedRampDownActive) return;
+
+            lock (SpeedStateLock)
+            {
+                if (!EffectiveSpeedRampDownActive) return;
+                int elapsedTicks = Session.CurrentTick - _runtimeSpeedRampDownLastTick;
+                int elapsedPeriods = elapsedTicks / SpeedEnforcement.SpeedRampDownIntervalTicks;
+                if (elapsedPeriods <= 0) return;
+
+                bool rampActive;
+                EffectiveSpeedLimitMetersPerSecond = SpeedEnforcement.InterpolateSpeedRampDownCap(
+                    EffectiveSpeedLimitMetersPerSecond, EffectiveSpeedRampDownTargetCap,
+                    elapsedPeriods, out rampActive);
+                EffectiveSpeedRampDownActive = rampActive;
+                _runtimeSpeedRampDownLastTick += elapsedPeriods * SpeedEnforcement.SpeedRampDownIntervalTicks;
+            }
         }
 
         private void BroadcastRuntimeStateChanges(GroupRuntimeState state, long previousCoreBlockId,
@@ -223,6 +246,9 @@ namespace ShipCoreFramework
             EffectiveSpeedLimitMetersPerSecond = 100f;
             SpeedSourceGroupGridId = 0;
             EffectiveBoostEnabled = false;
+            EffectiveSpeedRampDownActive = false;
+            EffectiveSpeedRampDownTargetCap = -1f;
+            _runtimeSpeedRampDownLastTick = 0;
             BoostEnabled = false;
             _boostDurationTimer = 0f;
             _boostCooldownTimer = 0f;

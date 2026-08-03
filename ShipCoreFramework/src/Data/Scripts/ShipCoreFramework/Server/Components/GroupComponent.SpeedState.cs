@@ -20,6 +20,7 @@ namespace ShipCoreFramework
 
                 SpeedRampDownActive = Session.Config.SpeedRampDownPercentage > 0f;
                 SpeedRampDownCap = currentCap;
+                SpeedRampDownTargetCap = -1f;
                 SpeedRampDownLastTick = Session.CurrentTick;
                 PostBoostRampActive = false;
                 PostBoostRampCap = -1f;
@@ -33,6 +34,7 @@ namespace ShipCoreFramework
             {
                 SpeedRampDownActive = false;
                 SpeedRampDownCap = -1f;
+                SpeedRampDownTargetCap = -1f;
                 SpeedRampDownLastTick = -1;
             }
         }

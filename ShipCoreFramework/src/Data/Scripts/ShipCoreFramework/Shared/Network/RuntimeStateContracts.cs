@@ -85,5 +85,7 @@ namespace ShipCoreFramework
             Array.Empty<RuntimeLimitEnforcementEvent>();
         [ProtoMember(55)] internal int FactionPlayerCount;
         [ProtoMember(56)] internal int EffectiveFactionCoreLimit;
+        [ProtoMember(57)] internal bool SpeedRampDownActive;
+        [ProtoMember(58)] internal float SpeedRampDownTarget;
     }
 }

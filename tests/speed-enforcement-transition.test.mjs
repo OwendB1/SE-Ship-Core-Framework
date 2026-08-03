@@ -7,7 +7,8 @@ const root = new URL(
 );
 const read = path => readFile(new URL(path, root), "utf8");
 
-const [enforcement, lifecycle, abilities, speedState, state, config, worldSettings, definitions, commands, apiData, api] =
+const [enforcement, lifecycle, abilities, speedState, state, config, worldSettings, definitions, commands,
+  apiData, api, snapshot, contracts, replica, clientTick] =
   await Promise.all([
     read("Server/Enforcement/SpeedEnforcement.cs"),
     read("Server/Components/GroupComponent.Lifecycle.cs"),
@@ -20,6 +21,10 @@ const [enforcement, lifecycle, abilities, speedState, state, config, worldSettin
     read("Server/Commands/Commands.Administration.cs"),
     read("API/ApiData.cs"),
     read("API/ModAPI.cs"),
+    read("Server/Components/GroupComponent.Snapshot.cs"),
+    read("Shared/Network/RuntimeStateContracts.cs"),
+    read("Client/Components/GroupComponent.Replica.cs"),
+    read("Session/Client/Session.ClientTick.cs"),
   ]);
 
 assert.match(state, /SpeedEnforcementDeferred = true/);
@@ -44,10 +49,29 @@ assert.match(
   /if \(!previousPunishSpeed && PunishSpeed\)\s*BeginSpeedRampDown\(\)/,
 );
 assert.match(abilities, /ChainPunishmentGate\(ref punishments, HasBrokenMainCore\(\), GroupPunishmentFlags\.Both\)/);
-assert.match(enforcement, /MathHelper\.Lerp\(cap, effectiveMaxSpeed, lerpAmount\)/);
+assert.match(enforcement, /MathHelper\.Lerp\(currentCap, targetCap, lerpAmount\)/);
 assert.doesNotMatch(enforcement, /Math\.Pow\(1f - percentage, elapsedPeriods\)/);
 assert.match(definitions, /CacheSpeedRampDownStep\(Config\.SpeedRampDownPercentage\)/);
 assert.match(commands, /ReloadConfig\(\)[\s\S]*ApplyConfigToDefinitions\(\)/);
+
+assert.match(enforcement, /internal static float InterpolateSpeedRampDownCap/);
+assert.match(enforcement, /if \(nextCap >= currentCap\)[\s\S]*return targetCap/);
+assert.match(enforcement, /SpeedRampDownActive = speedRampDownActive/);
+assert.match(enforcement, /EffectiveSpeedRampDownActive = context\.SpeedRampDownActive/);
+assert.match(enforcement, /EffectiveSpeedRampDownTargetCap = context\.SpeedRampDownTarget/);
+assert.match(
+  enforcement,
+  /rampStateChanged \|\| otherSpeedStateChanged \|\|\s*effectiveSpeedChanged && !context\.SpeedRampDownActive/,
+  "cap-only ramp steps must not dirty the full runtime state",
+);
+assert.match(contracts, /ProtoMember\(57\)\]\s*internal bool SpeedRampDownActive/);
+assert.match(contracts, /ProtoMember\(58\)\]\s*internal float SpeedRampDownTarget/);
+assert.match(snapshot, /SpeedRampDownActive = speedRampDownActive/);
+assert.match(snapshot, /SpeedRampDownTarget = speedRampDownTarget/);
+assert.match(replica, /SpeedEnforcement\.InterpolateSpeedRampDownCap\(/);
+assert.match(replica, /_runtimeSpeedRampDownLastTick = Session\.CurrentTick/);
+assert.match(clientTick, /CurrentTick % SpeedEnforcement\.SpeedRampDownIntervalTicks == 0/);
+assert.match(clientTick, /RunRuntimeSpeedRampDownTick\(\)/);
 
 assert.match(config, /XmlElement\("SpeedRampDownPercentage"\)/);
 assert.match(worldSettings, /SpeedRampDownPercentage < 0f \|\| import\.SpeedRampDownPercentage > 100f/);

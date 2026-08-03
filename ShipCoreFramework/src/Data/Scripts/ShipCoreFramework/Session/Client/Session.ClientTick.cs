@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -11,6 +12,9 @@ namespace ShipCoreFramework
 
         private void RunClientSimulationTick()
         {
+            if (CurrentTick % SpeedEnforcement.SpeedRampDownIntervalTicks == 0)
+                foreach (KeyValuePair<IMyGridGroupData, GroupComponent> pair in GroupDict)
+                    pair.Value?.RunRuntimeSpeedRampDownTick();
             CoreTerminalControls.RegisterOnce();
             UpdateTerminalGridCloseGuard();
             CoreTypeLCDScript.RunFrameScrollUpdate();

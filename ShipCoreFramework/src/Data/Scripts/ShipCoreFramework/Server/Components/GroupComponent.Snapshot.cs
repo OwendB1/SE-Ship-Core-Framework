@@ -78,6 +78,8 @@ namespace ShipCoreFramework
             bool frictionEnabled;
             bool boostActive;
             bool effectiveBoostActive;
+            bool speedRampDownActive;
+            float speedRampDownTarget;
             float boostDurationTimer;
             float boostCooldownTimer;
             float frictionMaximumDecelerationOverride;
@@ -93,6 +95,8 @@ namespace ShipCoreFramework
                 frictionEnabled = FrictionEnforcementEnabled;
                 boostActive = BoostEnabled;
                 effectiveBoostActive = EffectiveBoostEnabled;
+                speedRampDownActive = EffectiveSpeedRampDownActive;
+                speedRampDownTarget = EffectiveSpeedRampDownTargetCap;
                 boostDurationTimer = _boostDurationTimer;
                 boostCooldownTimer = _boostCooldownTimer;
                 frictionMaximumDecelerationOverride = FrictionMaximumDecelerationOverride;
@@ -172,7 +176,9 @@ namespace ShipCoreFramework
                 LastBlocksPunished = lastBlocksPunished,
                 LimitEnforcementEvents = limitEnforcementEvents,
                 FactionPlayerCount = factionPlayerCount,
-                EffectiveFactionCoreLimit = effectiveFactionCoreLimit
+                EffectiveFactionCoreLimit = effectiveFactionCoreLimit,
+                SpeedRampDownActive = speedRampDownActive,
+                SpeedRampDownTarget = speedRampDownTarget
             };
         }
     }

@@ -40,7 +40,10 @@ namespace ShipCoreFramework
         internal float PostBoostRampCap = -1f;
         internal bool SpeedRampDownActive;
         internal float SpeedRampDownCap = -1f;
+        internal float SpeedRampDownTargetCap = -1f;
         internal int SpeedRampDownLastTick = -1;
+        internal bool EffectiveSpeedRampDownActive;
+        internal float EffectiveSpeedRampDownTargetCap = -1f;
 
 
         private readonly object _abilityStateLock = new object();
@@ -69,6 +72,7 @@ namespace ShipCoreFramework
         private float _powerOverclockDurationTimer;
         private float _powerOverclockDamageTimer;
         private int _runtimeAbilityStateTick;
+        private int _runtimeSpeedRampDownLastTick;
         private int _groupBlocksCount;
 
         private bool _closing;
