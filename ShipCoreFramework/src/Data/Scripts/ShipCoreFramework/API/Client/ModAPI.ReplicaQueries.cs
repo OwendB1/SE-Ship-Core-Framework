@@ -214,7 +214,8 @@ namespace ShipCoreFramework
                         if (runtime == null ||
                             !string.Equals(configured.Name, runtime.Name, StringComparison.OrdinalIgnoreCase))
                             continue;
-                        if (runtime.CurrentCount + weight * values.Item4 > runtime.MaxCount)
+                        if (runtime.CurrentCount - runtime.ConnectorCount + weight * values.Item4 >
+                            runtime.MaxCount)
                             return Success(false);
                         break;
                     }

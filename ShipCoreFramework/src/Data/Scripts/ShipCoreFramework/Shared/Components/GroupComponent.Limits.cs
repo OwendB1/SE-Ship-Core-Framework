@@ -13,10 +13,6 @@ namespace ShipCoreFramework
             if (IsMinimumBlocksLimitedBlockGateTriggered())
                 reasons.Add(GetBelowMinimumBlocksLimitedBlockPunishmentReason());
 
-            GroupComponent blacklistingGroup;
-            if (TryGetConnectedBlacklistingGroup(out blacklistingGroup))
-                reasons.Add(GetConnectedBlacklistLimitedBlockPunishmentReason(blacklistingGroup));
-
             return reasons;
         }
 

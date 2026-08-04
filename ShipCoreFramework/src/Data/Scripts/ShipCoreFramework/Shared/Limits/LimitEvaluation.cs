@@ -109,7 +109,7 @@ namespace ShipCoreFramework
                 double current;
                 lock (bucket.BucketLock)
                 {
-                    current = bucket.TotalWeight;
+                    current = bucket.TotalWeight - bucket.ConnectorWeight;
                 }
 
                 double max = group.GetEffectiveMaxCount(limit);
@@ -193,7 +193,7 @@ namespace ShipCoreFramework
                 double current;
                 lock (bucket.BucketLock)
                 {
-                    current = bucket.TotalWeight;
+                    current = bucket.TotalWeight - bucket.ConnectorWeight;
                 }
 
                 if (current + weight * normalized > group.GetEffectiveMaxCount(limit))

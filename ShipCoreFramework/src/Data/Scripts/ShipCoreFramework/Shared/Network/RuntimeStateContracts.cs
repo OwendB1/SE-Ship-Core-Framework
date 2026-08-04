@@ -9,6 +9,7 @@ namespace ShipCoreFramework
         [ProtoMember(1)] internal string Name;
         [ProtoMember(2)] internal double CurrentCount;
         [ProtoMember(3)] internal float MaxCount;
+        [ProtoMember(4)] internal double ConnectorCount;
     }
 
     [ProtoContract]

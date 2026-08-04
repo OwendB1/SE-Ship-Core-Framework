@@ -50,19 +50,19 @@ namespace ShipCoreFramework
 
                 var groupBucket = GroupComponent.Limits.GetOrAdd(limit, _ => new LimitBucket(0d));
 
-                double currentWeight;
+                double localWeight;
                 lock (groupBucket.BucketLock)
                 {
-                    currentWeight = groupBucket.TotalWeight;
+                    localWeight = groupBucket.TotalWeight - groupBucket.ConnectorWeight;
                 }
 
                 var effectiveMaxCount = GroupComponent.GetEffectiveMaxCount(limit);
-                if (currentWeight + weight > effectiveMaxCount)
+                if (localWeight + weight > effectiveMaxCount)
                 {
                     if (authoritative && !deferPunishment)
                     {
                         var message = localizedBlockName + " violates Block limit " + limit.Name + ": " +
-                                      (currentWeight + weight) + "/" + effectiveMaxCount;
+                                      (localWeight + weight) + "/" + effectiveMaxCount;
                         if (firstOwner != 0) Utils.ShowNotification(message, firstOwner);
                         else Utils.ShowNotification(message);
                         var punishmentType = forceShutOff

@@ -29,14 +29,20 @@ namespace ShipCoreFramework
                         var limit = configuredLimits[i];
                         if (limit == null) continue;
                         var total = 0d;
+                        var connectorTotal = 0d;
                         LimitBucket bucket;
                         if (Limits.TryGetValue(limit, out bucket) && bucket != null)
-                            lock (bucket.BucketLock) total = bucket.TotalWeight;
+                            lock (bucket.BucketLock)
+                            {
+                                total = bucket.TotalWeight;
+                                connectorTotal = bucket.ConnectorWeight;
+                            }
                         runtimeLimits.Add(new RuntimeLimitState
                         {
                             Name = limit.Name ?? string.Empty,
                             CurrentCount = total,
-                            MaxCount = GetEffectiveMaxCount(limit)
+                            MaxCount = GetEffectiveMaxCount(limit),
+                            ConnectorCount = connectorTotal
                         });
                     }
                 }

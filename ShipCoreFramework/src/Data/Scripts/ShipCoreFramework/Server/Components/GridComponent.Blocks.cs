@@ -273,7 +273,7 @@ namespace ShipCoreFramework
                 double total;
                 lock (groupBucket.BucketLock)
                 {
-                    total = groupBucket.TotalWeight;
+                    total = groupBucket.TotalWeight - groupBucket.ConnectorWeight;
                 }
 
                 var effectiveMaxCount = groupComponent.GetEffectiveMaxCount(limit);

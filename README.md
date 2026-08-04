@@ -26,9 +26,9 @@ Developer guidance for the runtime client/server boundary is in
 - Upgrade modules that modify grid stats, speed values, defense values, and block-limit counts.
 - No-fly zones with either full force-off or limit-specific punishment.
 - Connector-aware limit behavior:
-  - `CrossConnectorPunishment` for connected no-core grids.
-  - Manifest blacklist for connected core groups.
-- Critical limits that stay exempt from min-block and manifest-blacklist total limited-block shutoff.
+  - `CrossConnectorPunishment` imports blocks from connected no-core grids.
+  - Manifest blacklist imports lower-ranked core-group blocks into the winning core's limits.
+- Critical limits that stay exempt from connector imports and minimum-block total limited-block shutoff.
 - Minimum-block limited-block gate with periodic recheck.
 - Live Core HUD for piloted or aimed friendly grids, with a persistent configurable toggle key.
 - External mod API.
@@ -63,10 +63,11 @@ Load behavior:
   - falling below minimum immediately forces non-critical limited blocks off
   - once the group reaches minimum again, the limited-block gate clears
   - the group is still periodically rechecked so stale state is corrected
-- Manifest connector blacklist is separate from `CrossConnectorPunishment`.
-  - `CrossConnectorPunishment` only affects limits marked with that flag and only pulls in blocks from connected no-core groups.
-  - `CrossConnectorPunishmentWhitelist` in the manifest disables that pull-in behavior for listed core `SubtypeId` values.
-  - Manifest blacklist compares connected core groups by `CoreSelectionPriority`, then block count, and can shut off all limited blocks on the lower-priority or smaller blacklisted group.
+- Connector limit punishment uses the active higher-ranked core's limits.
+  - `CrossConnectorPunishment` only imports blocks from directly connected no-core groups into marked, non-critical limits.
+  - `CrossConnectorPunishmentWhitelist` disables only that no-core import behavior for listed core `SubtypeId` values.
+  - Manifest blacklist compares connected core groups by `CoreSelectionPriority`, then block count, and imports matching blocks from the lower-ranked blacklisted group into every non-critical limit of the winning group.
+  - Local blocks retain their configured punishment. Imported connector blocks over remaining capacity are shut off.
 - Mechanical groups only allow one configured core subtype. Main-core selection is only backup/failover selection within that subtype and does not use `CoreSelectionPriority`.
 
 ## World config reference (`ShipCoreConfig_World.xml`)
@@ -117,7 +118,7 @@ Root tag: `<CoreManifest>`
 | `Name` | `string` | Shared manifest group name. | Referenced by ship-core manifest entries. |
 | `MaxCount` | `int` | Maximum simultaneous cores in this manifest group. | Must be non-negative. Group counts are global across loaded mods/configs. |
 
-### Cross connector punishment whitelist
+### No-core cross connector punishment whitelist
 
 Repeated `<CrossConnectorPunishmentWhitelist>` entries under `<CoreManifest>` list core `SubtypeId` values. If the active core type is listed, `CrossConnectorPunishment` limits on that core do not pull blocks from connected no-core groups.
 
@@ -139,7 +140,8 @@ Blacklist behavior:
 - The higher `CoreSelectionPriority` group is treated as the blacklisting side.
 - If priorities match, the bigger group by block count is treated as the blacklisting side.
 - The winning group's main core checks its blacklist against the losing group's main core `SubtypeId`.
-- If matched, the losing group's limited blocks are shut off.
+- If matched, blocks from the losing group count against every matching non-critical limit on the winning group.
+- Imported blocks beyond the winning group's remaining limit capacity are shut off; local overflow keeps its configured punishment type.
 - If priority and block count both match, neither side outranks the other for blacklist punishment.
 
 ### Manifest upgrade-module entries
@@ -346,9 +348,9 @@ Each entry uses `<BlockLimit>`.
 | `BlockGroups` | `BlockGroupReference[]` | Names of `BlockGroup` definitions included in this limit. | Optional `Directions` attribute accepts comma-separated direction names or enum integers and overrides this limit's `AllowedDirections` for blocks matched through that group. |
 | `ExcludedBlockGroups` | `string[]` | Names of `BlockGroup` definitions subtracted from this limit. | Exclusion wins when a block matches both an included and excluded group. |
 | `MaxCount` | `float` | Maximum allowed total weight for this limit. | Weight comes from matched `BlockType.CountWeight`. |
-| `CrossConnectorPunishment` | `bool` | Pulls blocks from connected no-core groups into this limit's bucket. | Only affects this limit. Does not control min-block or manifest-blacklist limited-block gates. |
+| `CrossConnectorPunishment` | `bool` | Pulls blocks from connected no-core groups into this limit's bucket. | Only affects non-critical limits on this core. Manifest blacklist imports use all non-critical limits regardless of this flag. |
 | `PunishByNoFlyZone` | `bool` | Applies this limit's punishment inside no-fly zones. | Only used when the zone itself is not forcing everything off. |
-| `IsCriticalLimit` | `bool` | Marks this limit as exempt from total limited-block shutoff gates. | Min-block and manifest-blacklist shutoff skip this limit. Normal limit overflow, directional checks, and no-fly-zone punishment still work normally. |
+| `IsCriticalLimit` | `bool` | Exempts this limit from connector imports and total limited-block shutoff gates. | Minimum-block shutoff and both connector import paths skip this limit. Normal local overflow, directional checks, and no-fly-zone punishment still work normally. |
 | `PunishmentType` | `ShutOff`, `Damage`, `Delete`, `Explode` | Punishment for blocks in this limit when the limit is violated. | Limited-block gate punishment always uses `ShutOff`, regardless of this setting. |
 | `AllowedDirections` | `List<DirectionType>` | Directional lock for this limit. | If set, mismatched blocks are punished even if count is under cap. Directions are relative to the main core and compare the matched `BlockType.PrimaryDirection` axis. Subgrid behavior is controlled by world setting `BlockDirectionalPlacementOnSubgrids`. |
 

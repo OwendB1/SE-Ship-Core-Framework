@@ -254,7 +254,7 @@ namespace ShipCoreFramework
             }
 
             var previous = PunishLimitedBlocks;
-            PunishLimitedBlocks = IsMinimumBlocksLimitedBlockGateTriggered() || HasConnectedBlacklistingCoreGroup();
+            PunishLimitedBlocks = IsMinimumBlocksLimitedBlockGateTriggered();
             if (previous != PunishLimitedBlocks)
             {
                 Session.MarkRuntimeStateDirty(this);
@@ -334,6 +334,7 @@ namespace ShipCoreFramework
             AddGroupBlocksCount(1);
             InvalidateSpeedStateCache();
             Session.MarkPhysicalSpeedClusterSourceDirty(this);
+            QueueConnectedLimitRefresh();
 
             var wasPunishingLimitedBlocks = PunishLimitedBlocks;
             if (RefreshMinimumBlocksLimitedBlockGateState())
@@ -353,6 +354,7 @@ namespace ShipCoreFramework
 
             InvalidateSpeedStateCache();
             Session.MarkPhysicalSpeedClusterSourceDirty(this);
+            QueueConnectedLimitRefresh();
 
             var wasPunishingLimitedBlocks = PunishLimitedBlocks;
             if (RefreshMinimumBlocksLimitedBlockGateState())
@@ -506,16 +508,22 @@ namespace ShipCoreFramework
         }
         
 
-        private void EnforceGroupPunishment(bool forceShutOffPunishment = false)
+        internal void EnforceConnectorLimitPunishment()
+        {
+            EnforceGroupPunishment(false, true);
+        }
+
+        private void EnforceGroupPunishment(bool forceShutOffPunishment = false,
+            bool connectorOnly = false)
         {
             if (!Session.IsServer) return;
             if (IsLimitPunishmentDeferred()) return;
             if (IsCoreRecoveryGraceActive()) return;
             if (Deactivated || IsIgnoredGroup()) return;
 
-            if (Session.IsGameThread) RefreshPunishmentFlags();
+            if (Session.IsGameThread && !connectorOnly) RefreshPunishmentFlags();
 
-            var directionReferenceBlock = GetDirectionLockReferenceBlock();
+            var directionReferenceBlock = connectorOnly ? null : GetDirectionLockReferenceBlock();
             var pendingPunishments = new List<PendingBlockPunishment>();
             foreach (var kv in Limits)
             {
@@ -525,11 +533,16 @@ namespace ShipCoreFramework
                 if (limit == null || bucket == null) continue;
 
                 double total;
+                double connectorTotal;
                 List<IMySlimBlock> membersCopy;
+                HashSet<IMySlimBlock> connectorMembersCopy;
                 lock (bucket.BucketLock)
                 {
+                    if (connectorOnly && bucket.ConnectorWeight <= 0d) continue;
                     total = bucket.TotalWeight;
+                    connectorTotal = bucket.ConnectorWeight;
                     membersCopy = new List<IMySlimBlock>(bucket.Members);
+                    connectorMembersCopy = new HashSet<IMySlimBlock>(bucket.ConnectorMembers);
                 }
 
                 if (forceShutOffPunishment)
@@ -547,13 +560,18 @@ namespace ShipCoreFramework
                     continue;
                 }
 
-                var candidates = new List<KeyValuePair<IMySlimBlock, double>>(membersCopy.Count);
+                var localCandidates = new List<KeyValuePair<IMySlimBlock, double>>(membersCopy.Count);
+                var connectorCandidates = new List<KeyValuePair<IMySlimBlock, double>>(connectorMembersCopy.Count);
+                var alreadyShutOffConnectorWeight = 0d;
 
                 foreach (var block in membersCopy)
                 {
                     if (block == null || block.IsMovedBySplit || block.CubeGrid == null) continue;
 
-                    if (DoesBlockViolateAllowedDirection(directionReferenceBlock, limit, block))
+                    var isConnectorMember = connectorMembersCopy.Contains(block);
+
+                    if (!isConnectorMember && !connectorOnly &&
+                        DoesBlockViolateAllowedDirection(directionReferenceBlock, limit, block))
                     {
                         NotifyDirectionalPlacementViolation(directionReferenceBlock, block);
                         pendingPunishments.Add(new PendingBlockPunishment(block, limit.PunishmentType));
@@ -561,22 +579,54 @@ namespace ShipCoreFramework
                     }
 
                     var weight = limit.GetWeight(GridComponent.KeyOf(block));
-                    if (weight > 0d) candidates.Add(new KeyValuePair<IMySlimBlock, double>(block, weight));
+                    if (weight <= 0d) continue;
+                    if (isConnectorMember)
+                    {
+                        if (connectorOnly)
+                        {
+                            var functionalBlock = block.FatBlock as IMyFunctionalBlock;
+                            if (functionalBlock == null) continue;
+                            if (!functionalBlock.Enabled)
+                            {
+                                alreadyShutOffConnectorWeight += weight;
+                                continue;
+                            }
+                        }
+
+                        connectorCandidates.Add(new KeyValuePair<IMySlimBlock, double>(block, weight));
+                    }
+                    else if (!connectorOnly)
+                        localCandidates.Add(new KeyValuePair<IMySlimBlock, double>(block, weight));
                 }
 
                 var effectiveMaxCount = GetEffectiveMaxCount(limit);
-                if (total <= effectiveMaxCount) continue;
-
-                var over = total - effectiveMaxCount;
-                candidates.Sort((a, b) => a.Value.CompareTo(b.Value));
-
-                foreach (var candidate in candidates)
+                var localTotal = Math.Max(0d, total - connectorTotal);
+                if (!connectorOnly && localTotal > effectiveMaxCount)
                 {
-                    if (over <= 0d) break;
+                    var localOver = localTotal - effectiveMaxCount;
+                    localCandidates.Sort(ComparePunishmentCandidates);
+                    foreach (var candidate in localCandidates)
+                    {
+                        if (localOver <= 0d) break;
+                        if (candidate.Key == null) continue;
+
+                        pendingPunishments.Add(new PendingBlockPunishment(candidate.Key, limit.PunishmentType));
+                        localOver -= candidate.Value;
+                    }
+                }
+
+                var connectorCapacity = Math.Max(0d, effectiveMaxCount - localTotal);
+                var connectorOver = connectorTotal - connectorCapacity - alreadyShutOffConnectorWeight;
+                if (connectorOver <= 0d) continue;
+
+                connectorCandidates.Sort(ComparePunishmentCandidates);
+                foreach (var candidate in connectorCandidates)
+                {
+                    if (connectorOver <= 0d) break;
                     if (candidate.Key == null) continue;
 
-                    pendingPunishments.Add(new PendingBlockPunishment(candidate.Key, limit.PunishmentType));
-                    over -= candidate.Value;
+                    pendingPunishments.Add(new PendingBlockPunishment(candidate.Key, PunishmentType.ShutOff));
+                    connectorOver -= candidate.Value;
                 }
             }
 
@@ -585,6 +635,25 @@ namespace ShipCoreFramework
                           " block punishments for group " + GetGroupKey() +
                           ", forceShutOff=" + forceShutOffPunishment + ".", 1);
             ExecutePendingPunishments(pendingPunishments);
+        }
+
+        private static int ComparePunishmentCandidates(KeyValuePair<IMySlimBlock, double> left,
+            KeyValuePair<IMySlimBlock, double> right)
+        {
+            var compare = left.Value.CompareTo(right.Value);
+            if (compare != 0) return compare;
+
+            var leftGridId = left.Key?.CubeGrid?.EntityId ?? 0L;
+            var rightGridId = right.Key?.CubeGrid?.EntityId ?? 0L;
+            compare = leftGridId.CompareTo(rightGridId);
+            if (compare != 0) return compare;
+
+            var leftPosition = left.Key == null ? Vector3I.Zero : left.Key.Position;
+            var rightPosition = right.Key == null ? Vector3I.Zero : right.Key.Position;
+            compare = leftPosition.X.CompareTo(rightPosition.X);
+            if (compare != 0) return compare;
+            compare = leftPosition.Y.CompareTo(rightPosition.Y);
+            return compare != 0 ? compare : leftPosition.Z.CompareTo(rightPosition.Z);
         }
 
         internal bool DoesBlockViolateAllowedDirection(BlockLimit limit, IMySlimBlock block)
@@ -818,7 +887,7 @@ namespace ShipCoreFramework
                 }
             }
 
-            ApplyCrossConnectorPunishment(groupLimits);
+            ApplyConnectorLimitContributions(groupLimits);
 
             lock (_limitSnapshotLock)
             {

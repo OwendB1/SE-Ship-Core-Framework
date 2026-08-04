@@ -31,7 +31,10 @@ namespace ShipCoreFramework
                 {
                     GroupComponent group = kvp.Value;
                     if (group != null)
+                    {
                         group.RefreshPunishmentState();
+                        group.EnforceConnectorLimitPunishment();
+                    }
                 }
             }
 

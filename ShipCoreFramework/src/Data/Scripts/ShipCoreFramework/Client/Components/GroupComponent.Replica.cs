@@ -328,7 +328,11 @@ namespace ShipCoreFramework
                     {
                         if (runtime == null || !string.Equals(limit.Name, runtime.Name, StringComparison.OrdinalIgnoreCase))
                             continue;
-                        limits[limit] = new LimitBucket(runtime.CurrentCount);
+                        var bucket = new LimitBucket(runtime.CurrentCount)
+                        {
+                            ConnectorWeight = runtime.ConnectorCount
+                        };
+                        limits[limit] = bucket;
                         effectiveCounts[limit] = runtime.MaxCount;
                         break;
                     }

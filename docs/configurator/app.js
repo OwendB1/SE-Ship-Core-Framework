@@ -1198,8 +1198,9 @@ function manifestCoreEntryEditor() {
         <label class="inline">CoreSelectionPriority <input data-action="core-selection-priority" data-c="${selectorIndex}" class="small" type="number" value="${Number(core.coreSelectionPriority) || 0}" /></label>
       </div>
       <h4>Connector Blacklist</h4>
+      <p class="muted">Lower-ranked blacklisted core groups count against this core's non-critical limits.</p>
       ${blacklistMarkup}
-      <h4>CrossConnectorPunishment Whitelist</h4>
+      <h4>No-core CrossConnectorPunishment Whitelist</h4>
       ${crossConnectorPunishmentWhitelistItemForCore(selectorIndex, core)}
     </div>
   `;
@@ -1530,7 +1531,7 @@ function renderShipCores() {
             <button data-action="remove-limit" data-c="${coreIndex}" data-l="${limitIndex}">Delete Limit</button>
           </div>
           <div class="row wrap">
-            <label class="inline">CrossConnectorPunishment <input data-action="limit-cross-connector" data-c="${coreIndex}" data-l="${limitIndex}" type="checkbox" ${limit.crossConnectorPunishment ? "checked" : ""}/></label>
+            <label class="inline">CrossConnectorPunishment (no-core grids) <input data-action="limit-cross-connector" data-c="${coreIndex}" data-l="${limitIndex}" type="checkbox" ${limit.crossConnectorPunishment ? "checked" : ""}/></label>
             <label class="inline">PunishByNoFlyZone <input data-action="limit-punish" data-c="${coreIndex}" data-l="${limitIndex}" type="checkbox" ${limit.punishByNoFlyZone ? "checked" : ""}/></label>
             <label class="inline">IsCriticalLimit <input data-action="limit-critical" data-c="${coreIndex}" data-l="${limitIndex}" type="checkbox" ${limit.isCriticalLimit ? "checked" : ""}/></label>
             <label class="inline">Punishment Type

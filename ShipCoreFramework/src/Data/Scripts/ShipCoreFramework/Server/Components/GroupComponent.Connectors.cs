@@ -36,6 +36,15 @@ namespace ShipCoreFramework
             MyAPIGateway.Utilities.InvokeOnGameThread(RefreshConnectorNetwork);
         }
 
+        private void QueueConnectedLimitRefresh()
+        {
+            lock (_connectedGroupsLock)
+                if (_connectedCoreGroups.Count == 0 && _connectedNoCoreGroups.Count == 0)
+                    return;
+
+            QueueConnectorNetworkRefresh();
+        }
+
         private void RefreshConnectorNetwork()
         {
             lock (_connectedGroupsLock)
@@ -169,12 +178,6 @@ namespace ShipCoreFramework
             return connectedGroups;
         }
 
-        private bool HasConnectedBlacklistingCoreGroup()
-        {
-            GroupComponent blacklistingGroup;
-            return TryGetConnectedBlacklistingGroup(out blacklistingGroup);
-        }
-
         private bool TryGetConnectedBlacklistingGroup(out GroupComponent blacklistingGroup)
         {
             blacklistingGroup = null;
@@ -212,39 +215,52 @@ namespace ShipCoreFramework
             return true;
         }
 
-        private string GetConnectedBlacklistLimitedBlockPunishmentReason(GroupComponent blacklistingGroup)
+        private void ApplyConnectorLimitContributions(ConcurrentDictionary<BlockLimit, LimitBucket> targetLimits)
         {
-            if (blacklistingGroup?.ShipCore == null)
-                return "Connected to higher-priority or larger blacklisting core group";
-
-            return
-                $"Connected to higher-priority or larger blacklisting core group ({blacklistingGroup.ShipCore.UniqueName} blocks {ShipCore.UniqueName})";
-        }
-
-        private void ApplyCrossConnectorPunishment()
-        {
-            ApplyCrossConnectorPunishment(Limits);
-        }
-
-        private void ApplyCrossConnectorPunishment(ConcurrentDictionary<BlockLimit, LimitBucket> targetLimits)
-        {
-            if (ShipCore == null || ShipCore.CrossConnectorPunishmentWhitelisted) return;
-
-            var connectedGroups = GetConnectedNoCoreGroupDataSnapshot();
-            if (connectedGroups.Count == 0) return;
-            if (targetLimits == null) return;
+            if (ShipCore == null || targetLimits == null) return;
 
             var blockLimits = ShipCore.BlockLimits;
             if (blockLimits == null || blockLimits.Length == 0) return;
 
-            var punishedLimits = blockLimits.Where(limit => limit != null && limit.CrossConnectorPunishment).ToArray();
-            if (punishedLimits.Length == 0) return;
+            var connectorLimits = blockLimits
+                .Where(limit => limit != null && !limit.IsCriticalLimit)
+                .ToArray();
+            if (connectorLimits.Length == 0) return;
 
-            foreach (var otherGroupData in connectedGroups.Where(otherGroupData => otherGroupData != null))
+            if (!ShipCore.CrossConnectorPunishmentWhitelisted)
             {
+                var noCoreLimits = connectorLimits.Where(limit => limit.CrossConnectorPunishment).ToArray();
+                if (noCoreLimits.Length > 0)
+                    AddConnectorLimitContributions(GetConnectedNoCoreGroupDataSnapshot(), noCoreLimits,
+                        targetLimits, false);
+            }
+
+            AddConnectorLimitContributions(GetConnectedCoreGroupDataSnapshot(), connectorLimits,
+                targetLimits, true);
+        }
+
+        private void AddConnectorLimitContributions(IEnumerable<IMyGridGroupData> connectedGroups,
+            BlockLimit[] connectorLimits, ConcurrentDictionary<BlockLimit, LimitBucket> targetLimits,
+            bool requireBlacklistOwnership)
+        {
+            if (connectedGroups == null || connectorLimits == null || connectorLimits.Length == 0) return;
+
+            foreach (var otherGroupData in connectedGroups)
+            {
+                if (otherGroupData == null) continue;
+
                 GroupComponent otherComp;
                 if (!Session.GroupDict.TryGetValue(otherGroupData, out otherComp) || otherComp == null) continue;
-                if (otherComp.MainCoreComponent != null) continue;
+                if (requireBlacklistOwnership)
+                {
+                    GroupComponent owner;
+                    if (otherComp.MainCoreComponent == null ||
+                        !otherComp.TryGetConnectedBlacklistingGroup(out owner) ||
+                        !ReferenceEquals(owner, this))
+                        continue;
+                }
+                else if (otherComp.MainCoreComponent != null)
+                    continue;
 
                 foreach (var otherGridComp in otherComp.GridDictionary.Values)
                 {
@@ -254,7 +270,7 @@ namespace ShipCoreFramework
                         if (block == null || block.IsMovedBySplit || block.CubeGrid == null) continue;
 
                         var key = GridComponent.KeyOf(block);
-                        foreach (var limit in punishedLimits)
+                        foreach (var limit in connectorLimits)
                         {
                             var weight = limit.GetWeight(key);
                             if (weight <= 0d) continue;
@@ -263,7 +279,9 @@ namespace ShipCoreFramework
 
                             lock (groupBucket.BucketLock)
                             {
+                                if (!groupBucket.ConnectorMembers.Add(block)) continue;
                                 groupBucket.TotalWeight += weight;
+                                groupBucket.ConnectorWeight += weight;
                                 groupBucket.Members.Add(block);
                             }
                         }
