@@ -344,7 +344,7 @@ namespace ShipCoreFramework
                 body += $" ({pcuPercent:F1}%)";
             body += "\n\n";
 
-            body += "Modifiers:\n";
+            body += "Framework modifiers:\n";
 
             var gridMods = groupComponent.Modifiers;
             foreach (var m in gridMods.GetModifierValues())

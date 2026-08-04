@@ -53,6 +53,8 @@ namespace ShipCoreFramework
 
         private void BlockRemoved(IMySlimBlock block)
         {
+            CubeGridModifiers.UnregisterProductionModifierState(block?.FatBlock as IMyCubeBlock);
+
             var groupComponent = GroupComponent;
             if (groupComponent == null) return;
 

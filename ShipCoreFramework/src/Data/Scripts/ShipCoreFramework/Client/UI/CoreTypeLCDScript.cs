@@ -479,7 +479,7 @@ namespace ShipCoreFramework
         private float RenderModifiers(List<MySprite> sprites, CoreLcdSnapshot snapshot, Vector2 canvas, float margin, float y,
             float bodyScale, float smallScale)
         {
-            AddSectionTitle(sprites, "Applied Modifiers", y, margin, bodyScale);
+            AddSectionTitle(sprites, "Framework Modifiers", y, margin, bodyScale);
             y += 34f * _fontScale;
 
             var columns = canvas.X >= 760f ? 3 : 2;

@@ -228,8 +228,8 @@ These are multiplicative stat baselines unless modified by upgrade modules.
 | `GyroEfficiency` | Gyro power-efficiency multiplier. |
 | `GyroForce` | Gyro force multiplier. |
 | `PowerProducersOutput` | Power output multiplier. |
-| `RefineEfficiency` | Refinery efficiency multiplier. |
-| `RefineSpeed` | Refinery speed multiplier. |
+| `RefineEfficiency` | Refinery material-yield/effectiveness multiplier. Applied after block definition and attached upgrade modules. |
+| `RefineSpeed` | Refinery productivity/speed multiplier. Applied after block definition and attached upgrade modules. |
 | `ThrusterEfficiency` | Thruster efficiency multiplier. |
 | `ThrusterForce` | Thruster force multiplier. |
 

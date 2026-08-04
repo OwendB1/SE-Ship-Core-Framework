@@ -23,6 +23,7 @@ namespace ShipCoreFramework
 
             foreach (var block in blocksCopy)
             {
+                CubeGridModifiers.UnregisterProductionModifierState(block?.FatBlock as IMyCubeBlock);
                 if (Session.IsServer) DetachAuthoritativeBlockEvents(block);
             }
 

@@ -520,7 +520,7 @@ namespace ShipCoreFramework
                 if (Math.Abs(modifier.Value - 1f) < 0.001f) continue;
                 if (!header)
                 {
-                    _text.AppendLine().Append(Gray).AppendLine("--- Effective Modifiers ---").Append(White);
+                    _text.AppendLine().Append(Gray).AppendLine("--- Framework Modifiers ---").Append(White);
                     header = true;
                 }
                 _text.Append(modifier.Name).Append(": x")

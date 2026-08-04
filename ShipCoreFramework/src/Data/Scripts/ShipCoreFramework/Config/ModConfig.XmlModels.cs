@@ -671,7 +671,7 @@ namespace ShipCoreFramework
                 new ModifierNameValue("Thruster efficiency", ThrusterEfficiency),
                 new ModifierNameValue("Gyro force", GyroForce),
                 new ModifierNameValue("Gyro efficiency", GyroEfficiency),
-                new ModifierNameValue("Refinery efficiency", RefineEfficiency),
+                new ModifierNameValue("Refinery yield", RefineEfficiency),
                 new ModifierNameValue("Refinery speed", RefineSpeed),
                 new ModifierNameValue("Assembler speed", AssemblerSpeed),
                 new ModifierNameValue("Power output", PowerProducersOutput),

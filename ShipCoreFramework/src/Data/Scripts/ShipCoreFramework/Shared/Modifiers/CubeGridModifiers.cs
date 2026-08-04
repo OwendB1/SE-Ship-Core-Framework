@@ -1,18 +1,39 @@
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using Sandbox.Definitions;
-using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.Game.ObjectBuilders.Definitions;
+using IngameIMyEntity = VRage.Game.ModAPI.Ingame.IMyEntity;
 
 namespace ShipCoreFramework
 {
     internal static partial class CubeGridModifiers
     {
         private const string UpgradeModuleLinkType = "ShipCoreLink";
+        private const string ProductivityUpgradeType = "Productivity";
+        private const string EffectivenessUpgradeType = "Effectiveness";
+
+        private sealed class ProductionModifierState
+        {
+            internal readonly IMyCubeBlock Block;
+            internal GridModifiers Modifiers;
+            internal Action UpgradeValuesChanged;
+            internal Action<IngameIMyEntity> MarkedForClose;
+
+            internal ProductionModifierState(IMyCubeBlock block, GridModifiers modifiers)
+            {
+                Block = block;
+                Modifiers = modifiers;
+            }
+        }
+
+        private static readonly Dictionary<long, ProductionModifierState> ProductionModifierStates =
+            new Dictionary<long, ProductionModifierState>();
+
+        private static readonly HashSet<long> ProductionModifiersBeingApplied = new HashSet<long>();
 
         internal static void RegisterUpgradeModuleLink(IMyCubeBlock block)
         {
@@ -32,114 +53,207 @@ namespace ShipCoreFramework
 
         public static void ApplyModifiers(IMyCubeBlock block, GridModifiers modifiers)
         {
-            var id = ((IMyTerminalBlock)block).BlockDefinition;
-            var cubeDef = MyDefinitionManager.Static.GetCubeBlockDefinition(id);
+            IMyTerminalBlock terminalBlock = block as IMyTerminalBlock;
+            if (terminalBlock == null || modifiers == null) return;
 
-            var thruster = block as IMyThrust;
+            MyCubeBlockDefinition cubeDef =
+                MyDefinitionManager.Static.GetCubeBlockDefinition(terminalBlock.BlockDefinition);
+
+            IMyThrust thruster = block as IMyThrust;
             if (thruster != null)
             {
-                if(modifiers.ThrusterForce != -1) thruster.ThrustMultiplier = modifiers.ThrusterForce;
-                if(modifiers.ThrusterEfficiency != -1) thruster.PowerConsumptionMultiplier = 1f / modifiers.ThrusterEfficiency;
+                if (modifiers.ThrusterForce != -1) thruster.ThrustMultiplier = modifiers.ThrusterForce;
+                if (modifiers.ThrusterEfficiency != -1)
+                    thruster.PowerConsumptionMultiplier = 1f / modifiers.ThrusterEfficiency;
             }
 
-            var gyro = block as IMyGyro;
+            IMyGyro gyro = block as IMyGyro;
             if (gyro != null)
             {
-                if(gyro.GyroStrengthMultiplier != -1) gyro.GyroStrengthMultiplier = modifiers.GyroForce;
-                if(gyro.PowerConsumptionMultiplier != -1) gyro.PowerConsumptionMultiplier = 1f / modifiers.GyroEfficiency;
+                if (gyro.GyroStrengthMultiplier != -1) gyro.GyroStrengthMultiplier = modifiers.GyroForce;
+                if (gyro.PowerConsumptionMultiplier != -1)
+                    gyro.PowerConsumptionMultiplier = 1f / modifiers.GyroEfficiency;
             }
 
-            var refinery = block as IMyRefinery;
-            if (refinery != null && (modifiers.RefineSpeed != -1f && modifiers.RefineEfficiency != -1))
+            IMyRefinery refinery = block as IMyRefinery;
+            IMyAssembler assembler = block as IMyAssembler;
+            if (refinery != null || assembler != null)
             {
-                var refDef = cubeDef as MyRefineryDefinition;
-                var baseSpeed = refDef?.RefineSpeed ?? 1f;
-                var baseYield = refDef?.MaterialEfficiency ?? 1f;
-
-                float prodSum = 0f, effSum = 0f;
-                var attachedR = ((MyCubeBlock)block).CurrentAttachedUpgradeModules;
-                if (attachedR != null)
-                {
-                    foreach (var m in attachedR.Select(kv => kv.Value.Block).Where(m => m != null))
-                    {
-                        var ups = new List<MyUpgradeModuleInfo>();
-                        m.FillUpgradeList(ups);
-                        if (ups.Count == 0) continue;
-                        foreach (var up in ups)
-                        {
-                            switch (up.UpgradeType)
-                            {
-                                case "Productivity":
-                                    if(up.ModifierType == MyUpgradeModifierType.Additive)
-                                    {prodSum += up.Modifier;}
-                                    else
-                                    {prodSum *= up.Modifier;}
-                                    break;
-                                case "Effectiveness":
-                                    if(up.ModifierType == MyUpgradeModifierType.Additive)
-                                    {effSum += up.Modifier;}
-                                    else
-                                    {effSum *= up.Modifier;}
-                                    break;
-                            }
-                        }
-                    }
-                }
-
-                var prodValue = (baseSpeed * modifiers.RefineSpeed) + (prodSum * modifiers.RefineSpeed) - baseSpeed;
-                var yieldValue = (baseYield * modifiers.RefineEfficiency) + (effSum * modifiers.RefineEfficiency);
-                refinery.UpgradeValues["Productivity"] = prodValue;
-                refinery.UpgradeValues["Effectiveness"] = yieldValue;
+                RegisterProductionModifierState(block, modifiers);
+                ApplyProductionModifiers(block, modifiers, cubeDef);
             }
 
-            var assembler = block as IMyAssembler;
-            if (assembler != null && modifiers.AssemblerSpeed != -1)
-            {
-                var asmDef = cubeDef as MyAssemblerDefinition;
-                var baseSpeed = asmDef?.AssemblySpeed ?? 1f;
-
-                var prodSum = 0f;
-                var attachedA = ((MyCubeBlock)block).CurrentAttachedUpgradeModules;
-                if (attachedA != null)
-                {
-                    foreach (var m in attachedA.Select(kv => kv.Value.Block).Where(m => m != null))
-                    {
-                        var ups = new List<MyUpgradeModuleInfo>();
-                        m.FillUpgradeList(ups);
-                        if (ups.Count == 0) continue;
-                        //I (Blue) need to fix this line:
-                        // Using foreach loop
-                        foreach (var up in ups)
-                        {
-                            if (up.UpgradeType == "Productivity")
-                            {
-                                if(up.ModifierType == MyUpgradeModifierType.Additive)
-                                {prodSum += up.Modifier;}
-                                else
-                                {prodSum *= up.Modifier;}
-
-                            }
-                        }
-                    }
-                }
-
-                var prodValue = baseSpeed * modifiers.AssemblerSpeed + prodSum * modifiers.AssemblerSpeed - baseSpeed;
-                assembler.UpgradeValues["Productivity"] = prodValue;
-            }
-
-            var reactor = block as IMyReactor;
+            IMyReactor reactor = block as IMyReactor;
             if (reactor != null)
             {
                 reactor.PowerOutputMultiplier = modifiers.PowerProducersOutput;
             }
 
-            var drill = block as IMyShipDrill;
+            IMyShipDrill drill = block as IMyShipDrill;
             if (drill != null)
             {
                 drill.DrillHarvestMultiplier = modifiers.DrillHarvestMultiplier;
             }
-
         }
 
+        internal static void UnregisterProductionModifierState(IMyCubeBlock block)
+        {
+            if (block == null) return;
+
+            ProductionModifierState state;
+            if (!ProductionModifierStates.TryGetValue(block.EntityId, out state)) return;
+
+            ProductionModifierStates.Remove(block.EntityId);
+            ProductionModifiersBeingApplied.Remove(block.EntityId);
+            block.OnUpgradeValuesChanged -= state.UpgradeValuesChanged;
+            block.OnMarkForClose -= state.MarkedForClose;
+        }
+
+        private static void RegisterProductionModifierState(IMyCubeBlock block, GridModifiers modifiers)
+        {
+            ProductionModifierState state;
+            if (ProductionModifierStates.TryGetValue(block.EntityId, out state))
+            {
+                state.Modifiers = modifiers;
+                return;
+            }
+
+            state = new ProductionModifierState(block, modifiers);
+            state.UpgradeValuesChanged = delegate { OnProductionUpgradeValuesChanged(state); };
+            state.MarkedForClose = delegate { UnregisterProductionModifierState(block); };
+            ProductionModifierStates.Add(block.EntityId, state);
+            block.OnUpgradeValuesChanged += state.UpgradeValuesChanged;
+            block.OnMarkForClose += state.MarkedForClose;
+        }
+
+        private static void OnProductionUpgradeValuesChanged(ProductionModifierState state)
+        {
+            if (state == null || state.Block == null || state.Modifiers == null) return;
+
+            if (!Session.IsGameThread)
+            {
+                MyAPIGateway.Utilities.InvokeOnGameThread(delegate { OnProductionUpgradeValuesChanged(state); });
+                return;
+            }
+
+            ProductionModifierState registeredState;
+            if (state.Block.MarkedForClose || state.Block.Closed || Session.IsShuttingDown ||
+                !ProductionModifierStates.TryGetValue(state.Block.EntityId, out registeredState) ||
+                !ReferenceEquals(state, registeredState) ||
+                ProductionModifiersBeingApplied.Contains(state.Block.EntityId))
+                return;
+
+            IMyTerminalBlock terminalBlock = state.Block as IMyTerminalBlock;
+            if (terminalBlock == null) return;
+
+            MyCubeBlockDefinition cubeDef =
+                MyDefinitionManager.Static.GetCubeBlockDefinition(terminalBlock.BlockDefinition);
+            ApplyProductionModifiers(state.Block, state.Modifiers, cubeDef);
+        }
+
+        private static void ApplyProductionModifiers(IMyCubeBlock block, GridModifiers modifiers,
+            MyCubeBlockDefinition cubeDef)
+        {
+            if (!ProductionModifiersBeingApplied.Add(block.EntityId)) return;
+
+            try
+            {
+                float nativeProductivity;
+                float nativeEffectiveness;
+                GetNativeProductionUpgradeValues((MyCubeBlock)block, out nativeProductivity,
+                    out nativeEffectiveness);
+
+                bool changed = false;
+                IMyRefinery refinery = block as IMyRefinery;
+                if (refinery != null)
+                {
+                    MyRefineryDefinition refineryDefinition = cubeDef as MyRefineryDefinition;
+                    float baseSpeed = refineryDefinition != null ? refineryDefinition.RefineSpeed : 1f;
+
+                    if (modifiers.RefineSpeed != -1f)
+                    {
+                        float productivityValue =
+                            (baseSpeed + nativeProductivity) * modifiers.RefineSpeed - baseSpeed;
+                        changed |= SetUpgradeValue(refinery.UpgradeValues, ProductivityUpgradeType,
+                            productivityValue);
+                    }
+
+                    if (modifiers.RefineEfficiency != -1f)
+                    {
+                        float effectivenessValue = nativeEffectiveness * modifiers.RefineEfficiency;
+                        changed |= SetUpgradeValue(refinery.UpgradeValues, EffectivenessUpgradeType,
+                            effectivenessValue);
+                    }
+                }
+
+                IMyAssembler assembler = block as IMyAssembler;
+                if (assembler != null && modifiers.AssemblerSpeed != -1f)
+                {
+                    MyAssemblerDefinition assemblerDefinition = cubeDef as MyAssemblerDefinition;
+                    float baseSpeed = assemblerDefinition != null ? assemblerDefinition.AssemblySpeed : 1f;
+                    float productivityValue =
+                        (baseSpeed + nativeProductivity) * modifiers.AssemblerSpeed - baseSpeed;
+                    changed |= SetUpgradeValue(assembler.UpgradeValues, ProductivityUpgradeType,
+                        productivityValue);
+                }
+
+                if (changed) ((MyCubeBlock)block).CommitUpgradeValues();
+            }
+            finally
+            {
+                ProductionModifiersBeingApplied.Remove(block.EntityId);
+            }
+        }
+
+        private static void GetNativeProductionUpgradeValues(MyCubeBlock block, out float productivity,
+            out float effectiveness)
+        {
+            // Keen stores productivity as a delta from definition speed, but effectiveness as a multiplier from 1.
+            productivity = 0f;
+            effectiveness = 1f;
+
+            Dictionary<long, MyCubeBlock.AttachedUpgradeModule> attachedModules =
+                block.CurrentAttachedUpgradeModules;
+            if (attachedModules == null) return;
+
+            foreach (KeyValuePair<long, MyCubeBlock.AttachedUpgradeModule> pair in attachedModules)
+            {
+                MyCubeBlock.AttachedUpgradeModule attachedModule = pair.Value;
+                IMyUpgradeModule upgradeBlock = attachedModule != null ? attachedModule.Block : null;
+                if (upgradeBlock == null || !upgradeBlock.IsWorking || !attachedModule.Compatible ||
+                    attachedModule.SlotCount <= 0)
+                    continue;
+
+                List<MyUpgradeModuleInfo> upgrades = new List<MyUpgradeModuleInfo>();
+                upgradeBlock.FillUpgradeList(upgrades);
+                for (int slot = 0; slot < attachedModule.SlotCount; slot++)
+                {
+                    for (int index = 0; index < upgrades.Count; index++)
+                    {
+                        MyUpgradeModuleInfo upgrade = upgrades[index];
+                        if (upgrade.UpgradeType == ProductivityUpgradeType)
+                            productivity = ApplyKeenUpgradeValue(productivity, upgrade);
+                        else if (upgrade.UpgradeType == EffectivenessUpgradeType)
+                            effectiveness = ApplyKeenUpgradeValue(effectiveness, upgrade);
+                    }
+                }
+            }
+        }
+
+        private static float ApplyKeenUpgradeValue(float currentValue, MyUpgradeModuleInfo upgrade)
+        {
+            return upgrade.ModifierType == MyUpgradeModifierType.Additive
+                ? currentValue + upgrade.Modifier
+                : currentValue * upgrade.Modifier;
+        }
+
+        private static bool SetUpgradeValue(Dictionary<string, float> values, string name, float value)
+        {
+            float currentValue;
+            if (values.TryGetValue(name, out currentValue) && currentValue == value) return false;
+
+            values[name] = value;
+            return true;
+        }
     }
 }
