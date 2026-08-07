@@ -591,6 +591,7 @@ namespace ShipCoreFramework
                     SpeedModifiers = new SpeedModifiersData
                     {
                         MaxSpeed = 0.0f,
+                        MaxAngularVelocity = 0.0f,
                         MaxBoost = 0.0f,
                         BoostDuration = 10f,
                         BoostCoolDown = 60f,
@@ -1059,6 +1060,7 @@ namespace ShipCoreFramework
                 return new SpeedModifiersData
                 {
                     MaxSpeed = 0.0f,
+                    MaxAngularVelocity = 0.0f,
                     MaxBoost = 0.0f,
                     BoostDuration = 10f,
                     BoostCoolDown = 60f,
@@ -1078,6 +1080,7 @@ namespace ShipCoreFramework
             return new SpeedModifiersData
             {
                 MaxSpeed = modifiers.MaxSpeed,
+                MaxAngularVelocity = modifiers.MaxAngularVelocity,
                 MaxBoost = modifiers.MaxBoost,
                 BoostDuration = modifiers.BoostDuration,
                 BoostCoolDown = modifiers.BoostCoolDown,

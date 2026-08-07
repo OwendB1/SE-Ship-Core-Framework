@@ -111,6 +111,9 @@ namespace ShipCoreFramework
                         case "MaxSpeed":
                             modifiers.MaxSpeed = ApplyUpgradeModifier(modifiers.MaxSpeed, modifier.Value, modifier.ModifierType);
                             break;
+                        case "MaxAngularVelocity":
+                            modifiers.MaxAngularVelocity = ApplyUpgradeModifier(modifiers.MaxAngularVelocity, modifier.Value, modifier.ModifierType);
+                            break;
                         case "MaxBoost":
                             modifiers.MaxBoost = ApplyUpgradeModifier(modifiers.MaxBoost, modifier.Value, modifier.ModifierType);
                             break;
@@ -266,6 +269,7 @@ namespace ShipCoreFramework
             return new SpeedModifiers
             {
                 MaxSpeed = modifiers.MaxSpeed,
+                MaxAngularVelocity = modifiers.MaxAngularVelocity,
                 MaxBoost = modifiers.MaxBoost,
                 BoostDuration = modifiers.BoostDuration,
                 BoostCoolDown = modifiers.BoostCoolDown,

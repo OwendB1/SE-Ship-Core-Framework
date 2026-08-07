@@ -261,6 +261,7 @@ All values are multipliers. `1` is neutral, below `1` reduces incoming damage, a
 | Tag | Meaning | Notes |
 | --- | --- | --- |
 | `MaxSpeed` | Base speed multiplier. | Multiplies against world `MaxPossibleSpeedMetersPerSecond`. |
+| `MaxAngularVelocity` | Maximum angular velocity in radians per second. | Values less than or equal to `0` disable the angular velocity cap. Default `0`. |
 | `MaxBoost` | Boost speed multiplier. | Also multiplies against world max speed. |
 | `BoostDuration` | Boost duration in seconds. | Also used for post-boost ramp timing in normal speed mode. |
 | `BoostCoolDown` | Boost cooldown in seconds. | |
@@ -288,6 +289,7 @@ Example absolute-speed curve with 20 m/s² from 100-200 m/s and 60 m/s² from 20
 ```xml
 <SpeedModifiers>
   <MaxSpeed>1</MaxSpeed>
+  <MaxAngularVelocity>1.5</MaxAngularVelocity>
   <MaxBoost>1</MaxBoost>
   <BoostDuration>10</BoostDuration>
   <BoostCoolDown>60</BoostCoolDown>
@@ -438,6 +440,7 @@ Grid/system stats:
 Speed stats:
 
 - `MaxSpeed`
+- `MaxAngularVelocity`
 - `MaxBoost`
 - `BoostDuration`
 - `BoostCoolDown`

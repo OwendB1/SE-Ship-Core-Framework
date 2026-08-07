@@ -509,6 +509,9 @@ namespace ShipCoreFramework
         [XmlElement("MaxSpeed")]
         public float MaxSpeed = 0.3f;
 
+        [XmlElement("MaxAngularVelocity")]
+        public float MaxAngularVelocity = 0f;
+
         [XmlElement("MaxBoost")]
         public float MaxBoost = 0.5f;
 

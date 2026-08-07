@@ -361,6 +361,7 @@ namespace ShipCoreFramework
             if (speedmods != null)
             {
                 body += $"    Max Speed:       {speedmods.MaxSpeed:F2}\n";
+                body += $"    Max Angular Vel: {speedmods.MaxAngularVelocity:F2} rad/s\n";
                 body += $"    Max Boost Speed: {speedmods.MaxBoost:F2}\n";
                 if (Session.Config.FrictionSpeedValueMode == FrictionSpeedValueMode.Modifier)
                 {

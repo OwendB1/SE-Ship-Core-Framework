@@ -48,6 +48,7 @@ namespace ShipCoreFramework
             internal float BaseMaxSpeed;
             internal float BoostMaxSpeed;
             internal float EffectiveMaxSpeed;
+            internal float MaxAngularVelocity;
             internal bool BoostActive;
             internal bool SpeedRampDownActive;
             internal float SpeedRampDownTarget;
@@ -224,6 +225,9 @@ namespace ShipCoreFramework
                     ? baseSpeedLimit
                     : Session.Config.MaxPossibleSpeedMetersPerSecond * speedModifiers.MaxBoost,
                 EffectiveMaxSpeed = effectiveSpeedLimit,
+                MaxAngularVelocity = speedModifiers != null && speedModifiers.MaxAngularVelocity > 0f
+                    ? speedModifiers.MaxAngularVelocity
+                    : 0f,
                 BoostActive = effectiveBoostEnabled,
                 SpeedRampDownActive = speedRampDownActive,
                 SpeedRampDownTarget = speedRampDownTarget,
@@ -692,6 +696,7 @@ namespace ShipCoreFramework
             var enforceFriction = context.ActiveCore.SpeedLimitType == SpeedLimitType.Friction
                                   && context.FrictionEnforcementEnabled;
             var effectiveMaxSpeed = context.EffectiveMaxSpeed;
+            float maxAngularVelocity = context.MaxAngularVelocity;
 
             for (var i = 0; i < targetGrids.Length; i++)
             {
@@ -701,15 +706,43 @@ namespace ShipCoreFramework
                 MyPhysicsComponentBase physics;
                 if (!TryGetPhysics(grid, out physics)) continue;
 
-                var velocity = physics.LinearVelocity;
-                var speedSq = velocity.LengthSquared();
-                if (speedSq < 0.0001f) continue;
+                Vector3 linearVelocity = physics.LinearVelocity;
+                Vector3 angularVelocity = physics.AngularVelocity;
+                Vector3 constrainedAngularVelocity = angularVelocity;
+                bool angularVelocityCapped = false;
 
-                var speed = Convert.ToSingle(Math.Sqrt(speedSq));
-                var direction = velocity / speed;
-                if (speed > effectiveMaxSpeed + HardCapToleranceMetersPerSecond)
+                if (maxAngularVelocity > 0f)
                 {
-                    physics.SetSpeeds(direction * effectiveMaxSpeed, physics.AngularVelocity);
+                    float angularSpeedSq = angularVelocity.LengthSquared();
+                    float angularCapSq = maxAngularVelocity * maxAngularVelocity;
+                    if (angularSpeedSq > angularCapSq)
+                    {
+                        float angularSpeed = Convert.ToSingle(Math.Sqrt(angularSpeedSq));
+                        constrainedAngularVelocity = angularVelocity / angularSpeed * maxAngularVelocity;
+                        angularVelocityCapped = true;
+                    }
+                }
+
+                float speedSq = linearVelocity.LengthSquared();
+                if (speedSq < 0.0001f)
+                {
+                    if (angularVelocityCapped)
+                        physics.SetSpeeds(linearVelocity, constrainedAngularVelocity);
+                    continue;
+                }
+
+                float speed = Convert.ToSingle(Math.Sqrt(speedSq));
+                Vector3 direction = linearVelocity / speed;
+                bool linearVelocityCapped = speed > effectiveMaxSpeed + HardCapToleranceMetersPerSecond;
+                Vector3 constrainedLinearVelocity = linearVelocity;
+                if (linearVelocityCapped)
+                    constrainedLinearVelocity = direction * effectiveMaxSpeed;
+
+                if (linearVelocityCapped || angularVelocityCapped)
+                    physics.SetSpeeds(constrainedLinearVelocity, constrainedAngularVelocity);
+
+                if (linearVelocityCapped)
+                {
                     StoreSpeedSample(grid.EntityId, effectiveMaxSpeed);
                     continue;
                 }

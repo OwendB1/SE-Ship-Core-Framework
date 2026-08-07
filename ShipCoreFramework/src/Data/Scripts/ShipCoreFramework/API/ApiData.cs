@@ -620,6 +620,7 @@ namespace ShipCoreFramework
         [ProtoMember(12)] public float CruiseFrictionMultiplier;
         [ProtoMember(13)] public float CruiseAccelerationThreshold;
         [ProtoMember(14)] public AtmosphericFrictionData AtmosphericFriction;
+        [ProtoMember(15)] public float MaxAngularVelocity;
     }
 
     [ProtoContract]

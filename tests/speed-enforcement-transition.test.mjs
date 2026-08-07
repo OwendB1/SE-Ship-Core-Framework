@@ -8,7 +8,7 @@ const root = new URL(
 const read = path => readFile(new URL(path, root), "utf8");
 
 const [enforcement, lifecycle, abilities, speedState, state, config, worldSettings, definitions, commands,
-  apiData, api, snapshot, contracts, replica, clientTick] =
+  apiData, api, snapshot, contracts, replica, clientTick, modifiers, presentation, configurator, readme] =
   await Promise.all([
     read("Server/Enforcement/SpeedEnforcement.cs"),
     read("Server/Components/GroupComponent.Lifecycle.cs"),
@@ -25,6 +25,10 @@ const [enforcement, lifecycle, abilities, speedState, state, config, worldSettin
     read("Shared/Network/RuntimeStateContracts.cs"),
     read("Client/Components/GroupComponent.Replica.cs"),
     read("Session/Client/Session.ClientTick.cs"),
+    read("Server/Modifiers/CubeGridModifiers.Authority.cs"),
+    read("Client/UI/Commands.Presentation.cs"),
+    readFile(new URL("../docs/configurator/app.js", import.meta.url), "utf8"),
+    readFile(new URL("../README.md", import.meta.url), "utf8"),
   ]);
 
 assert.match(state, /SpeedEnforcementDeferred = true/);
@@ -77,5 +81,25 @@ assert.match(config, /XmlElement\("SpeedRampDownPercentage"\)/);
 assert.match(worldSettings, /SpeedRampDownPercentage < 0f \|\| import\.SpeedRampDownPercentage > 100f/);
 assert.match(apiData, /ProtoMember\(23\)\]\s*public float SpeedRampDownPercentage/);
 assert.match(api, /SpeedRampDownPercentage = config\.SpeedRampDownPercentage/);
+
+assert.match(config, /XmlElement\("MaxAngularVelocity"\)[\s\S]*MaxAngularVelocity = 0f/);
+assert.match(enforcement, /MaxAngularVelocity = speedModifiers != null && speedModifiers\.MaxAngularVelocity > 0f/);
+assert.ok(
+  enforcement.indexOf("float angularSpeedSq = angularVelocity.LengthSquared()") <
+    enforcement.indexOf("if (speedSq < 0.0001f)"),
+  "pure rotation must be capped before stationary linear velocity exits",
+);
+assert.match(enforcement, /angularVelocity \/ angularSpeed \* maxAngularVelocity/);
+assert.match(enforcement, /if \(linearVelocityCapped \|\| angularVelocityCapped\)[\s\S]*physics\.SetSpeeds\(constrainedLinearVelocity, constrainedAngularVelocity\)/);
+assert.match(enforcement, /if \(maxAngularVelocity > 0f\)/);
+assert.match(modifiers, /case "MaxAngularVelocity"[\s\S]*ApplyUpgradeModifier\(modifiers\.MaxAngularVelocity/);
+assert.match(modifiers, /MaxAngularVelocity = modifiers\.MaxAngularVelocity/);
+assert.match(apiData, /ProtoMember\(15\)\]\s*public float MaxAngularVelocity/);
+assert.ok((api.match(/MaxAngularVelocity = (0\.0f|modifiers\.MaxAngularVelocity)/g)?.length ?? 0) >= 3);
+assert.match(replica, /MaxAngularVelocity = value\.MaxAngularVelocity/);
+assert.match(presentation, /Max Angular Vel:[^\n]*MaxAngularVelocity[^\n]*rad\/s/);
+assert.match(configurator, /MaxAngularVelocity: 0/);
+assert.match(configurator, /"MaxAngularVelocity"/);
+assert.match(readme, /`MaxAngularVelocity`[^\n]*radians per second[^\n]*less than or equal to `0` disable/);
 
 console.log("Speed enforcement transition contract checks passed.");

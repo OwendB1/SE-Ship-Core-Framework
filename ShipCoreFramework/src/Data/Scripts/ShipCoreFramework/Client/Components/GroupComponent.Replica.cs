@@ -397,6 +397,7 @@ namespace ShipCoreFramework
             return new SpeedModifiers
             {
                 MaxSpeed = value.MaxSpeed,
+                MaxAngularVelocity = value.MaxAngularVelocity,
                 MaxBoost = value.MaxBoost,
                 BoostDuration = value.BoostDuration,
                 BoostCoolDown = value.BoostCoolDown,

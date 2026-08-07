@@ -1,4 +1,4 @@
-// app.js build v1015
+// app.js build v1016
 const state = {
   blockGroups: [],
   manifestGroups: [],
@@ -34,6 +34,7 @@ const DEFAULT_GRID_MODIFIERS = {
 
 const DEFAULT_SPEED_MODIFIERS = {
   MaxSpeed: 0.3,
+  MaxAngularVelocity: 0,
   MaxBoost: 0.5,
   BoostDuration: 10,
   BoostCoolDown: 60,
@@ -84,6 +85,7 @@ const UPGRADE_STAT_OPTIONS = [
   "ThrusterEfficiency",
   "ThrusterForce",
   "MaxSpeed",
+  "MaxAngularVelocity",
   "MaxBoost",
   "BoostDuration",
   "BoostCoolDown",
