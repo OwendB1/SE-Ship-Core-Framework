@@ -35,7 +35,7 @@ namespace ShipCoreFramework
         /// Increment when you add functionality in a backwards compatible way.
         /// Minor version changes remain compatible as long as the major version matches.
         /// </summary>
-        public const int API_MINOR = 0;
+        public const int API_MINOR = 1;
 
         /// <summary>
         /// Encoded API version (Major.Minor) packed into a single int.
@@ -323,6 +323,12 @@ namespace ShipCoreFramework
         /// Argument ignored. Payload: byte[] (ModConfigData).
         /// </summary>
         public const int GetFullConfig_Binary = 40;
+
+        /// <summary>
+        /// Gets the authoritative cached mass used by mass-limit enforcement for a logical grid group.
+        /// Server only. Argument: long grid entity ID. Payload: float in kilograms.
+        /// </summary>
+        public const int GetGroupMass = 41;
     }
 
     // ===== Data Structures (DTOs) =====

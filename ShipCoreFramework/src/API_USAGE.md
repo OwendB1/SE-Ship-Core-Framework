@@ -136,6 +136,9 @@ take precedence when a block belongs to both.
 
 Runtime mutations exist only on `ShipCoreFrameworkServerApi`.
 
+`TryGetGroupMass(gridId)` is also server-only. It returns the authoritative cached mass in kilograms
+used by mass-limit enforcement, respecting the configured dry/wet `MassTypeMode`.
+
 ## Events
 
 Both wrappers expose:

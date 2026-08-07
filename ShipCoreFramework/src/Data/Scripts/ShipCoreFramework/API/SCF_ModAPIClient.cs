@@ -296,7 +296,7 @@ namespace ShipCoreFramework
             }
         }
 
-        private ApiReadResult<T> InvokePrimitive<T>(int methodId, object argument)
+        protected ApiReadResult<T> InvokePrimitive<T>(int methodId, object argument)
         {
             ApiReadStatusData status;
             object value;
@@ -584,6 +584,11 @@ namespace ShipCoreFramework
         public ApiReadResult<bool> TrySetFrictionEnabledForGroup(long gridId, bool enabled)
         {
             return InvokeCommand(ApiMethodId.SetFrictionEnabledForGroup, MyTuple.Create(gridId, enabled));
+        }
+
+        public ApiReadResult<float> TryGetGroupMass(long gridId)
+        {
+            return InvokePrimitive<float>(ApiMethodId.GetGroupMass, gridId);
         }
 
         public ApiReadResult<bool> TrySetFrictionMaximumDecelerationForGroup(long gridId, float deceleration)

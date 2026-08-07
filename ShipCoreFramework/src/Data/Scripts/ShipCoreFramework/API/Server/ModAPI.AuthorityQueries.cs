@@ -11,5 +11,11 @@ namespace ShipCoreFramework
         {
             return PerManifestGroupManager.GetCurrentCount(name);
         }
+
+        private static float GetAuthoritativeGroupMass(long gridId)
+        {
+            GroupComponent groupComponent;
+            return TryGetGroupComponent(gridId, out groupComponent) ? groupComponent.GroupMass : 0f;
+        }
     }
 }

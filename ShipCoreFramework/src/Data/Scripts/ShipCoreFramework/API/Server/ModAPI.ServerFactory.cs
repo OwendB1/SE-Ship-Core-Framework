@@ -100,6 +100,9 @@ namespace ShipCoreFramework
                         gridId => Success(IsGroupDeactivated(gridId)));
                 case ApiMethodId.GetFullConfig_Binary:
                     return ignored => ConfigResult(() => SerializedSuccess(GetFullConfig()));
+                case ApiMethodId.GetGroupMass:
+                    return argument => AuthorityRuntime(argument,
+                        gridId => Success(GetAuthoritativeGroupMass(gridId)));
                 default:
                     return null;
             }
