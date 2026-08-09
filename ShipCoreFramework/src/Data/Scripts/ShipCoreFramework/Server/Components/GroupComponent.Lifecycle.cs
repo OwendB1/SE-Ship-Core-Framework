@@ -18,6 +18,7 @@ namespace ShipCoreFramework
 
             SyncNoCoreLimitTracking();
             OnUpgradeModulesChanged();
+            QueueConnectorNetworkRefresh();
             Utils.Log("InitGrids: initialized group " + GetGroupKey() + " with " +
                       GridDictionary.Count + " grids, " + CoreDictionary.Count + " cores, main core " +
                       (MainCoreComponent == null ? "<none>" : MainCoreComponent.SubtypeId) + ".", 2);
@@ -318,7 +319,7 @@ namespace ShipCoreFramework
 
             RebuildConnectorPunishmentLinks();
             RefreshPunishmentState();
-            QueueRecalculateAllLimits(true, ShouldForceLimitedBlocksOff());
+            QueueRecalculateAllLimits(true, ShouldForceLimitedBlocksOff(), true);
             QueueConnectorNetworkRefresh();
             Session.RefreshPhysicalGroupLinkagesForGrid(grid);
             Session.RefreshPhysicalGroupLinkagesForGrids(GridDictionary.Keys);

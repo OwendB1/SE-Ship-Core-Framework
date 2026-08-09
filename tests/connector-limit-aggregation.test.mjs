@@ -4,10 +4,12 @@ import { readFile } from "node:fs/promises";
 const root = new URL("../", import.meta.url);
 const read = path => readFile(new URL(path, root), "utf8");
 
-const [connectors, limits, gridLimits, evaluation, bucket, runtime, replica, sharedLimits, tick, readme] = await Promise.all([
+const [connectors, limits, gridLimits, gridBlocks, upgrades, evaluation, bucket, runtime, replica, sharedLimits, tick, readme] = await Promise.all([
   read("ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Server/Components/GroupComponent.Connectors.cs"),
   read("ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Server/Components/GroupComponent.Limits.cs"),
   read("ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Server/Components/GridComponent.Limits.cs"),
+  read("ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Server/Components/GridComponent.Blocks.cs"),
+  read("ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Server/Components/GroupComponent.Upgrades.cs"),
   read("ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Shared/Limits/LimitEvaluation.cs"),
   read("ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Shared/Limits/LimitSupport.cs"),
   read("ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Shared/Network/RuntimeStateContracts.cs"),
@@ -23,6 +25,15 @@ assert.match(connectors, /otherComp\.TryGetConnectedBlacklistingGroup\(out owner
 assert.match(connectors, /ReferenceEquals\(owner, this\)/);
 assert.match(connectors, /ConnectorWeight \+= weight/);
 assert.match(connectors, /ConnectorMembers\.Add\(block\)/);
+assert.match(connectors, /UpdateConnectedLimitContributions/);
+assert.match(connectors, /UpdateConnectorLimitContribution\(this, block, added\)/);
+assert.match(connectors, /CopyConnectorLimitContributions/);
+assert.match(connectors, /OnUpgradeModulesChanged\(true\)/);
+assert.doesNotMatch(limits, /QueueConnectedLimitRefresh/);
+assert.doesNotMatch(upgrades, /RebuildConnectorPunishmentLinks\(\)/);
+assert.match(limits, /rebuildConnectorLimits[\s\S]*ApplyConnectorLimitContributions\(groupLimits\)[\s\S]*CopyConnectorLimitContributions\(groupLimits\)/);
+assert.match(gridBlocks, /CubeGridModifiers\.ApplyModifiers\(functionalBlock, groupComponent\.Modifiers\)/);
+assert.doesNotMatch(gridBlocks, /groupComponent\.ApplyModifiers\(groupComponent\.Modifiers\)/);
 
 assert.match(bucket, /double ConnectorWeight/);
 assert.match(bucket, /HashSet<IMySlimBlock> ConnectorMembers/);

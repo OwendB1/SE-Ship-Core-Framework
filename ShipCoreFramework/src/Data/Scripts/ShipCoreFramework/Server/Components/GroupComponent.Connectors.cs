@@ -36,13 +36,92 @@ namespace ShipCoreFramework
             MyAPIGateway.Utilities.InvokeOnGameThread(RefreshConnectorNetwork);
         }
 
-        private void QueueConnectedLimitRefresh()
+        private void UpdateConnectedLimitContributions(IMySlimBlock block, bool added)
         {
-            lock (_connectedGroupsLock)
-                if (_connectedCoreGroups.Count == 0 && _connectedNoCoreGroups.Count == 0)
-                    return;
+            if (block == null || _closing || Session.IsShuttingDown) return;
 
-            QueueConnectorNetworkRefresh();
+            HashSet<GroupComponent> connectedGroups = new HashSet<GroupComponent>();
+            AddCachedConnectorGroups(connectedGroups);
+            foreach (GroupComponent connectedGroup in connectedGroups)
+                if (connectedGroup != null && !ReferenceEquals(connectedGroup, this))
+                    connectedGroup.UpdateConnectorLimitContribution(this, block, added);
+        }
+
+        private void UpdateConnectorLimitContribution(GroupComponent source, IMySlimBlock block, bool added)
+        {
+            if (source?.MyGroup == null || block == null || _closing || Session.IsShuttingDown) return;
+
+            var shipCore = ShipCore;
+            var blockLimits = shipCore?.BlockLimits;
+            if (blockLimits == null || blockLimits.Length == 0) return;
+
+            var sourceHasCore = source.MainCoreComponent != null;
+            if (added)
+            {
+                lock (_connectedGroupsLock)
+                {
+                    if (sourceHasCore)
+                    {
+                        if (!_connectedCoreGroups.Contains(source.MyGroup)) return;
+                    }
+                    else if (!_connectedNoCoreGroups.Contains(source.MyGroup) ||
+                             shipCore.CrossConnectorPunishmentWhitelisted)
+                        return;
+                }
+
+                if (sourceHasCore)
+                {
+                    GroupComponent owner;
+                    if (!source.TryGetConnectedBlacklistingGroup(out owner) || !ReferenceEquals(owner, this)) return;
+                }
+            }
+
+            var key = GridComponent.KeyOf(block);
+            var contributions = new List<KeyValuePair<BlockLimit, double>>();
+            foreach (var limit in blockLimits)
+            {
+                if (limit == null || limit.IsCriticalLimit ||
+                    added && !sourceHasCore && !limit.CrossConnectorPunishment)
+                    continue;
+
+                var weight = limit.GetWeight(key);
+                if (weight > 0d)
+                    contributions.Add(new KeyValuePair<BlockLimit, double>(limit, weight));
+            }
+
+            if (contributions.Count == 0) return;
+            IncrementLimitGeneration();
+
+            var changed = false;
+            foreach (var contribution in contributions)
+            {
+                var bucket = Limits.GetOrAdd(contribution.Key, _ => new LimitBucket(0d));
+                lock (bucket.BucketLock)
+                {
+                    if (added)
+                    {
+                        if (!bucket.ConnectorMembers.Add(block)) continue;
+                        bucket.TotalWeight += contribution.Value;
+                        bucket.ConnectorWeight += contribution.Value;
+                        bucket.Members.Add(block);
+                    }
+                    else
+                    {
+                        if (!bucket.ConnectorMembers.Remove(block)) continue;
+                        bucket.TotalWeight -= contribution.Value;
+                        bucket.ConnectorWeight -= contribution.Value;
+                        bucket.Members.Remove(block);
+                    }
+
+                    changed = true;
+                }
+            }
+
+            if (!changed) return;
+            MarkLimitsPublished();
+            Session.MarkRuntimeStateDirty(this);
+            if (added) EnforceConnectorLimitPunishment();
+            if (MyGroup != null) ModAPI.BroadcastLimitsRecalculated(GetRepresentativeGridId());
         }
 
         private void RefreshConnectorNetwork()
@@ -80,7 +159,7 @@ namespace ShipCoreFramework
 
             RebuildConnectorPunishmentLinks();
             if (MainCoreComponent == null) return;
-            OnUpgradeModulesChanged();
+            OnUpgradeModulesChanged(true);
         }
 
         private void RebuildConnectorPunishmentLinks()
@@ -237,6 +316,32 @@ namespace ShipCoreFramework
 
             AddConnectorLimitContributions(GetConnectedCoreGroupDataSnapshot(), connectorLimits,
                 targetLimits, true);
+        }
+
+        private void CopyConnectorLimitContributions(ConcurrentDictionary<BlockLimit, LimitBucket> targetLimits)
+        {
+            if (targetLimits == null) return;
+
+            foreach (var pair in Limits)
+            {
+                var limit = pair.Key;
+                var sourceBucket = pair.Value;
+                if (limit == null || sourceBucket == null) continue;
+
+                lock (sourceBucket.BucketLock)
+                {
+                    if (sourceBucket.ConnectorWeight <= 0d) continue;
+
+                    var targetBucket = targetLimits.GetOrAdd(limit, _ => new LimitBucket(0d));
+                    lock (targetBucket.BucketLock)
+                    {
+                        targetBucket.TotalWeight += sourceBucket.ConnectorWeight;
+                        targetBucket.ConnectorWeight += sourceBucket.ConnectorWeight;
+                        targetBucket.ConnectorMembers.UnionWith(sourceBucket.ConnectorMembers);
+                        targetBucket.Members.AddRange(sourceBucket.ConnectorMembers);
+                    }
+                }
+            }
         }
 
         private void AddConnectorLimitContributions(IEnumerable<IMyGridGroupData> connectedGroups,

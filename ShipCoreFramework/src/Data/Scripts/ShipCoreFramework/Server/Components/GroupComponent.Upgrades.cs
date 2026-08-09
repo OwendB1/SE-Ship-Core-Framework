@@ -79,7 +79,7 @@ namespace ShipCoreFramework
             }
         }
 
-        internal void OnUpgradeModulesChanged()
+        internal void OnUpgradeModulesChanged(bool rebuildConnectorLimits = false)
         {
             if (!Session.IsServer) return;
             if (_closing || _refreshingUpgradeModules || IsInitializingGrids) return;
@@ -89,7 +89,7 @@ namespace ShipCoreFramework
 
             if (!Session.IsGameThread)
             {
-                MyAPIGateway.Utilities.InvokeOnGameThread(OnUpgradeModulesChanged);
+                MyAPIGateway.Utilities.InvokeOnGameThread(() => OnUpgradeModulesChanged(rebuildConnectorLimits));
                 return;
             }
 
@@ -97,7 +97,7 @@ namespace ShipCoreFramework
             _refreshingUpgradeModules = true;
             try
             {
-                RefreshGroupStateAndEnforce();
+                RefreshGroupStateAndEnforce(rebuildConnectorLimits);
             }
             finally
             {
@@ -106,7 +106,7 @@ namespace ShipCoreFramework
             }
         }
 
-        private void RefreshGroupStateAndEnforce()
+        private void RefreshGroupStateAndEnforce(bool rebuildConnectorLimits)
         {
             RefreshUpgradeModules();
 
@@ -116,7 +116,7 @@ namespace ShipCoreFramework
                 RefreshGridStateCache();
                 RefreshNoCoreDirectionLockReferenceCache();
                 DefenseValuesChanged();
-                QueueRecalculateAllLimits(false, false);
+                QueueRecalculateAllLimits(false, false, rebuildConnectorLimits);
                 Utils.Log("RefreshGroupStateAndEnforce: skipped no-core enforcement during core recovery grace for group " +
                           GetGroupKey() + ".", 2);
                 return;
@@ -131,7 +131,6 @@ namespace ShipCoreFramework
                 return;
             }
 
-            RebuildConnectorPunishmentLinks();
             RefreshMinimumBlocksLimitedBlockGateState();
             RefreshLimitedBlockPunishmentState();
             RefreshPunishmentState();
@@ -143,11 +142,11 @@ namespace ShipCoreFramework
 
             if (IsLimitPunishmentDeferred())
             {
-                QueueRecalculateAllLimits(false, false);
+                QueueRecalculateAllLimits(false, false, rebuildConnectorLimits);
                 return;
             }
 
-            QueueRecalculateAllLimits(true, ShouldForceLimitedBlocksOff());
+            QueueRecalculateAllLimits(true, ShouldForceLimitedBlocksOff(), rebuildConnectorLimits);
         }
 
         private void RefreshUpgradeModules()

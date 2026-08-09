@@ -81,7 +81,7 @@ namespace ShipCoreFramework
 
                     AddTrackedBlock(block);
 
-                    groupComponent.OnBlockAddedToGroup();
+                    groupComponent.OnBlockAddedToGroup(block);
                 }
             }
             else
@@ -124,7 +124,7 @@ namespace ShipCoreFramework
                 AddTrackedBlock(block);
 
                 if (shipController != null) TrackShipController(shipController);
-                groupComponent.OnBlockAddedToGroup();
+                groupComponent.OnBlockAddedToGroup(block);
 
                 if (functionalBlock != null) functionalBlock.EnabledChanged += FuncBlockOnEnabledChanged;
                 if (shipController != null) shipController.PropertiesChanged += ShipControllerOnPropertiesChanged;
@@ -139,8 +139,8 @@ namespace ShipCoreFramework
             if (Utils.IsCoreBlock(functionalBlock) || isTrackedUpgradeModule ||
                 shipController != null && groupComponent.MainCoreComponent == null)
                 groupComponent.OnUpgradeModulesChanged();
-            else if (!groupComponent.IsInitializingGrids)
-                groupComponent.ApplyModifiers(groupComponent.Modifiers);
+            else if (!groupComponent.IsInitializingGrids && functionalBlock != null)
+                CubeGridModifiers.ApplyModifiers(functionalBlock, groupComponent.Modifiers);
 
             return true;
         }
@@ -213,7 +213,7 @@ namespace ShipCoreFramework
             }
 
             if (shipController != null) UntrackShipController(shipController);
-            if (wasTracked) groupComponent.OnBlockRemovedFromGroup();
+            if (wasTracked) groupComponent.OnBlockRemovedFromGroup(block);
 
             if (functionalBlock != null && value == null) functionalBlock.EnabledChanged -= FuncBlockOnEnabledChanged;
             if (shipController != null) shipController.PropertiesChanged -= ShipControllerOnPropertiesChanged;
@@ -226,8 +226,6 @@ namespace ShipCoreFramework
 
             if (value != null || removedUpgradeModule || removedNoCoreDirectionReferenceCandidate)
                 groupComponent.OnUpgradeModulesChanged();
-            else
-                groupComponent.ApplyModifiers(groupComponent.Modifiers);
         }
 
         private void FuncBlockOnEnabledChanged(IMyTerminalBlock obj)

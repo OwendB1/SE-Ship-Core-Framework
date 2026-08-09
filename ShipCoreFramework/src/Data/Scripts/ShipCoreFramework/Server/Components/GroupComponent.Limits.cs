@@ -326,7 +326,7 @@ namespace ShipCoreFramework
             return false;
         }
 
-        internal void OnBlockAddedToGroup()
+        internal void OnBlockAddedToGroup(IMySlimBlock block)
         {
             Session.MarkRuntimeStateDirty(this);
             InvalidateGameThreadStateCache(true);
@@ -334,7 +334,7 @@ namespace ShipCoreFramework
             AddGroupBlocksCount(1);
             InvalidateSpeedStateCache();
             Session.MarkPhysicalSpeedClusterSourceDirty(this);
-            QueueConnectedLimitRefresh();
+            UpdateConnectedLimitContributions(block, true);
 
             var wasPunishingLimitedBlocks = PunishLimitedBlocks;
             if (RefreshMinimumBlocksLimitedBlockGateState())
@@ -345,7 +345,7 @@ namespace ShipCoreFramework
             }
         }
 
-        internal void OnBlockRemovedFromGroup()
+        internal void OnBlockRemovedFromGroup(IMySlimBlock block)
         {
             Session.MarkRuntimeStateDirty(this);
             InvalidateGameThreadStateCache(true);
@@ -354,7 +354,7 @@ namespace ShipCoreFramework
 
             InvalidateSpeedStateCache();
             Session.MarkPhysicalSpeedClusterSourceDirty(this);
-            QueueConnectedLimitRefresh();
+            UpdateConnectedLimitContributions(block, false);
 
             var wasPunishingLimitedBlocks = PunishLimitedBlocks;
             if (RefreshMinimumBlocksLimitedBlockGateState())
@@ -845,19 +845,20 @@ namespace ShipCoreFramework
         }
 
 
-        private void QueueRecalculateAllLimits(bool enforceAfterPublish, bool forceShutOffPunishment)
+        private void QueueRecalculateAllLimits(bool enforceAfterPublish, bool forceShutOffPunishment,
+            bool rebuildConnectorLimits = false)
         {
             if (!Session.IsServer) return;
             var generation = GetLimitGeneration();
             MyAPIGateway.Parallel.StartBackground(() =>
             {
-                if (!BuildAndPublishLimitSnapshots(generation)) return;
+                if (!BuildAndPublishLimitSnapshots(generation, rebuildConnectorLimits)) return;
                 if (enforceAfterPublish)
                     EnforceGroupPunishment(forceShutOffPunishment);
             });
         }
 
-        private bool BuildAndPublishLimitSnapshots(int generation)
+        private bool BuildAndPublishLimitSnapshots(int generation, bool rebuildConnectorLimits)
         {
             if (_closing || Session.IsShuttingDown) return false;
 
@@ -887,7 +888,10 @@ namespace ShipCoreFramework
                 }
             }
 
-            ApplyConnectorLimitContributions(groupLimits);
+            if (rebuildConnectorLimits)
+                ApplyConnectorLimitContributions(groupLimits);
+            else
+                CopyConnectorLimitContributions(groupLimits);
 
             lock (_limitSnapshotLock)
             {
