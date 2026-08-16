@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Sandbox.Definitions;
 using VRage.Game.ModAPI;
 
 namespace ShipCoreFramework
@@ -16,6 +17,30 @@ namespace ShipCoreFramework
             {
                 return new List<IMySlimBlock>(_blocks);
             }
+        }
+
+        internal int GetTrackedPCU()
+        {
+            var pcu = 0;
+            lock (_blocksLock)
+            {
+                for (var i = 0; i < _blocks.Count; i++)
+                {
+                    var block = _blocks[i];
+                    if (block == null || block.IsMovedBySplit || block.CubeGrid != Grid) continue;
+                    pcu += GetBlockPCU(block);
+                }
+            }
+            return pcu;
+        }
+
+        internal static int GetBlockPCU(IMySlimBlock block)
+        {
+            var definition = block?.BlockDefinition as MyCubeBlockDefinition;
+            if (definition == null || block.ComponentStack == null) return 0;
+            return block.ComponentStack.IsFunctional
+                ? definition.PCU
+                : MyCubeBlockDefinition.PCU_CONSTRUCTION_STAGE_COST;
         }
 
         private void BlockAddedEvent(IMySlimBlock block)

@@ -31,7 +31,7 @@ namespace ShipCoreFramework
                 if (!Session.IsGameThread)
                     return Interlocked.CompareExchange(ref _cachedGroupPCU, 0, 0);
 
-                RefreshGridStateCacheIfNeeded(true);
+                RefreshPcuCacheIfDirty();
                 return Interlocked.CompareExchange(ref _cachedGroupPCU, 0, 0);
             }
         }
@@ -75,6 +75,7 @@ namespace ShipCoreFramework
         private IMyCubeBlock _cachedNoCoreDirectionLockReferenceBlock;
         private bool _cachedIsIgnoredByAiOrFactionTag;
         private bool _gridStateCacheDirty = true;
+        private bool _pcuCacheDirty = true;
         private bool _massCacheDirty = true;
         private bool _directionReferenceCacheDirty = true;
         private bool _modifierStateCacheDirty = true;
@@ -83,14 +84,32 @@ namespace ShipCoreFramework
         private int _nextMassCacheRefreshTick;
         private int _nextIgnoredStateCacheRefreshTick;
 
-        internal void InvalidateGameThreadStateCache(bool directionReferenceMayChange)
+        internal void InvalidateGameThreadStateCache(bool directionReferenceMayChange, bool pcuMayChange = true)
         {
             _gridStateCacheDirty = true;
+            if (pcuMayChange) _pcuCacheDirty = true;
             _massCacheDirty = true;
             _ignoredStateCacheDirty = true;
 
             if (directionReferenceMayChange)
                 _directionReferenceCacheDirty = true;
+        }
+
+        private void AddGroupPCU(int delta)
+        {
+            int current;
+            int updated;
+            do
+            {
+                current = Interlocked.CompareExchange(ref _cachedGroupPCU, 0, 0);
+                updated = Math.Max(0, current + delta);
+            }
+            while (Interlocked.CompareExchange(ref _cachedGroupPCU, updated, current) != current);
+        }
+
+        internal void InvalidatePcuCache()
+        {
+            _pcuCacheDirty = true;
         }
 
         internal IMyCubeBlock GetDirectionLockReferenceBlock()

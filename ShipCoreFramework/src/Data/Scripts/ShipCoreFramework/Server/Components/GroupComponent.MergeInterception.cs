@@ -144,10 +144,10 @@ namespace ShipCoreFramework
                 var gridBlocks = new List<IMySlimBlock>();
                 ((IMyCubeGrid)grid).GetBlocks(gridBlocks);
                 blocks.AddRange(gridBlocks);
-                totalPcu += grid.BlocksPCU;
 
                 foreach (var block in gridBlocks)
                 {
+                    totalPcu += GridComponent.GetBlockPCU(block);
                     if (!Utils.IsCoreBlock(block)) continue;
                     coreBlocks.Add((IMyFunctionalBlock)block.FatBlock);
                     coreSubtypeIds.Add(Utils.GetBlockSubtypeId(block));

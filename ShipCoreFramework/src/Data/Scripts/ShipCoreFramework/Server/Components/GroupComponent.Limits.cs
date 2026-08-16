@@ -329,7 +329,8 @@ namespace ShipCoreFramework
         internal void OnBlockAddedToGroup(IMySlimBlock block)
         {
             Session.MarkRuntimeStateDirty(this);
-            InvalidateGameThreadStateCache(true);
+            AddGroupPCU(GridComponent.GetBlockPCU(block));
+            InvalidateGameThreadStateCache(true, false);
             IncrementLimitGeneration();
             AddGroupBlocksCount(1);
             InvalidateSpeedStateCache();
@@ -348,7 +349,8 @@ namespace ShipCoreFramework
         internal void OnBlockRemovedFromGroup(IMySlimBlock block)
         {
             Session.MarkRuntimeStateDirty(this);
-            InvalidateGameThreadStateCache(true);
+            AddGroupPCU(-GridComponent.GetBlockPCU(block));
+            InvalidateGameThreadStateCache(true, false);
             IncrementLimitGeneration();
             AddGroupBlocksCount(-1);
 

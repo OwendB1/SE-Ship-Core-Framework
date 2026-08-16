@@ -47,7 +47,8 @@ namespace ShipCoreFramework
             var functionalBlock = block.FatBlock as IMyFunctionalBlock;
             var isTrackedUpgradeModule = Utils.IsTrackedUpgradeModuleBlock(functionalBlock);
             var shipController = functionalBlock as IMyShipController;
-            groupComponent.InvalidateGameThreadStateCache(shipController != null && groupComponent.MainCoreComponent == null);
+            groupComponent.InvalidateGameThreadStateCache(
+                shipController != null && groupComponent.MainCoreComponent == null, false);
             if (Utils.IsCoreBlock(functionalBlock))
             {
                 CoreComponent existingCore;
@@ -80,6 +81,7 @@ namespace ShipCoreFramework
                     }
 
                     AddTrackedBlock(block);
+                    AttachPcuStateChanged(block);
 
                     groupComponent.OnBlockAddedToGroup(block);
                 }
@@ -104,7 +106,7 @@ namespace ShipCoreFramework
                         return false;
                     }
 
-                    if (groupComponent.GroupPCU > maxPCU && maxPCU > 0)
+                    if (groupComponent.GroupPCU + GetBlockPCU(block) > maxPCU && maxPCU > 0)
                     {
                         Utils.ShowNotification(localizedBlockName + " violates MaxPCU!", firstBigOwner);
                         block.RemoveAndRefund();
@@ -122,6 +124,7 @@ namespace ShipCoreFramework
                 if (!bypassLimits && !TryApplyLimitsOnAdd(block, limitBasedPunish)) return false;
 
                 AddTrackedBlock(block);
+                AttachPcuStateChanged(block);
 
                 if (shipController != null) TrackShipController(shipController);
                 groupComponent.OnBlockAddedToGroup(block);
@@ -213,7 +216,11 @@ namespace ShipCoreFramework
             }
 
             if (shipController != null) UntrackShipController(shipController);
-            if (wasTracked) groupComponent.OnBlockRemovedFromGroup(block);
+            if (wasTracked)
+            {
+                DetachPcuStateChanged(block);
+                groupComponent.OnBlockRemovedFromGroup(block);
+            }
 
             if (functionalBlock != null && value == null) functionalBlock.EnabledChanged -= FuncBlockOnEnabledChanged;
             if (shipController != null) shipController.PropertiesChanged -= ShipControllerOnPropertiesChanged;
@@ -226,6 +233,24 @@ namespace ShipCoreFramework
 
             if (value != null || removedUpgradeModule || removedNoCoreDirectionReferenceCandidate)
                 groupComponent.OnUpgradeModulesChanged();
+        }
+
+        private void AttachPcuStateChanged(IMySlimBlock block)
+        {
+            if (block?.ComponentStack != null)
+                block.ComponentStack.IsFunctionalChanged += BlockFunctionalStateChanged;
+        }
+
+        private void DetachPcuStateChanged(IMySlimBlock block)
+        {
+            if (block?.ComponentStack != null)
+                block.ComponentStack.IsFunctionalChanged -= BlockFunctionalStateChanged;
+        }
+
+        private void BlockFunctionalStateChanged()
+        {
+            var groupComponent = GroupComponent;
+            if (groupComponent != null) groupComponent.InvalidatePcuCache();
         }
 
         private void FuncBlockOnEnabledChanged(IMyTerminalBlock obj)

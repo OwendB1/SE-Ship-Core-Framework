@@ -110,16 +110,26 @@ namespace ShipCoreFramework
             RefreshMassCache();
         }
 
+        private void RefreshPcuCacheIfDirty()
+        {
+            if (!Session.IsGameThread || _closing || Session.IsShuttingDown) return;
+            if (!_pcuCacheDirty) return;
+
+            RefreshPcuCache();
+        }
+
         internal bool RefreshScheduledMassCache()
         {
             if (!Session.IsServer) return false;
             if (!Session.IsGameThread || _closing || Session.IsShuttingDown) return false;
 
-            var shouldRefresh = _massCacheDirty ||
-                                IsRefreshDue(Session.CurrentTick, _nextMassCacheRefreshTick);
-            if (!shouldRefresh) return false;
+            var periodicRefresh = IsRefreshDue(Session.CurrentTick, _nextMassCacheRefreshTick);
+            var refreshPcu = _pcuCacheDirty || periodicRefresh;
+            var refreshMass = _massCacheDirty || periodicRefresh;
+            if (!refreshPcu && !refreshMass) return false;
 
-            RefreshMassCache();
+            if (refreshPcu) RefreshPcuCache();
+            if (refreshMass) RefreshMassCache();
             return true;
         }
 
@@ -245,7 +255,6 @@ namespace ShipCoreFramework
         {
             var capacity = Math.Max(_cachedGridStates?.Length ?? 0,
                 DefaultGridStateCacheCapacity);
-            var groupPcu = 0;
             var representativeGridId = 0L;
             var representativeBlocks = -1;
             var movableGrids = new List<MyCubeGrid>(capacity);
@@ -261,7 +270,6 @@ namespace ShipCoreFramework
                 var grid = kvp.Key;
                 if (grid == null || grid.MarkedForClose || grid.Closed) continue;
 
-                groupPcu += grid.BlocksPCU;
                 mechanicalGridIds.Add(grid.EntityId);
                 IMyCubeGrid apiGrid = grid;
                 ModEntity entity = grid;
@@ -285,13 +293,29 @@ namespace ShipCoreFramework
                 }
             }
 
-            Interlocked.Exchange(ref _cachedGroupPCU, groupPcu);
             Interlocked.Exchange(ref _cachedRepresentativeGridId, representativeGridId);
             _cachedMovableGrids = movableGrids.ToArray();
             _cachedMechanicalGridIds = mechanicalGridIds.ToArray();
             _cachedGridStates = gridStates.ToArray();
             _gridStateCacheDirty = false;
             _nextGridStateCacheRefreshTick = Session.CurrentTick + GridStateCacheRefreshIntervalTicks;
+        }
+
+        // ponytail: periodic O(blocks) repair shares the mass batch; add per-block contribution
+        // tracking only if profiling shows this scan is still material.
+        private void RefreshPcuCache()
+        {
+            var groupPcu = 0;
+            foreach (var kvp in GridDictionary)
+            {
+                var grid = kvp.Key;
+                var gridComponent = kvp.Value;
+                if (grid == null || grid.MarkedForClose || grid.Closed || gridComponent == null) continue;
+                groupPcu += gridComponent.GetTrackedPCU();
+            }
+
+            Interlocked.Exchange(ref _cachedGroupPCU, groupPcu);
+            _pcuCacheDirty = false;
         }
 
         private void RefreshMassCache()
