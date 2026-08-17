@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading;
 using NexusModAPI;
 using Sandbox.Game;
 using Sandbox.ModAPI;
@@ -21,6 +22,7 @@ namespace ShipCoreFramework
             HasStarted = false;
             _startedNexus = false;
             _massCacheRefreshCursor = 0;
+            Interlocked.Exchange(ref _serverSimulationBatchRunning, 0);
             _myNexusApi = new NexusAPI(OnNexusEnabled);
             ApplyConfigToDefinitions();
 

@@ -50,7 +50,7 @@ namespace ShipCoreFramework
             Utils.Log($"UpgradeModules.Count = {UpgradeModules.Count}", 1, "Ship Core Config");
 
             NormalizeNoCoreConfigs();
-            ResolveBlockGroups(DefaultNoCoreConfig.ShipCore);
+            ResolveBlockGroups(_defaultNoCore);
             ResolveBlockGroupsForCores(NoCoreConfigs);
             ResolveBlockGroupsForCores(ShipCores);
 
@@ -86,7 +86,7 @@ namespace ShipCoreFramework
             }
 
             if (SelectedNoCore == null)
-                SelectedNoCore = DefaultNoCoreConfig.ShipCore;
+                SelectedNoCore = _defaultNoCore;
 
             SelectedNoCoreUniqueName = SelectedNoCore?.UniqueName ?? string.Empty;
             NormalizeAndResolveSelectedNoCore();
@@ -94,7 +94,7 @@ namespace ShipCoreFramework
 
         private void NormalizeNoCoreConfigs()
         {
-            NormalizeShipCoreBlockLimits(DefaultNoCoreConfig.ShipCore, "BuiltIn", "DefaultNoCoreConfig");
+            NormalizeShipCoreBlockLimits(_defaultNoCore, "BuiltIn", "DefaultNoCoreConfig");
 
             foreach (var core in NoCoreConfigs)
             {
@@ -420,22 +420,20 @@ namespace ShipCoreFramework
 
                 if (limit.ExcludedBlockGroupsShortHand == null)
                     limit.ExcludedBlockGroupsShortHand = Array.Empty<string>();
-                if (limit.BlockGroups == null)
-                    limit.BlockGroups = new List<BlockGroup>();
-                if (limit.ExcludedBlockGroups == null)
-                    limit.ExcludedBlockGroups = new List<BlockGroup>();
 
-                ResolveBlockGroupReferences(core, limit, limit.BlockGroupsShortHand, limit.BlockGroups,
+                var resolvedBlockGroups = ResolveBlockGroupReferences(core, limit, limit.BlockGroupsShortHand,
                     "BlockGroups");
-                ResolveBlockGroupReferences(core, limit, limit.ExcludedBlockGroupsShortHand,
-                    limit.ExcludedBlockGroups, "ExcludedBlockGroups");
+                var resolvedExcludedBlockGroups = ResolveBlockGroupReferences(core, limit,
+                    limit.ExcludedBlockGroupsShortHand, "ExcludedBlockGroups");
+                limit.BlockGroups = resolvedBlockGroups;
+                limit.ExcludedBlockGroups = resolvedExcludedBlockGroups;
             }
         }
 
-        private void ResolveBlockGroupReferences(ShipCore core, BlockLimit limit, IEnumerable<string> names,
-            List<BlockGroup> resolvedGroups, string elementName)
+        private List<BlockGroup> ResolveBlockGroupReferences(ShipCore core, BlockLimit limit,
+            IEnumerable<string> names, string elementName)
         {
-            resolvedGroups.Clear();
+            var resolvedGroups = new List<BlockGroup>();
             foreach (string shorthand in names)
             {
                 string groupName = shorthand == null ? string.Empty : shorthand.Trim();
@@ -453,6 +451,8 @@ namespace ShipCoreFramework
                 if (!found && !string.IsNullOrWhiteSpace(groupName))
                     Utils.Log($"Config warning: ShipCore '{core.UniqueName}' references unknown BlockGroup '{groupName}' in <{elementName}> for limit '{limit.Name}'.", 2, "Config Validation");
             }
+
+            return resolvedGroups;
         }
     }
 }

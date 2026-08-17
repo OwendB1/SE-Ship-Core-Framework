@@ -11,9 +11,9 @@ namespace ShipCoreFramework
     {
         private static string ReloadConfig()
         {
-            Session.Config = null;
-            Session.Config = new ModConfig();
-            Session.Config.LoadConfig();
+            var loadedConfig = new ModConfig();
+            loadedConfig.LoadConfig();
+            Session.Config = loadedConfig;
             if (Session.IsServer)
             {
                 Session.ApplyConfigToDefinitions();

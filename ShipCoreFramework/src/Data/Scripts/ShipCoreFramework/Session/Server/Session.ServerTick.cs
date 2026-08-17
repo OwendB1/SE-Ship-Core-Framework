@@ -1,3 +1,4 @@
+using System.Threading;
 using Sandbox.ModAPI;
 
 namespace ShipCoreFramework
@@ -38,23 +39,44 @@ namespace ShipCoreFramework
                 }
             }
 
-            MyAPIGateway.Parallel.StartBackground(() =>
-            {
-                SpeedEnforcement.EnforcementBatch speedBatch = SpeedEnforcement.CreateBatch();
-                MyAPIGateway.Parallel.ForEach(GroupDict, kvp =>
-                {
-                    kvp.Value.UpdateDeactivationState();
-                    kvp.Value.RunBoostTimerTick();
-                    kvp.Value.RunActiveDefenseTimerTick();
-                    kvp.Value.RunPowerOverclockTimerTick();
-                    kvp.Value.RunLimitedBlockPunishmentTick();
-                    kvp.Value.RunExternalLimitValidationTick();
-                    SpeedEnforcement.EnforceSpeedLimit(kvp.Value, speedBatch);
-                    if (runNfz) NoFlyZoneEnforcement.EnforceNoFlyZones(kvp.Value, doPunish);
-                });
+            if (Interlocked.CompareExchange(ref _serverSimulationBatchRunning, 1, 0) != 0) return;
 
-                SpeedEnforcement.DispatchBatch(speedBatch);
-            });
+            try
+            {
+                MyAPIGateway.Parallel.StartBackground(() =>
+                {
+                    try
+                    {
+                        SpeedEnforcement.EnforcementBatch speedBatch = SpeedEnforcement.CreateBatch();
+                        MyAPIGateway.Parallel.ForEach(GroupDict, kvp =>
+                        {
+                            kvp.Value.UpdateDeactivationState();
+                            kvp.Value.RunBoostTimerTick();
+                            kvp.Value.RunActiveDefenseTimerTick();
+                            kvp.Value.RunPowerOverclockTimerTick();
+                            kvp.Value.RunLimitedBlockPunishmentTick();
+                            kvp.Value.RunExternalLimitValidationTick();
+                            SpeedEnforcement.EnforceSpeedLimit(kvp.Value, speedBatch);
+                            if (runNfz) NoFlyZoneEnforcement.EnforceNoFlyZones(kvp.Value, doPunish);
+                        });
+
+                        SpeedEnforcement.DispatchBatch(speedBatch);
+                    }
+                    catch (System.Exception exception)
+                    {
+                        Utils.Log("RunServerSimulationTick: background batch failed: " + exception, 2);
+                    }
+                    finally
+                    {
+                        Interlocked.Exchange(ref _serverSimulationBatchRunning, 0);
+                    }
+                });
+            }
+            catch (System.Exception exception)
+            {
+                Interlocked.Exchange(ref _serverSimulationBatchRunning, 0);
+                Utils.Log("RunServerSimulationTick: failed to schedule background batch: " + exception, 2);
+            }
         }
     }
 }

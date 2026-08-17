@@ -17,7 +17,7 @@ namespace ShipCoreFramework
         internal static bool IsShuttingDown;
         internal static volatile bool IsInitialGroupScan;
         internal static int GameThreadId;
-        internal static ModConfig Config = new ModConfig();
+        internal static volatile ModConfig Config = new ModConfig();
         internal static Networking Networking = new Networking(32124);
         internal static float AppliedSpeedDifferential;
         internal static readonly ConcurrentDictionary<IMyGridGroupData, GroupComponent> GroupDict = new ConcurrentDictionary<IMyGridGroupData, GroupComponent>();

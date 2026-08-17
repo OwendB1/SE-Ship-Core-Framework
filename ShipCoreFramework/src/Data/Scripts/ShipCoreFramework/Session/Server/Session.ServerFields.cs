@@ -12,6 +12,7 @@ namespace ShipCoreFramework
         private const int MaxMassCacheGroupsCheckedPerTick = 32;
         private bool _startedNexus;
         private int _massCacheRefreshCursor;
+        private int _serverSimulationBatchRunning;
 
         internal static bool HasStarted;
         internal static readonly Guid CoreStateStorageGUID =

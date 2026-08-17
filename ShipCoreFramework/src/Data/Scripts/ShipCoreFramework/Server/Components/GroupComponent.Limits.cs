@@ -519,11 +519,17 @@ namespace ShipCoreFramework
             bool connectorOnly = false)
         {
             if (!Session.IsServer) return;
+            if (!Session.IsGameThread)
+            {
+                MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+                    EnforceGroupPunishment(forceShutOffPunishment, connectorOnly));
+                return;
+            }
             if (IsLimitPunishmentDeferred()) return;
             if (IsCoreRecoveryGraceActive()) return;
             if (Deactivated || IsIgnoredGroup()) return;
 
-            if (Session.IsGameThread && !connectorOnly) RefreshPunishmentFlags();
+            if (!connectorOnly) RefreshPunishmentFlags();
 
             var directionReferenceBlock = connectorOnly ? null : GetDirectionLockReferenceBlock();
             var pendingPunishments = new List<PendingBlockPunishment>();
@@ -697,7 +703,7 @@ namespace ShipCoreFramework
                 playerId);
         }
 
-        // Selection work can stay off-thread; block state mutation must run on game thread.
+        // EnforceGroupPunishment keeps selection on the game thread because it reads live block state.
         private void ExecutePendingPunishments(List<PendingBlockPunishment> punishments)
         {
             if (punishments == null || punishments.Count == 0) return;

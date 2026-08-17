@@ -5,46 +5,49 @@ namespace ShipCoreFramework
     internal static class DefaultNoCoreConfig
     {
         // If a property is not defined here, the default value is used.
-        internal static readonly ShipCore ShipCore = new ShipCore
+        internal static ShipCore Create()
         {
-            UniqueName = "DEFAULT-NO-CORE-ALL-GRID-TYPES",
-            SubtypeId = "NO-CORE",
-            MobilityType = MobilityType.Both,
-            MaxBlocks = 30000,
-            Modifiers = new GridModifiers(), // Use default modifiers
-            SpeedModifiers = new SpeedModifiers(),
-            PassiveDefenseModifiers = new GridDefenseModifiers(),
-            ActiveDefenseModifiers = new GridDefenseModifiers(),
-            BlockLimits = new []
+            return new ShipCore
             {
-                new BlockLimit
+                UniqueName = "DEFAULT-NO-CORE-ALL-GRID-TYPES",
+                SubtypeId = "NO-CORE",
+                MobilityType = MobilityType.Both,
+                MaxBlocks = 30000,
+                Modifiers = new GridModifiers(), // Use default modifiers
+                SpeedModifiers = new SpeedModifiers(),
+                PassiveDefenseModifiers = new GridDefenseModifiers(),
+                ActiveDefenseModifiers = new GridDefenseModifiers(),
+                BlockLimits = new []
                 {
-                    Name = "Ship Tools",
-                    BlockGroupsShortHand = new []{"Drills","Welders","Grinders"},
-                    MaxCount = 10f,
-                    PunishByNoFlyZone = true,
-                    PunishmentType = PunishmentType.Delete,
-                    AllowedDirections =new List<DirectionType> {DirectionType.Forward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right},
-                },
-                new BlockLimit
-                {
-                    Name = "Weapons",
-                    BlockGroupsShortHand = new []{"Weaponry"},
-                    MaxCount = 1f,
-                    PunishByNoFlyZone = true,
-                    PunishmentType = PunishmentType.Delete,
-                    AllowedDirections =new List<DirectionType> {DirectionType.Forward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right},
-                },
-                new BlockLimit
-                {
-                    Name = "Production",
-                    BlockGroupsShortHand = new []{"Production"},
-                    MaxCount = 10f,
-                    PunishByNoFlyZone = true,
-                    PunishmentType = PunishmentType.Delete,
-                    AllowedDirections =new List<DirectionType> {DirectionType.Forward,DirectionType.Backward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right},
-                },
-            }
-        };
+                    new BlockLimit
+                    {
+                        Name = "Ship Tools",
+                        BlockGroupsShortHand = new []{"Drills","Welders","Grinders"},
+                        MaxCount = 10f,
+                        PunishByNoFlyZone = true,
+                        PunishmentType = PunishmentType.Delete,
+                        AllowedDirections =new List<DirectionType> {DirectionType.Forward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right},
+                    },
+                    new BlockLimit
+                    {
+                        Name = "Weapons",
+                        BlockGroupsShortHand = new []{"Weaponry"},
+                        MaxCount = 1f,
+                        PunishByNoFlyZone = true,
+                        PunishmentType = PunishmentType.Delete,
+                        AllowedDirections =new List<DirectionType> {DirectionType.Forward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right},
+                    },
+                    new BlockLimit
+                    {
+                        Name = "Production",
+                        BlockGroupsShortHand = new []{"Production"},
+                        MaxCount = 10f,
+                        PunishByNoFlyZone = true,
+                        PunishmentType = PunishmentType.Delete,
+                        AllowedDirections =new List<DirectionType> {DirectionType.Forward,DirectionType.Backward,DirectionType.Up,DirectionType.Down,DirectionType.Left,DirectionType.Right},
+                    },
+                }
+            };
+        }
     }
 }

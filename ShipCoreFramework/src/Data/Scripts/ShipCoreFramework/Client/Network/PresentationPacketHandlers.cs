@@ -102,8 +102,9 @@ namespace ShipCoreFramework
 
                 if (Session.Config == null)
                 {
-                    Session.Config = new ModConfig();
-                    Session.Config.LoadConfig(false);
+                    var loadedConfig = new ModConfig();
+                    loadedConfig.LoadConfig(false);
+                    Session.Config = loadedConfig;
                 }
 
                 ModConfig import = MyAPIGateway.Utilities.SerializeFromXML<ModConfig>(ConfigXml);

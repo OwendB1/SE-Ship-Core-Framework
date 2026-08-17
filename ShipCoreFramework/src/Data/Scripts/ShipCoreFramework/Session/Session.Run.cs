@@ -61,7 +61,9 @@ namespace ShipCoreFramework
             if (Networking == null)
                 Networking = new Networking(32124);
             Networking.Register();
-            Config.LoadConfig(IsServer);
+            var loadedConfig = new ModConfig();
+            loadedConfig.LoadConfig(IsServer);
+            Config = loadedConfig;
             if (IsServer)
                 ModAPI.MarkConfigReady();
             if (IsClient)
