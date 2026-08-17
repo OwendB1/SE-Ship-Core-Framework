@@ -16,16 +16,24 @@ namespace ShipCoreFramework
             MyAPIGateway.GridGroups.OnGridGroupCreated += GridGroupsOnOnGridGroupCreated;
             MyAPIGateway.GridGroups.OnGridGroupDestroyed += GridGroupsOnOnGridGroupDestroyed;
             
-            var initialGroups = new List<IMyGridGroupData>();
-            MyAPIGateway.GridGroups.GetGridGroups(GridLinkTypeEnum.Mechanical, initialGroups);
+            var initialMechanicalGroups = new List<IMyGridGroupData>();
+            MyAPIGateway.GridGroups.GetGridGroups(GridLinkTypeEnum.Mechanical, initialMechanicalGroups);
+            var initialPhysicalGroups = new List<IMyGridGroupData>();
             if (IsServer)
-                AppendInitialPhysicalGroups(initialGroups);
-            Utils.Log("BeforeStart: found " + initialGroups.Count + " grid groups for initial scan.", 1);
+                AppendInitialPhysicalGroups(initialPhysicalGroups);
+            Utils.Log("BeforeStart: found " + (initialMechanicalGroups.Count + initialPhysicalGroups.Count) +
+                      " grid groups for initial scan.", 1);
 
             IsInitialGroupScan = true;
             try
             {
-                MyAPIGateway.Parallel.ForEach(initialGroups, group =>
+                MyAPIGateway.Parallel.ForEach(initialMechanicalGroups, group =>
+                {
+                    GridGroupsOnOnGridGroupCreated(group);
+                });
+
+                // Physical clusters resolve their members through GroupDict, so this pass must stay second.
+                MyAPIGateway.Parallel.ForEach(initialPhysicalGroups, group =>
                 {
                     GridGroupsOnOnGridGroupCreated(group);
                 });

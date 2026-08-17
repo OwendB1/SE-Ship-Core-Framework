@@ -7,7 +7,7 @@ const root = new URL(
 );
 const read = path => readFile(new URL(path, root), "utf8");
 
-const [enforcement, lifecycle, abilities, speedState, state, config, worldSettings, definitions, commands,
+const [enforcement, lifecycle, abilities, speedState, state, sessionRun, config, worldSettings, definitions, commands,
   apiData, api, snapshot, contracts, replica, clientTick, modifiers, presentation, configurator, readme] =
   await Promise.all([
     read("Server/Enforcement/SpeedEnforcement.cs"),
@@ -15,6 +15,7 @@ const [enforcement, lifecycle, abilities, speedState, state, config, worldSettin
     read("Server/Components/GroupComponent.Abilities.cs"),
     read("Server/Components/GroupComponent.SpeedState.cs"),
     read("Server/Components/GroupComponent.State.cs"),
+    read("Session/Session.Run.cs"),
     read("Config/ModConfig.XmlModels.cs"),
     read("Config/ModConfig.WorldSettings.cs"),
     read("Session/Session.Definitions.cs"),
@@ -30,6 +31,16 @@ const [enforcement, lifecycle, abilities, speedState, state, config, worldSettin
     readFile(new URL("../docs/configurator/app.js", import.meta.url), "utf8"),
     readFile(new URL("../README.md", import.meta.url), "utf8"),
   ]);
+
+const mechanicalGroupScan = sessionRun.indexOf("Parallel.ForEach(initialMechanicalGroups");
+const physicalGroupScan = sessionRun.indexOf("Parallel.ForEach(initialPhysicalGroups");
+assert.ok(mechanicalGroupScan >= 0, "startup must initialize mechanical groups");
+assert.ok(
+  physicalGroupScan > mechanicalGroupScan,
+  "startup must initialize physical speed clusters after every mechanical group is registered",
+);
+assert.match(sessionRun, /AppendInitialPhysicalGroups\(initialPhysicalGroups\)/);
+assert.doesNotMatch(sessionRun, /AppendInitialPhysicalGroups\(initialMechanicalGroups\)/);
 
 assert.match(state, /SpeedEnforcementDeferred = true/);
 assert.match(lifecycle, /MainCoreComponent = coreComponent;[\s\S]*SpeedEnforcementDeferred = false/);
