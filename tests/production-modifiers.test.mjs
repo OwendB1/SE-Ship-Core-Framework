@@ -35,6 +35,14 @@ assert.match(
 );
 assert.match(modifiers, /if \(modifiers\.RefineSpeed != -1f\)/);
 assert.match(modifiers, /if \(modifiers\.RefineEfficiency != -1f\)/);
+assert.match(modifiers, /if \(modifiers\.ThrusterForce != -1\)/);
+assert.match(modifiers, /if \(modifiers\.ThrusterEfficiency != -1\)/);
+assert.match(modifiers, /if \(modifiers\.GyroForce != -1\)/);
+assert.match(modifiers, /if \(modifiers\.GyroEfficiency != -1\)/);
+assert.match(modifiers, /reactor != null && modifiers\.PowerProducersOutput != -1/);
+assert.match(modifiers, /drill != null && modifiers\.DrillHarvestMultiplier != -1/);
+assert.match(modifiers, /assembler != null && modifiers\.AssemblerSpeed != -1f/);
+assert.doesNotMatch(modifiers, /if \(gyro\.(?:GyroStrengthMultiplier|PowerConsumptionMultiplier) != -1\)/);
 assert.match(modifiers, /CommitUpgradeValues\(\)/);
 assert.match(modifiers, /OnUpgradeValuesChanged \+= state\.UpgradeValuesChanged/);
 assert.match(config, /new ModifierNameValue\("Refinery yield", RefineEfficiency\)/);

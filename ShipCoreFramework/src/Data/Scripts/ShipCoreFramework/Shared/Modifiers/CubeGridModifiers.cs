@@ -70,8 +70,8 @@ namespace ShipCoreFramework
             IMyGyro gyro = block as IMyGyro;
             if (gyro != null)
             {
-                if (gyro.GyroStrengthMultiplier != -1) gyro.GyroStrengthMultiplier = modifiers.GyroForce;
-                if (gyro.PowerConsumptionMultiplier != -1)
+                if (modifiers.GyroForce != -1) gyro.GyroStrengthMultiplier = modifiers.GyroForce;
+                if (modifiers.GyroEfficiency != -1)
                     gyro.PowerConsumptionMultiplier = 1f / modifiers.GyroEfficiency;
             }
 
@@ -84,13 +84,13 @@ namespace ShipCoreFramework
             }
 
             IMyReactor reactor = block as IMyReactor;
-            if (reactor != null)
+            if (reactor != null && modifiers.PowerProducersOutput != -1)
             {
                 reactor.PowerOutputMultiplier = modifiers.PowerProducersOutput;
             }
 
             IMyShipDrill drill = block as IMyShipDrill;
-            if (drill != null)
+            if (drill != null && modifiers.DrillHarvestMultiplier != -1)
             {
                 drill.DrillHarvestMultiplier = modifiers.DrillHarvestMultiplier;
             }

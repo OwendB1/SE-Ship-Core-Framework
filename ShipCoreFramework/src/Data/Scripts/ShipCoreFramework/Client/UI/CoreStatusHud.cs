@@ -517,7 +517,7 @@ namespace ShipCoreFramework
             for (int index = 0; index < modifiers.Count; index++)
             {
                 ModifierNameValue modifier = modifiers[index];
-                if (Math.Abs(modifier.Value - 1f) < 0.001f) continue;
+                if (modifier.Value == -1f || Math.Abs(modifier.Value - 1f) < 0.001f) continue;
                 if (!header)
                 {
                     _text.AppendLine().Append(Gray).AppendLine("--- Framework Modifiers ---").Append(White);

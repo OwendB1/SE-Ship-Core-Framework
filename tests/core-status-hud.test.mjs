@@ -77,6 +77,7 @@ assert.match(hud, /AppendPunishmentWarning/);
 assert.match(hud, /if \(infoLevel >= 2\) AppendCoreLimits/);
 assert.match(hud, /if \(infoLevel >= 3\).*AppendEnforcement/s);
 assert.match(hud, /AppendModifiers\(group\)/);
+assert.match(hud, /modifier\.Value == -1f \|\| Math\.Abs\(modifier\.Value - 1f\)/);
 assert.match(commands, /\/corehud <1-3\|standard\|detailed\|full>/);
 assert.match(commands, /\/corehud level <1-3\|standard\|detailed\|full>/);
 assert.match(commands, /\/corehud position <top-left\|top-right\|center-left\|center-right\|bottom-left\|bottom-right>/);
