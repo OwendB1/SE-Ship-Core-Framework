@@ -468,6 +468,7 @@ namespace ShipCoreFramework
         [ProtoMember(6)] public int LogLevel;
         [ProtoMember(7)] public int ClientOutputLogLevel;
         [ProtoMember(8)] public float MaxPossibleSpeedMetersPerSecond;
+        // API v4 wire compatibility. Framework mass is always full-definition dry mass.
         [ProtoMember(9)] public MassTypeModeData MassTypeMode;
         [ProtoMember(10)] public FrictionSpeedValueModeData FrictionSpeedValueMode;
         [ProtoMember(11)] public NoFlyZoneData[] NoFlyZones = Array.Empty<NoFlyZoneData>();

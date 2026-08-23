@@ -8,10 +8,7 @@ namespace ShipCoreFramework
     public partial class Session
     {
         private static NexusAPI _myNexusApi;
-        private const int MaxMassCacheRefreshesPerTick = 4;
-        private const int MaxMassCacheGroupsCheckedPerTick = 32;
         private bool _startedNexus;
-        private int _massCacheRefreshCursor;
         private int _serverSimulationBatchRunning;
 
         internal static bool HasStarted;

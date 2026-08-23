@@ -9,16 +9,41 @@ namespace ShipCoreFramework
 {
     internal partial class GridComponent
     {
+        internal struct TrackedContribution
+        {
+            internal readonly int Blocks;
+            internal readonly int Pcu;
+            internal readonly float DryMass;
+
+            internal TrackedContribution(int blocks, int pcu, float dryMass)
+            {
+                Blocks = blocks;
+                Pcu = pcu;
+                DryMass = dryMass;
+            }
+        }
+
         internal MyCubeGrid Grid;
         private IMyGridGroupData _groupData;
         private readonly object _blocksLock = new object();
-        private readonly List<IMySlimBlock> _blocks = new List<IMySlimBlock>();
+        private readonly Dictionary<IMySlimBlock, TrackedContribution> _blocks =
+            new Dictionary<IMySlimBlock, TrackedContribution>();
+        private int _trackedPcu;
+        private float _trackedDryMass;
         internal int BlockCount
         {
             get
             {
                 lock (_blocksLock)
                     return _blocks.Count;
+            }
+        }
+        internal TrackedContribution TrackedTotals
+        {
+            get
+            {
+                lock (_blocksLock)
+                    return new TrackedContribution(_blocks.Count, _trackedPcu, _trackedDryMass);
             }
         }
 

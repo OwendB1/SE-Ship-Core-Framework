@@ -63,7 +63,6 @@ namespace ShipCoreFramework
 
             Interlocked.Exchange(ref _groupBlocksCount, Math.Max(0, state.BlockCount));
             Interlocked.Exchange(ref _cachedGroupPCU, Math.Max(0, state.Pcu));
-            _cachedConfiguredMass = state.Mass;
             _cachedDryMass = state.DryMass;
             _cachedEffectiveMaxBlocks = state.MaxBlocks;
             _cachedEffectiveMaxPCU = state.MaxPcu;
@@ -79,7 +78,6 @@ namespace ShipCoreFramework
                 ? directionEntity as IMyCubeBlock
                 : null;
             _gridStateCacheDirty = false;
-            _massCacheDirty = false;
             _ignoredStateCacheDirty = false;
             _directionReferenceCacheDirty = false;
 
@@ -235,7 +233,6 @@ namespace ShipCoreFramework
             Interlocked.Exchange(ref _groupBlocksCount, 0);
             Interlocked.Exchange(ref _cachedGroupPCU, 0);
             Interlocked.Exchange(ref _cachedRepresentativeGridId, 0L);
-            _cachedConfiguredMass = 0f;
             _cachedDryMass = 0f;
             _cachedMechanicalGridIds = Array.Empty<long>();
             _cachedIsIgnoredGroup = false;

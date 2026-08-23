@@ -21,7 +21,6 @@ namespace ShipCoreFramework
         {
             HasStarted = false;
             _startedNexus = false;
-            _massCacheRefreshCursor = 0;
             Interlocked.Exchange(ref _serverSimulationBatchRunning, 0);
             _myNexusApi = new NexusAPI(OnNexusEnabled);
             ApplyConfigToDefinitions();

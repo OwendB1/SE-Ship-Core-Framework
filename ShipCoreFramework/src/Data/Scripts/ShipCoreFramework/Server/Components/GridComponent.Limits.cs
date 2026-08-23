@@ -103,7 +103,7 @@ namespace ShipCoreFramework
             List<IMySlimBlock> blocksCopy;
             lock (_blocksLock)
             {
-                blocksCopy = new List<IMySlimBlock>(_blocks);
+                blocksCopy = new List<IMySlimBlock>(_blocks.Keys);
             }
 
             foreach (var limit in blockLimits)

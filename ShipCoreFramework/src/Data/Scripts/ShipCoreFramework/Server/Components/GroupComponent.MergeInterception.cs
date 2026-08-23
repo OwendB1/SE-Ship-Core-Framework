@@ -147,7 +147,8 @@ namespace ShipCoreFramework
 
                 foreach (var block in gridBlocks)
                 {
-                    totalPcu += GridComponent.GetBlockPCU(block);
+                    var contribution = GridComponent.GetBlockContribution(block);
+                    totalPcu += contribution.Pcu;
                     if (!Utils.IsCoreBlock(block)) continue;
                     coreBlocks.Add((IMyFunctionalBlock)block.FatBlock);
                     coreSubtypeIds.Add(Utils.GetBlockSubtypeId(block));

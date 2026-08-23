@@ -4,6 +4,7 @@ using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using IMyTerminalBlock = Sandbox.ModAPI.IMyTerminalBlock;
 using IMyShipMergeBlock = SpaceEngineers.Game.ModAPI.IMyShipMergeBlock;
+using MySlimBlock = Sandbox.Game.Entities.Cube.MySlimBlock;
 
 namespace ShipCoreFramework
 {
@@ -47,8 +48,9 @@ namespace ShipCoreFramework
             var functionalBlock = block.FatBlock as IMyFunctionalBlock;
             var isTrackedUpgradeModule = Utils.IsTrackedUpgradeModuleBlock(functionalBlock);
             var shipController = functionalBlock as IMyShipController;
+            var contribution = GetBlockContribution(block);
             groupComponent.InvalidateGameThreadStateCache(
-                shipController != null && groupComponent.MainCoreComponent == null, false);
+                shipController != null && groupComponent.MainCoreComponent == null);
             if (Utils.IsCoreBlock(functionalBlock))
             {
                 CoreComponent existingCore;
@@ -80,10 +82,10 @@ namespace ShipCoreFramework
                         return false;
                     }
 
-                    AddTrackedBlock(block);
+                    if (!AddTrackedBlock(block, contribution)) return false;
                     AttachPcuStateChanged(block);
 
-                    groupComponent.OnBlockAddedToGroup(block);
+                    groupComponent.OnBlockAddedToGroup(block, contribution);
                 }
             }
             else
@@ -106,14 +108,14 @@ namespace ShipCoreFramework
                         return false;
                     }
 
-                    if (groupComponent.GroupPCU + GetBlockPCU(block) > maxPCU && maxPCU > 0)
+                    if (groupComponent.GroupPCU + contribution.Pcu > maxPCU && maxPCU > 0)
                     {
                         Utils.ShowNotification(localizedBlockName + " violates MaxPCU!", firstBigOwner);
                         block.RemoveAndRefund();
                         return false;
                     }
 
-                    if (groupComponent.GroupMass > maxMass && maxMass > 0f)
+                    if (groupComponent.GroupMass + contribution.DryMass > maxMass && maxMass > 0f)
                     {
                         Utils.ShowNotification(localizedBlockName + " violates MaxMass!", firstBigOwner);
                         block.RemoveAndRefund();
@@ -123,11 +125,11 @@ namespace ShipCoreFramework
 
                 if (!bypassLimits && !TryApplyLimitsOnAdd(block, limitBasedPunish)) return false;
 
-                AddTrackedBlock(block);
+                if (!AddTrackedBlock(block, contribution)) return false;
                 AttachPcuStateChanged(block);
 
                 if (shipController != null) TrackShipController(shipController);
-                groupComponent.OnBlockAddedToGroup(block);
+                groupComponent.OnBlockAddedToGroup(block, contribution);
 
                 if (functionalBlock != null) functionalBlock.EnabledChanged += FuncBlockOnEnabledChanged;
                 if (shipController != null) shipController.PropertiesChanged += ShipControllerOnPropertiesChanged;
@@ -209,17 +211,14 @@ namespace ShipCoreFramework
             // OnBlockAddedToGroup). A rejected block still fires BlockRemoved when it's whacked, so
             // gate the count decrement on prior tracking to keep GroupBlocksCount in sync - otherwise
             // rejecting a placement drops the block count by one below its real value.
-            bool wasTracked;
-            lock (_blocksLock)
-            {
-                wasTracked = _blocks.Remove(block);
-            }
+            TrackedContribution contribution;
+            var wasTracked = RemoveTrackedBlock(block, out contribution);
 
             if (shipController != null) UntrackShipController(shipController);
             if (wasTracked)
             {
                 DetachPcuStateChanged(block);
-                groupComponent.OnBlockRemovedFromGroup(block);
+                groupComponent.OnBlockRemovedFromGroup(block, contribution);
             }
 
             if (functionalBlock != null && value == null) functionalBlock.EnabledChanged -= FuncBlockOnEnabledChanged;
@@ -237,20 +236,25 @@ namespace ShipCoreFramework
 
         private void AttachPcuStateChanged(IMySlimBlock block)
         {
-            if (block?.ComponentStack != null)
-                block.ComponentStack.IsFunctionalChanged += BlockFunctionalStateChanged;
+            var slimBlock = block as MySlimBlock;
+            if (slimBlock != null)
+                slimBlock.SubscribeForIsFunctionalChanged(BlockFunctionalStateChanged);
         }
 
         private void DetachPcuStateChanged(IMySlimBlock block)
         {
-            if (block?.ComponentStack != null)
-                block.ComponentStack.IsFunctionalChanged -= BlockFunctionalStateChanged;
+            var slimBlock = block as MySlimBlock;
+            if (slimBlock != null)
+                slimBlock.UnsubscribeFromIsFunctionalChanged(BlockFunctionalStateChanged);
         }
 
-        private void BlockFunctionalStateChanged()
+        private void BlockFunctionalStateChanged(MySlimBlock block)
         {
+            int delta;
+            if (!UpdateTrackedBlockPcu(block, out delta)) return;
+
             var groupComponent = GroupComponent;
-            if (groupComponent != null) groupComponent.InvalidatePcuCache();
+            if (groupComponent != null) groupComponent.OnBlockPcuChanged(delta);
         }
 
         private void FuncBlockOnEnabledChanged(IMyTerminalBlock obj)

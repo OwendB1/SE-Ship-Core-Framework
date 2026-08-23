@@ -48,7 +48,6 @@ namespace ShipCoreFramework
         [XmlElement("CLIENT_OUTPUT_LOG_LEVEL")] public int ClientOutputLogLevel = 2;
         [XmlElement("MaxPossibleSpeedMetersPerSecond")] public float MaxPossibleSpeedMetersPerSecond = 300;
         [XmlElement("SpeedRampDownPercentage")] public float SpeedRampDownPercentage = 5f;
-        [XmlElement("MassTypeMode")] public MassTypeMode MassTypeMode = MassTypeMode.Dry;
         [XmlElement("FrictionSpeedValueMode")] public FrictionSpeedValueMode FrictionSpeedValueMode = FrictionSpeedValueMode.Modifier;
         [XmlElement("BlockDirectionalPlacementOnSubgrids")] public bool BlockDirectionalPlacementOnSubgrids = true;
         [XmlElement("AllowUnattachedUpgradeModules")] public bool AllowUnattachedUpgradeModules;
@@ -940,13 +939,6 @@ namespace ShipCoreFramework
         Any = 3
     }
 
-    [XmlRoot("MassTypeMode")]
-    public enum MassTypeMode
-    {
-        Dry = 0,
-        Wet = 1
-    }
-    
     [XmlRoot("FrictionSpeedValueMode")]
     public enum FrictionSpeedValueMode
     {

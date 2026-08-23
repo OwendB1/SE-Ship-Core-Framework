@@ -17,8 +17,10 @@ namespace ShipCoreFramework
             List<IMySlimBlock> blocksCopy;
             lock (_blocksLock)
             {
-                blocksCopy = new List<IMySlimBlock>(_blocks);
+                blocksCopy = new List<IMySlimBlock>(_blocks.Keys);
                 _blocks.Clear();
+                _trackedPcu = 0;
+                _trackedDryMass = 0f;
             }
 
             foreach (var block in blocksCopy)

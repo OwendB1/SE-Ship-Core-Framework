@@ -102,37 +102,6 @@ namespace ShipCoreFramework
             RefreshGridStateCache();
         }
 
-        private void RefreshMassCacheIfDirty()
-        {
-            if (!Session.IsGameThread || _closing || Session.IsShuttingDown) return;
-            if (!_massCacheDirty) return;
-
-            RefreshMassCache();
-        }
-
-        private void RefreshPcuCacheIfDirty()
-        {
-            if (!Session.IsGameThread || _closing || Session.IsShuttingDown) return;
-            if (!_pcuCacheDirty) return;
-
-            RefreshPcuCache();
-        }
-
-        internal bool RefreshScheduledMassCache()
-        {
-            if (!Session.IsServer) return false;
-            if (!Session.IsGameThread || _closing || Session.IsShuttingDown) return false;
-
-            var periodicRefresh = IsRefreshDue(Session.CurrentTick, _nextMassCacheRefreshTick);
-            var refreshPcu = _pcuCacheDirty;
-            var refreshMass = _massCacheDirty || periodicRefresh;
-            if (!refreshPcu && !refreshMass) return false;
-
-            if (refreshPcu) RefreshPcuCache();
-            if (refreshMass) RefreshMassCache();
-            return true;
-        }
-
         private bool RefreshNoCoreDirectionLockReferenceCacheIfNeeded()
         {
             if (!Session.IsGameThread || _closing || Session.IsShuttingDown) return false;
@@ -301,60 +270,5 @@ namespace ShipCoreFramework
             _nextGridStateCacheRefreshTick = Session.CurrentTick + GridStateCacheRefreshIntervalTicks;
         }
 
-        // PCU is maintained incrementally for block changes and invalidated by functional-state
-        // changes or grid topology changes. Do not couple this O(blocks) repair to mass polling.
-        private void RefreshPcuCache()
-        {
-            var groupPcu = 0;
-            foreach (var kvp in GridDictionary)
-            {
-                var grid = kvp.Key;
-                var gridComponent = kvp.Value;
-                if (grid == null || grid.MarkedForClose || grid.Closed || gridComponent == null) continue;
-                groupPcu += gridComponent.GetTrackedPCU();
-            }
-
-            Interlocked.Exchange(ref _cachedGroupPCU, groupPcu);
-            _pcuCacheDirty = false;
-        }
-
-        private void RefreshMassCache()
-        {
-            MyCubeGrid referenceGrid = null;
-            foreach (var kvp in GridDictionary)
-            {
-                var grid = kvp.Key;
-                if (grid == null || grid.MarkedForClose || grid.Closed || grid.Physics == null) continue;
-
-                referenceGrid = grid;
-                break;
-            }
-
-            if (referenceGrid == null)
-            {
-                _cachedDryMass = 0f;
-                _cachedConfiguredMass = 0f;
-                _massCacheDirty = false;
-                _nextMassCacheRefreshTick = Session.CurrentTick + MassCacheRefreshIntervalTicks;
-                return;
-            }
-
-            float dryMass;
-            float wetMass;
-            try
-            {
-                referenceGrid.GetCurrentMass(out dryMass, out wetMass, GridLinkTypeEnum.Mechanical);
-            }
-            catch (NullReferenceException)
-            {
-                dryMass = 0f;
-                wetMass = 0f;
-            }
-
-            _cachedDryMass = dryMass;
-            _cachedConfiguredMass = Session.Config.MassTypeMode == MassTypeMode.Dry ? dryMass : wetMass;
-            _massCacheDirty = false;
-            _nextMassCacheRefreshTick = Session.CurrentTick + MassCacheRefreshIntervalTicks;
-        }
     }
 }

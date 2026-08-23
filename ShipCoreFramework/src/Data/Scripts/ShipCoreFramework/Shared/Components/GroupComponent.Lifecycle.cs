@@ -119,8 +119,16 @@ namespace ShipCoreFramework
                 if (MainCoreComponent?.GridComponent.Grid.EntityId == g.EntityId)
                     removedMain = MainCoreComponent;
 
-                AddGroupBlocksCount(-comp.BlockCount);
-                if (Session.IsServer) IncrementLimitGeneration();
+                var totals = comp.TrackedTotals;
+                if (Session.IsServer)
+                {
+                    ApplyGroupContribution(totals, -1);
+                    IncrementLimitGeneration();
+                }
+                else
+                {
+                    AddGroupBlocksCount(-totals.Blocks);
+                }
                 comp.Clean();
                 GridComponent discarded;
                 GridDictionary.TryRemove(g, out discarded);
@@ -163,6 +171,8 @@ namespace ShipCoreFramework
             foreach (var kvp in GridDictionary) kvp.Value.Clean();
             ClearGridDictionary();
             System.Threading.Interlocked.Exchange(ref _groupBlocksCount, 0);
+            System.Threading.Interlocked.Exchange(ref _cachedGroupPCU, 0);
+            _cachedDryMass = 0f;
             PublishLimitsSnapshot(null);
             if (Session.IsServer) CleanAuthoritativeStateAfterGridCleanup();
         }

@@ -26,7 +26,8 @@ namespace ShipCoreFramework
                 }
             }
 
-            AddTrackedBlock(block);
+            var contribution = GetBlockContribution(block);
+            if (!AddTrackedBlock(block, contribution)) return false;
             var terminalBlock = functionalBlock as IMyTerminalBlock;
             if (terminalBlock != null && groupComponent.HasRuntimeState)
                 CubeGridModifiers.ApplyModifiers(terminalBlock, groupComponent.Modifiers);
@@ -43,8 +44,8 @@ namespace ShipCoreFramework
             if (functionalBlock != null && CoreDictionary.TryRemove(functionalBlock, out core))
                 core.CoreDestroyed();
 
-            bool wasTracked;
-            lock (_blocksLock) wasTracked = _blocks.Remove(block);
+            TrackedContribution contribution;
+            var wasTracked = RemoveTrackedBlock(block, out contribution);
 
             if (wasTracked) groupComponent.ObserveClientBlockCount(-1);
         }

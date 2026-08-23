@@ -753,7 +753,7 @@ namespace ShipCoreFramework
                 ClientOutputLogLevel = config.ClientOutputLogLevel,
                 MaxPossibleSpeedMetersPerSecond = config.MaxPossibleSpeedMetersPerSecond,
                 SpeedRampDownPercentage = config.SpeedRampDownPercentage,
-                MassTypeMode = (MassTypeModeData)(int)config.MassTypeMode,
+                MassTypeMode = MassTypeModeData.Dry,
                 FrictionSpeedValueMode = (FrictionSpeedValueModeData)(int)config.FrictionSpeedValueMode,
                 BlockDirectionalPlacementOnSubgrids = config.BlockDirectionalPlacementOnSubgrids,
                 AllowUnattachedUpgradeModules = config.AllowUnattachedUpgradeModules,

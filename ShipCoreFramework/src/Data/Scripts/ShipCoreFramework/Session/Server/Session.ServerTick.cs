@@ -20,7 +20,6 @@ namespace ShipCoreFramework
                 }
             }
 
-            RefreshMassCacheBatch();
             LimitsNexusSync.RunPeriodicSnapshotTick();
             RunRuntimeStateSyncTick();
             bool runNfz = _tick % 10 == 0;

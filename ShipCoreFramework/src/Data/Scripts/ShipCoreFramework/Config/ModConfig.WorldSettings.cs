@@ -53,7 +53,6 @@ namespace ShipCoreFramework
                 SpeedRampDownPercentage = import.SpeedRampDownPercentage;
             }
 
-            MassTypeMode = import.MassTypeMode;
             FrictionSpeedValueMode = import.FrictionSpeedValueMode;
             BlockDirectionalPlacementOnSubgrids = import.BlockDirectionalPlacementOnSubgrids;
             AllowUnattachedUpgradeModules = import.AllowUnattachedUpgradeModules;

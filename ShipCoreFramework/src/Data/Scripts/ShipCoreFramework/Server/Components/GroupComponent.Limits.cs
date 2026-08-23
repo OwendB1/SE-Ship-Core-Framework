@@ -326,13 +326,12 @@ namespace ShipCoreFramework
             return false;
         }
 
-        internal void OnBlockAddedToGroup(IMySlimBlock block)
+        internal void OnBlockAddedToGroup(IMySlimBlock block, GridComponent.TrackedContribution contribution)
         {
             Session.MarkRuntimeStateDirty(this);
-            AddGroupPCU(GridComponent.GetBlockPCU(block));
-            InvalidateGameThreadStateCache(true, false);
+            ApplyGroupContribution(contribution, 1);
+            InvalidateGameThreadStateCache(true);
             IncrementLimitGeneration();
-            AddGroupBlocksCount(1);
             InvalidateSpeedStateCache();
             Session.MarkPhysicalSpeedClusterSourceDirty(this);
             UpdateConnectedLimitContributions(block, true);
@@ -346,13 +345,12 @@ namespace ShipCoreFramework
             }
         }
 
-        internal void OnBlockRemovedFromGroup(IMySlimBlock block)
+        internal void OnBlockRemovedFromGroup(IMySlimBlock block, GridComponent.TrackedContribution contribution)
         {
             Session.MarkRuntimeStateDirty(this);
-            AddGroupPCU(-GridComponent.GetBlockPCU(block));
-            InvalidateGameThreadStateCache(true, false);
+            ApplyGroupContribution(contribution, -1);
+            InvalidateGameThreadStateCache(true);
             IncrementLimitGeneration();
-            AddGroupBlocksCount(-1);
 
             InvalidateSpeedStateCache();
             Session.MarkPhysicalSpeedClusterSourceDirty(this);
@@ -365,6 +363,14 @@ namespace ShipCoreFramework
                 if (!wasPunishingLimitedBlocks && PunishLimitedBlocks)
                     EnforceGroupPunishment(true);
             }
+        }
+
+        internal void OnBlockPcuChanged(int delta)
+        {
+            if (delta == 0) return;
+            AddGroupPCU(delta);
+            IncrementLimitGeneration();
+            Session.MarkRuntimeStateDirty(this);
         }
 
         internal void RunLimitedBlockPunishmentTick()

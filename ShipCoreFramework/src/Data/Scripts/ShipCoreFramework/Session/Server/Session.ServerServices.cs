@@ -14,45 +14,6 @@ namespace ShipCoreFramework
             LimitsNexusSync.Start(_myNexusApi);
             LimitsNexusSync.BroadcastSnapshot();
         }
-        private void RefreshMassCacheBatch()
-        {
-            var index = 0;
-            var checkedGroups = 0;
-            var refreshedGroups = 0;
-            var sawAnyGroup = false;
-            var stoppedEarly = false;
-
-            foreach (var kvp in GroupDict)
-            {
-                sawAnyGroup = true;
-                if (index < _massCacheRefreshCursor)
-                {
-                    index++;
-                    continue;
-                }
-
-                index++;
-                checkedGroups++;
-                var group = kvp.Value;
-                if (group != null && group.RefreshScheduledMassCache())
-                    refreshedGroups++;
-
-                if (checkedGroups >= MaxMassCacheGroupsCheckedPerTick ||
-                    refreshedGroups >= MaxMassCacheRefreshesPerTick)
-                {
-                    stoppedEarly = true;
-                    break;
-                }
-            }
-
-            if (!sawAnyGroup || checkedGroups == 0)
-            {
-                _massCacheRefreshCursor = 0;
-                return;
-            }
-
-            _massCacheRefreshCursor = stoppedEarly ? index : 0;
-        }
         internal static void BroadcastConfigToClients()
         {
             if (!IsServer || !MpActive)

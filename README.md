@@ -88,7 +88,6 @@ Root tag: `<ModConfig>`
 | `CLIENT_OUTPUT_LOG_LEVEL` | `int` | Client-side log verbosity. | `0` = essential only, `3` = debug; default is `2`. |
 | `MaxPossibleSpeedMetersPerSecond` | `float` | World top-speed baseline in m/s. | Core `SpeedModifiers.MaxSpeed` and `MaxBoost` multiply against this value. |
 | `SpeedRampDownPercentage` | `float` | Percentage used to derive linear speed-cap interpolation after core loss or `PunishSpeed` activation. | Accepts `0`–`100`; default `5`. Cached internally as 12 five-tick steps. Set to `0` to apply the target cap immediately. |
-| `MassTypeMode` | `Dry` or `Wet` | Chooses which grid mass reading is used for `MaxMass`. | `Dry` ignores inventory/fuel mass; `Wet` includes it. |
 | `FrictionSpeedValueMode` | `Modifier` or `Absolute` | Chooses how friction min/max speed fields are interpreted. | In `Modifier` mode they scale against world max speed; in `Absolute` mode they are m/s values. |
 | `BlockDirectionalPlacementOnSubgrids` | `bool` | Controls whether directional block limits treat subgrid placement as invalid. | Default is `true`. When `true`, a limited block with `AllowedDirections` cannot be placed on a different grid than the main core. When `false`, subgrids bypass the directional lock. |
 | `NoFlyZones` | `List<Zones>` | World no-fly zones. | See nested fields below. |
@@ -190,7 +189,7 @@ The no-core file and normal core files use the same schema. Manifest groups and 
 | `MobilityType` | `Static`, `Mobile`, `Both` | Allowed grid mobility type for the group. | Mismatch punishes both speed and modifiers. |
 | `MaxBlocks` | `int` | Maximum allowed total blocks in the logical group. | New blocks are removed if they exceed this. At/over cap also triggers capacity punishment. Negative disables. |
 | `MinBlocks` | `int` | Minimum blocks required to keep limited blocks enabled. | Falling below this immediately forces non-critical limited blocks off; reaching the minimum clears the gate. Negative disables. |
-| `MaxMass` | `float` | Maximum allowed total group mass. | Uses `MassTypeMode` to choose dry or wet mass. New blocks are removed if they exceed this. Negative disables. |
+| `MaxMass` | `float` | Maximum allowed total group mass. | Uses full-definition dry block mass; inventory and construction progress are ignored. New blocks are removed if they exceed this. Negative disables. |
 | `MaxPCU` | `int` | Maximum allowed total group PCU. | New blocks are removed if they exceed this. Negative disables. |
 | `MaxPerFaction` | `int` | Fixed cap on how many groups of this core a faction may own. | `-1` disables fixed faction cap. |
 | `FactionPlayersNeededPerCore` | `int` | Player-scaled faction cap. | `N` means one allowed core per `N` faction members. If combined with `MaxPerFaction`, runtime uses the lower of the two caps. |

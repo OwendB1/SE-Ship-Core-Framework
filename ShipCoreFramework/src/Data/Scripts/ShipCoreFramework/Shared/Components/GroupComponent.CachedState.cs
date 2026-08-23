@@ -20,18 +20,11 @@ namespace ShipCoreFramework
         internal SpeedModifiers SpeedModifiers => GetCachedActiveSpeedModifiers();
         private const int DefaultGridStateCacheCapacity = 4;
         private const int GridStateCacheRefreshIntervalTicks = 10;
-        private const int MassCacheRefreshIntervalTicks = 60;
         private const int IgnoredStateCacheRefreshIntervalTicks = 60;
 
         internal int GroupPCU {
             get
             {
-                if (!Session.IsServer)
-                    return Interlocked.CompareExchange(ref _cachedGroupPCU, 0, 0);
-                if (!Session.IsGameThread)
-                    return Interlocked.CompareExchange(ref _cachedGroupPCU, 0, 0);
-
-                RefreshPcuCacheIfDirty();
                 return Interlocked.CompareExchange(ref _cachedGroupPCU, 0, 0);
             }
         }
@@ -39,29 +32,18 @@ namespace ShipCoreFramework
         internal float GroupMass {
             get
             {
-                if (!Session.IsServer) return _cachedConfiguredMass;
-                if (!Session.IsGameThread)
-                    return _cachedConfiguredMass;
-
-                RefreshMassCacheIfDirty();
-                return _cachedConfiguredMass;
+                return _cachedDryMass;
             }
         }
 
         internal float GroupDryMass {
             get
             {
-                if (!Session.IsServer) return _cachedDryMass;
-                if (!Session.IsGameThread)
-                    return _cachedDryMass;
-
-                RefreshMassCacheIfDirty();
                 return _cachedDryMass;
             }
         }
 
         private float _cachedDryMass;
-        private float _cachedConfiguredMass;
         private int _cachedGroupPCU;
         private long _cachedRepresentativeGridId;
         private MyCubeGrid[] _cachedMovableGrids = Array.Empty<MyCubeGrid>();
@@ -75,20 +57,15 @@ namespace ShipCoreFramework
         private IMyCubeBlock _cachedNoCoreDirectionLockReferenceBlock;
         private bool _cachedIsIgnoredByAiOrFactionTag;
         private bool _gridStateCacheDirty = true;
-        private bool _pcuCacheDirty = true;
-        private bool _massCacheDirty = true;
         private bool _directionReferenceCacheDirty = true;
         private bool _modifierStateCacheDirty = true;
         private bool _ignoredStateCacheDirty = true;
         private int _nextGridStateCacheRefreshTick;
-        private int _nextMassCacheRefreshTick;
         private int _nextIgnoredStateCacheRefreshTick;
 
-        internal void InvalidateGameThreadStateCache(bool directionReferenceMayChange, bool pcuMayChange = true)
+        internal void InvalidateGameThreadStateCache(bool directionReferenceMayChange)
         {
             _gridStateCacheDirty = true;
-            if (pcuMayChange) _pcuCacheDirty = true;
-            _massCacheDirty = true;
             _ignoredStateCacheDirty = true;
 
             if (directionReferenceMayChange)
@@ -107,9 +84,16 @@ namespace ShipCoreFramework
             while (Interlocked.CompareExchange(ref _cachedGroupPCU, updated, current) != current);
         }
 
-        internal void InvalidatePcuCache()
+        private void AddGroupMass(float delta)
         {
-            _pcuCacheDirty = true;
+            _cachedDryMass = Math.Max(0f, _cachedDryMass + delta);
+        }
+
+        private void ApplyGroupContribution(GridComponent.TrackedContribution contribution, int sign)
+        {
+            AddGroupBlocksCount(contribution.Blocks * sign);
+            AddGroupPCU(contribution.Pcu * sign);
+            AddGroupMass(contribution.DryMass * sign);
         }
 
         internal IMyCubeBlock GetDirectionLockReferenceBlock()

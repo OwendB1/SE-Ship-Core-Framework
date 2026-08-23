@@ -7,42 +7,54 @@ const root = new URL(
 );
 const read = path => readFile(new URL(path, root), "utf8");
 
-const [trackedBlocks, sharedCache, cache, placement, limits, merge] = await Promise.all([
-  read("Shared/Components/GridComponent.Blocks.cs"),
-  read("Shared/Components/GroupComponent.CachedState.cs"),
-  read("Server/Components/GroupComponent.CachedState.cs"),
-  read("Server/Components/GridComponent.Blocks.cs"),
-  read("Server/Components/GroupComponent.Limits.cs"),
-  read("Server/Components/GroupComponent.MergeInterception.cs"),
-]);
+const [grid, trackedBlocks, sharedCache, cache, placement, limits, lifecycle, merge] =
+  await Promise.all([
+    read("Shared/Components/GridComponent.cs"),
+    read("Shared/Components/GridComponent.Blocks.cs"),
+    read("Shared/Components/GroupComponent.CachedState.cs"),
+    read("Server/Components/GroupComponent.CachedState.cs"),
+    read("Server/Components/GridComponent.Blocks.cs"),
+    read("Server/Components/GroupComponent.Limits.cs"),
+    read("Shared/Components/GroupComponent.Lifecycle.cs"),
+    read("Server/Components/GroupComponent.MergeInterception.cs"),
+  ]);
 
-assert.match(trackedBlocks, /internal int GetTrackedPCU\(\)/);
-assert.match(trackedBlocks, /lock \(_blocksLock\)/);
-assert.match(trackedBlocks, /block\.IsMovedBySplit \|\| block\.CubeGrid != Grid/);
+assert.match(grid, /struct TrackedContribution/);
+assert.match(grid, /Dictionary<IMySlimBlock, TrackedContribution> _blocks/);
+assert.match(grid, /private int _trackedPcu/);
+assert.match(grid, /internal TrackedContribution TrackedTotals/);
+
 assert.match(trackedBlocks, /block\.ComponentStack\.IsFunctional/);
 assert.match(trackedBlocks, /definition\.PCU/);
 assert.match(trackedBlocks, /MyCubeBlockDefinition\.PCU_CONSTRUCTION_STAGE_COST/);
+assert.match(trackedBlocks, /_trackedPcu \+= contribution\.Pcu/);
+assert.match(trackedBlocks, /_trackedPcu -= contribution\.Pcu/);
+assert.match(trackedBlocks, /UpdateTrackedBlockPcu\(IMySlimBlock block, out int delta\)/);
+assert.match(trackedBlocks, /delta = pcu - current\.Pcu/);
+assert.doesNotMatch(trackedBlocks, /GetTrackedPCU/);
 
-assert.match(cache, /groupPcu \+= gridComponent\.GetTrackedPCU\(\)/);
-assert.match(cache, /var refreshPcu = _pcuCacheDirty;/);
-assert.doesNotMatch(cache, /var refreshPcu = _pcuCacheDirty \|\| periodicRefresh;/);
-assert.doesNotMatch(cache, /BlocksPCU/);
-assert.doesNotMatch(cache, /RefreshPcuCache\([\s\S]*?\n        \}\n[\s\S]*?MarkRuntimeStateDirty/);
+assert.match(placement, /GroupPCU \+ contribution\.Pcu > maxPCU/);
+assert.match(placement, /SubscribeForIsFunctionalChanged\(BlockFunctionalStateChanged\)/);
+assert.match(placement, /UnsubscribeFromIsFunctionalChanged\(BlockFunctionalStateChanged\)/);
+assert.match(placement, /BlockFunctionalStateChanged\(MySlimBlock block\)/);
+assert.match(placement, /UpdateTrackedBlockPcu\(block, out delta\)/);
+assert.match(placement, /groupComponent\.OnBlockPcuChanged\(delta\)/);
 
-assert.match(placement, /GroupPCU \+ GetBlockPCU\(block\) > maxPCU/);
-assert.match(placement, /InvalidateGameThreadStateCache\([\s\S]*?, false\)/);
-assert.match(placement, /IsFunctionalChanged \+= BlockFunctionalStateChanged/);
-assert.match(placement, /IsFunctionalChanged -= BlockFunctionalStateChanged/);
-assert.match(placement, /groupComponent\.InvalidatePcuCache\(\)/);
-assert.doesNotMatch(
-  placement,
-  /private void BlockFunctionalStateChanged\(\)\s*\{[^}]*MarkRuntimeStateDirty/,
-);
-assert.match(sharedCache, /if \(pcuMayChange\) _pcuCacheDirty = true/);
-assert.match(limits, /AddGroupPCU\(GridComponent\.GetBlockPCU\(block\)\)/);
-assert.match(limits, /AddGroupPCU\(-GridComponent\.GetBlockPCU\(block\)\)/);
-assert.match(limits, /InvalidateGameThreadStateCache\(true, false\)/);
-assert.match(merge, /totalPcu \+= GridComponent\.GetBlockPCU\(block\)/);
+assert.match(sharedCache, /return Interlocked\.CompareExchange\(ref _cachedGroupPCU, 0, 0\)/);
+assert.match(sharedCache, /ApplyGroupContribution\(GridComponent\.TrackedContribution contribution, int sign\)/);
+assert.doesNotMatch(sharedCache, /_pcuCacheDirty|InvalidatePcuCache|RefreshPcuCache/);
+assert.doesNotMatch(cache, /GetTrackedPCU|RefreshPcuCache|BlocksPCU/);
+
+assert.match(limits, /ApplyGroupContribution\(contribution, 1\)/);
+assert.match(limits, /ApplyGroupContribution\(contribution, -1\)/);
+assert.match(limits, /internal void OnBlockPcuChanged\(int delta\)/);
+assert.match(limits, /AddGroupPCU\(delta\)/);
+assert.match(lifecycle, /var totals = comp\.TrackedTotals/);
+assert.match(lifecycle, /ApplyGroupContribution\(totals, -1\)/);
+assert.match(lifecycle, /Interlocked\.Exchange\(ref _cachedGroupPCU, 0\)/);
+
+assert.match(merge, /var contribution = GridComponent\.GetBlockContribution\(block\)/);
+assert.match(merge, /totalPcu \+= contribution\.Pcu/);
 assert.doesNotMatch(merge, /BlocksPCU/);
 
 console.log("tracked-pcu-calculation: ok");
