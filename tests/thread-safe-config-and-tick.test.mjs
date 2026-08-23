@@ -59,7 +59,7 @@ assert.match(serverTick, /failed to schedule background batch/);
 assert.doesNotMatch(serverTick, /throw;/);
 assert.match(
   groupLimits,
-  /EnforceGroupPunishment\(bool[\s\S]*if \(!Session\.IsGameThread\)[\s\S]*InvokeOnGameThread/,
+  /EnforceGroupPunishment\(bool[\s\S]*if \(!Session\.IsServer \|\| _closing \|\| Session\.IsShuttingDown\) return;[\s\S]*if \(!Session\.IsGameThread\)[\s\S]*InvokeOnGameThread/,
 );
 
 console.log("Thread-safe config publication and single-flight tick contract checks passed.");

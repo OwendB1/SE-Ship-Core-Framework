@@ -518,7 +518,7 @@ namespace ShipCoreFramework
         private void EnforceGroupPunishment(bool forceShutOffPunishment = false,
             bool connectorOnly = false)
         {
-            if (!Session.IsServer) return;
+            if (!Session.IsServer || _closing || Session.IsShuttingDown) return;
             if (!Session.IsGameThread)
             {
                 MyAPIGateway.Utilities.InvokeOnGameThread(() =>
