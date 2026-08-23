@@ -41,8 +41,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      SE_DS_DIR: ${{ runner.temp }}/space-engineers-dedicated
 
     steps:
       - name: Checkout
@@ -59,11 +57,13 @@ jobs:
       - name: Install Space Engineers reference assemblies
         run: |
           set -euo pipefail
+          SE_DS_DIR="$RUNNER_TEMP/space-engineers-dedicated"
           steamcmd +@sSteamCmdForcePlatformType windows +force_install_dir "$SE_DS_DIR" +login anonymous +app_update 298740 validate +quit
           test -f "$SE_DS_DIR/DedicatedServer64/Sandbox.Game.dll"
 
       - name: Configure MDK references
         run: |
+          SE_DS_DIR="$RUNNER_TEMP/space-engineers-dedicated"
           printf '[mdk]\nbinarypath = %s\n' "$SE_DS_DIR/DedicatedServer64" > ShipCoreFramework/ShipCoreFramework.mdk.local.ini
 
       - name: Build solution with MDK analyzers

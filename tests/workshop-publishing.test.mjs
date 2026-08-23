@@ -29,6 +29,8 @@ assert.match(workflow, /max-parallel: 1/);
 assert.match(workflow, /needs: build/);
 assert.match(workflow, /app_update 298740 validate/);
 assert.match(workflow, /dotnet build ShipCoreSystem\.sln --configuration Release/);
+assert.match(workflow, /SE_DS_DIR="\$RUNNER_TEMP\/space-engineers-dedicated"/);
+assert.doesNotMatch(workflow, /\$\{\{ runner\.temp \}\}/);
 assert.match(
   workflow,
   /SBMI_PROFILE: \$\{\{ github\.event_name == 'workflow_dispatch' && inputs\.sbmi_profile \|\| 'beta' \}\}/,
