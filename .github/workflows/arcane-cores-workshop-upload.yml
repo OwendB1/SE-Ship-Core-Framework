@@ -1,0 +1,35 @@
+name: Upload Arcane Cores to Steam Workshop
+
+permissions:
+  contents: read
+
+concurrency:
+  group: steam-workshop-upload
+  cancel-in-progress: false
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ArcaneShipCores/**
+  workflow_dispatch:
+    inputs:
+      sbmi_profile:
+        description: "Metadata profile file to use"
+        required: true
+        default: main
+        type: choice
+        options:
+          - main
+          - beta
+
+jobs:
+  upload:
+    uses: ./.github/workflows/steam-workshop-upload.yml
+    with:
+      mod_dir: ArcaneShipCores
+      src_dir: ArcaneShipCores/src
+      workshop_dir: ArcaneShipCores/workshop
+      sbmi_profile: ${{ github.event_name == 'workflow_dispatch' && inputs.sbmi_profile || 'beta' }}
+    secrets: inherit

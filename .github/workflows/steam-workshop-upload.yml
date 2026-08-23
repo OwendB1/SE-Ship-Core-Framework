@@ -1,44 +1,31 @@
-name: Upload Steam Workshop
+name: Steam Workshop Upload
 
 permissions:
   contents: read
-
-concurrency:
-  group: steam-workshop-upload
-  cancel-in-progress: false
 
 env:
   SE_DS_APPID: "298740"
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/steam-workshop-upload.yml
-      - ArcaneShipCores/src/**
-      - ArcaneShipCores/workshop/**
-      - ShipCoreFramework/src/**
-      - ShipCoreFramework/workshop/**
-  workflow_dispatch:
+  workflow_call:
     inputs:
-      target:
-        description: "Which workshop item to upload"
+      mod_dir:
         required: true
-        default: both
-        type: choice
-        options:
-          - both
-          - arcane-cores
-          - shipcore-framework
+        type: string
+      src_dir:
+        required: true
+        type: string
+      workshop_dir:
+        required: true
+        type: string
       sbmi_profile:
-        description: "Metadata profile file to use"
         required: true
-        default: main
-        type: choice
-        options:
-          - main
-          - beta
+        type: string
+    secrets:
+      STEAM_USERNAME:
+        required: true
+      STEAM_CONFIG_VDF:
+        required: true
 
 jobs:
   build:
@@ -143,63 +130,12 @@ jobs:
   upload:
     needs: build
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      max-parallel: 1
-      matrix:
-        include:
-          - key: arcane-cores
-            mod_dir: ArcaneShipCores
-            src_dir: ArcaneShipCores/src
-            workshop_dir: ArcaneShipCores/workshop
-          - key: shipcore-framework
-            mod_dir: ShipCoreFramework
-            src_dir: ShipCoreFramework/src
-            workshop_dir: ShipCoreFramework/workshop
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Determine whether this matrix target should upload
-        id: matrix_gate
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          SHOULD_UPLOAD=false
-
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            if [ "${{ github.event.inputs.target }}" = "both" ] || [ "${{ github.event.inputs.target }}" = "${{ matrix.key }}" ]; then
-              SHOULD_UPLOAD=true
-            fi
-          else
-            BEFORE_SHA="${{ github.event.before }}"
-            CURRENT_SHA="${{ github.sha }}"
-
-            if [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
-              if git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
-                if git diff --name-only "$BEFORE_SHA" "$CURRENT_SHA" -- ".github/workflows/steam-workshop-upload.yml" "${{ matrix.src_dir }}/" "${{ matrix.workshop_dir }}/" | grep -q .; then
-                  SHOULD_UPLOAD=true
-                fi
-              else
-                echo "Previous SHA '$BEFORE_SHA' is not available in this checkout. Forcing upload to avoid missing workshop updates."
-                SHOULD_UPLOAD=true
-              fi
-            else
-              if git ls-tree -r --name-only "$CURRENT_SHA" -- "${{ matrix.src_dir }}/" "${{ matrix.workshop_dir }}/" | grep -q .; then
-                SHOULD_UPLOAD=true
-              fi
-            fi
-          fi
-
-          echo "should_upload=$SHOULD_UPLOAD" >> "$GITHUB_OUTPUT"
-          echo "Matrix target '${{ matrix.key }}' upload decision: $SHOULD_UPLOAD"
 
       - name: Validate required secrets
-        if: ${{ steps.matrix_gate.outputs.should_upload == 'true' }}
         env:
           STEAM_CONFIG_VDF: ${{ secrets.STEAM_CONFIG_VDF }}
         run: |
@@ -209,26 +145,25 @@ jobs:
           echo "Using cached SteamCMD host config authentication for workshop upload."
 
       - name: Build upload content and metadata
-        if: ${{ steps.matrix_gate.outputs.should_upload == 'true' }}
         env:
-          SBMI_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.sbmi_profile || 'beta' }}
+          SBMI_PROFILE: ${{ inputs.sbmi_profile }}
         run: |
           set -euo pipefail
-          STAGING="${RUNNER_TEMP}/${{ matrix.mod_dir }}-upload"
+          STAGING="${RUNNER_TEMP}/${{ inputs.mod_dir }}-upload"
           rm -rf "$STAGING"
           mkdir -p "$STAGING"
 
-          rsync -a --delete "${{ matrix.src_dir }}/" "$STAGING/"
+          rsync -a --delete "${{ inputs.src_dir }}/" "$STAGING/"
 
-          PROFILE_FILE="${{ matrix.src_dir }}/modinfo.sbmi.${SBMI_PROFILE}"
+          PROFILE_FILE="${{ inputs.src_dir }}/modinfo.sbmi.${SBMI_PROFILE}"
           if [ ! -f "$PROFILE_FILE" ]; then
             echo "Expected metadata profile not found: $PROFILE_FILE"
             exit 1
           fi
 
-          TITLE_FILE="${{ matrix.workshop_dir }}/title.txt"
-          VERSION_FILE="${{ matrix.workshop_dir }}/version.txt"
-          DESCRIPTION_FILE="${{ matrix.workshop_dir }}/description.bbcode"
+          TITLE_FILE="${{ inputs.workshop_dir }}/title.txt"
+          VERSION_FILE="${{ inputs.workshop_dir }}/version.txt"
+          DESCRIPTION_FILE="${{ inputs.workshop_dir }}/description.bbcode"
           for FILE in "$TITLE_FILE" "$VERSION_FILE" "$DESCRIPTION_FILE"; do
             if [ ! -f "$FILE" ]; then
               echo "Expected Workshop metadata file not found: $FILE"
@@ -260,17 +195,14 @@ jobs:
           echo "WORKSHOP_DESCRIPTION_FILE=$DESCRIPTION_FILE" >> "$GITHUB_ENV"
 
       - name: Setup SteamCMD
-        if: ${{ steps.matrix_gate.outputs.should_upload == 'true' }}
         uses: andriivitiv/setup-steamcmd@v1.2.0
 
       - name: Prune SBMI profile files from upload staging
-        if: ${{ steps.matrix_gate.outputs.should_upload == 'true' }}
         run: |
           set -euo pipefail
           rm -f "$STAGING_DIR/modinfo.sbmi.beta" "$STAGING_DIR/modinfo.sbmi.main"
 
       - name: Create SteamCMD upload script
-        if: ${{ steps.matrix_gate.outputs.should_upload == 'true' }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -337,7 +269,6 @@ jobs:
           PY
 
       - name: Install SteamCMD cached credentials config
-        if: ${{ steps.matrix_gate.outputs.should_upload == 'true' }}
         env:
           STEAM_CONFIG_VDF: ${{ secrets.STEAM_CONFIG_VDF }}
         run: |
@@ -350,7 +281,6 @@ jobs:
           echo "Wrote Steam cached credentials config to: $HOME/Steam/config/config.vdf"
 
       - name: Upload to Steam Workshop item
-        if: ${{ steps.matrix_gate.outputs.should_upload == 'true' }}
         env:
           STEAM_USERNAME: ${{ secrets.STEAM_USERNAME }}
         run: |
