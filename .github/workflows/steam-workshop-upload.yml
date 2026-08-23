@@ -38,7 +38,39 @@ on:
           - beta
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SE_DS_DIR: ${{ runner.temp }}/space-engineers-dedicated
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Setup SteamCMD
+        uses: andriivitiv/setup-steamcmd@v1.2.0
+
+      - name: Install Space Engineers reference assemblies
+        run: |
+          set -euo pipefail
+          steamcmd +@sSteamCmdForcePlatformType windows +force_install_dir "$SE_DS_DIR" +login anonymous +app_update 298740 validate +quit
+          test -f "$SE_DS_DIR/DedicatedServer64/Sandbox.Game.dll"
+
+      - name: Configure MDK references
+        run: |
+          printf '[mdk]\nbinarypath = %s\n' "$SE_DS_DIR/DedicatedServer64" > ShipCoreFramework/ShipCoreFramework.mdk.local.ini
+
+      - name: Build solution with MDK analyzers
+        run: dotnet build ShipCoreSystem.sln --configuration Release
+
   upload:
+    needs: build
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -108,7 +140,7 @@ jobs:
       - name: Build upload content and metadata
         if: ${{ steps.matrix_gate.outputs.should_upload == 'true' }}
         env:
-          SBMI_PROFILE: ${{ github.event.inputs.sbmi_profile || 'main' }}
+          SBMI_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.sbmi_profile || 'beta' }}
         run: |
           set -euo pipefail
           STAGING="${RUNNER_TEMP}/${{ matrix.mod_dir }}-upload"

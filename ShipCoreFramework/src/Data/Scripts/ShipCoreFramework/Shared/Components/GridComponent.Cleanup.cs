@@ -12,6 +12,8 @@ namespace ShipCoreFramework
                 Grid.OnMarkForClose -= GridMarkedForClose;
                 Grid.OnBlockAdded -= BlockAddedEvent;
                 Grid.OnBlockRemoved -= BlockRemoved;
+                if (Session.IsServer)
+                    ((IMyCubeGrid)Grid).OnBlockIntegrityChanged -= BlockIntegrityChanged;
             }
 
             List<IMySlimBlock> blocksCopy;

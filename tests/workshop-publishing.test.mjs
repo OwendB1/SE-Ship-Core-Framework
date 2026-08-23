@@ -26,6 +26,14 @@ const workflow = await read(".github/workflows/steam-workshop-upload.yml");
 assert.match(workflow, /default: main/);
 assert.match(workflow, /group: steam-workshop-upload/);
 assert.match(workflow, /max-parallel: 1/);
+assert.match(workflow, /needs: build/);
+assert.match(workflow, /app_update 298740 validate/);
+assert.match(workflow, /dotnet build ShipCoreSystem\.sln --configuration Release/);
+assert.match(
+  workflow,
+  /SBMI_PROFILE: \$\{\{ github\.event_name == 'workflow_dispatch' && inputs\.sbmi_profile \|\| 'beta' \}\}/,
+);
+assert.doesNotMatch(workflow, /github\.event\.inputs\.sbmi_profile \|\| 'main'/);
 assert.match(workflow, /matrix\.workshop_dir/);
 assert.match(workflow, /\.github\/workflows\/steam-workshop-upload\.yml/);
 assert.match(workflow, /\("title", title\)/);

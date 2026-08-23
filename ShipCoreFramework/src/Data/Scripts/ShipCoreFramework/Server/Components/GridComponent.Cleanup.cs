@@ -9,8 +9,6 @@ namespace ShipCoreFramework
     {
         private void DetachAuthoritativeBlockEvents(IMySlimBlock block)
         {
-            DetachPcuStateChanged(block);
-
             var fatBlock = block?.FatBlock;
             var functionalBlock = fatBlock as IMyFunctionalBlock;
             if (functionalBlock != null)

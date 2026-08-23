@@ -4,7 +4,6 @@ using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using IMyTerminalBlock = Sandbox.ModAPI.IMyTerminalBlock;
 using IMyShipMergeBlock = SpaceEngineers.Game.ModAPI.IMyShipMergeBlock;
-using MySlimBlock = Sandbox.Game.Entities.Cube.MySlimBlock;
 
 namespace ShipCoreFramework
 {
@@ -83,7 +82,6 @@ namespace ShipCoreFramework
                     }
 
                     if (!AddTrackedBlock(block, contribution)) return false;
-                    AttachPcuStateChanged(block);
 
                     groupComponent.OnBlockAddedToGroup(block, contribution);
                 }
@@ -126,7 +124,6 @@ namespace ShipCoreFramework
                 if (!bypassLimits && !TryApplyLimitsOnAdd(block, limitBasedPunish)) return false;
 
                 if (!AddTrackedBlock(block, contribution)) return false;
-                AttachPcuStateChanged(block);
 
                 if (shipController != null) TrackShipController(shipController);
                 groupComponent.OnBlockAddedToGroup(block, contribution);
@@ -216,10 +213,7 @@ namespace ShipCoreFramework
 
             if (shipController != null) UntrackShipController(shipController);
             if (wasTracked)
-            {
-                DetachPcuStateChanged(block);
                 groupComponent.OnBlockRemovedFromGroup(block, contribution);
-            }
 
             if (functionalBlock != null && value == null) functionalBlock.EnabledChanged -= FuncBlockOnEnabledChanged;
             if (shipController != null) shipController.PropertiesChanged -= ShipControllerOnPropertiesChanged;
@@ -234,21 +228,7 @@ namespace ShipCoreFramework
                 groupComponent.OnUpgradeModulesChanged();
         }
 
-        private void AttachPcuStateChanged(IMySlimBlock block)
-        {
-            var slimBlock = block as MySlimBlock;
-            if (slimBlock != null)
-                slimBlock.SubscribeForIsFunctionalChanged(BlockFunctionalStateChanged);
-        }
-
-        private void DetachPcuStateChanged(IMySlimBlock block)
-        {
-            var slimBlock = block as MySlimBlock;
-            if (slimBlock != null)
-                slimBlock.UnsubscribeFromIsFunctionalChanged(BlockFunctionalStateChanged);
-        }
-
-        private void BlockFunctionalStateChanged(MySlimBlock block)
+        private void BlockIntegrityChanged(IMySlimBlock block)
         {
             int delta;
             if (!UpdateTrackedBlockPcu(block, out delta)) return;

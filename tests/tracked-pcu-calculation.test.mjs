@@ -7,9 +7,10 @@ const root = new URL(
 );
 const read = path => readFile(new URL(path, root), "utf8");
 
-const [grid, trackedBlocks, sharedCache, cache, placement, limits, lifecycle, merge] =
+const [grid, cleanup, trackedBlocks, sharedCache, cache, placement, limits, lifecycle, merge] =
   await Promise.all([
     read("Shared/Components/GridComponent.cs"),
+    read("Shared/Components/GridComponent.Cleanup.cs"),
     read("Shared/Components/GridComponent.Blocks.cs"),
     read("Shared/Components/GroupComponent.CachedState.cs"),
     read("Server/Components/GroupComponent.CachedState.cs"),
@@ -34,11 +35,12 @@ assert.match(trackedBlocks, /delta = pcu - current\.Pcu/);
 assert.doesNotMatch(trackedBlocks, /GetTrackedPCU/);
 
 assert.match(placement, /GroupPCU \+ contribution\.Pcu > maxPCU/);
-assert.match(placement, /SubscribeForIsFunctionalChanged\(BlockFunctionalStateChanged\)/);
-assert.match(placement, /UnsubscribeFromIsFunctionalChanged\(BlockFunctionalStateChanged\)/);
-assert.match(placement, /BlockFunctionalStateChanged\(MySlimBlock block\)/);
+assert.match(grid, /OnBlockIntegrityChanged \+= BlockIntegrityChanged/);
+assert.match(cleanup, /OnBlockIntegrityChanged -= BlockIntegrityChanged/);
+assert.match(placement, /BlockIntegrityChanged\(IMySlimBlock block\)/);
 assert.match(placement, /UpdateTrackedBlockPcu\(block, out delta\)/);
 assert.match(placement, /groupComponent\.OnBlockPcuChanged\(delta\)/);
+assert.doesNotMatch(placement, /Sandbox\.Game\.Entities\.Cube\.MySlimBlock|using MySlimBlock|SubscribeForIsFunctionalChanged/);
 
 assert.match(sharedCache, /return Interlocked\.CompareExchange\(ref _cachedGroupPCU, 0, 0\)/);
 assert.match(sharedCache, /ApplyGroupContribution\(GridComponent\.TrackedContribution contribution, int sign\)/);
