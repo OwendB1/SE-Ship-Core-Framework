@@ -27,9 +27,17 @@ assert.match(workflow, /default: main/);
 assert.match(workflow, /group: steam-workshop-upload/);
 assert.match(workflow, /max-parallel: 1/);
 assert.match(workflow, /needs: build/);
-assert.match(workflow, /app_update 298740 validate/);
+assert.match(workflow, /SE_DS_APPID: "298740"/);
+assert.match(workflow, /uses: actions\/cache@v5/);
+assert.match(workflow, /key: ds64-linux-\$\{\{ steps\.dsbuild\.outputs\.buildid \}\}/);
+assert.match(workflow, /steamcmd\.sh" \+quit \|\| true/);
+assert.match(workflow, /for attempt in 1 2 3 4 5/);
+assert.match(workflow, /app_update "\$SE_DS_APPID" validate/);
+assert.match(workflow, /DedicatedServer64\/SpaceEngineersDedicated\.exe/);
+assert.match(workflow, /test -f ds64\/Sandbox\.Game\.dll/);
 assert.match(workflow, /dotnet build ShipCoreSystem\.sln --configuration Release/);
 assert.match(workflow, /SE_DS_DIR="\$RUNNER_TEMP\/space-engineers-dedicated"/);
+assert.match(workflow, /binarypath = %s\\n' "\$GITHUB_WORKSPACE\/ds64"/);
 assert.doesNotMatch(workflow, /\$\{\{ runner\.temp \}\}/);
 assert.match(
   workflow,

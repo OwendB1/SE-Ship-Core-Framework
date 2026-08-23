@@ -7,6 +7,9 @@ concurrency:
   group: steam-workshop-upload
   cancel-in-progress: false
 
+env:
+  SE_DS_APPID: "298740"
+
 on:
   push:
     branches:
@@ -51,20 +54,88 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Setup SteamCMD
-        uses: andriivitiv/setup-steamcmd@v1.2.0
+      - name: Probe Dedicated Server build id
+        id: dsbuild
+        run: |
+          set -euo pipefail
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends lib32gcc-s1 ca-certificates curl
+          mkdir -p "$RUNNER_TEMP/steamcmd"
+          curl -fsSL https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz \
+            | tar -xz -C "$RUNNER_TEMP/steamcmd"
+
+          buildid=""
+          for attempt in 1 2 3 4 5; do
+            out="$("$RUNNER_TEMP/steamcmd/steamcmd.sh" +login anonymous +app_info_update 1 \
+                     +app_info_print "$SE_DS_APPID" +quit 2>/dev/null || true)"
+            buildid="$(printf '%s' "$out" | tr -d '\r' | awk '
+              /"branches"/              { in_branches = 1 }
+              in_branches && /"public"/ { in_public = 1 }
+              in_public && /"buildid"/  { gsub(/[^0-9]/, "", $2); print $2; exit }
+            ')"
+            [ -n "$buildid" ] && break
+            echo "Dedicated Server build id probe attempt $attempt empty; retrying..."
+            sleep 5
+          done
+
+          if [ -z "$buildid" ]; then
+            echo "WARNING: could not determine DS build id; DS cache will miss this run." >&2
+            buildid="norev-${{ github.run_id }}"
+          fi
+          echo "Dedicated Server public build id: $buildid"
+          echo "buildid=$buildid" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Dedicated Server reference assemblies
+        id: dscache
+        uses: actions/cache@v5
+        with:
+          path: ds64
+          key: ds64-linux-${{ steps.dsbuild.outputs.buildid }}
 
       - name: Install Space Engineers reference assemblies
+        if: steps.dscache.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
           SE_DS_DIR="$RUNNER_TEMP/space-engineers-dedicated"
-          steamcmd +@sSteamCmdForcePlatformType windows +force_install_dir "$SE_DS_DIR" +login anonymous +app_update 298740 validate +quit
-          test -f "$SE_DS_DIR/DedicatedServer64/Sandbox.Game.dll"
+          mkdir -p "$SE_DS_DIR"
+
+          # A fresh SteamCMD self-update can abort the same app_update session
+          # with "Missing configuration". Bootstrap first, then retry.
+          "$RUNNER_TEMP/steamcmd/steamcmd.sh" +quit || true
+
+          ok=0
+          for attempt in 1 2 3 4 5; do
+            echo "SteamCMD install attempt $attempt/5"
+            "$RUNNER_TEMP/steamcmd/steamcmd.sh" \
+              +@sSteamCmdForcePlatformType windows \
+              +force_install_dir "$SE_DS_DIR" \
+              +login anonymous \
+              +app_update "$SE_DS_APPID" validate \
+              +quit || true
+            if [ -f "$SE_DS_DIR/DedicatedServer64/SpaceEngineersDedicated.exe" ]; then
+              ok=1
+              break
+            fi
+            echo "SteamCMD attempt $attempt did not complete the DS install; retrying..."
+            sleep 5
+          done
+          if [ "$ok" != 1 ]; then
+            echo "ERROR: SteamCMD failed to install Space Engineers Dedicated Server references." >&2
+            exit 1
+          fi
+
+          mkdir -p ds64
+          cp -a "$SE_DS_DIR/DedicatedServer64/." ds64/
+
+      - name: Validate Dedicated Server reference assemblies
+        run: |
+          test -f ds64/SpaceEngineersDedicated.exe
+          test -f ds64/Sandbox.Game.dll
 
       - name: Configure MDK references
         run: |
-          SE_DS_DIR="$RUNNER_TEMP/space-engineers-dedicated"
-          printf '[mdk]\nbinarypath = %s\n' "$SE_DS_DIR/DedicatedServer64" > ShipCoreFramework/ShipCoreFramework.mdk.local.ini
+          printf '[mdk]\nbinarypath = %s\n' "$GITHUB_WORKSPACE/ds64" > ShipCoreFramework/ShipCoreFramework.mdk.local.ini
 
       - name: Build solution with MDK analyzers
         run: dotnet build ShipCoreSystem.sln --configuration Release
