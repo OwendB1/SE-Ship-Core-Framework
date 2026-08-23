@@ -24,6 +24,8 @@ assert.match(trackedBlocks, /definition\.PCU/);
 assert.match(trackedBlocks, /MyCubeBlockDefinition\.PCU_CONSTRUCTION_STAGE_COST/);
 
 assert.match(cache, /groupPcu \+= gridComponent\.GetTrackedPCU\(\)/);
+assert.match(cache, /var refreshPcu = _pcuCacheDirty;/);
+assert.doesNotMatch(cache, /var refreshPcu = _pcuCacheDirty \|\| periodicRefresh;/);
 assert.doesNotMatch(cache, /BlocksPCU/);
 assert.doesNotMatch(cache, /RefreshPcuCache\([\s\S]*?\n        \}\n[\s\S]*?MarkRuntimeStateDirty/);
 

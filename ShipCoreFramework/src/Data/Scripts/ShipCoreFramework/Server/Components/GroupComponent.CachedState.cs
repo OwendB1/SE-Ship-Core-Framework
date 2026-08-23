@@ -124,7 +124,7 @@ namespace ShipCoreFramework
             if (!Session.IsGameThread || _closing || Session.IsShuttingDown) return false;
 
             var periodicRefresh = IsRefreshDue(Session.CurrentTick, _nextMassCacheRefreshTick);
-            var refreshPcu = _pcuCacheDirty || periodicRefresh;
+            var refreshPcu = _pcuCacheDirty;
             var refreshMass = _massCacheDirty || periodicRefresh;
             if (!refreshPcu && !refreshMass) return false;
 
@@ -301,8 +301,8 @@ namespace ShipCoreFramework
             _nextGridStateCacheRefreshTick = Session.CurrentTick + GridStateCacheRefreshIntervalTicks;
         }
 
-        // ponytail: periodic O(blocks) repair shares the mass batch; add per-block contribution
-        // tracking only if profiling shows this scan is still material.
+        // PCU is maintained incrementally for block changes and invalidated by functional-state
+        // changes or grid topology changes. Do not couple this O(blocks) repair to mass polling.
         private void RefreshPcuCache()
         {
             var groupPcu = 0;
