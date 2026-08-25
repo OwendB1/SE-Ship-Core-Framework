@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const appSource = readFileSync(new URL("./app.js", import.meta.url), "utf8");
+const indexSource = readFileSync(new URL("./index.html", import.meta.url), "utf8");
 const helperStart = appSource.indexOf("function getUpdateEntryPath");
 const helperEnd = appSource.indexOf("\n\nfunction generatedXmlEntries", helperStart);
 const { getUpdateEntryPath, writeEntriesToFolder } = Function(
@@ -39,4 +40,20 @@ test("writes generated content into created subdirectories", async () => {
 
   await writeEntriesToFolder(directory(), [{ name: "Data/Cores/Frigate.xml", content: "<ShipCore />" }], false);
   assert.equal(written.get("Data/Cores/Frigate.xml"), "<ShipCore />");
+});
+
+test("prefers folder updates and collapses every manual file picker", () => {
+  const subsectionStart = indexSource.indexOf('<details id="manualUploadOptions"');
+  const subsectionEnd = indexSource.indexOf("</details>", subsectionStart);
+  const fileInputs = [...indexSource.matchAll(/<input[^>]*type="file"/g)];
+
+  assert.ok(subsectionStart > indexSource.indexOf('id="openUpdateFolder"'));
+  assert.ok(subsectionEnd > subsectionStart);
+  assert.equal(fileInputs.length, 8);
+  fileInputs.forEach((match) => {
+    assert.ok(match.index > subsectionStart && match.index < subsectionEnd);
+  });
+  assert.match(indexSource, /Update in place[\s\S]*preferred-badge[^>]*>Preferred/);
+  assert.match(indexSource, /id="updateSelectedFolder" class="button-green" disabled>Update Open Folder \(Preferred\)/);
+  assert.doesNotMatch(indexSource, /<details id="manualUploadOptions"[^>]*\sopen(?:\s|>)/);
 });

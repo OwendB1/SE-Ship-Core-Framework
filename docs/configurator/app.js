@@ -3744,5 +3744,5 @@ ids("updateSelectedFolder").addEventListener("click", updateSelectedFolder);
   }
 
   resetEditor(true);
-  setImportStatus(["Tip: Upload existing XML files to renovate and continue editing."]);
+  setImportStatus(["Tip: Open a Mod/Data folder to load and update configuration files in place."]);
 })();
