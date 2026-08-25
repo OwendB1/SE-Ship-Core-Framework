@@ -31,12 +31,21 @@ namespace ShipCoreFramework
                 var weight = matchedBlockType.CountWeight;
                 if (weight <= 0d) continue;
 
+                var directionIndex = -1;
+                var facing = DirectionType.Forward;
+                if (limit.MaxCountPerDirection >= 0f && directionReferenceBlock != null &&
+                    GroupComponent.TryResolveBlockFacing(directionReferenceBlock, block,
+                        matchedBlockType.PrimaryDirection, out facing))
+                    directionIndex = (int)facing;
+
                 if (forceShutOff) block.WhackABlock(PunishmentType.ShutOff);
-                
-                if (directionReferenceBlock != null &&
+
+                var directionalSubgridBlocked = GroupComponent.IsDirectionalSubgridBlocked(
+                    directionReferenceBlock, block, limit, blockKey);
+                if (directionReferenceBlock != null && (directionalSubgridBlocked ||
                     !GroupComponent.IsValidDirection(directionReferenceBlock, block,
                         limit.GetAllowedDirections(blockKey), authoritative,
-                        matchedBlockType.PrimaryDirection))
+                        matchedBlockType.PrimaryDirection)))
                 {
                     if (authoritative && !deferPunishment)
                     {
@@ -51,9 +60,29 @@ namespace ShipCoreFramework
                 var groupBucket = GroupComponent.Limits.GetOrAdd(limit, _ => new LimitBucket(0d));
 
                 double localWeight;
+                double directionWeight = 0d;
                 lock (groupBucket.BucketLock)
                 {
                     localWeight = groupBucket.TotalWeight - groupBucket.ConnectorWeight;
+                    if (directionIndex >= 0)
+                        directionWeight = groupBucket.DirectionWeights[directionIndex];
+                }
+
+                if (directionIndex >= 0 && directionWeight + weight > limit.MaxCountPerDirection &&
+                    authoritative && !deferPunishment)
+                {
+                    var directionMessage = localizedBlockName + " violates directional Block limit " +
+                                           limit.Name + " (" + facing + "): " +
+                                           (directionWeight + weight) + "/" + limit.MaxCountPerDirection;
+                    if (firstOwner != 0) Utils.ShowNotification(directionMessage, firstOwner);
+                    else Utils.ShowNotification(directionMessage);
+                    var directionPunishment = forceShutOff
+                        ? PunishmentType.ShutOff
+                        : limitBasedPunish ? limit.PunishmentType : PunishmentType.Delete;
+                    block.WhackABlock(directionPunishment);
+                    if (directionPunishment == PunishmentType.Delete ||
+                        directionPunishment == PunishmentType.Explode)
+                        return false;
                 }
 
                 var effectiveMaxCount = GroupComponent.GetEffectiveMaxCount(limit);
@@ -80,12 +109,14 @@ namespace ShipCoreFramework
                 lock (gridBucket.BucketLock)
                 {
                     gridBucket.TotalWeight += weight;
+                    if (directionIndex >= 0) gridBucket.DirectionWeights[directionIndex] += weight;
                     gridBucket.Members.Add(block);
                 }
 
                 lock (groupBucket.BucketLock)
                 {
                     groupBucket.TotalWeight += weight;
+                    if (directionIndex >= 0) groupBucket.DirectionWeights[directionIndex] += weight;
                     groupBucket.Members.Add(block);
                 }
             }
@@ -93,7 +124,8 @@ namespace ShipCoreFramework
             return true;
         }
 
-        internal ConcurrentDictionary<BlockLimit, LimitBucket> BuildLimitsSnapshot(GroupComponent group)
+        internal ConcurrentDictionary<BlockLimit, LimitBucket> BuildLimitsSnapshot(GroupComponent group,
+            DirectionReferenceSnapshot directionReference)
         {
             var result = new ConcurrentDictionary<BlockLimit, LimitBucket>();
 
@@ -115,10 +147,17 @@ namespace ShipCoreFramework
                 foreach (var block in blocksCopy)
                 {
                     if (block == null || block.IsMovedBySplit || block.CubeGrid == null) continue;
-                    var weight = limit.GetWeight(KeyOf(block));
+                    var blockKey = KeyOf(block);
+                    var matchedBlockType = limit.GetMatchingBlockType(blockKey);
+                    var weight = matchedBlockType?.CountWeight ?? 0d;
                     if (weight <= 0d) continue;
 
                     bucket.TotalWeight += weight;
+                    DirectionType facing;
+                    if (limit.MaxCountPerDirection >= 0f &&
+                        GroupComponent.TryResolveBlockFacing(directionReference, block,
+                            matchedBlockType.PrimaryDirection, out facing))
+                        bucket.DirectionWeights[(int)facing] += weight;
                     bucket.Members.Add(block);
                 }
             }

@@ -329,6 +329,9 @@ namespace ShipCoreFramework
                         {
                             ConnectorWeight = runtime.ConnectorCount
                         };
+                        if (runtime.DirectionCounts != null)
+                            Array.Copy(runtime.DirectionCounts, bucket.DirectionWeights,
+                                Math.Min(runtime.DirectionCounts.Length, bucket.DirectionWeights.Length));
                         limits[limit] = bucket;
                         effectiveCounts[limit] = runtime.MaxCount;
                         break;

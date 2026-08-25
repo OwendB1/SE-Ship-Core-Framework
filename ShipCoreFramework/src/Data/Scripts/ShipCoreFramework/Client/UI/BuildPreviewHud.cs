@@ -287,7 +287,7 @@ namespace ShipCoreFramework
 
             for (var i = 0; i < _results.Count; i++)
             {
-                if (_results[i].Pass) continue;
+                if (_results[i].Pass || !IsDisplayable(_results[i])) continue;
                 _hasViolation = true;
                 break;
             }
@@ -357,7 +357,8 @@ namespace ShipCoreFramework
                 for (var i = 0; i < _results.Count; i++)
                 {
                     var result = _results[i];
-                    if (result.Kind != LimitCheckKind.Direction || result.Pass || result.SubgridBlocked
+                    if (result.Kind != LimitCheckKind.Direction || result.Pass || result.SubgridBlocked ||
+                        !IsDisplayable(result)
                         || result.AllowedDirections == null)
                         continue; // no corrective arrow for subgrid-blocked (rotating wouldn't help)
 
@@ -423,9 +424,17 @@ namespace ShipCoreFramework
         // Grid-wide hard caps stay hidden until the projected usage nears the cap, so common caps
         // (blocks/PCU/mass, which apply to nearly every block) don't clutter the panel constantly.
         // They surface once projected usage reaches HardCapDisplayFraction of the cap, and always
-        // when over. Per-type and directional limits are always shown.
+        // when over. Per-limit visibility handles block-count and directional results below.
         private static bool IsDisplayable(LimitCheckResult result)
         {
+            if (result.Limit != null)
+            {
+                if (result.Kind == LimitCheckKind.Direction)
+                    return LimitEvaluation.ShouldShowOnHud(result.Limit, 0d, 0d, 0d, result.Pass);
+                return LimitEvaluation.ShouldShowOnHud(result.Limit, result.Current, result.Added,
+                    result.Max, result.Pass);
+            }
+
             if (result.Kind == LimitCheckKind.MaxBlocks || result.Kind == LimitCheckKind.MaxPcu
                 || result.Kind == LimitCheckKind.MaxMass)
             {
@@ -503,6 +512,15 @@ namespace ShipCoreFramework
 
         private void AppendResultLine(LimitCheckResult result)
         {
+            if (result.Kind == LimitCheckKind.DirectionCount)
+            {
+                var projectedDirectionCount = result.Current + result.Added;
+                _sb.Append(result.Name).Append(' ').Append(result.Facing.ToString()).Append(" +")
+                    .Append(Fmt(result.Added)).Append(" (").Append(Fmt(projectedDirectionCount))
+                    .Append('/').Append(Fmt(result.Max)).Append(") OVER");
+                return;
+            }
+
             if (result.Kind == LimitCheckKind.Direction)
             {
                 if (result.SubgridBlocked)

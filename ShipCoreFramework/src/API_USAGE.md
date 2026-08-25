@@ -133,6 +133,9 @@ The replica answer uses synchronized counts and may become stale between server 
 `BlockLimitData.BlockGroupNames` lists included reusable groups.
 `BlockLimitData.ExcludedBlockGroupNames` lists groups subtracted from those matches; exclusions
 take precedence when a block belongs to both.
+`BlockLimitData.MaxCountPerDirection` exposes the optional six-way weighted cap, and
+`BlockLimitData.LimitVisibility` exposes its HUD presentation policy. These fields require API v4.2;
+older v4 consumers remain compatible and ignore the appended protobuf members.
 
 Runtime mutations exist only on `ShipCoreFrameworkServerApi`.
 

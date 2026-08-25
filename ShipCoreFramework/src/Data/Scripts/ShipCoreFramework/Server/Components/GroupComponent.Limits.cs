@@ -22,11 +22,9 @@ namespace ShipCoreFramework
             if (directionReferenceBlock.CubeGrid != block.CubeGrid)
                 return Session.Config != null && !Session.Config.BlockDirectionalPlacementOnSubgrids;
 
-            var referenceForward = Base6Directions.GetVector(directionReferenceBlock.Orientation.Forward);
-            var referenceUp = Base6Directions.GetVector(directionReferenceBlock.Orientation.Up);
-            var primaryAxis = GetBlockPrimaryDirectionVector(block, primaryDirection);
-
-            var xyDirection = ResolveFacing(referenceForward, referenceUp, primaryAxis);
+            DirectionType xyDirection;
+            if (!TryResolveBlockFacing(directionReferenceBlock, block, primaryDirection, out xyDirection))
+                return true;
             var isValid = allowedDirections.Contains(xyDirection);
             if (!isValid && showNotification)
                 Utils.ShowNotification(
@@ -36,7 +34,56 @@ namespace ShipCoreFramework
             return isValid;
         }
 
-        private static Vector3 GetBlockPrimaryDirectionVector(IMySlimBlock block, DirectionType primaryDirection)
+        internal static DirectionReferenceSnapshot CaptureDirectionReference(IMyCubeBlock referenceBlock)
+        {
+            if (referenceBlock?.Orientation == null || referenceBlock.CubeGrid == null)
+                return new DirectionReferenceSnapshot();
+
+            return new DirectionReferenceSnapshot
+            {
+                Grid = referenceBlock.CubeGrid,
+                Forward = Base6Directions.GetVector(referenceBlock.Orientation.Forward),
+                Up = Base6Directions.GetVector(referenceBlock.Orientation.Up)
+            };
+        }
+
+        internal static bool TryResolveBlockFacing(IMyCubeBlock referenceBlock, IMySlimBlock block,
+            DirectionType primaryDirection, out DirectionType facing)
+        {
+            return TryResolveBlockFacing(CaptureDirectionReference(referenceBlock), block, primaryDirection,
+                out facing);
+        }
+
+        internal static bool TryResolveBlockFacing(DirectionReferenceSnapshot reference, IMySlimBlock block,
+            DirectionType primaryDirection, out DirectionType facing)
+        {
+            facing = DirectionType.Forward;
+            if (!reference.IsValid || block?.Orientation == null || block.CubeGrid != reference.Grid)
+                return false;
+
+            var primaryAxis = GetBlockPrimaryDirectionVector(block, primaryDirection);
+            facing = ResolveFacing(reference.Forward, reference.Up, primaryAxis);
+            return facing != DirectionType.Any;
+        }
+
+        internal static bool HasAllowedDirectionRule(BlockLimit limit, BlockKey key)
+        {
+            var allowed = limit?.GetAllowedDirections(key);
+            return allowed != null && allowed.Count > 0 && !allowed.Contains(DirectionType.Any);
+        }
+
+        internal static bool IsDirectionalSubgridBlocked(IMyCubeBlock referenceBlock, IMySlimBlock block,
+            BlockLimit limit, BlockKey key)
+        {
+            if (referenceBlock?.CubeGrid == null || block?.CubeGrid == null ||
+                referenceBlock.CubeGrid == block.CubeGrid)
+                return false;
+            if (limit == null || limit.MaxCountPerDirection < 0f && !HasAllowedDirectionRule(limit, key))
+                return false;
+            return Session.Config == null || Session.Config.BlockDirectionalPlacementOnSubgrids;
+        }
+
+        internal static Vector3 GetBlockPrimaryDirectionVector(IMySlimBlock block, DirectionType primaryDirection)
         {
             var forward = Base6Directions.GetVector(block.Orientation.Forward);
             var up = Base6Directions.GetVector(block.Orientation.Up);
@@ -548,6 +595,7 @@ namespace ShipCoreFramework
 
                 double total;
                 double connectorTotal;
+                var directionTotals = new double[6];
                 List<IMySlimBlock> membersCopy;
                 HashSet<IMySlimBlock> connectorMembersCopy;
                 lock (bucket.BucketLock)
@@ -555,6 +603,8 @@ namespace ShipCoreFramework
                     if (connectorOnly && bucket.ConnectorWeight <= 0d) continue;
                     total = bucket.TotalWeight;
                     connectorTotal = bucket.ConnectorWeight;
+                    Array.Copy(bucket.DirectionWeights, directionTotals,
+                        Math.Min(bucket.DirectionWeights.Length, directionTotals.Length));
                     membersCopy = new List<IMySlimBlock>(bucket.Members);
                     connectorMembersCopy = new HashSet<IMySlimBlock>(bucket.ConnectorMembers);
                 }
@@ -576,6 +626,7 @@ namespace ShipCoreFramework
 
                 var localCandidates = new List<KeyValuePair<IMySlimBlock, double>>(membersCopy.Count);
                 var connectorCandidates = new List<KeyValuePair<IMySlimBlock, double>>(connectorMembersCopy.Count);
+                var directionCandidates = new List<KeyValuePair<IMySlimBlock, double>>[6];
                 var alreadyShutOffConnectorWeight = 0d;
 
                 foreach (var block in membersCopy)
@@ -610,19 +661,59 @@ namespace ShipCoreFramework
                         connectorCandidates.Add(new KeyValuePair<IMySlimBlock, double>(block, weight));
                     }
                     else if (!connectorOnly)
+                    {
                         localCandidates.Add(new KeyValuePair<IMySlimBlock, double>(block, weight));
+                        if (limit.MaxCountPerDirection >= 0f)
+                        {
+                            BlockType matchedBlockType = limit.GetMatchingBlockType(GridComponent.KeyOf(block));
+                            DirectionType facing;
+                            if (matchedBlockType != null && TryResolveBlockFacing(directionReferenceBlock, block,
+                                    matchedBlockType.PrimaryDirection, out facing))
+                            {
+                                var directionIndex = (int)facing;
+                                if (directionCandidates[directionIndex] == null)
+                                    directionCandidates[directionIndex] =
+                                        new List<KeyValuePair<IMySlimBlock, double>>();
+                                directionCandidates[directionIndex].Add(
+                                    new KeyValuePair<IMySlimBlock, double>(block, weight));
+                            }
+                        }
+                    }
+                }
+
+                var directionPunishments = new HashSet<IMySlimBlock>();
+                var directionPunishedWeight = 0d;
+                if (!connectorOnly && limit.MaxCountPerDirection >= 0f)
+                {
+                    for (var directionIndex = 0; directionIndex < directionTotals.Length; directionIndex++)
+                    {
+                        var directionOver = directionTotals[directionIndex] - limit.MaxCountPerDirection;
+                        var candidates = directionCandidates[directionIndex];
+                        if (directionOver <= 0d || candidates == null) continue;
+
+                        candidates.Sort(ComparePunishmentCandidates);
+                        foreach (var candidate in candidates)
+                        {
+                            if (directionOver <= 0d) break;
+                            if (candidate.Key == null || !directionPunishments.Add(candidate.Key)) continue;
+
+                            pendingPunishments.Add(new PendingBlockPunishment(candidate.Key, limit.PunishmentType));
+                            directionPunishedWeight += candidate.Value;
+                            directionOver -= candidate.Value;
+                        }
+                    }
                 }
 
                 var effectiveMaxCount = GetEffectiveMaxCount(limit);
                 var localTotal = Math.Max(0d, total - connectorTotal);
                 if (!connectorOnly && localTotal > effectiveMaxCount)
                 {
-                    var localOver = localTotal - effectiveMaxCount;
+                    var localOver = localTotal - effectiveMaxCount - directionPunishedWeight;
                     localCandidates.Sort(ComparePunishmentCandidates);
                     foreach (var candidate in localCandidates)
                     {
                         if (localOver <= 0d) break;
-                        if (candidate.Key == null) continue;
+                        if (candidate.Key == null || directionPunishments.Contains(candidate.Key)) continue;
 
                         pendingPunishments.Add(new PendingBlockPunishment(candidate.Key, limit.PunishmentType));
                         localOver -= candidate.Value;
@@ -683,6 +774,9 @@ namespace ShipCoreFramework
             BlockKey blockKey = GridComponent.KeyOf(block);
             BlockType matchedBlockType = limit.GetMatchingBlockType(blockKey);
             if (matchedBlockType == null) return false;
+
+            if (IsDirectionalSubgridBlocked(directionReferenceBlock, block, limit, blockKey))
+                return true;
 
             return !IsValidDirection(directionReferenceBlock, block, limit.GetAllowedDirections(blockKey), false,
                 matchedBlockType.PrimaryDirection);
@@ -864,15 +958,17 @@ namespace ShipCoreFramework
         {
             if (!Session.IsServer) return;
             var generation = GetLimitGeneration();
+            var directionReference = CaptureDirectionReference(GetDirectionLockReferenceBlock());
             MyAPIGateway.Parallel.StartBackground(() =>
             {
-                if (!BuildAndPublishLimitSnapshots(generation, rebuildConnectorLimits)) return;
+                if (!BuildAndPublishLimitSnapshots(generation, rebuildConnectorLimits, directionReference)) return;
                 if (enforceAfterPublish)
                     EnforceGroupPunishment(forceShutOffPunishment);
             });
         }
 
-        private bool BuildAndPublishLimitSnapshots(int generation, bool rebuildConnectorLimits)
+        private bool BuildAndPublishLimitSnapshots(int generation, bool rebuildConnectorLimits,
+            DirectionReferenceSnapshot directionReference)
         {
             if (_closing || Session.IsShuttingDown) return false;
 
@@ -881,7 +977,7 @@ namespace ShipCoreFramework
 
             foreach (var comp in GridDictionary.Values)
             {
-                var gridLimits = comp.BuildLimitsSnapshot(this);
+                var gridLimits = comp.BuildLimitsSnapshot(this, directionReference);
                 gridSnapshots.Add(new GridLimitSnapshot(comp, gridLimits));
 
                 foreach (var gridLimitKv in gridLimits)
@@ -896,6 +992,10 @@ namespace ShipCoreFramework
                         lock (groupBucket.BucketLock)
                         {
                             groupBucket.TotalWeight += gridBucket.TotalWeight;
+                            for (var directionIndex = 0; directionIndex < groupBucket.DirectionWeights.Length;
+                                 directionIndex++)
+                                groupBucket.DirectionWeights[directionIndex] +=
+                                    gridBucket.DirectionWeights[directionIndex];
                             groupBucket.Members.AddRange(gridBucket.Members);
                         }
                     }

@@ -970,6 +970,8 @@ namespace ShipCoreFramework
                     .Where(name => !string.IsNullOrWhiteSpace(name))
                     .ToArray(),
                 MaxCount = limit.MaxCount,
+                MaxCountPerDirection = limit.MaxCountPerDirection,
+                LimitVisibility = (LimitVisibilityData)(int)limit.LimitVisibility,
                 CrossConnectorPunishment = limit.CrossConnectorPunishment,
                 PunishByNoFlyZone = limit.PunishByNoFlyZone,
                 PunishmentType = (PunishmentTypeData)(int)limit.PunishmentType,

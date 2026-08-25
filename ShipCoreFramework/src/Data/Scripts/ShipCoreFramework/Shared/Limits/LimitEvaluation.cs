@@ -13,7 +13,8 @@ namespace ShipCoreFramework
         MaxBlocks,
         MaxPcu,
         MaxMass,
-        Direction
+        Direction,
+        DirectionCount
     }
 
     /// <summary>
@@ -72,6 +73,17 @@ namespace ShipCoreFramework
     /// </summary>
     internal static class LimitEvaluation
     {
+        internal const double NearLimitDisplayFraction = 0.8d;
+
+        internal static bool ShouldShowOnHud(BlockLimit limit, double current, double added, double max,
+            bool pass)
+        {
+            if (limit == null) return true;
+            if (limit.LimitVisibility == LimitVisibility.Hidden) return false;
+            if (limit.LimitVisibility == LimitVisibility.Always) return true;
+            return !pass || max > 0d && current + added >= max * NearLimitDisplayFraction;
+        }
+
         /// <summary>Convenience overload for a single proposed block.</summary>
         internal static List<LimitCheckResult> Evaluate(GroupComponent group, ProposedBlock proposed)
         {
@@ -214,23 +226,28 @@ namespace ShipCoreFramework
             // handling of GroupComponent.IsValidDirection's subgrid branch (null config -> not allowed).
             var subgridAllowed = Session.Config != null && !Session.Config.BlockDirectionalPlacementOnSubgrids;
 
-            for (var i = 0; i < proposed.Count; i++)
+            foreach (var kvp in group.Limits)
             {
-                var block = proposed[i];
-                if (!block.Orientation.HasValue) continue;
+                var limit = kvp.Key;
+                var bucket = kvp.Value;
+                if (limit == null || bucket == null) continue;
 
-                var onSubgrid = block.TargetGrid != null && referenceBlock.CubeGrid != block.TargetGrid;
-
-                foreach (var kvp in group.Limits)
+                var addedByDirection = new double[6];
+                var directionCapEnabled = limit.MaxCountPerDirection >= 0f;
+                for (var i = 0; i < proposed.Count; i++)
                 {
-                    var limit = kvp.Key;
-                    if (limit == null) continue;
+                    var block = proposed[i];
+                    if (!block.Orientation.HasValue) continue;
+
                     BlockType matched = limit.GetMatchingBlockType(block.Key);
                     if (matched == null) continue;
                     List<DirectionType> allowedDirections = limit.GetAllowedDirections(block.Key);
-                    if (allowedDirections == null || allowedDirections.Count == 0 ||
-                        allowedDirections.Contains(DirectionType.Any))
+                    var hasAllowedDirectionRule = allowedDirections != null && allowedDirections.Count > 0 &&
+                                                  !allowedDirections.Contains(DirectionType.Any);
+                    if (!hasAllowedDirectionRule && !directionCapEnabled)
                         continue;
+
+                    var onSubgrid = block.TargetGrid != null && referenceBlock.CubeGrid != block.TargetGrid;
 
                     if (onSubgrid)
                     {
@@ -249,15 +266,45 @@ namespace ShipCoreFramework
 
                     var primaryAxis = AxisOf(block.Orientation.Value, matched.PrimaryDirection);
                     var facing = GroupComponent.ResolveFacing(referenceMatrix.Forward, referenceMatrix.Up, primaryAxis);
-                    results.Add(new LimitCheckResult
+                    if (hasAllowedDirectionRule)
                     {
-                        Kind = LimitCheckKind.Direction,
-                        Name = limit.Name,
-                        Limit = limit,
-                        Pass = allowedDirections.Contains(facing),
-                        Facing = facing,
-                        AllowedDirections = allowedDirections
-                    });
+                        results.Add(new LimitCheckResult
+                        {
+                            Kind = LimitCheckKind.Direction,
+                            Name = limit.Name,
+                            Limit = limit,
+                            Pass = allowedDirections.Contains(facing),
+                            Facing = facing,
+                            AllowedDirections = allowedDirections
+                        });
+                    }
+
+                    if (directionCapEnabled)
+                        addedByDirection[(int)facing] += limit.GetWeight(block.Key) * NormalizeCount(block.Count);
+                }
+
+                if (!directionCapEnabled) continue;
+                lock (bucket.BucketLock)
+                {
+                    for (var directionIndex = 0; directionIndex < addedByDirection.Length; directionIndex++)
+                    {
+                        var added = addedByDirection[directionIndex];
+                        if (added <= 0d) continue;
+                        var current = bucket.DirectionWeights[directionIndex];
+                        if (current + added <= limit.MaxCountPerDirection) continue;
+
+                        results.Add(new LimitCheckResult
+                        {
+                            Kind = LimitCheckKind.DirectionCount,
+                            Name = limit.Name,
+                            Limit = limit,
+                            Current = current,
+                            Added = added,
+                            Max = limit.MaxCountPerDirection,
+                            Pass = false,
+                            Facing = (DirectionType)directionIndex
+                        });
+                    }
                 }
             }
         }

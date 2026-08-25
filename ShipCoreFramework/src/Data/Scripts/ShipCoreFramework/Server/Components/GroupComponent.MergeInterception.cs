@@ -6,6 +6,7 @@ using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using SpaceEngineers.Game.ModAPI.Ingame;
 using VRage.Game.ModAPI;
+using VRageMath;
 using IMyShipMergeBlock = SpaceEngineers.Game.ModAPI.IMyShipMergeBlock;
 
 namespace ShipCoreFramework
@@ -221,6 +222,44 @@ namespace ShipCoreFramework
                 var totalWeight = 0d;
                 foreach (var block in blocks)
                     totalWeight += limit.GetWeight(GridComponent.KeyOf(block));
+
+                if (limit.MaxCountPerDirection >= 0f && coreBlocks.Count > 0)
+                {
+                    var referenceMatrix = coreBlocks[0].WorldMatrix;
+                    var referenceGrid = coreBlocks[0].CubeGrid;
+                    var referenceWillBeOnMergedGrid = referenceGrid == first.CubeGrid ||
+                                                      referenceGrid == second.CubeGrid;
+                    if (referenceWillBeOnMergedGrid)
+                    {
+                        var directionTotals = new double[6];
+                        foreach (var block in blocks)
+                        {
+                            if (block?.CubeGrid == null ||
+                                block.CubeGrid != first.CubeGrid && block.CubeGrid != second.CubeGrid)
+                                continue;
+
+                            var matchedBlockType = limit.GetMatchingBlockType(GridComponent.KeyOf(block));
+                            if (matchedBlockType == null || matchedBlockType.CountWeight <= 0f) continue;
+
+                            var localAxis = GetBlockPrimaryDirectionVector(block,
+                                matchedBlockType.PrimaryDirection);
+                            var worldAxis = Vector3D.TransformNormal(localAxis, block.CubeGrid.WorldMatrix);
+                            var facing = ResolveFacing(referenceMatrix.Forward, referenceMatrix.Up, worldAxis);
+                            directionTotals[(int)facing] += matchedBlockType.CountWeight;
+                        }
+
+                        for (var directionIndex = 0; directionIndex < directionTotals.Length; directionIndex++)
+                        {
+                            if (directionTotals[directionIndex] <= limit.MaxCountPerDirection) continue;
+                            violation = "projected " + limit.Name + " " +
+                                        ((DirectionType)directionIndex) + " directional limit " +
+                                        directionTotals[directionIndex].ToString("0.##") + "/" +
+                                        limit.MaxCountPerDirection.ToString("0.##") + " for " +
+                                        shipCore.UniqueName + ".";
+                            return true;
+                        }
+                    }
+                }
 
                 var effectiveMax = ComputeEffectiveMaxCount(shipCore, limit, projectedModules);
                 if (totalWeight <= effectiveMax) continue;

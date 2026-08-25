@@ -718,6 +718,12 @@ namespace ShipCoreFramework
         [XmlElement("MaxCount")]
         public float MaxCount;
 
+        [XmlElement("MaxCountPerDirection")]
+        public float MaxCountPerDirection = -1f;
+
+        [XmlElement("LimitVisibility")]
+        public LimitVisibility LimitVisibility = ShipCoreFramework.LimitVisibility.Always;
+
         [XmlElement("CrossConnectorPunishment")]
         public bool CrossConnectorPunishment;
 
@@ -732,6 +738,16 @@ namespace ShipCoreFramework
 
         [XmlElement("AllowedDirections")]
         public List<DirectionType> AllowedDirections;
+
+        public bool ShouldSerializeMaxCountPerDirection()
+        {
+            return MaxCountPerDirection >= 0f;
+        }
+
+        public bool ShouldSerializeLimitVisibility()
+        {
+            return LimitVisibility != ShipCoreFramework.LimitVisibility.Always;
+        }
 
         internal double GetWeight(BlockKey key)
         {
@@ -965,6 +981,14 @@ namespace ShipCoreFramework
         Left = 4,
         Right = 5,
         Any = 6
+    }
+
+    [XmlRoot("LimitVisibility")]
+    public enum LimitVisibility
+    {
+        Always = 0,
+        NearLimit = 1,
+        Hidden = 2
     }
 
     [XmlRoot("FactionRank")]

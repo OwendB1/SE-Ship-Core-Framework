@@ -35,7 +35,7 @@ namespace ShipCoreFramework
         /// Increment when you add functionality in a backwards compatible way.
         /// Minor version changes remain compatible as long as the major version matches.
         /// </summary>
-        public const int API_MINOR = 1;
+        public const int API_MINOR = 2;
 
         /// <summary>
         /// Encoded API version (Major.Minor) packed into a single int.
@@ -568,6 +568,8 @@ namespace ShipCoreFramework
         [ProtoMember(7)] public DirectionTypeData[] AllowedDirections = Array.Empty<DirectionTypeData>();
         [ProtoMember(8)] public bool IsCriticalLimit;
         [ProtoMember(9)] public string[] ExcludedBlockGroupNames = Array.Empty<string>();
+        [ProtoMember(10)] public float MaxCountPerDirection = -1f;
+        [ProtoMember(11)] public LimitVisibilityData LimitVisibility;
     }
 
     [ProtoContract]
@@ -742,6 +744,13 @@ namespace ShipCoreFramework
         Left = 4,
         Right = 5,
         Any = 6
+    }
+
+    public enum LimitVisibilityData
+    {
+        Always = 0,
+        NearLimit = 1,
+        Hidden = 2
     }
 
     public enum FactionRankData

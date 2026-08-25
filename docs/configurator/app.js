@@ -147,6 +147,7 @@ const DEFAULT_CAPACITY_MODIFIER = {
 
 const VALID_DIRECTIONS = ["Forward", "Backward", "Up", "Down", "Left", "Right"];
 const VALID_ALLOWED_DIRECTIONS = [...VALID_DIRECTIONS, "Any"];
+const LIMIT_VISIBILITIES = ["Always", "NearLimit", "Hidden"];
 const FACTION_RANKS = ["None", "Member", "Leader", "Founder"];
 const DRAFT_STORAGE_KEY = "ship-core-configurator-draft-v1";
 
@@ -790,10 +791,17 @@ function normalizeFactionRank(rank) {
   return FACTION_RANKS.includes(value) ? value : "None";
 }
 
+function normalizeLimitVisibility(visibility) {
+  const value = String(visibility ?? "").trim();
+  return LIMIT_VISIBILITIES.includes(value) ? value : "Always";
+}
+
 function cloneLimit(limit = createDefaultLimit()) {
   return {
     ...createDefaultLimit(),
     ...limit,
+    maxCountPerDirection: Number(limit.maxCountPerDirection ?? -1),
+    limitVisibility: normalizeLimitVisibility(limit.limitVisibility),
     allowedDirections: Array.isArray(limit.allowedDirections) ? [...limit.allowedDirections] : [],
     blockGroups: Array.isArray(limit.blockGroups) ? [...limit.blockGroups] : [],
     blockGroupDirections: { ...(limit.blockGroupDirections || {}) },
@@ -965,6 +973,8 @@ function createDefaultLimit() {
   return {
     name: "",
     maxCount: 0,
+    maxCountPerDirection: -1,
+    limitVisibility: "Always",
     crossConnectorPunishment: false,
     punishByNoFlyZone: false,
     isCriticalLimit: false,
@@ -1529,6 +1539,12 @@ function renderShipCores() {
           <div class="row wrap">
             <input data-action="limit-name" data-c="${coreIndex}" data-l="${limitIndex}" class="small" placeholder="Limit Name" value="${escapeXml(limit.name)}" />
             <label class="inline">MaxCount <input data-action="limit-max" data-c="${coreIndex}" data-l="${limitIndex}" class="small" type="number" step="0.1" value="${limit.maxCount}" /></label>
+            <label class="inline">MaxCountPerDirection <input data-action="limit-max-direction" data-c="${coreIndex}" data-l="${limitIndex}" class="small" type="number" min="-1" step="0.1" value="${limit.maxCountPerDirection}" /></label>
+            <label class="inline">LimitVisibility
+              <select data-action="limit-visibility" data-c="${coreIndex}" data-l="${limitIndex}" class="small">
+                ${LIMIT_VISIBILITIES.map((value) => `<option ${limit.limitVisibility === value ? "selected" : ""}>${value}</option>`).join("")}
+              </select>
+            </label>
             <button data-action="duplicate-limit" data-c="${coreIndex}" data-l="${limitIndex}">Duplicate Limit</button>
             <button data-action="remove-limit" data-c="${coreIndex}" data-l="${limitIndex}">Delete Limit</button>
           </div>
@@ -1763,6 +1779,8 @@ function parseCoreXml(text, originalFileName = "") {
       return {
         name: textOf(limitNode, "Name"),
         maxCount: numberOf(limitNode, "MaxCount", 0),
+        maxCountPerDirection: numberOf(limitNode, "MaxCountPerDirection", -1),
+        limitVisibility: normalizeLimitVisibility(textOf(limitNode, "LimitVisibility")),
         crossConnectorPunishment: boolOf(limitNode, "CrossConnectorPunishment", false),
         punishByNoFlyZone: boolOf(limitNode, "PunishByNoFlyZone", boolOf(limitNode, "TurnedOffByNoFlyZone", false)),
         isCriticalLimit: boolOf(limitNode, "IsCriticalLimit", false),
@@ -1864,6 +1882,8 @@ function writeBlockLimitXml(limit, indent = "  ") {
     }),
     ...(limit.excludedBlockGroups || []).map((groupName) => `${indent}  <ExcludedBlockGroups>${escapeXml(groupName)}</ExcludedBlockGroups>`),
     `${indent}  <MaxCount>${limit.maxCount}</MaxCount>`,
+    ...(Number(limit.maxCountPerDirection) >= 0 ? [`${indent}  <MaxCountPerDirection>${Number(limit.maxCountPerDirection)}</MaxCountPerDirection>`] : []),
+    ...(normalizeLimitVisibility(limit.limitVisibility) !== "Always" ? [`${indent}  <LimitVisibility>${normalizeLimitVisibility(limit.limitVisibility)}</LimitVisibility>`] : []),
     `${indent}  <CrossConnectorPunishment>${limit.crossConnectorPunishment}</CrossConnectorPunishment>`,
     `${indent}  <PunishByNoFlyZone>${limit.punishByNoFlyZone}</PunishByNoFlyZone>`,
     `${indent}  <IsCriticalLimit>${limit.isCriticalLimit}</IsCriticalLimit>`,
@@ -2791,6 +2811,8 @@ document.addEventListener("input", (event) => {
     renderUpgradeModules();
   }
   if (action === "limit-max") selectedCore.blockLimits[limitIndex].maxCount = Number(target.value || 0);
+  if (action === "limit-max-direction") selectedCore.blockLimits[limitIndex].maxCountPerDirection = Number(target.value || 0);
+  if (action === "limit-visibility" && selectElement) selectedCore.blockLimits[limitIndex].limitVisibility = normalizeLimitVisibility(selectElement.value);
   if (action === "limit-group-search") {
     selectedCore.blockLimits[limitIndex].groupSearch = target.value;
     renderLimitGroupChecklist(coreIndex, limitIndex);

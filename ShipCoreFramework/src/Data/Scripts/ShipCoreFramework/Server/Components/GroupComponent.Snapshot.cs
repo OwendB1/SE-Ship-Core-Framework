@@ -30,19 +30,26 @@ namespace ShipCoreFramework
                         if (limit == null) continue;
                         var total = 0d;
                         var connectorTotal = 0d;
+                        var directionCounts = limit.MaxCountPerDirection >= 0f
+                            ? new double[6]
+                            : Array.Empty<double>();
                         LimitBucket bucket;
                         if (Limits.TryGetValue(limit, out bucket) && bucket != null)
                             lock (bucket.BucketLock)
                             {
                                 total = bucket.TotalWeight;
                                 connectorTotal = bucket.ConnectorWeight;
+                                if (directionCounts.Length > 0)
+                                    Array.Copy(bucket.DirectionWeights, directionCounts,
+                                        Math.Min(bucket.DirectionWeights.Length, directionCounts.Length));
                             }
                         runtimeLimits.Add(new RuntimeLimitState
                         {
                             Name = limit.Name ?? string.Empty,
                             CurrentCount = total,
                             MaxCount = GetEffectiveMaxCount(limit),
-                            ConnectorCount = connectorTotal
+                            ConnectorCount = connectorTotal,
+                            DirectionCounts = directionCounts
                         });
                     }
                 }

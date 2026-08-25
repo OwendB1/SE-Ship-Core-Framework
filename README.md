@@ -349,6 +349,8 @@ Each entry uses `<BlockLimit>`.
 | `BlockGroups` | `BlockGroupReference[]` | Names of `BlockGroup` definitions included in this limit. | Optional `Directions` attribute accepts comma-separated direction names or enum integers and overrides this limit's `AllowedDirections` for blocks matched through that group. |
 | `ExcludedBlockGroups` | `string[]` | Names of `BlockGroup` definitions subtracted from this limit. | Exclusion wins when a block matches both an included and excluded group. |
 | `MaxCount` | `float` | Maximum allowed total weight for this limit. | Weight comes from matched `BlockType.CountWeight`. |
+| `MaxCountPerDirection` | `float` | Maximum allowed weight facing any one of the six core-relative directions. | Optional; negative values disable it. Uses each matched `BlockType.PrimaryDirection`. Connector-imported weight remains aggregate-only. |
+| `LimitVisibility` | `Always`, `NearLimit`, or `Hidden` | Controls this limit's placement-preview and Core Status HUD elements. | Defaults to `Always`. `NearLimit` uses the 80% threshold; `Hidden` affects presentation only, never enforcement. |
 | `CrossConnectorPunishment` | `bool` | Pulls blocks from connected no-core groups into this limit's bucket. | Only affects non-critical limits on this core. Manifest blacklist imports use all non-critical limits regardless of this flag. |
 | `PunishByNoFlyZone` | `bool` | Applies this limit's punishment inside no-fly zones. | Only used when the zone itself is not forcing everything off. |
 | `IsCriticalLimit` | `bool` | Exempts this limit from connector imports and total limited-block shutoff gates. | Minimum-block shutoff and both connector import paths skip this limit. Normal local overflow, directional checks, and no-fly-zone punishment still work normally. |
@@ -371,6 +373,27 @@ the following limit counts every block in `AllHydrogenEngines` except blocks cla
 `ExcludedBlockGroups` only determines membership. Its `CountWeight` and `PrimaryDirection` values are
 not subtracted; an excluded block contributes nothing to this limit. Existing limits without exclusions
 keep their current behavior.
+
+Directional count caps share the normal limit's weighted points while keeping six independent buckets:
+
+```xml
+<BlockLimits>
+  <Name>RCS Thrusters</Name>
+  <BlockGroups>RCS</BlockGroups>
+  <MaxCount>100</MaxCount>
+  <MaxCountPerDirection>25</MaxCountPerDirection>
+  <LimitVisibility>NearLimit</LimitVisibility>
+</BlockLimits>
+```
+
+This permits up to 100 total RCS points, but no more than 25 points facing Forward, Backward, Up,
+Down, Left, or Right. A placement reaching exactly 25 stays valid; the placement preview adds a
+directional overflow line only when the proposed placement would exceed 25. Mechanical-subgrid
+behavior follows `BlockDirectionalPlacementOnSubgrids`, matching `AllowedDirections`.
+
+`LimitVisibility` applies only to HUD presentation. `Always` preserves the original behavior,
+`NearLimit` shows numeric rows at 80% usage and direction rules when violated, and `Hidden` suppresses
+the limit's HUD text, arrows, and violation outline. Chat commands and LCD reports remain complete.
 
 Included groups can override the limit-wide directional lock:
 

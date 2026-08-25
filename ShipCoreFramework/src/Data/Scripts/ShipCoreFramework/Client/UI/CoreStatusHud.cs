@@ -382,7 +382,7 @@ namespace ShipCoreFramework
             BlockLimit[] configured = core?.BlockLimits;
             if (configured == null || configured.Length == 0) return;
 
-            _text.AppendLine().Append(Gray).AppendLine("--- Block Limits ---").Append(White);
+            bool wroteHeader = false;
             for (int index = 0; index < configured.Length; index++)
             {
                 BlockLimit limit = configured[index];
@@ -394,6 +394,13 @@ namespace ShipCoreFramework
                     lock (bucket.BucketLock) current = bucket.TotalWeight;
                 }
                 double max = group.GetEffectiveMaxCount(limit);
+                bool pass = current <= max;
+                if (!LimitEvaluation.ShouldShowOnHud(limit, current, 0d, max, pass)) continue;
+                if (!wroteHeader)
+                {
+                    _text.AppendLine().Append(Gray).AppendLine("--- Block Limits ---").Append(White);
+                    wroteHeader = true;
+                }
                 _text.Append(limit.Name).Append(": ").Append(StatusColor(current, max))
                     .Append(current.ToString("F0", CultureInfo.InvariantCulture)).Append(White)
                     .Append(" / ").Append(max.ToString("F0", CultureInfo.InvariantCulture));

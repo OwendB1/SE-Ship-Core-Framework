@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using VRage.Game.ModAPI;
+using VRageMath;
 
 namespace ShipCoreFramework
 {
@@ -40,6 +41,7 @@ namespace ShipCoreFramework
     {
         internal double TotalWeight;
         internal double ConnectorWeight;
+        internal readonly double[] DirectionWeights = new double[6];
         internal readonly object BucketLock = new object();
         internal readonly List<IMySlimBlock> Members = new List<IMySlimBlock>();
         internal readonly HashSet<IMySlimBlock> ConnectorMembers = new HashSet<IMySlimBlock>();
@@ -48,5 +50,14 @@ namespace ShipCoreFramework
         {
             TotalWeight = totalWeight;
         }
+    }
+
+    internal struct DirectionReferenceSnapshot
+    {
+        internal IMyCubeGrid Grid;
+        internal Vector3 Forward;
+        internal Vector3 Up;
+
+        internal bool IsValid => Grid != null;
     }
 }
