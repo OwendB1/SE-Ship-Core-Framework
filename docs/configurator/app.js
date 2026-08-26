@@ -1,4 +1,11 @@
 // app.js build v1016
+import {
+  VALID_DIRECTIONS,
+  VALID_ALLOWED_DIRECTIONS,
+  limitNeedsDirectionWarning,
+  validateEditorConfig
+} from "./validation.js";
+
 const state = {
   blockGroups: [],
   manifestGroups: [],
@@ -21,15 +28,15 @@ const state = {
 };
 
 const DEFAULT_GRID_MODIFIERS = {
-  AssemblerSpeed: 1,
-  DrillHarvestMultiplier: 1,
-  GyroEfficiency: 1,
-  GyroForce: 1,
-  PowerProducersOutput: 1,
-  RefineEfficiency: 1,
-  RefineSpeed: 1,
-  ThrusterEfficiency: 1,
-  ThrusterForce: 1
+  AssemblerSpeed: -1,
+  DrillHarvestMultiplier: -1,
+  GyroEfficiency: -1,
+  GyroForce: -1,
+  PowerProducersOutput: -1,
+  RefineEfficiency: -1,
+  RefineSpeed: -1,
+  ThrusterEfficiency: -1,
+  ThrusterForce: -1
 };
 
 const DEFAULT_SPEED_MODIFIERS = {
@@ -145,8 +152,6 @@ const DEFAULT_CAPACITY_MODIFIER = {
   modifierType: "Additive"
 };
 
-const VALID_DIRECTIONS = ["Forward", "Backward", "Up", "Down", "Left", "Right"];
-const VALID_ALLOWED_DIRECTIONS = [...VALID_DIRECTIONS, "Any"];
 const LIMIT_VISIBILITIES = ["Always", "NearLimit", "Hidden"];
 const FACTION_RANKS = ["None", "Member", "Leader", "Founder"];
 const DRAFT_STORAGE_KEY = "ship-core-configurator-draft-v1";
@@ -302,7 +307,7 @@ function restoreDraftFromStorage() {
       ? parsedDraft.expandedLimitPanelsByCore
       : {};
 
-    pruneMissingBlockGroupReferences();
+    normalizeBlockGroupReferences();
     ensureValidSelectedIndexes();
     return true;
   } catch (error) {
@@ -400,7 +405,7 @@ function getBlockGroupCanonicalNameMap(blockGroups = state.blockGroups) {
   return canonicalNames;
 }
 
-function normalizeBlockGroupNames(groupNames = [], blockGroups = state.blockGroups, pruned = null) {
+function normalizeBlockGroupNames(groupNames = [], blockGroups = state.blockGroups) {
   const canonicalNames = getBlockGroupCanonicalNameMap(blockGroups);
 
   return dedupeStrings((groupNames || []).map((groupName) => {
@@ -409,25 +414,20 @@ function normalizeBlockGroupNames(groupNames = [], blockGroups = state.blockGrou
 
     const canonical = canonicalNames.get(normalized.toLowerCase());
     if (!canonical) {
-      if (pruned) {
-        pruned.count += 1;
-        pruned.names.add(normalized);
-      }
-      return "";
+      return normalized;
     }
 
     return canonical;
   }));
 }
 
-function pruneMissingBlockGroupReferences(status = null) {
-  const pruned = { count: 0, names: new Set() };
+function normalizeBlockGroupReferences() {
   const pruneCore = (core) => {
     if (!core || !Array.isArray(core.blockLimits)) return;
 
     core.blockLimits.forEach((limit) => {
       if (!limit) return;
-      limit.blockGroups = normalizeBlockGroupNames(limit.blockGroups || [], state.blockGroups, pruned);
+      limit.blockGroups = normalizeBlockGroupNames(limit.blockGroups || [], state.blockGroups);
       const previousDirections = limit.blockGroupDirections || {};
       limit.blockGroupDirections = {};
       limit.blockGroups.forEach((groupName) => {
@@ -436,22 +436,13 @@ function pruneMissingBlockGroupReferences(status = null) {
         if (previousName !== undefined)
           limit.blockGroupDirections[groupName] = previousDirections[previousName];
       });
-      limit.excludedBlockGroups = normalizeBlockGroupNames(limit.excludedBlockGroups || [], state.blockGroups, pruned);
+      limit.excludedBlockGroups = normalizeBlockGroupNames(limit.excludedBlockGroups || [], state.blockGroups);
     });
   };
 
   pruneCore(state.noCoreCore);
   state.shipCores.forEach(pruneCore);
 
-  if (status && pruned.count > 0) {
-    const names = Array.from(pruned.names);
-    const suffix = names.length
-      ? ` (${names.slice(0, 8).join(", ")}${names.length > 8 ? ", ..." : ""})`
-      : "";
-    status.push(`Pruned ${pruned.count} missing BlockGroup reference(s) from BlockLimits${suffix}.`);
-  }
-
-  return pruned.count;
 }
 
 function parseManifestXml(text) {
@@ -463,18 +454,20 @@ function parseManifestXml(text) {
       shipCores: [],
       upgradeModules: [],
       crossConnectorPunishmentWhitelist: [],
+      diagnostics: [],
       sourceFormat: "invalid"
     };
   }
 
-  const manifestGroups = qselAll(qsel(root, "ManifestGroups"), "Group")
+  const manifestGroupNodes = qselAll(qsel(root, "ManifestGroups"), "Group");
+  const manifestGroups = manifestGroupNodes
     .map((groupNode) => cloneManifestGroup({
       name: textOf(groupNode, "Name"),
-      maxCount: numberOf(groupNode, "MaxCount", 1)
-    }))
-    .filter((group) => group.name.trim());
+      maxCount: numberOf(groupNode, "MaxCount", -1)
+    }));
 
-  const currentShipCores = qselAll(root, "ShipCore")
+  const currentShipCoreNodes = qselAll(root, "ShipCore");
+  const currentShipCores = currentShipCoreNodes
     .map((entryNode) => ({
       filename: textOf(entryNode, "Filename"),
       groups: dedupeStrings(qselAll(entryNode, "Group").map((groupNode) => groupNode.textContent.trim())),
@@ -485,7 +478,8 @@ function parseManifestXml(text) {
     }))
     .filter((entry) => entry.filename);
 
-  const currentUpgradeModules = qselAll(root, "UpgradeModule")
+  const currentUpgradeModuleNodes = qselAll(root, "UpgradeModule");
+  const currentUpgradeModules = currentUpgradeModuleNodes
     .map((entryNode) => ({
       filename: textOf(entryNode, "Filename")
     }))
@@ -541,12 +535,43 @@ function parseManifestXml(text) {
     })),
     upgradeModules: Array.from(upgradeModuleMap.values()),
     crossConnectorPunishmentWhitelist,
+    diagnostics: [
+      ...currentShipCoreNodes
+        .filter((entryNode) => !textOf(entryNode, "Filename"))
+        .map(() => "Manifest ship core entry has no filename and was ignored."),
+      ...currentUpgradeModuleNodes
+        .filter((entryNode) => !textOf(entryNode, "Filename"))
+        .map(() => "Manifest upgrade module entry has no filename and was ignored.")
+    ],
     sourceFormat
   };
 }
 
 function setImportStatus(lines) {
   ids("importStatus").textContent = lines.join("\n");
+}
+
+function renderEditorValidation(validation = validateEditorConfig(state)) {
+  const status = ids("validationStatus");
+  if (!status) return validation;
+
+  const lines = [
+    validation.errors.length || validation.warnings.length
+      ? `Framework validation: ${validation.errors.length} error(s), ${validation.warnings.length} warning(s).`
+      : "Framework validation passed."
+  ];
+  validation.errors.forEach((message) => lines.push(`ERROR: ${message}`));
+  validation.warnings.forEach((message) => lines.push(`WARNING: ${message}`));
+  status.textContent = lines.join("\n");
+  status.classList.toggle("validation-errors", validation.errors.length > 0);
+  status.classList.toggle("validation-warnings", validation.errors.length === 0 && validation.warnings.length > 0);
+  status.classList.toggle("validation-passed", validation.errors.length === 0 && validation.warnings.length === 0);
+
+  const blocked = validation.errors.length > 0;
+  ["downloadAllFiles", "downloadNoCore", "downloadGroups", "downloadManifest", "downloadCores"]
+    .forEach((id) => { ids(id).disabled = blocked; });
+  ids("updateSelectedFolder").disabled = blocked || !_selectedUpdateFolderHandle;
+  return validation;
 }
 
 function parseModifierNode(node, defaults) {
@@ -1111,7 +1136,8 @@ function manifestGroupCoreCheckboxes(groupIndex) {
 }
 
 function manifestGroupCheckboxesForCore(coreIndex, selected = []) {
-  return state.manifestGroups
+  const knownNames = new Set(state.manifestGroups.map((group) => group.name.toLowerCase()));
+  const known = state.manifestGroups
     .filter((group) => group.name.trim())
     .map((group) => {
       const isSelected = selected.includes(group.name);
@@ -1119,8 +1145,14 @@ function manifestGroupCheckboxesForCore(coreIndex, selected = []) {
       <input data-action="core-manifest-group-toggle" data-c="${coreIndex}" data-group-name="${escapeXml(group.name)}" type="checkbox" ${isSelected ? "checked" : ""} />
       <span>${escapeXml(group.name)}</span>
     </label>`;
-    })
-    .join("");
+    });
+  const unknown = dedupeStrings(selected)
+    .filter((groupName) => !knownNames.has(groupName.toLowerCase()))
+    .map((groupName) => `<label class="group-checklist-item invalid selected">
+      <input data-action="core-manifest-group-toggle" data-c="${coreIndex}" data-group-name="${escapeXml(groupName)}" type="checkbox" checked />
+      <span>${escapeXml(groupName)} (unknown)</span>
+    </label>`);
+  return [...known, ...unknown].join("");
 }
 
 function manifestBlacklistCheckboxesForCore(coreIndex, selected = []) {
@@ -1270,7 +1302,8 @@ function renderManifestGroups() {
 function blockGroupCheckboxes(coreIndex, limitIndex, selected = [], searchText = "",
   action = "limit-group-toggle", directionOverrides = null) {
   const normalizedSearch = searchText.trim().toLowerCase();
-  return state.blockGroups
+  const knownNames = new Set(state.blockGroups.map((group) => group.name.toLowerCase()));
+  const known = state.blockGroups
     .filter((group) => group.name.trim())
     .filter((group) => !normalizedSearch || group.name.toLowerCase().includes(normalizedSearch))
     .map((group) => {
@@ -1285,18 +1318,49 @@ function blockGroupCheckboxes(coreIndex, limitIndex, selected = [], searchText =
       <span>${escapeXml(group.name)}</span>
       ${directionInput}
     </label>`;
-    })
-    .join("");
+    });
+  const unknown = dedupeStrings(selected)
+    .filter((groupName) => !knownNames.has(groupName.toLowerCase()))
+    .filter((groupName) => !normalizedSearch || groupName.toLowerCase().includes(normalizedSearch))
+    .map((groupName) => {
+      const hasOverride = directionOverrides &&
+        Object.prototype.hasOwnProperty.call(directionOverrides, groupName);
+      const directionInput = action === "limit-group-toggle"
+        ? `<input data-action="limit-group-directions" data-c="${coreIndex}" data-l="${limitIndex}" data-group-name="${escapeXml(groupName)}" class="small" placeholder="Directions override" title="Comma-separated names or enum integers" value="${escapeXml(hasOverride ? directionOverrides[groupName] : "")}" />`
+        : "";
+      return `<label class="group-checklist-item invalid selected">
+      <input data-action="${action}" data-c="${coreIndex}" data-l="${limitIndex}" data-group-name="${escapeXml(groupName)}" type="checkbox" checked />
+      <span>${escapeXml(groupName)} (unknown)</span>
+      ${directionInput}
+    </label>`;
+    });
+  return [...known, ...unknown].join("");
 }
 
 function directionCheckboxes(coreIndex, limitIndex, selected = []) {
-  return VALID_ALLOWED_DIRECTIONS
+  const known = VALID_ALLOWED_DIRECTIONS
     .map((direction) => `<label class="group-checklist-item">
       <input data-action="limit-direction-toggle" data-c="${coreIndex}" data-l="${limitIndex}" data-direction="${escapeXml(direction)}" type="checkbox" ${selected.includes(direction) ? "checked" : ""} />
       <span>${escapeXml(direction)}</span>
-    </label>`)
-    .join("");
+    </label>`);
+  const unknown = dedupeStrings(selected)
+    .filter((direction) => !VALID_ALLOWED_DIRECTIONS.includes(direction))
+    .map((direction) => `<label class="group-checklist-item invalid selected">
+      <input data-action="limit-direction-toggle" data-c="${coreIndex}" data-l="${limitIndex}" data-direction="${escapeXml(direction)}" type="checkbox" checked />
+      <span>${escapeXml(direction)} (invalid)</span>
+    </label>`);
+  return [...known, ...unknown].join("");
 }
+
+function updateLimitDirectionWarning(coreIndex, limitIndex, limit) {
+  const warning = document.querySelector(`[data-limit-direction-warning][data-c="${coreIndex}"][data-l="${limitIndex}"]`);
+  if (!(warning instanceof HTMLElement)) return;
+
+  const needsWarning = limitNeedsDirectionWarning(limit);
+  warning.hidden = !needsWarning;
+  warning.closest("details")?.querySelector("summary")?.classList.toggle("block-limit-summary--warning", needsWarning);
+}
+
 function modifierFieldColumn({ title, fields, action, step = 0.01, dataAttrs = "" }) {
   return `
     <div class="modifier-column card">
@@ -1411,7 +1475,7 @@ function renderCoreSelector() {
 
 function renderShipCores() {
   ensureValidSelectedIndexes();
-  pruneMissingBlockGroupReferences();
+  normalizeBlockGroupReferences();
   renderCoreSelector();
 
   const coreIndex = state.selectedCoreIndex;
@@ -1534,7 +1598,7 @@ function renderShipCores() {
 
       ${core.blockLimits.map((limit, limitIndex) => `
         <details class="card block-limit-panel" data-action="limit-toggle" data-c="${coreIndex}" data-l="${limitIndex}" ${expandedLimitPanels.includes(limitIndex) ? "open" : ""}>
-          <summary class="block-limit-summary ${Array.isArray(limit.blockGroups) && limit.blockGroups.length === 0 ? "block-limit-summary--missing-groups" : ""}">${escapeXml(limit.name?.trim() || `Block Limit ${limitIndex + 1}`)}</summary>
+          <summary class="block-limit-summary ${Array.isArray(limit.blockGroups) && limit.blockGroups.length === 0 ? "block-limit-summary--missing-groups" : ""} ${limitNeedsDirectionWarning(limit) ? "block-limit-summary--warning" : ""}">${escapeXml(limit.name?.trim() || `Block Limit ${limitIndex + 1}`)}</summary>
           <div class="block-limit-content">
           <div class="row wrap">
             <input data-action="limit-name" data-c="${coreIndex}" data-l="${limitIndex}" class="small" placeholder="Limit Name" value="${escapeXml(limit.name)}" />
@@ -1548,6 +1612,7 @@ function renderShipCores() {
             <button data-action="duplicate-limit" data-c="${coreIndex}" data-l="${limitIndex}">Duplicate Limit</button>
             <button data-action="remove-limit" data-c="${coreIndex}" data-l="${limitIndex}">Delete Limit</button>
           </div>
+          <p class="block-limit-warning" data-limit-direction-warning data-c="${coreIndex}" data-l="${limitIndex}" ${limitNeedsDirectionWarning(limit) ? "" : "hidden"}>Warning: MaxCountPerDirection requires a valid AllowedDirections value or per-group Directions override.</p>
           <div class="row wrap">
             <label class="inline">CrossConnectorPunishment (no-core grids) <input data-action="limit-cross-connector" data-c="${coreIndex}" data-l="${limitIndex}" type="checkbox" ${limit.crossConnectorPunishment ? "checked" : ""}/></label>
             <label class="inline">PunishByNoFlyZone <input data-action="limit-punish" data-c="${coreIndex}" data-l="${limitIndex}" type="checkbox" ${limit.punishByNoFlyZone ? "checked" : ""}/></label>
@@ -1925,7 +1990,7 @@ function parseUpgradeModuleXml(text) {
       stat:         (n.getElementsByTagName("Stat")[0]?.textContent          || "").trim(),
       value:        Number((n.getElementsByTagName("Value")[0]?.textContent   || "0").trim()),
       modifierType: (n.getElementsByTagName("ModifierType")[0]?.textContent  || "Multiplicative").trim()
-    })).filter((m) => m.stat);
+    }));
 
   const blockLimitModifiers = Array.from(moduleNode.getElementsByTagName("BlockLimitModifiers"))
     .filter((n) => n.localName === "BlockLimitModifiers")
@@ -1933,7 +1998,7 @@ function parseUpgradeModuleXml(text) {
       blockLimitName: (n.getElementsByTagName("BlockLimitName")[0]?.textContent || "").trim(),
       value:          Number((n.getElementsByTagName("Value")[0]?.textContent   || "0").trim()),
       modifierType:   (n.getElementsByTagName("ModifierType")[0]?.textContent  || "Additive").trim()
-    })).filter((m) => m.blockLimitName);
+    }));
 
   const capacityModifiers = Array.from(moduleNode.getElementsByTagName("CapacityModifiers"))
     .filter((n) => n.localName === "CapacityModifiers")
@@ -2372,7 +2437,8 @@ function download(filename, content) {
 
 function generateXml(options = {}) {
   const { persistDraft = true } = options;
-  pruneMissingBlockGroupReferences();
+  normalizeBlockGroupReferences();
+  const validation = renderEditorValidation();
   const header = '<?xml version="1.0" encoding="UTF-8"?>';
   const namedManifestGroups = getNamedManifestGroups();
 
@@ -2454,7 +2520,15 @@ ${core.body}`),
 ${module.body}`)
   ].join("\n\n");
   if (persistDraft) persistDraftToStorage();
-  return { noCore, groups, manifest, cores, upgradeModules };
+  return { noCore, groups, manifest, cores, upgradeModules, validation };
+}
+
+function generateValidatedXml(options = {}) {
+  const xml = generateXml(options);
+  if (xml.validation.errors.length === 0) return xml;
+
+  ids("validationStatus").scrollIntoView({ behavior: "smooth", block: "center" });
+  return null;
 }
 
 function getUpdateEntryPath(entryPath, selectedFolderIsData) {
@@ -2792,7 +2866,7 @@ document.addEventListener("input", (event) => {
   if (action === "core-upgrade-unique") selectedCore.allowedUpgradeModules[allowanceIndex].uniqueName = target.value;
   if (action === "core-upgrade-max") selectedCore.allowedUpgradeModules[allowanceIndex].maxCount = Number(target.value || 0);
 
-  if (action === "core-modifier-grid") selectedCore.modifiers[target.dataset.m] = Number(target.value || 0);
+  if (action === "core-modifier-grid") selectedCore.modifiers[target.dataset.m] = Number(target.value || -1);
   if (action === "core-modifier-speed") selectedCore.speedModifiers[target.dataset.m] = Number(target.value || 0);
   if (action === "core-modifier-passive-defense") selectedCore.passiveDefenseModifiers[target.dataset.m] = Number(target.value || 0);
   if (action === "core-modifier-active-defense") selectedCore.activeDefenseModifiers[target.dataset.m] = Number(target.value || 0);
@@ -2811,7 +2885,11 @@ document.addEventListener("input", (event) => {
     renderUpgradeModules();
   }
   if (action === "limit-max") selectedCore.blockLimits[limitIndex].maxCount = Number(target.value || 0);
-  if (action === "limit-max-direction") selectedCore.blockLimits[limitIndex].maxCountPerDirection = Number(target.value || 0);
+  if (action === "limit-max-direction") {
+    const limit = selectedCore.blockLimits[limitIndex];
+    limit.maxCountPerDirection = Number(target.value || -1);
+    updateLimitDirectionWarning(coreIndex, limitIndex, limit);
+  }
   if (action === "limit-visibility" && selectElement) selectedCore.blockLimits[limitIndex].limitVisibility = normalizeLimitVisibility(selectElement.value);
   if (action === "limit-group-search") {
     selectedCore.blockLimits[limitIndex].groupSearch = target.value;
@@ -2994,6 +3072,7 @@ document.addEventListener("change", (event) => {
     if (!groupName) return;
 
     limit.blockGroupDirections[groupName] = inputElement.value;
+    updateLimitDirectionWarning(coreIndex, limitIndex, limit);
   }
   if (action === "limit-group-toggle" && inputElement) {
     const limit = selectedCore.blockLimits[limitIndex];
@@ -3144,22 +3223,26 @@ ids("resetDraftStorage").addEventListener("click", () => {
 });
 
 ids("downloadNoCore").addEventListener("click", () => {
-  const xml = generateXml({ persistDraft: false });
+  const xml = generateValidatedXml({ persistDraft: false });
+  if (!xml) return;
   download("ShipCoreConfig_No_Core.xml", xml.noCore);
   clearDraftFromStorage();
 });
 ids("downloadGroups").addEventListener("click", () => {
-  const xml = generateXml({ persistDraft: false });
+  const xml = generateValidatedXml({ persistDraft: false });
+  if (!xml) return;
   download("ShipCoreConfig_Groups.xml", xml.groups);
   clearDraftFromStorage();
 });
 ids("downloadManifest").addEventListener("click", () => {
-  const xml = generateXml({ persistDraft: false });
+  const xml = generateValidatedXml({ persistDraft: false });
+  if (!xml) return;
   download("ShipCoreConfig_Manifest.xml", xml.manifest);
   clearDraftFromStorage();
 });
 ids("downloadAllFiles").addEventListener("click", async () => {
-  const xml = generateXml({ persistDraft: false });
+  const xml = generateValidatedXml({ persistDraft: false });
+  if (!xml) return;
   const generatedEntries = generatedXmlEntries(xml);
 
   // Build a set of zip paths that are being replaced by generated versions
@@ -3180,7 +3263,8 @@ ids("downloadAllFiles").addEventListener("click", async () => {
   clearDraftFromStorage();
 });
 ids("downloadCores").addEventListener("click", () => {
-  const xml = generateXml({ persistDraft: false });
+  const xml = generateValidatedXml({ persistDraft: false });
+  if (!xml) return;
   const zip = createZip([
     ...xml.cores.map((core) => ({ name: core.outputPath, content: core.body })),
     ...xml.upgradeModules.map((module) => ({ name: `${state.outputUpgradeModuleDirectory}${module.file}`, content: module.body }))
@@ -3332,6 +3416,8 @@ async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, cor
   const manifestCoreBlacklistByFilename = new Map();
   const manifestCorePriorityByFilename = new Map();
   let manifestCrossConnectorPunishmentWhitelist = new Set();
+  let manifestShipCoreFiles = [];
+  let manifestUpgradeModuleFiles = [];
 
   resetEditor(false, { persistDraft });
   // Store passthrough files (SBCs and unrecognised files) for re-inclusion in Download All
@@ -3352,6 +3438,9 @@ async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, cor
     } else {
       const listed = manifest.shipCores.map((entry) => entry.filename);
       const listedModules = manifest.upgradeModules.map((entry) => entry.filename);
+      manifestShipCoreFiles = listed;
+      manifestUpgradeModuleFiles = listedModules;
+      status.push(...(manifest.diagnostics || []));
       manifestCrossConnectorPunishmentWhitelist = new Set(
         normalizeManifestCoreSubtypeIds(manifest.crossConnectorPunishmentWhitelist || []).map((subtypeId) => subtypeId.toLowerCase())
       );
@@ -3486,12 +3575,28 @@ async function processUploadedXmlFiles(groupsFile, manifestFile, noCoreFile, cor
     status.push(`Passed through ${file.name}.`);
   }
 
+  const suppliedConfigPaths = new Set();
+  coreFiles.forEach((file) => {
+    const path = String(fileZipPathMap.get(file) || file.zipPath || file.name || "").replaceAll("\\", "/").toLowerCase();
+    if (!path) return;
+    suppliedConfigPaths.add(path);
+    suppliedConfigPaths.add(path.split("/").pop());
+  });
+  const isSupplied = (path) => {
+    const normalized = String(path || "").replaceAll("\\", "/").toLowerCase();
+    return suppliedConfigPaths.has(normalized) || suppliedConfigPaths.has(normalized.split("/").pop());
+  };
+  manifestShipCoreFiles.filter((path) => !isSupplied(path)).forEach((path) =>
+    status.push(`Manifest ship core file '${path}' could not be read and was ignored.`));
+  manifestUpgradeModuleFiles.filter((path) => !isSupplied(path)).forEach((path) =>
+    status.push(`Manifest upgrade module file '${path}' could not be read and was ignored.`));
+
   state.selectedCoreIndex = 0;
   state.selectedManifestCoreEntryIndex = state.shipCores.length ? 0 : -1;
   state.selectedUpgradeModuleIndex = 0;
   state.expandedLimitPanelsByCore = {};
 
-  pruneMissingBlockGroupReferences(status);
+  normalizeBlockGroupReferences();
 
   if (state.noCoreCore) status.push(`Loaded no-core from ${state.noCoreCore.originalFileName || "legacy import"}.`);
   if (state.blockGroups.length === 0) status.push("No block groups loaded (you can still create them manually).");
@@ -3560,17 +3665,19 @@ async function openUpdateFolder() {
 
 async function updateSelectedFolder() {
   if (!_selectedUpdateFolderHandle) return;
+  const xml = generateValidatedXml({ persistDraft: false });
+  if (!xml) return;
   const updateButton = ids("updateSelectedFolder");
   updateButton.disabled = true;
   try {
-    const entries = generatedXmlEntries(generateXml({ persistDraft: false }));
+    const entries = generatedXmlEntries(xml);
     const writtenPaths = await writeEntriesToFolder(_selectedUpdateFolderHandle, entries, _selectedUpdateFolderIsData);
     setImportStatus([`Updated ${writtenPaths.length} generated XML file(s) in '${_selectedUpdateFolderHandle.name}'.`]);
     clearDraftFromStorage();
   } catch (error) {
     setImportStatus([`Could not update '${_selectedUpdateFolderHandle.name}': ${error.message}`]);
   } finally {
-    updateButton.disabled = false;
+    renderEditorValidation();
   }
 }
 

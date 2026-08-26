@@ -145,6 +145,21 @@ button:disabled:hover { background: #0f766e; }
   max-height: 300px;
   overflow: auto;
 }
+.validation-status {
+  border-left-width: 4px;
+}
+.validation-errors {
+  border-left-color: #ef4444;
+  color: #fca5a5;
+}
+.validation-warnings {
+  border-left-color: #f59e0b;
+  color: #fcd34d;
+}
+.validation-passed {
+  border-left-color: #22c55e;
+  color: #86efac;
+}
 .card {
   border: 1px solid #374151;
   border-radius: 8px;
@@ -165,6 +180,11 @@ button:disabled:hover { background: #0f766e; }
 
 .block-limit-summary--missing-groups {
   color: #f87171;
+}
+
+.block-limit-summary--warning,
+.block-limit-warning {
+  color: #fbbf24;
 }
 
 .block-limit-content {
@@ -229,6 +249,10 @@ button:disabled:hover { background: #0f766e; }
 .group-checklist-item.selected {
   background: rgba(34, 197, 94, 0.2);
   color: #86efac;
+}
+.group-checklist-item.invalid {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
 }
 .group-checklist-item input {
   width: auto;

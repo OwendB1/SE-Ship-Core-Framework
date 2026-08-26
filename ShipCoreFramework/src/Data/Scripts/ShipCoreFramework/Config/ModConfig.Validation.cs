@@ -71,6 +71,9 @@ namespace ShipCoreFramework
 
                 NormalizeIncludedBlockGroupReferences(limit, core, source, coreFileOrKey);
 
+                if (limit.MaxCountPerDirection >= 0f && !HasValidDirectionRule(limit))
+                    Utils.Log($"Config warning: ShipCore '{core.UniqueName}' limit '{limit.Name}' has <MaxCountPerDirection> enabled but no valid direction in <AllowedDirections> or a BlockGroups Directions attribute.", 2, "Config Validation");
+
                 if (limit.ExcludedBlockGroupsShortHand == null)
                 {
                     limit.ExcludedBlockGroupsShortHand = Array.Empty<string>();
@@ -138,6 +141,21 @@ namespace ShipCoreFramework
 
             limit.BlockGroupReferences = normalizedReferences.ToArray();
             limit.BlockGroupsShortHand = normalizedReferences.Select(reference => reference.Name).ToArray();
+        }
+
+        private static bool HasValidDirectionRule(BlockLimit limit)
+        {
+            if (limit.AllowedDirections != null && limit.AllowedDirections.Any(IsSpecificDirection))
+                return true;
+
+            return limit.BlockGroupReferences != null && limit.BlockGroupReferences.Any(reference =>
+                reference != null && reference.AllowedDirections != null &&
+                reference.AllowedDirections.Any(IsSpecificDirection));
+        }
+
+        private static bool IsSpecificDirection(DirectionType direction)
+        {
+            return direction != DirectionType.Any && Enum.IsDefined(typeof(DirectionType), direction);
         }
 
         private static List<DirectionType> ParseDirectionList(string directions, out string[] invalidDirections)

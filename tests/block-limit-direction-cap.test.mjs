@@ -4,9 +4,10 @@ import { readFile } from "node:fs/promises";
 const root = new URL("../", import.meta.url);
 const read = path => readFile(new URL(path, root), "utf8");
 
-const [models, bucket, gridLimits, gridBlocks, groupLimits, merge, evaluation, runtime,
-  snapshot, replica, preview, statusHud, apiData, api, configurator, readme] = await Promise.all([
+const [models, validation, bucket, gridLimits, gridBlocks, groupLimits, merge, evaluation, runtime,
+  snapshot, replica, preview, statusHud, apiData, api, configurator, editorValidation, readme] = await Promise.all([
   read("ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Config/ModConfig.XmlModels.cs"),
+  read("ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Config/ModConfig.Validation.cs"),
   read("ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Shared/Limits/LimitSupport.cs"),
   read("ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Server/Components/GridComponent.Limits.cs"),
   read("ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/Server/Components/GridComponent.Blocks.cs"),
@@ -21,10 +22,13 @@ const [models, bucket, gridLimits, gridBlocks, groupLimits, merge, evaluation, r
   read("ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/API/ApiData.cs"),
   read("ShipCoreFramework/src/Data/Scripts/ShipCoreFramework/API/ModAPI.cs"),
   read("docs/configurator/app.js"),
+  read("docs/configurator/validation.js"),
   read("README.md"),
 ]);
 
 assert.match(models, /XmlElement\("MaxCountPerDirection"\)[\s\S]*= -1f/);
+assert.match(validation, /MaxCountPerDirection[\s\S]*no valid direction in <AllowedDirections> or a BlockGroups Directions attribute/);
+assert.match(validation, /direction != DirectionType\.Any && Enum\.IsDefined/);
 assert.match(models, /enum LimitVisibility[\s\S]*Always = 0[\s\S]*NearLimit = 1[\s\S]*Hidden = 2/);
 assert.match(bucket, /double\[\] DirectionWeights = new double\[6\]/);
 
@@ -55,6 +59,11 @@ assert.match(apiData, /ProtoMember\(10\).*MaxCountPerDirection/);
 assert.match(apiData, /ProtoMember\(11\).*LimitVisibility/);
 assert.match(api, /MaxCountPerDirection = limit\.MaxCountPerDirection/);
 assert.match(configurator, /data-action="limit-max-direction"/);
+assert.match(configurator, /limit\.maxCountPerDirection = Number\(target\.value \|\| -1\)/);
+assert.match(configurator, /MaxCountPerDirection requires a valid AllowedDirections value or per-group Directions override/);
+assert.match(editorValidation, /text\(directions\)\.split\(","\)\.some\(isValidSpecificDirection\)/);
+assert.match(configurator, /const DEFAULT_GRID_MODIFIERS = \{[\s\S]*AssemblerSpeed: -1[\s\S]*ThrusterForce: -1/);
+assert.match(configurator, /core-modifier-grid"\) selectedCore\.modifiers\[target\.dataset\.m\] = Number\(target\.value \|\| -1\)/);
 assert.match(configurator, /data-action="limit-visibility"/);
 assert.match(configurator, /numberOf\(limitNode, "MaxCountPerDirection", -1\)/);
 assert.match(configurator, /normalizeLimitVisibility\(textOf\(limitNode, "LimitVisibility"\)\)/);
