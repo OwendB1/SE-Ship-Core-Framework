@@ -110,6 +110,112 @@ namespace ShipCoreFramework
             );
         }
 
+        private static void CoreDryMass(long playerId)
+        {
+            IMyCubeGrid targetGrid;
+            GroupComponent groupComponent;
+            if (!TryGetTargetCoreGroup(playerId, out targetGrid, out groupComponent)) return;
+
+            MyAPIGateway.Utilities.ShowMissionScreen(
+                "Ship Core Framework",
+                $"Dry Mass - {targetGrid.CustomName} ",
+                "Dry Mass Breakdown",
+                GetCoreDryMass(targetGrid, groupComponent),
+                null,
+                ClientConsent()
+            );
+        }
+
+        internal static string GetCoreDryMass(IMyCubeGrid targetGrid, GroupComponent groupComponent)
+        {
+            StringBuilder body = new StringBuilder();
+            body.Append("Each tracked block contributes its full definition mass, regardless of build stage. ")
+                .Append("Inventory contents are excluded.\n\n");
+
+            MyCubeGrid mainGrid = groupComponent.MainCoreComponent?.GridComponent?.Grid;
+            if (mainGrid == null) mainGrid = targetGrid as MyCubeGrid;
+
+            double groupTotal = 0d;
+            int groupBlockCount = 0;
+            int groupGridCount = 0;
+            int subgridNumber = 0;
+            var grids = groupComponent.GridDictionary
+                .Where(pair => pair.Key != null && pair.Value != null)
+                .OrderBy(pair => ReferenceEquals(pair.Key, mainGrid) ? 0 : 1)
+                .ThenBy(pair => ((IMyCubeGrid)pair.Key).CustomName ?? string.Empty,
+                    StringComparer.OrdinalIgnoreCase)
+                .ThenBy(pair => pair.Key.EntityId);
+
+            foreach (var gridEntry in grids)
+            {
+                bool isMainGrid = ReferenceEquals(gridEntry.Key, mainGrid);
+                if (!isMainGrid) subgridNumber++;
+
+                Dictionary<string, Dictionary<float, int>> usage =
+                    new Dictionary<string, Dictionary<float, int>>(StringComparer.OrdinalIgnoreCase);
+                List<IMySlimBlock> blocks = gridEntry.Value.GetBlocksCopy();
+                double gridTotal = 0d;
+                int gridBlockCount = 0;
+
+                for (int blockIndex = 0; blockIndex < blocks.Count; blockIndex++)
+                {
+                    IMySlimBlock block = blocks[blockIndex];
+                    if (block == null) continue;
+
+                    float mass = GridComponent.GetBlockMass(block);
+                    string displayName = Utils.GetLocalizedBlockName(block);
+                    Dictionary<float, int> countsByMass;
+                    if (!usage.TryGetValue(displayName, out countsByMass))
+                    {
+                        countsByMass = new Dictionary<float, int>();
+                        usage.Add(displayName, countsByMass);
+                    }
+
+                    int count;
+                    countsByMass[mass] = countsByMass.TryGetValue(mass, out count) ? count + 1 : 1;
+                    gridTotal += mass;
+                    gridBlockCount++;
+                }
+
+                body.Append(isMainGrid ? "MAIN GRID: " : "SUBGRID " + subgridNumber + ": ")
+                    .Append(((IMyCubeGrid)gridEntry.Key).CustomName).Append(" - ")
+                    .Append(FormatDryMass(gridTotal)).Append(" (")
+                    .Append(gridBlockCount.ToString("N0", CultureInfo.InvariantCulture)).Append(" blocks)\n");
+
+                foreach (var displayEntry in usage
+                             .OrderByDescending(pair => pair.Value.Sum(value => (double)value.Key * value.Value))
+                             .ThenBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
+                {
+                    foreach (var massEntry in displayEntry.Value
+                                 .OrderByDescending(pair => (double)pair.Key * pair.Value))
+                    {
+                        double usedMass = (double)massEntry.Key * massEntry.Value;
+                        body.Append("  - ").Append(displayEntry.Key).Append(" (")
+                            .Append(FormatDryMass(massEntry.Key)).Append(" x ")
+                            .Append(massEntry.Value.ToString("N0", CultureInfo.InvariantCulture)).Append(") = ")
+                            .Append(FormatDryMass(usedMass)).Append('\n');
+                    }
+                }
+
+                if (usage.Count == 0) body.Append("  No tracked blocks.\n");
+                body.Append('\n');
+                groupTotal += gridTotal;
+                groupBlockCount += gridBlockCount;
+                groupGridCount++;
+            }
+
+            body.Append("GROUP TOTAL: ").Append(FormatDryMass(groupTotal)).Append(" (")
+                .Append(groupBlockCount.ToString("N0", CultureInfo.InvariantCulture)).Append(" blocks across ")
+                .Append(groupGridCount.ToString("N0", CultureInfo.InvariantCulture))
+                .Append(" grids)");
+            return body.ToString();
+        }
+
+        private static string FormatDryMass(double mass)
+        {
+            return mass.ToString("#,##0.###", CultureInfo.InvariantCulture) + " kg";
+        }
+
         private static bool TryGetTargetCoreGroup(long playerId, out IMyCubeGrid targetGrid,
             out GroupComponent groupComponent)
         {
@@ -605,6 +711,9 @@ Enables or disables unattached upgrade module mode. When ON, upgrade modules do 
 
 /core info
 Raycasts from crosshairs to find a grid and displays all its core information.
+
+/core mass
+Raycasts from crosshairs and shows dry mass by block type for every grid in the mechanical group.
 
 /core limits
 Raycasts from crosshairs to find a grid and displays per-limit block usage by display name.

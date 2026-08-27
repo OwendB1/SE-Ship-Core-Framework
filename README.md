@@ -516,6 +516,7 @@ The framework exposes chat and admin commands under `/core`. Common ones include
 
 - `/core help`
 - `/core info`
+- `/core mass` (per-grid and per-block dry mass breakdown)
 - `/core listcores`
 - `/core listnocores`
 - `/core select <NoCoreName|Subtype>`

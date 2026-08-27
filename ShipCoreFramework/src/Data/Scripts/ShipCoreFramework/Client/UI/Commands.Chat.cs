@@ -46,6 +46,9 @@ namespace ShipCoreFramework
                 case "info":
                     if (Session.LocalPlayer != null) CoreInfo(playerId);
                     return;
+                case "mass":
+                    if (Session.LocalPlayer != null) CoreDryMass(playerId);
+                    return;
                 case "limits":
                     if (Session.LocalPlayer != null) CoreLimits(playerId);
                     return;
