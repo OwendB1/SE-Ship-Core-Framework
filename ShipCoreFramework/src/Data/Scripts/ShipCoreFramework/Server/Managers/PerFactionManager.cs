@@ -466,7 +466,8 @@ namespace ShipCoreFramework
 
         internal static bool HasFactionCoreLimit(ShipCore core)
         {
-            return core != null && (core.MaxPerFaction >= 0 || core.FactionPlayersNeededPerCore > 0);
+            return Session.CoreCountLimitsEnabled && core != null &&
+                   (core.MaxPerFaction >= 0 || core.FactionPlayersNeededPerCore > 0);
         }
 
         internal static int GetPlayerScaledFactionCoreLimit(ShipCore core, int playerCount)
@@ -482,7 +483,7 @@ namespace ShipCoreFramework
 
         internal static int GetEffectiveFactionCoreLimit(ShipCore core, int playerCount)
         {
-            if (core == null)
+            if (!Session.CoreCountLimitsEnabled || core == null)
                 return -1;
 
             var fixedLimit = core.MaxPerFaction;
@@ -510,7 +511,7 @@ namespace ShipCoreFramework
             var core = Config.GetShipCoreByTypeId(coreType);
             var minNeededPlayers = core.MinPlayers;
             var maxAllowedPlayers = core.MaxPlayers;
-            var requiresFaction = core.FactionPlayersNeededPerCore > 0;
+            var requiresFaction = HasFactionCoreLimit(core) && core.FactionPlayersNeededPerCore > 0;
             var factionMemberCount = GetFactionMemberCount(owningFaction);
 
             if (factionId == -1 && (minNeededPlayers > 0 || requiresFaction))

@@ -384,7 +384,7 @@ namespace ShipCoreFramework
             }
             body += "\n";
 
-            var currentMaxPerPlayer = groupComponent.ShipCore.MaxPerPlayer;
+            var currentMaxPerPlayer = Session.GetEffectivePlayerCoreLimit(groupComponent.ShipCore);
             if (currentMaxPerPlayer > 0)
             {
                 body += $"Per Player Limit:{groupComponent.GetCurrentPlayerCoreCount()}/{currentMaxPerPlayer}\n";
@@ -709,6 +709,9 @@ Shows current unattached upgrade modules mode. (Admin Required)
 /core unattachedmodules on|off
 Enables or disables unattached upgrade module mode. When ON, upgrade modules do not need to be physically adjacent to a core. (Admin Required)
 
+/core corecountlimits on|off
+Enables or disables faction and player core count limits in creative worlds. (Admin Required)
+
 /core info
 Raycasts from crosshairs to find a grid and displays all its core information.
 
@@ -774,7 +777,8 @@ Sets and saves the client HUD screen position.";
 
         private static bool HasFactionCoreLimit(ShipCore core)
         {
-            return core != null && (core.MaxPerFaction >= 0 || core.FactionPlayersNeededPerCore > 0);
+            return Session.CoreCountLimitsEnabled && core != null &&
+                   (core.MaxPerFaction >= 0 || core.FactionPlayersNeededPerCore > 0);
         }
 
         private static string FormatFactionLimit(ShipCore core, int currentCount, int playerCount, int max)

@@ -107,8 +107,8 @@ namespace ShipCoreFramework
             var core = Session.Config.GetShipCoreByTypeId(coreType);
             if (core == null) return false;
 
-            return core.MaxPerPlayer >= 0 ||
-                   core.FactionPlayersNeededPerCore > 0 ||
+            return (Session.CoreCountLimitsEnabled &&
+                    (core.MaxPerPlayer >= 0 || core.FactionPlayersNeededPerCore > 0)) ||
                    core.MinPlayers > 0 ||
                    core.MaxPlayers > 0;
         }

@@ -412,15 +412,17 @@ namespace ShipCoreFramework
         private void AppendCoreLimits(GroupComponent group, ShipCore core)
         {
             if (core == null) return;
-            bool hasFactionLimit = core.MaxPerFaction >= 0 || core.FactionPlayersNeededPerCore > 0;
+            int playerLimit = Session.GetEffectivePlayerCoreLimit(core);
+            bool hasFactionLimit = Session.CoreCountLimitsEnabled &&
+                                   (core.MaxPerFaction >= 0 || core.FactionPlayersNeededPerCore > 0);
             bool hasManifestLimit = core.ManifestGroupNames != null && core.ManifestGroupNames.Count > 0;
-            if (core.MaxBackupCores < 0 && core.MaxPerPlayer < 0 && !hasFactionLimit && !hasManifestLimit) return;
+            if (core.MaxBackupCores < 0 && playerLimit < 0 && !hasFactionLimit && !hasManifestLimit) return;
 
             _text.AppendLine().Append(Gray).AppendLine("--- Core Limits ---").Append(White);
             if (core.MaxBackupCores >= 0)
                 AppendQuota("Backup Cores", Math.Max(0, group.CoreCount - 1), core.MaxBackupCores);
-            if (core.MaxPerPlayer >= 0)
-                AppendQuota("Player Cores", group.GetCurrentPlayerCoreCount(), core.MaxPerPlayer);
+            if (playerLimit >= 0)
+                AppendQuota("Player Cores", group.GetCurrentPlayerCoreCount(), playerLimit);
             if (hasFactionLimit)
             {
                 if (group.OwningFaction == null)

@@ -90,6 +90,7 @@ Root tag: `<ModConfig>`
 | `SpeedRampDownPercentage` | `float` | Percentage used to derive linear speed-cap interpolation after core loss or `PunishSpeed` activation. | Accepts `0`–`100`; default `5`. Cached internally as 12 five-tick steps. Set to `0` to apply the target cap immediately. |
 | `FrictionSpeedValueMode` | `Modifier` or `Absolute` | Chooses how friction min/max speed fields are interpreted. | In `Modifier` mode they scale against world max speed; in `Absolute` mode they are m/s values. |
 | `BlockDirectionalPlacementOnSubgrids` | `bool` | Controls whether directional block limits treat subgrid placement as invalid. | Default is `true`. When `true`, a limited block with `AllowedDirections` cannot be placed on a different grid than the main core. When `false`, subgrids bypass the directional lock. |
+| `CreativeCoreCountLimitsEnabled` | `bool` | Enforces faction and player core count caps in creative worlds. | Default is `true`. Admins can change it with `/core corecountlimits on\|off`. Survival worlds always enforce these caps. When disabled, players see a persistent top-right reminder. |
 | `NoFlyZones` | `List<Zones>` | World no-fly zones. | See nested fields below. |
 
 ### No-fly zone fields

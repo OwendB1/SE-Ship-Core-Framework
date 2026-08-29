@@ -21,7 +21,7 @@ namespace ShipCoreFramework
                 {
                     foreach (var classCount in playerVal)
                     {
-                        var max = Session.Config.GetShipCoreByTypeId(classCount.Key).MaxPerPlayer;
+                        var max = Session.GetEffectivePlayerCoreLimit(Session.Config.GetShipCoreByTypeId(classCount.Key));
                         bodySort[classCount.Key]=$"> {classCount.Key}:\n";
                         if(max != -1 && classCount.Value>0)
                         {
@@ -88,7 +88,7 @@ namespace ShipCoreFramework
                         {
                             foreach (var classCount in playerVal)
                             {
-                                var max = Session.Config.GetShipCoreByTypeId(classCount.Key).MaxPerPlayer;
+                                var max = Session.GetEffectivePlayerCoreLimit(Session.Config.GetShipCoreByTypeId(classCount.Key));
                                 bodySort[classCount.Key]=$"> {classCount.Key}:\n";
                                 if(max != -1)
                                 {

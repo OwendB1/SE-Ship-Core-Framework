@@ -56,6 +56,7 @@ namespace ShipCoreFramework
             FrictionSpeedValueMode = import.FrictionSpeedValueMode;
             BlockDirectionalPlacementOnSubgrids = import.BlockDirectionalPlacementOnSubgrids;
             AllowUnattachedUpgradeModules = import.AllowUnattachedUpgradeModules;
+            CreativeCoreCountLimitsEnabled = import.CreativeCoreCountLimitsEnabled;
             NoCoreGraceSeconds = ClampTimerSeconds(import.NoCoreGraceSeconds, 30, "NoCoreGraceSeconds");
             MinimumBlocksGraceSeconds = ClampTimerSeconds(import.MinimumBlocksGraceSeconds, 30,
                 "MinimumBlocksGraceSeconds");

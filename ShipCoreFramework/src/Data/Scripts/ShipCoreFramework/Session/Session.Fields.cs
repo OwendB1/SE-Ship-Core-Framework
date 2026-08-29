@@ -25,5 +25,13 @@ namespace ShipCoreFramework
         
         internal static IMyPlayer LocalPlayer => MyAPIGateway.Session.LocalHumanPlayer;
         internal static bool IsGameThread => GameThreadId != 0 && Environment.CurrentManagedThreadId == GameThreadId;
+        internal static bool CoreCountLimitsEnabled => MyAPIGateway.Session == null ||
+                                                       !MyAPIGateway.Session.CreativeMode ||
+                                                       Config == null || Config.CreativeCoreCountLimitsEnabled;
+
+        internal static int GetEffectivePlayerCoreLimit(ShipCore core)
+        {
+            return CoreCountLimitsEnabled && core != null ? core.MaxPerPlayer : -1;
+        }
     }
 }

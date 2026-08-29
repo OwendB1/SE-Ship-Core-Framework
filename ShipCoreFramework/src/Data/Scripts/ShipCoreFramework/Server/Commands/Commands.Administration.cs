@@ -264,6 +264,24 @@ namespace ShipCoreFramework
             return $"Unattached upgrade modules mode set to {(Session.Config.AllowUnattachedUpgradeModules ? "ON" : "OFF")}";
         }
 
+        private static string CoreCountLimits(string[] args)
+        {
+            if (!MyAPIGateway.Session.CreativeMode)
+                return "Faction and player core count limits are always ON in survival worlds.";
+
+            if (args.Length < 2)
+                return $"Faction and player core count limits are {(Session.Config.CreativeCoreCountLimitsEnabled ? "ON" : "OFF")}.";
+
+            var value = args[1].ToLowerInvariant();
+            if (value != "on" && value != "off")
+                return "Usage: /core corecountlimits on|off";
+
+            Session.Config.CreativeCoreCountLimitsEnabled = value == "on";
+            Session.Config.SaveConfig(true);
+            Session.RefreshGroupsAfterConfigChanged();
+            return $"Faction and player core count limits set to {(Session.Config.CreativeCoreCountLimitsEnabled ? "ON" : "OFF")}.";
+        }
+
         private static string ListIgnoredTags()
         {
             var tags = Session.Config.IgnoredFactionTags ?? (Session.Config.IgnoredFactionTags = new List<string>());

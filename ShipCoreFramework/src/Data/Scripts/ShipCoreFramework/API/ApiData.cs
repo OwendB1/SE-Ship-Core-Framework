@@ -484,6 +484,7 @@ namespace ShipCoreFramework
         [ProtoMember(21)] public int MinimumBlocksGraceSeconds = 30;
         [ProtoMember(22)] public double CombatLoggingBroadcastRangeMeters = 20000d;
         [ProtoMember(23)] public float SpeedRampDownPercentage = 5f;
+        [ProtoMember(24)] public bool CreativeCoreCountLimitsEnabled = true;
     }
 
     [ProtoContract]

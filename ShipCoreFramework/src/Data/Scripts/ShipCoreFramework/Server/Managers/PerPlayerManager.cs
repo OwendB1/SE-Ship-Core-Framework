@@ -31,7 +31,7 @@ namespace ShipCoreFramework
             }
 
             var core = Config.GetShipCoreByTypeId(coreType);
-            var maxAllowedGrids = core.MaxPerPlayer;
+            var maxAllowedGrids = Session.GetEffectivePlayerCoreLimit(core);
             if (maxAllowedGrids < 0) return true;
 
             var currentCount = GetCurrentCount(ownerId, coreType);

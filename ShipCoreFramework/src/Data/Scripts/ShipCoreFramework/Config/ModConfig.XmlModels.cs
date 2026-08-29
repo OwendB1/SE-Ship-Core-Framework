@@ -51,6 +51,7 @@ namespace ShipCoreFramework
         [XmlElement("FrictionSpeedValueMode")] public FrictionSpeedValueMode FrictionSpeedValueMode = FrictionSpeedValueMode.Modifier;
         [XmlElement("BlockDirectionalPlacementOnSubgrids")] public bool BlockDirectionalPlacementOnSubgrids = true;
         [XmlElement("AllowUnattachedUpgradeModules")] public bool AllowUnattachedUpgradeModules;
+        [XmlElement("CreativeCoreCountLimitsEnabled")] public bool CreativeCoreCountLimitsEnabled = true;
         [XmlElement("NoCoreGraceSeconds")] public int NoCoreGraceSeconds = 30;
         [XmlElement("MinimumBlocksGraceSeconds")] public int MinimumBlocksGraceSeconds = 30;
         [XmlElement("NoFlyZones")] public List<Zones> NoFlyZones = new List<Zones>();

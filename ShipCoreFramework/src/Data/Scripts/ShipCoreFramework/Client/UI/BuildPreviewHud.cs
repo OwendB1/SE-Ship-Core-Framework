@@ -37,6 +37,7 @@ namespace ShipCoreFramework
         private const string PassColor = "120,220,120";
         private const string FailColor = "255,90,90";
         private const string TitleColor = "180,200,255";
+        private const string CoreCountLimitReminderText = "SCF: Player/faction core count limits OFF";
 
         // Directional indicator sizing. Icon size is driven by camera distance (not block size)
         // so it keeps a constant apparent size regardless of how large the block is.
@@ -76,6 +77,10 @@ namespace ShipCoreFramework
         private bool _hudReady;
         private HudAPIv2.HUDMessage _panel;
         private IMyHudNotification _fallback;
+        private HudAPIv2.HUDMessage _coreCountLimitReminder;
+        private IMyHudNotification _coreCountLimitReminderFallback;
+        private readonly StringBuilder _coreCountLimitReminderText =
+            new StringBuilder("<color=255,220,80>" + CoreCountLimitReminderText);
 
         private List<LimitCheckResult> _results;
         private Vector3D _boxCenter;
@@ -128,6 +133,13 @@ namespace ShipCoreFramework
             {
                 Visible = false
             };
+            _coreCountLimitReminder = new HudAPIv2.HUDMessage(
+                _coreCountLimitReminderText, new Vector2D(0.98d, 0.9d), null, -1, 0.9d, true, true)
+            {
+                Visible = false
+            };
+            _coreCountLimitReminder.Offset = new Vector2D(
+                -Math.Max(0d, _coreCountLimitReminder.GetTextLength().X), 0d);
             _coreStatusHud.OnHudReady();
         }
 
@@ -146,6 +158,9 @@ namespace ShipCoreFramework
             _hudApi = null;
             _panel = null;
             _fallback = null;
+            _coreCountLimitReminder = null;
+            _coreCountLimitReminderFallback?.Hide();
+            _coreCountLimitReminderFallback = null;
             _coreStatusHud = null;
         }
 
@@ -157,6 +172,7 @@ namespace ShipCoreFramework
 
             try
             {
+                UpdateCoreCountLimitReminder();
                 _coreStatusHud?.Update();
                 UpdatePreview();
             }
@@ -164,6 +180,29 @@ namespace ShipCoreFramework
             {
                 Utils.Log($"BuildPreviewHud.UpdateAfterSimulation: {ex}", 3);
             }
+        }
+
+        private void UpdateCoreCountLimitReminder()
+        {
+            var visible = !global::ShipCoreFramework.Session.CoreCountLimitsEnabled;
+            if (_coreCountLimitReminder != null)
+            {
+                _coreCountLimitReminderFallback?.Hide();
+                _coreCountLimitReminder.Visible = visible;
+                return;
+            }
+
+            if (!visible)
+            {
+                _coreCountLimitReminderFallback?.Hide();
+                return;
+            }
+
+            if (_coreCountLimitReminderFallback == null)
+                _coreCountLimitReminderFallback = MyAPIGateway.Utilities.CreateNotification(
+                    CoreCountLimitReminderText, 1000, "Red");
+            _coreCountLimitReminderFallback.ResetAliveTime();
+            _coreCountLimitReminderFallback.Show();
         }
 
         private void UpdatePreview()

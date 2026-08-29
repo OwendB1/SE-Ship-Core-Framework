@@ -68,6 +68,10 @@ namespace ShipCoreFramework
                     if(!CheckIfAdmin(playerId)) return;
                     modMessage+=UnattachedModules(args);
                     break;
+                case "corecountlimits":
+                    if(!CheckIfAdmin(playerId)) return;
+                    modMessage+=CoreCountLimits(args);
+                    break;
                 default:
                     modMessage += "The command you have typed was not recognized. Did you make a typo?";
                     break;

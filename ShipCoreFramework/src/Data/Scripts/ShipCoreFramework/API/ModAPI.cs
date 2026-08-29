@@ -725,6 +725,7 @@ namespace ShipCoreFramework
                 return new ModConfigData
                 {
                     BlockDirectionalPlacementOnSubgrids = true,
+                    CreativeCoreCountLimitsEnabled = true,
                     SpeedRampDownPercentage = 5f,
                     NoCoreGraceSeconds = 30,
                     MinimumBlocksGraceSeconds = 30,
@@ -757,6 +758,7 @@ namespace ShipCoreFramework
                 FrictionSpeedValueMode = (FrictionSpeedValueModeData)(int)config.FrictionSpeedValueMode,
                 BlockDirectionalPlacementOnSubgrids = config.BlockDirectionalPlacementOnSubgrids,
                 AllowUnattachedUpgradeModules = config.AllowUnattachedUpgradeModules,
+                CreativeCoreCountLimitsEnabled = config.CreativeCoreCountLimitsEnabled,
                 NoCoreGraceSeconds = config.NoCoreGraceSeconds,
                 MinimumBlocksGraceSeconds = config.MinimumBlocksGraceSeconds,
                 NoFlyZones = config.NoFlyZones
