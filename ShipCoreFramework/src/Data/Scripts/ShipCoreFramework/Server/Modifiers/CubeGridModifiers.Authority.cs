@@ -144,6 +144,12 @@ namespace ShipCoreFramework
                         case "CruiseAccelerationThreshold":
                             modifiers.CruiseAccelerationThreshold = ApplyUpgradeModifier(modifiers.CruiseAccelerationThreshold, modifier.Value, modifier.ModifierType);
                             break;
+                        case "CriticalAccelerationThreshold":
+                            modifiers.CriticalAccelerationThreshold = ApplyUpgradeModifier(modifiers.CriticalAccelerationThreshold, modifier.Value, modifier.ModifierType);
+                            break;
+                        case "BoostedAccelerationThreshold":
+                            modifiers.BoostedAccelerationThreshold = ApplyUpgradeModifier(modifiers.BoostedAccelerationThreshold, modifier.Value, modifier.ModifierType);
+                            break;                        
                         case "AtmosphericCruiseFrictionMultiplier":
                             EnsureAtmosphericFrictionSettings(modifiers);
                             modifiers.AtmosphericFriction.CruiseFrictionMultiplier = ApplyUpgradeModifier(modifiers.AtmosphericFriction.CruiseFrictionMultiplier, modifier.Value, modifier.ModifierType);
@@ -280,6 +286,8 @@ namespace ShipCoreFramework
                 MaximumFrictionDeceleration = modifiers.MaximumFrictionDeceleration,
                 CruiseFrictionMultiplier = modifiers.CruiseFrictionMultiplier,
                 CruiseAccelerationThreshold = modifiers.CruiseAccelerationThreshold,
+                CriticalAccelerationThreshold =  modifiers.CriticalAccelerationThreshold,
+                BoostedAccelerationThreshold = modifiers.BoostedAccelerationThreshold,
                 FrictionCurve = Clone(modifiers.FrictionCurve),
                 AtmosphericFriction = Clone(modifiers.AtmosphericFriction)
             };

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Xml.Serialization;
 using VRageMath;
+using VRageRender;
 
 namespace ShipCoreFramework
 {
@@ -540,12 +541,19 @@ namespace ShipCoreFramework
 
         [XmlElement("CruiseAccelerationThreshold")]
         public float CruiseAccelerationThreshold = 0.05f;
-
+        
+        [XmlElement("CriticalAccelerationThreshold")]
+        public float CriticalAccelerationThreshold = 55.8f;//Essentially 6Gs
+        
+        [XmlElement("BoostedAccelerationThreshold")]
+        public float BoostedAccelerationThreshold = 88.26f;//Essentially 9Gs
+        
         [XmlElement("FrictionCurve")]
         public FrictionCurve FrictionCurve;
 
         [XmlElement("AtmosphericFriction")]
         public AtmosphericFrictionSettings AtmosphericFriction;
+        
 
         public bool ShouldSerializeFrictionCurve()
         {
@@ -943,7 +951,9 @@ namespace ShipCoreFramework
     public enum SpeedLimitType
     {
         Normal = 0,
-        Friction = 1
+        Friction = 1,
+        Acceleration = 2,
+        FrictionAndAcceleration = 3
     }
 
     [XmlRoot("SpeedOverrideMode")]

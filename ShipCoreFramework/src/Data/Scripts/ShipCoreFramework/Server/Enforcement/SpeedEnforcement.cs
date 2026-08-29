@@ -52,6 +52,8 @@ namespace ShipCoreFramework
             internal bool BoostActive;
             internal bool SpeedRampDownActive;
             internal float SpeedRampDownTarget;
+            internal float CriticalAccelerationThreshold;
+            internal float BoostedAccelerationThreshold;
             internal bool FrictionEnforcementEnabled;
             internal float MinimumFrictionSpeed;
             internal float MaximumFrictionSpeed;
@@ -709,6 +711,7 @@ namespace ShipCoreFramework
                 Vector3 linearVelocity = physics.LinearVelocity;
                 Vector3 angularVelocity = physics.AngularVelocity;
                 Vector3 constrainedAngularVelocity = angularVelocity;
+                Vector3 linearAcceleration = physics.LinearAcceleration;
                 bool angularVelocityCapped = false;
 
                 if (maxAngularVelocity > 0f)
@@ -746,7 +749,15 @@ namespace ShipCoreFramework
                     StoreSpeedSample(grid.EntityId, effectiveMaxSpeed);
                     continue;
                 }
-
+                float acceleration = Convert.ToSingle(Math.Sqrt(linearAcceleration.LengthSquared()));
+                bool criticalAcceleration = acceleration > context.CriticalAccelerationThreshold;
+                bool boostedAcceleration = acceleration > context.BoostedAccelerationThreshold;
+                if ((criticalAcceleration && !context.BoostActive)||(context.BoostActive && boostedAcceleration))
+                {
+                    //Insert Penalty for violating max acceleration
+                    //Currently thinking damage to all onboard characters, thoughts?
+                    //This was it's not a hard cap but there are limitations
+                }
                 var profile = GetFrictionProfileForGrid(grid, context);
                 var isCruising = IsGridCruising(grid.EntityId, speed, profile.CruiseAccelerationThreshold);
                 StoreSpeedSample(grid.EntityId, speed);
