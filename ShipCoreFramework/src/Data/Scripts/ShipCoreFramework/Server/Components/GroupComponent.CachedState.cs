@@ -132,10 +132,19 @@ namespace ShipCoreFramework
                 (!allowPeriodicRefresh || !IsRefreshDue(tick, _nextIgnoredStateCacheRefreshTick)))
                 return;
 
+            var wasNpcGroup = _cachedIsNpcGroup;
+            _cachedIsNpcGroup = IsNpcGroup();
             _cachedIsIgnoredByAiOrFactionTag = IsIgnoredByAiOrFactionTag();
             _cachedIsIgnoredGroup = ComputeIsIgnoredGroup();
             _ignoredStateCacheDirty = false;
             _nextIgnoredStateCacheRefreshTick = tick + IgnoredStateCacheRefreshIntervalTicks;
+
+            if (wasNpcGroup != _cachedIsNpcGroup)
+            {
+                Session.MarkRuntimeStateDirty(this);
+                if (wasNpcGroup)
+                    EnforceGroupPunishment();
+            }
         }
 
         private void RevalidateNoCoreDirectionLock()

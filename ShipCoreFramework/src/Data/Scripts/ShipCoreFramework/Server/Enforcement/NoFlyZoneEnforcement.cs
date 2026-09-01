@@ -118,6 +118,7 @@ namespace ShipCoreFramework
                 foreach (var limit in blockLimits)
                 {
                     if (limit?.BlockGroups == null || !limit.PunishByNoFlyZone) continue;
+                    if (!groupComponent.ShouldEvaluateBlockLimit(limit)) continue;
 
                     if (limit.GetMatchingBlockType(blockKey) != null)
                         punishments.Add(new PendingNoFlyPunishment(block, limit.PunishmentType));

@@ -355,6 +355,7 @@ Each entry uses `<BlockLimit>`.
 | `CrossConnectorPunishment` | `bool` | Pulls blocks from connected no-core groups into this limit's bucket. | Only affects non-critical limits on this core. Manifest blacklist imports use all non-critical limits regardless of this flag. |
 | `PunishByNoFlyZone` | `bool` | Applies this limit's punishment inside no-fly zones. | Only used when the zone itself is not forcing everything off. |
 | `IsCriticalLimit` | `bool` | Exempts this limit from connector imports and total limited-block shutoff gates. | Minimum-block shutoff and both connector import paths skip this limit. Normal local overflow, directional checks, and no-fly-zone punishment still work normally. |
+| `IgnoredByNpc` | `bool` | Disables this limit while the active grid group is NPC-spawned. | Defaults to `false`. Counts remain tracked so enforcement becomes active when the grid is claimed, and projected merges involving a player group still evaluate the limit. |
 | `PunishmentType` | `ShutOff`, `Damage`, `Delete`, `Explode` | Punishment for blocks in this limit when the limit is violated. | Limited-block gate punishment always uses `ShutOff`, regardless of this setting. |
 | `AllowedDirections` | `List<DirectionType>` | Directional lock for this limit. | If set, mismatched blocks are punished even if count is under cap. Directions are relative to the main core and compare the matched `BlockType.PrimaryDirection` axis. Subgrid behavior is controlled by world setting `BlockDirectionalPlacementOnSubgrids`. |
 
@@ -374,6 +375,22 @@ the following limit counts every block in `AllHydrogenEngines` except blocks cla
 `ExcludedBlockGroups` only determines membership. Its `CountWeight` and `PrimaryDirection` values are
 not subtracted; an excluded block contributes nothing to this limit. Existing limits without exclusions
 keep their current behavior.
+
+NPC-only loadouts can share a player core profile by opting individual limits out while the group remains
+NPC-spawned:
+
+```xml
+<BlockLimits>
+  <Name>Restricted NPC Weapons</Name>
+  <BlockGroups>RestrictedNpcWeapons</BlockGroups>
+  <MaxCount>0</MaxCount>
+  <IgnoredByNpc>true</IgnoredByNpc>
+  <PunishmentType>Delete</PunishmentType>
+</BlockLimits>
+```
+
+The limit becomes active when the grid is no longer NPC-spawned. A projected merge is exempt only when
+every participating group is NPC-spawned, preventing a player group from importing the restricted blocks.
 
 Directional count caps share the normal limit's weighted points while keeping six independent buckets:
 

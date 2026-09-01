@@ -9,13 +9,26 @@ namespace ShipCoreFramework
 {
     internal partial class GroupComponent
     {
-        private bool IsIgnoredNpcGroup()
+        private bool IsNpcGroup()
         {
-            if (!Session.Config.IgnoreAiFactions) return false;
-
             var mainGrid = MainCoreComponent?.CoreBlock?.CubeGrid;
             return mainGrid?.IsNpcSpawnedGrid ??
                    GridDictionary.Keys.Any(grid => grid != null && grid.IsNpcSpawnedGrid);
+        }
+
+        private bool IsIgnoredNpcGroup()
+        {
+            return Session.Config.IgnoreAiFactions && IsNpcGroup();
+        }
+
+        internal bool IsNpcGroupThreadSafe()
+        {
+            return Session.IsGameThread ? IsNpcGroup() : GetCachedIsNpcGroup();
+        }
+
+        internal bool ShouldEvaluateBlockLimit(BlockLimit limit)
+        {
+            return limit == null || !limit.IgnoredByNpc || !IsNpcGroupThreadSafe();
         }
 
         private bool ComputeIsIgnoredGroup()

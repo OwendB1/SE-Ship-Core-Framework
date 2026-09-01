@@ -169,7 +169,7 @@ namespace ShipCoreFramework
             for (int index = 0; index < limits.Length; index++)
             {
                 RuntimeLimitState limit = limits[index];
-                if (limit == null || string.IsNullOrWhiteSpace(limit.Name)) continue;
+                if (limit == null || limit.EvaluationDisabled || string.IsNullOrWhiteSpace(limit.Name)) continue;
                 result[limit.Name] = new LimitStatusData
                 {
                     Name = limit.Name,
@@ -214,6 +214,7 @@ namespace ShipCoreFramework
                         if (runtime == null ||
                             !string.Equals(configured.Name, runtime.Name, StringComparison.OrdinalIgnoreCase))
                             continue;
+                        if (runtime.EvaluationDisabled) break;
                         if (runtime.CurrentCount - runtime.ConnectorCount + weight * values.Item4 >
                             runtime.MaxCount)
                             return Success(false);

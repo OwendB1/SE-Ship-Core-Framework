@@ -114,11 +114,13 @@ namespace ShipCoreFramework
         {
             internal readonly IMySlimBlock Block;
             internal readonly PunishmentType Harm;
+            internal readonly BlockLimit Limit;
 
-            internal PendingBlockPunishment(IMySlimBlock block, PunishmentType harm)
+            internal PendingBlockPunishment(IMySlimBlock block, PunishmentType harm, BlockLimit limit)
             {
                 Block = block;
                 Harm = harm;
+                Limit = limit;
             }
         }
 
@@ -321,7 +323,8 @@ namespace ShipCoreFramework
 
         internal bool ShouldForceLimitedBlocksOff(BlockLimit limit)
         {
-            return ShouldForceLimitedBlocksOff() && (limit == null || !limit.IsCriticalLimit);
+            return ShouldForceLimitedBlocksOff() && ShouldEvaluateBlockLimit(limit) &&
+                   (limit == null || !limit.IsCriticalLimit);
         }
 
         internal void ScheduleExternalLimitValidation()
@@ -592,6 +595,7 @@ namespace ShipCoreFramework
                 var bucket = kv.Value;
 
                 if (limit == null || bucket == null) continue;
+                if (!ShouldEvaluateBlockLimit(limit)) continue;
 
                 double total;
                 double connectorTotal;
@@ -618,7 +622,7 @@ namespace ShipCoreFramework
                         if (block == null || block.IsMovedBySplit || block.CubeGrid == null) continue;
                         if (limit.GetWeight(GridComponent.KeyOf(block)) <= 0d) continue;
 
-                        pendingPunishments.Add(new PendingBlockPunishment(block, PunishmentType.ShutOff));
+                        pendingPunishments.Add(new PendingBlockPunishment(block, PunishmentType.ShutOff, limit));
                     }
 
                     continue;
@@ -639,7 +643,7 @@ namespace ShipCoreFramework
                         DoesBlockViolateAllowedDirection(directionReferenceBlock, limit, block))
                     {
                         NotifyDirectionalPlacementViolation(directionReferenceBlock, block);
-                        pendingPunishments.Add(new PendingBlockPunishment(block, limit.PunishmentType));
+                        pendingPunishments.Add(new PendingBlockPunishment(block, limit.PunishmentType, limit));
                         continue;
                     }
 
@@ -697,7 +701,8 @@ namespace ShipCoreFramework
                             if (directionOver <= 0d) break;
                             if (candidate.Key == null || !directionPunishments.Add(candidate.Key)) continue;
 
-                            pendingPunishments.Add(new PendingBlockPunishment(candidate.Key, limit.PunishmentType));
+                            pendingPunishments.Add(new PendingBlockPunishment(candidate.Key, limit.PunishmentType,
+                                limit));
                             directionPunishedWeight += candidate.Value;
                             directionOver -= candidate.Value;
                         }
@@ -715,7 +720,8 @@ namespace ShipCoreFramework
                         if (localOver <= 0d) break;
                         if (candidate.Key == null || directionPunishments.Contains(candidate.Key)) continue;
 
-                        pendingPunishments.Add(new PendingBlockPunishment(candidate.Key, limit.PunishmentType));
+                        pendingPunishments.Add(new PendingBlockPunishment(candidate.Key, limit.PunishmentType,
+                            limit));
                         localOver -= candidate.Value;
                     }
                 }
@@ -730,7 +736,8 @@ namespace ShipCoreFramework
                     if (connectorOver <= 0d) break;
                     if (candidate.Key == null) continue;
 
-                    pendingPunishments.Add(new PendingBlockPunishment(candidate.Key, PunishmentType.ShutOff));
+                    pendingPunishments.Add(new PendingBlockPunishment(candidate.Key, PunishmentType.ShutOff,
+                        limit));
                     connectorOver -= candidate.Value;
                 }
             }
@@ -817,6 +824,7 @@ namespace ShipCoreFramework
                 var appliedPunishments = 0;
                 foreach (var punishment in punishments)
                 {
+                    if (!ShouldEvaluateBlockLimit(punishment.Limit)) continue;
                     var block = punishment.Block;
                     if (block == null || block.IsMovedBySplit || block.CubeGrid == null) continue;
                     if (block.CubeGrid.MarkedForClose || block.CubeGrid.Closed) continue;

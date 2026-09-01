@@ -980,7 +980,8 @@ namespace ShipCoreFramework
                 AllowedDirections = (limit.AllowedDirections ?? new List<DirectionType>())
                     .Select(direction => (DirectionTypeData)(int)direction)
                     .ToArray(),
-                IsCriticalLimit = limit.IsCriticalLimit
+                IsCriticalLimit = limit.IsCriticalLimit,
+                IgnoredByNpc = limit.IgnoredByNpc
             };
         }
 
@@ -1263,6 +1264,7 @@ namespace ShipCoreFramework
                 foreach (var configuredLimit in configuredLimits)
                 {
                     if (configuredLimit == null || string.IsNullOrWhiteSpace(configuredLimit.Name)) continue;
+                    if (!groupComponent.ShouldEvaluateBlockLimit(configuredLimit)) continue;
 
                     var max = groupComponent.GetEffectiveMaxCount(configuredLimit);
                     result[configuredLimit.Name] = new LimitStatusData
@@ -1279,6 +1281,7 @@ namespace ShipCoreFramework
                     var limit = kvp.Key;
                     var bucket = kvp.Value;
                     if (limit == null || bucket == null || string.IsNullOrWhiteSpace(limit.Name)) continue;
+                    if (!groupComponent.ShouldEvaluateBlockLimit(limit)) continue;
 
                     double totalWeight;
                     lock (bucket.BucketLock)

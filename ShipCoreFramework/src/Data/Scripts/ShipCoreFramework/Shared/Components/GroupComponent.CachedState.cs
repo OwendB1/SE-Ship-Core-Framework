@@ -56,6 +56,7 @@ namespace ShipCoreFramework
         private GridDefenseModifiers _cachedActiveDefenseModifiers = new GridDefenseModifiers();
         private IMyCubeBlock _cachedNoCoreDirectionLockReferenceBlock;
         private bool _cachedIsIgnoredByAiOrFactionTag;
+        private bool _cachedIsNpcGroup;
         private bool _gridStateCacheDirty = true;
         private bool _directionReferenceCacheDirty = true;
         private bool _modifierStateCacheDirty = true;
@@ -146,6 +147,11 @@ namespace ShipCoreFramework
         internal bool GetCachedIsIgnoredByAiOrFactionTag()
         {
             return _cachedIsIgnoredByAiOrFactionTag;
+        }
+
+        internal bool GetCachedIsNpcGroup()
+        {
+            return _cachedIsNpcGroup;
         }
 
         internal GridModifiers GetCachedActiveGridModifiers()

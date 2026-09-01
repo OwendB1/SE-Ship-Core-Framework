@@ -387,6 +387,7 @@ namespace ShipCoreFramework
             {
                 BlockLimit limit = configured[index];
                 if (limit == null) continue;
+                if (!group.ShouldEvaluateBlockLimit(limit)) continue;
                 LimitBucket bucket;
                 double current = 0d;
                 if (group.Limits.TryGetValue(limit, out bucket) && bucket != null)

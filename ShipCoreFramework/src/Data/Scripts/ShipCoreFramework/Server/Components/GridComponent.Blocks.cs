@@ -280,6 +280,7 @@ namespace ShipCoreFramework
                 var limit = kv.Key;
                 var bucket = kv.Value;
 
+                if (!groupComponent.ShouldEvaluateBlockLimit(limit)) continue;
                 if (!bucket.Members.Contains(obj.SlimBlock)) continue;
 
                 if (groupComponent.DoesBlockViolateAllowedDirection(limit, obj.SlimBlock))

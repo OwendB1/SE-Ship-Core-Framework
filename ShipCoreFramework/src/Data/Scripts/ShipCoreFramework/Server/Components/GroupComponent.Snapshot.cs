@@ -49,7 +49,8 @@ namespace ShipCoreFramework
                             CurrentCount = total,
                             MaxCount = GetEffectiveMaxCount(limit),
                             ConnectorCount = connectorTotal,
-                            DirectionCounts = directionCounts
+                            DirectionCounts = directionCounts,
+                            EvaluationDisabled = !ShouldEvaluateBlockLimit(limit)
                         });
                     }
                 }

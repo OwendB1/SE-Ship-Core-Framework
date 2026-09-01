@@ -240,6 +240,7 @@ namespace ShipCoreFramework
                 {
                     var limit = core.BlockLimits[i];
                     if (limit == null) continue;
+                    if (!group.ShouldEvaluateBlockLimit(limit)) continue;
 
                     var totalWeight = 0d;
                     LimitBucket bucket;

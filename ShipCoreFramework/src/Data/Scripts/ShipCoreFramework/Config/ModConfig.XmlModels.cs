@@ -734,6 +734,9 @@ namespace ShipCoreFramework
         [XmlElement("IsCriticalLimit")]
         public bool IsCriticalLimit;
 
+        [XmlElement("IgnoredByNpc")]
+        public bool IgnoredByNpc;
+
         [XmlElement("PunishmentType")]
         public PunishmentType PunishmentType = PunishmentType.ShutOff;
 

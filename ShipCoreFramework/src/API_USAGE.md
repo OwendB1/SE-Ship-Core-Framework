@@ -136,6 +136,8 @@ take precedence when a block belongs to both.
 `BlockLimitData.MaxCountPerDirection` exposes the optional six-way weighted cap, and
 `BlockLimitData.LimitVisibility` exposes its HUD presentation policy. These fields require API v4.2;
 older v4 consumers remain compatible and ignore the appended protobuf members.
+`BlockLimitData.IgnoredByNpc` exposes the per-limit NPC exemption and requires API v4.3. Older v4
+consumers remain compatible and treat the appended protobuf member as `false`.
 
 Runtime mutations exist only on `ShipCoreFrameworkServerApi`.
 

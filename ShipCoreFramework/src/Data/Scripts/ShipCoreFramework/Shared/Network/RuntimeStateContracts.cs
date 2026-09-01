@@ -11,6 +11,7 @@ namespace ShipCoreFramework
         [ProtoMember(3)] internal float MaxCount;
         [ProtoMember(4)] internal double ConnectorCount;
         [ProtoMember(5)] internal double[] DirectionCounts = Array.Empty<double>();
+        [ProtoMember(6)] internal bool EvaluationDisabled;
     }
 
     [ProtoContract]

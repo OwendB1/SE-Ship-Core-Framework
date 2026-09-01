@@ -35,7 +35,7 @@ namespace ShipCoreFramework
         /// Increment when you add functionality in a backwards compatible way.
         /// Minor version changes remain compatible as long as the major version matches.
         /// </summary>
-        public const int API_MINOR = 2;
+        public const int API_MINOR = 3;
 
         /// <summary>
         /// Encoded API version (Major.Minor) packed into a single int.
@@ -571,6 +571,7 @@ namespace ShipCoreFramework
         [ProtoMember(9)] public string[] ExcludedBlockGroupNames = Array.Empty<string>();
         [ProtoMember(10)] public float MaxCountPerDirection = -1f;
         [ProtoMember(11)] public LimitVisibilityData LimitVisibility;
+        [ProtoMember(12)] public bool IgnoredByNpc;
     }
 
     [ProtoContract]

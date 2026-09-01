@@ -24,6 +24,7 @@ namespace ShipCoreFramework
             foreach (var limit in limits)
             {
                 if (limit == null) continue;
+                var evaluateLimit = GroupComponent.ShouldEvaluateBlockLimit(limit);
                 var forceShutOff = authoritative && !deferPunishment && GroupComponent.ShouldForceLimitedBlocksOff(limit);
                 var matchedBlockType = limit.GetMatchingBlockType(blockKey);
                 if (matchedBlockType == null) continue;
@@ -42,7 +43,7 @@ namespace ShipCoreFramework
 
                 var directionalSubgridBlocked = GroupComponent.IsDirectionalSubgridBlocked(
                     directionReferenceBlock, block, limit, blockKey);
-                if (directionReferenceBlock != null && (directionalSubgridBlocked ||
+                if (evaluateLimit && directionReferenceBlock != null && (directionalSubgridBlocked ||
                     !GroupComponent.IsValidDirection(directionReferenceBlock, block,
                         limit.GetAllowedDirections(blockKey), authoritative,
                         matchedBlockType.PrimaryDirection)))
@@ -68,7 +69,7 @@ namespace ShipCoreFramework
                         directionWeight = groupBucket.DirectionWeights[directionIndex];
                 }
 
-                if (directionIndex >= 0 && directionWeight + weight > limit.MaxCountPerDirection &&
+                if (evaluateLimit && directionIndex >= 0 && directionWeight + weight > limit.MaxCountPerDirection &&
                     authoritative && !deferPunishment)
                 {
                     var directionMessage = localizedBlockName + " violates directional Block limit " +
@@ -86,7 +87,7 @@ namespace ShipCoreFramework
                 }
 
                 var effectiveMaxCount = GroupComponent.GetEffectiveMaxCount(limit);
-                if (localWeight + weight > effectiveMaxCount)
+                if (evaluateLimit && localWeight + weight > effectiveMaxCount)
                 {
                     if (authoritative && !deferPunishment)
                     {

@@ -827,6 +827,7 @@ function cloneLimit(limit = createDefaultLimit()) {
     ...limit,
     maxCountPerDirection: Number(limit.maxCountPerDirection ?? -1),
     limitVisibility: normalizeLimitVisibility(limit.limitVisibility),
+    ignoredByNpc: Boolean(limit.ignoredByNpc),
     allowedDirections: Array.isArray(limit.allowedDirections) ? [...limit.allowedDirections] : [],
     blockGroups: Array.isArray(limit.blockGroups) ? [...limit.blockGroups] : [],
     blockGroupDirections: { ...(limit.blockGroupDirections || {}) },
@@ -1003,6 +1004,7 @@ function createDefaultLimit() {
     crossConnectorPunishment: false,
     punishByNoFlyZone: false,
     isCriticalLimit: false,
+    ignoredByNpc: false,
     punishmentType: "ShutOff",
     allowedDirections: [],
     blockGroups: [],
@@ -1617,6 +1619,7 @@ function renderShipCores() {
             <label class="inline">CrossConnectorPunishment (no-core grids) <input data-action="limit-cross-connector" data-c="${coreIndex}" data-l="${limitIndex}" type="checkbox" ${limit.crossConnectorPunishment ? "checked" : ""}/></label>
             <label class="inline">PunishByNoFlyZone <input data-action="limit-punish" data-c="${coreIndex}" data-l="${limitIndex}" type="checkbox" ${limit.punishByNoFlyZone ? "checked" : ""}/></label>
             <label class="inline">IsCriticalLimit <input data-action="limit-critical" data-c="${coreIndex}" data-l="${limitIndex}" type="checkbox" ${limit.isCriticalLimit ? "checked" : ""}/></label>
+            <label class="inline">IgnoredByNpc <input data-action="limit-ignore-npc" data-c="${coreIndex}" data-l="${limitIndex}" type="checkbox" ${limit.ignoredByNpc ? "checked" : ""}/></label>
             <label class="inline">Punishment Type
               <select data-action="limit-type" data-c="${coreIndex}" data-l="${limitIndex}" class="small">
                 ${["ShutOff", "Damage", "Delete", "Explode"].map((value) => `<option ${limit.punishmentType === value ? "selected" : ""}>${value}</option>`).join("")}
@@ -1849,6 +1852,7 @@ function parseCoreXml(text, originalFileName = "") {
         crossConnectorPunishment: boolOf(limitNode, "CrossConnectorPunishment", false),
         punishByNoFlyZone: boolOf(limitNode, "PunishByNoFlyZone", boolOf(limitNode, "TurnedOffByNoFlyZone", false)),
         isCriticalLimit: boolOf(limitNode, "IsCriticalLimit", false),
+        ignoredByNpc: boolOf(limitNode, "IgnoredByNpc", false),
         punishmentType: textOf(limitNode, "PunishmentType") || "ShutOff",
         allowedDirections: qselAll(limitNode, "AllowedDirections").map((node) => node.textContent.trim()).filter(Boolean),
         blockGroups: blockGroupNodes.map((node) => node.textContent.trim()).filter(Boolean),
@@ -1952,6 +1956,7 @@ function writeBlockLimitXml(limit, indent = "  ") {
     `${indent}  <CrossConnectorPunishment>${limit.crossConnectorPunishment}</CrossConnectorPunishment>`,
     `${indent}  <PunishByNoFlyZone>${limit.punishByNoFlyZone}</PunishByNoFlyZone>`,
     `${indent}  <IsCriticalLimit>${limit.isCriticalLimit}</IsCriticalLimit>`,
+    `${indent}  <IgnoredByNpc>${Boolean(limit.ignoredByNpc)}</IgnoredByNpc>`,
     `${indent}  <PunishmentType>${escapeXml(limit.punishmentType)}</PunishmentType>`,
     ...(limit.allowedDirections || []).filter(Boolean).map((direction) => `${indent}  <AllowedDirections>${escapeXml(direction)}</AllowedDirections>`),
     `${indent}</BlockLimits>`
@@ -2130,6 +2135,7 @@ function parseLegacyLimit(limitNode) {
     crossConnectorPunishment: boolOf(limitNode, "CrossConnectorPunishment", false),
     punishByNoFlyZone: boolOf(limitNode, "TurnedOffByNoFlyZone", boolOf(limitNode, "PunishByNoFlyZone", false)),
     isCriticalLimit: boolOf(limitNode, "IsCriticalLimit", false),
+    ignoredByNpc: boolOf(limitNode, "IgnoredByNpc", false),
     punishmentType: textOf(limitNode, "PunishmentType") || "ShutOff",
     allowedDirections: [],
     blockTypes: parseLegacyBlockTypes(limitNode),
@@ -3049,6 +3055,10 @@ document.addEventListener("change", (event) => {
   }
   if (action === "limit-critical" && inputElement) {
     selectedCore.blockLimits[limitIndex].isCriticalLimit = inputElement.checked;
+    renderShipCores();
+  }
+  if (action === "limit-ignore-npc" && inputElement) {
+    selectedCore.blockLimits[limitIndex].ignoredByNpc = inputElement.checked;
     renderShipCores();
   }
   if (action === "limit-type" && selectElement) {

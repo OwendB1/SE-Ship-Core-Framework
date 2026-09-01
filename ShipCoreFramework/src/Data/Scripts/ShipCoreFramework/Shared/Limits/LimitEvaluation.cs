@@ -106,6 +106,7 @@ namespace ShipCoreFramework
                 var limit = kvp.Key;
                 var bucket = kvp.Value;
                 if (limit == null || bucket == null) continue;
+                if (!group.ShouldEvaluateBlockLimit(limit)) continue;
 
                 var added = 0d;
                 for (var i = 0; i < proposed.Count; i++)
@@ -198,6 +199,7 @@ namespace ShipCoreFramework
                 var limit = kvp.Key;
                 var bucket = kvp.Value;
                 if (limit == null || bucket == null) continue;
+                if (!group.ShouldEvaluateBlockLimit(limit)) continue;
 
                 var weight = limit.GetWeight(key);
                 if (weight <= 0d) continue;
@@ -231,6 +233,7 @@ namespace ShipCoreFramework
                 var limit = kvp.Key;
                 var bucket = kvp.Value;
                 if (limit == null || bucket == null) continue;
+                if (!group.ShouldEvaluateBlockLimit(limit)) continue;
 
                 var addedByDirection = new double[6];
                 var directionCapEnabled = limit.MaxCountPerDirection >= 0f;

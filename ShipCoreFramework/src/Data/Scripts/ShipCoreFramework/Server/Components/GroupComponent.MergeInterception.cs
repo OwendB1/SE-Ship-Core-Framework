@@ -218,6 +218,7 @@ namespace ShipCoreFramework
             foreach (var limit in limits)
             {
                 if (limit == null) continue;
+                if (!groups.Any(group => group.ShouldEvaluateBlockLimit(limit))) continue;
 
                 var totalWeight = 0d;
                 foreach (var block in blocks)
