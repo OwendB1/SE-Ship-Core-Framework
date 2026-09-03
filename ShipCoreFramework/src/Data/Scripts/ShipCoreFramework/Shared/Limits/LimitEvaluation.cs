@@ -143,10 +143,10 @@ namespace ShipCoreFramework
             AddDirectionResults(group, proposed, results);
 
             // Grid-wide hard caps (MaxBlocks / PCU / Mass). group.ShipCore resolves to the active
-            // core's config, or to SelectedNoCore for a coreless grid - it is never null (falls back
-            // to the built-in default no-core config). Both define hard caps, so these evaluate for
-            // cored and no-core grids alike, matching live enforcement in GridComponent. The guard is
-            // pure null-safety - do NOT narrow it to MainCoreComponent != null, that breaks no-core.
+            // core's config, or to the required content-pack SelectedNoCore for a coreless grid.
+            // Runtime initialization guarantees that profile exists. Both define hard caps, so these
+            // evaluate for cored and no-core grids alike, matching live enforcement in GridComponent.
+            // The guard is pure null-safety - do NOT narrow it to MainCoreComponent != null.
             if (group.ShipCore != null)
             {
                 var totalBlocks = 0;

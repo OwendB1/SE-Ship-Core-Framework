@@ -7,13 +7,12 @@ const root = new URL(
 );
 const read = path => readFile(new URL(path, root), "utf8");
 
-const [fields, sessionRun, commands, presentationPackets, defaults, config, loading, groupLimits,
+const [fields, sessionRun, commands, presentationPackets, config, loading, groupLimits,
   serverFields, serverLifecycle, serverTick] = await Promise.all([
     read("Session/Session.Fields.cs"),
     read("Session/Session.Run.cs"),
     read("Server/Commands/Commands.Administration.cs"),
     read("Client/Network/PresentationPacketHandlers.cs"),
-    read("Config/DefaultNoCoreConfig.cs"),
     read("Config/ModConfig.cs"),
     read("Config/ModConfig.Loading.cs"),
     read("Server/Components/GroupComponent.Limits.cs"),
@@ -36,10 +35,8 @@ for (const [name, source] of [
 }
 assert.doesNotMatch(commands, /Session\.Config = null/);
 
-assert.match(defaults, /internal static ShipCore Create\(\)/);
-assert.doesNotMatch(defaults, /static readonly ShipCore/);
-assert.match(config, /readonly ShipCore _defaultNoCore = DefaultNoCoreConfig\.Create\(\)/);
-assert.doesNotMatch(loading, /DefaultNoCoreConfig\.ShipCore/);
+assert.doesNotMatch(config, /DefaultNoCoreConfig|_defaultNoCore/);
+assert.doesNotMatch(loading, /DefaultNoCoreConfig|_defaultNoCore/);
 
 assert.match(loading, /var resolvedGroups = new List<BlockGroup>\(\)/);
 assert.match(loading, /limit\.BlockGroups = resolvedBlockGroups/);

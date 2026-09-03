@@ -116,10 +116,16 @@ namespace ShipCoreFramework
                 Session.Config.ApplyWorldSettingsFrom(import);
 
                 Session.Config.EnsurePersistedWorldSettings();
-                Session.Config.ResolveSelectedNoCore();
+                if (!Session.Config.ResolveSelectedNoCore())
+                {
+                    ModAPI.MarkConfigUnavailable(Session.Config.GetNoCoreConfigurationError());
+                    return;
+                }
+
                 Session.ApplyConfigToDefinitions();
-                Session.RefreshGroupsAfterConfigChanged();
                 ModAPI.MarkConfigReady(true);
+                if (!Session.TryInitializeRuntime())
+                    Session.RefreshGroupsAfterConfigChanged();
                 ModAPI.BroadcastConfigReceived();
                 Session.RequestRuntimeState();
             }

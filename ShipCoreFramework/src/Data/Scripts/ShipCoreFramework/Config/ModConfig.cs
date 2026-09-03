@@ -6,7 +6,6 @@ namespace ShipCoreFramework
     public partial class ModConfig
     {
         internal const string DefaultUpgradeModuleTypeId = "UpgradeModule";
-        private readonly ShipCore _defaultNoCore = DefaultNoCoreConfig.Create();
 
         internal ShipCore GetShipCoreByTypeId(string coreTypeId)
         {
@@ -26,7 +25,8 @@ namespace ShipCoreFramework
 
         internal bool IsValidCoreType(string coreTypeId)
         {
-            return ShipCores.Any(core => core.SubtypeId == coreTypeId) || SelectedNoCore.SubtypeId == coreTypeId;
+            return ShipCores.Any(core => core.SubtypeId == coreTypeId) ||
+                   SelectedNoCore != null && SelectedNoCore.SubtypeId == coreTypeId;
         }
 
         internal UpgradeModuleConfig GetUpgradeModuleByTypeId(string moduleSubtypeId)

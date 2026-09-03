@@ -35,7 +35,7 @@ namespace ShipCoreFramework
         /// Increment when you add functionality in a backwards compatible way.
         /// Minor version changes remain compatible as long as the major version matches.
         /// </summary>
-        public const int API_MINOR = 3;
+        public const int API_MINOR = 4;
 
         /// <summary>
         /// Encoded API version (Major.Minor) packed into a single int.
@@ -368,7 +368,8 @@ namespace ShipCoreFramework
         GridNotReplicated = 4,
         InvalidArgument = 5,
         Unsupported = 6,
-        Error = 7
+        Error = 7,
+        ConfigurationUnavailable = 8
     }
 
     /// <summary>
@@ -394,6 +395,7 @@ namespace ShipCoreFramework
         [ProtoMember(2)] public bool ProviderReady;
         [ProtoMember(3)] public bool ConfigReady;
         [ProtoMember(4)] public bool RuntimeSnapshotReady;
+        [ProtoMember(5)] public string ConfigurationError;
     }
 
     /// <summary>
@@ -734,7 +736,8 @@ namespace ShipCoreFramework
         ShutOff = 0,
         Damage = 1,
         Delete = 2,
-        Explode = 3
+        Explode = 3,
+        DeleteWithoutRefund = 4
     }
 
     public enum DirectionTypeData

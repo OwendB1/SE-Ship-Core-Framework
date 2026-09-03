@@ -21,6 +21,7 @@ namespace ShipCoreFramework
         public bool ProviderReady { get; private set; }
         public bool ConfigReady { get; private set; }
         public bool RuntimeSnapshotReady { get; private set; }
+        public string ConfigurationError { get; private set; }
         public int ProviderApiVersion { get; private set; }
         public ApiProviderRoleData ProviderRole { get; private set; }
         public ApiCapabilityData Capabilities { get; private set; }
@@ -121,6 +122,7 @@ namespace ShipCoreFramework
                 ProviderRole = result.Value.Role;
                 ConfigReady = result.Value.ConfigReady;
                 RuntimeSnapshotReady = result.Value.RuntimeSnapshotReady;
+                ConfigurationError = result.Value.ConfigurationError ?? string.Empty;
             }
             return result;
         }
@@ -391,6 +393,7 @@ namespace ShipCoreFramework
             ProviderReady = false;
             ConfigReady = false;
             RuntimeSnapshotReady = false;
+            ConfigurationError = string.Empty;
             ProviderApiVersion = 0;
             ProviderRole = ApiProviderRoleData.Unknown;
             Capabilities = ApiCapabilityData.None;
@@ -532,6 +535,7 @@ namespace ShipCoreFramework
             if (eventData == null) return;
             ConfigReady = true;
             RuntimeSnapshotReady = false;
+            ConfigurationError = string.Empty;
             if (ConfigReceived != null) ConfigReceived(eventData);
         }
 

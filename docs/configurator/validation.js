@@ -5,7 +5,7 @@ const VALID_MOBILITY_TYPES = ["Static", "Mobile", "Both"];
 const VALID_SPEED_LIMIT_TYPES = ["Normal", "Friction"];
 const VALID_SPEED_OVERRIDE_MODES = ["None", "OnlyIfHeavier", "Priority", "Any"];
 const VALID_FACTION_RANKS = ["None", "Member", "Leader", "Founder"];
-const VALID_PUNISHMENT_TYPES = ["ShutOff", "Damage", "Delete", "Explode"];
+const VALID_PUNISHMENT_TYPES = ["ShutOff", "Damage", "Delete", "Explode", "DeleteWithoutRefund"];
 const VALID_LIMIT_VISIBILITIES = ["Always", "NearLimit", "Hidden"];
 
 const asArray = (value) => Array.isArray(value) ? value : [];

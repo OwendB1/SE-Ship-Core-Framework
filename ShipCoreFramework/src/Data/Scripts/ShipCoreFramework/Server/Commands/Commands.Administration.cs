@@ -13,12 +13,31 @@ namespace ShipCoreFramework
         {
             var loadedConfig = new ModConfig();
             loadedConfig.LoadConfig();
-            Session.Config = loadedConfig;
             if (Session.IsServer)
             {
+                if (loadedConfig.SelectedNoCore == null)
+                {
+                    var error = loadedConfig.GetNoCoreConfigurationError();
+                    if (!Session.RuntimeInitialized)
+                    {
+                        Session.Config = loadedConfig;
+                        ModAPI.MarkConfigUnavailable(error);
+                    }
+                    return "Config reload rejected: " + error;
+                }
+
+                Session.Config = loadedConfig;
+                if (!Session.RuntimeInitialized)
+                {
+                    ModAPI.MarkConfigReady(true);
+                    return "Config loaded with a valid no-core profile. Reload the world to start Ship Core Framework.";
+                }
+
                 Session.ApplyConfigToDefinitions();
                 Session.RefreshGroupsAfterConfigChanged();
             }
+            else
+                Session.Config = loadedConfig;
             if (Session.MpActive && !Session.IsServer) Session.Networking.SendToServer(new PacketRequestConfig(), onlyToServer: true);
             return "Config reloaded from disk.";
         }
@@ -186,10 +205,11 @@ namespace ShipCoreFramework
                 return $"No 'no core' config found matching '{key}'. Use /core listnocores.";
             }
 
+            var runtimeWasConfigured = Session.Config.SelectedNoCore != null;
             Session.Config.SelectedNoCoreUniqueName = found.UniqueName ?? string.Empty;
             Session.Config.ResolveSelectedNoCore();
             Session.RefreshGroupsAfterConfigChanged();
-            Session.Config.SaveConfig(true);
+            Session.Config.SaveConfig(true, runtimeWasConfigured);
             return $"Selected 'no core' config: {found.UniqueName} ({found.SubtypeId}). Please save the world and reload the save file afterwards.";
         }
 

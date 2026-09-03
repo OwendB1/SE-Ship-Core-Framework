@@ -81,15 +81,18 @@ single-player publish both. The client surface remains read-only when it is back
 
 ## Readiness
 
-Readiness has four distinct levels:
+Readiness exposes these states and diagnostics:
 
 - `ProviderReady`: compatible factory received.
 - `ConfigReady`: server-selected world config applied.
 - `RuntimeSnapshotReady`: initial authority scan or complete client runtime snapshot applied.
+- `ConfigurationError`: explains why configuration is unavailable, such as a missing content-pack
+  no-core profile. An empty value means configuration is pending or valid.
 - `TryGetRuntimeStateAvailability(gridId)`: runtime state exists for one grid.
 
 `ConfigReceived` fires before the replacement runtime snapshot is requested. It therefore resets
-`RuntimeSnapshotReady` to false. `RuntimeReady` fires after the complete snapshot is applied.
+`RuntimeSnapshotReady` to false. It fires only for a valid configuration. `RuntimeReady` fires after
+the complete snapshot is applied.
 
 ## Result statuses
 
@@ -98,6 +101,7 @@ All `Try...` methods return `ApiReadResult<T>`:
 - `Success`
 - `ProviderNotReady`
 - `ConfigPending`
+- `ConfigurationUnavailable`
 - `RuntimePending`
 - `GridNotReplicated`
 - `InvalidArgument`
@@ -138,6 +142,9 @@ take precedence when a block belongs to both.
 older v4 consumers remain compatible and ignore the appended protobuf members.
 `BlockLimitData.IgnoredByNpc` exposes the per-limit NPC exemption and requires API v4.3. Older v4
 consumers remain compatible and treat the appended protobuf member as `false`.
+`PunishmentTypeData.DeleteWithoutRefund` requires API v4.4.
+`ApiReadStatusData.ConfigurationUnavailable` and `ApiReadinessData.ConfigurationError` also require
+API v4.4; older v4 consumers remain wire-compatible but do not expose the diagnostic name or text.
 
 Runtime mutations exist only on `ShipCoreFrameworkServerApi`.
 

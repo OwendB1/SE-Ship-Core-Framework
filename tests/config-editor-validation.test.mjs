@@ -44,6 +44,19 @@ const valid = validateEditorConfig({
 });
 assert.deepEqual(valid, { errors: [], warnings: [] });
 
+const deleteWithoutRefund = validateEditorConfig({
+  blockGroups: [{ name: "Weapons", blockTypes: [] }],
+  manifestGroups: [],
+  shipCores: [{
+    ...validCore,
+    manifestGroups: [],
+    allowedUpgradeModules: [],
+    blockLimits: [{ ...validCore.blockLimits[0], punishmentType: "DeleteWithoutRefund" }]
+  }],
+  upgradeModules: []
+});
+assert.deepEqual(deleteWithoutRefund, { errors: [], warnings: [] });
+
 const invalid = validateEditorConfig({
   blockGroups: [{ name: "Weapons" }, { name: " Weapons " }],
   manifestGroups: [

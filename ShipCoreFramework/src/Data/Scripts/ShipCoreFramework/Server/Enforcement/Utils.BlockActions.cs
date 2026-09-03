@@ -15,7 +15,7 @@ namespace ShipCoreFramework
 {
     internal static partial class Utils
     {
-        internal static void RemoveAndRefund(this IMySlimBlock block)
+        internal static void RemoveAndRefund(this IMySlimBlock block, bool refundComponents = true)
         {
             if (!Session.IsServer) return;
 
@@ -30,7 +30,7 @@ namespace ShipCoreFramework
                         Session.IsShuttingDown)
                         return;
 
-                    RemoveAndRefund(capturedBlock);
+                    RemoveAndRefund(capturedBlock, refundComponents);
                 });
                 return;
             }
@@ -60,7 +60,7 @@ namespace ShipCoreFramework
             {
                 if (grid.MarkedForClose || grid.Closed) return;
                 grid.RemoveBlock(block, Session.HasStarted);
-                if (!MyAPIGateway.Session.CreativeMode)
+                if (refundComponents && !MyAPIGateway.Session.CreativeMode)
                     PutComponentsIntoInventories(inventories, refund, refundPosition, refundForward, refundUp);
                 var projectors = grid.GetFatBlocks<IMyProjector>().ToList();
                 foreach (var projector in projectors) projector.Enabled = false;
@@ -156,6 +156,10 @@ namespace ShipCoreFramework
                 case PunishmentType.Delete:
                     if (func != null) func.Enabled = false;
                     block.RemoveAndRefund();
+                    break;
+                case PunishmentType.DeleteWithoutRefund:
+                    if (func != null) func.Enabled = false;
+                    block.RemoveAndRefund(false);
                     break;
                 case PunishmentType.Explode:
                     block.DoDamage(block.Integrity, damageType, true);

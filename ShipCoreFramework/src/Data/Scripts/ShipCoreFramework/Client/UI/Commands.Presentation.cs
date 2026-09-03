@@ -466,9 +466,9 @@ namespace ShipCoreFramework
             var speedmods = groupComponent.SpeedModifiers;
             if (speedmods != null)
             {
-                body += $"    Max Speed:       {speedmods.MaxSpeed:F2}\n";
-                body += $"    Max Angular Vel: {speedmods.MaxAngularVelocity:F2} rad/s\n";
-                body += $"    Max Boost Speed: {speedmods.MaxBoost:F2}\n";
+                body += $"    Max Speed:       {speedmods.MaxSpeed:R}\n";
+                body += $"    Max Angular Vel: {speedmods.MaxAngularVelocity:R} rad/s\n";
+                body += $"    Max Boost Speed: {speedmods.MaxBoost:R}\n";
                 if (Session.Config.FrictionSpeedValueMode == FrictionSpeedValueMode.Modifier)
                 {
                     var minModOverride = groupComponent.GetMinimumFrictionSpeedModifierOverride();
@@ -482,8 +482,8 @@ namespace ShipCoreFramework
 
                     var minReal = Session.Config.MaxPossibleSpeedMetersPerSecond * minMod;
                     var maxReal = Session.Config.MaxPossibleSpeedMetersPerSecond * maxMod;
-                    body += $"    Min Friction:    {minReal:F1} m/s (x{minMod:F2})\n";
-                    body += $"    Max Friction:    {maxReal:F1} m/s (x{maxMod:F2})\n";
+                    body += $"    Min Friction:    {minReal:F1} m/s (x{minMod:R})\n";
+                    body += $"    Max Friction:    {maxReal:F1} m/s (x{maxMod:R})\n";
                 }
                 else
                 {
@@ -499,9 +499,9 @@ namespace ShipCoreFramework
                     body += $"    Min Friction:    {minAbs:F1} m/s\n";
                     body += $"    Max Friction:    {maxAbs:F1} m/s\n";
                 }
-                body += $"    Friction Decel:  {speedmods.MaximumFrictionDeceleration:F2} m/s^2\n";
-                body += $"    Boost Duration:  {speedmods.BoostDuration:F2}\n";
-                body += $"    Boost Cooldown:  {speedmods.BoostCoolDown:F2}\n";
+                body += $"    Friction Decel:  {speedmods.MaximumFrictionDeceleration:R} m/s^2\n";
+                body += $"    Boost Duration:  {speedmods.BoostDuration:R}\n";
+                body += $"    Boost Cooldown:  {speedmods.BoostCoolDown:R}\n";
             }
             float baseSpeedLimit;
             float effectiveSpeedLimit;

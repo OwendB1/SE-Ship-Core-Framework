@@ -7,6 +7,7 @@ const read = async path => readFile(new URL(path, root), "utf8");
 const [
   data,
   provider,
+  readiness,
   clientFactory,
   serverFactory,
   clientConfig,
@@ -15,6 +16,7 @@ const [
 ] = await Promise.all([
   read("API/ApiData.cs"),
   read("API/ModAPI.cs"),
+  read("API/ModAPI.Readiness.cs"),
   read("API/Client/ModAPI.ReplicaQueries.cs"),
   read("API/Server/ModAPI.ServerFactory.cs"),
   read("Client/Network/PresentationPacketHandlers.cs"),
@@ -28,6 +30,8 @@ assert.match(data, /GetApiMajor\(apiVersion\) == API_MAJOR/);
 assert.match(data, /SERVER_LOCAL_API_ID/);
 assert.match(data, /CLIENT_REPLICA_API_ID/);
 assert.match(data, /EVENT_RUNTIME_SNAPSHOT_READY/);
+assert.match(data, /ConfigurationUnavailable\s*=\s*8/);
+assert.match(data, /ProtoMember\(5\)\]\s*public string ConfigurationError/);
 assert.match(
   data,
   /ProtoMember\(9\)\]\s*public string\[\] ExcludedBlockGroupNames/,
@@ -40,6 +44,8 @@ assert.match(
   provider,
   /ExcludedBlockGroupNames\s*=\s*\(limit\.ExcludedBlockGroupsShortHand/,
 );
+assert.match(readiness, /MarkConfigUnavailable\(string reason\)/);
+assert.match(readiness, /ApiReadStatusData\.ConfigurationUnavailable/);
 
 assert.doesNotMatch(clientFactory, /case ApiMethodId\.SetFriction/);
 assert.doesNotMatch(clientFactory, /case ApiMethodId\.ClearFriction/);

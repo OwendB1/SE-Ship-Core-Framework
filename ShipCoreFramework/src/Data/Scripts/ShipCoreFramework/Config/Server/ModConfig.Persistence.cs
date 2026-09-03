@@ -5,7 +5,7 @@ namespace ShipCoreFramework
 {
     public partial class ModConfig
     {
-        internal void SaveConfig(bool showInChat = false)
+        internal void SaveConfig(bool showInChat = false, bool broadcast = true)
         {
             if (!Session.IsServer) return;
 
@@ -19,7 +19,7 @@ namespace ShipCoreFramework
                 Utils.Log($"Save Config: Saved {GlobalConfigFileName}", showInChat ? 3 : 0);
                 RemoveLegacySandboxSettings(showInChat);
 
-                if (Session.MpActive) Session.BroadcastConfigToClients();
+                if (broadcast && Session.MpActive) Session.BroadcastConfigToClients();
             }
             catch (Exception e)
             {

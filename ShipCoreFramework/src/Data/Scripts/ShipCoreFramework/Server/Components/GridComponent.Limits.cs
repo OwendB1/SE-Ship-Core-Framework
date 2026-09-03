@@ -82,6 +82,7 @@ namespace ShipCoreFramework
                         : limitBasedPunish ? limit.PunishmentType : PunishmentType.Delete;
                     block.WhackABlock(directionPunishment);
                     if (directionPunishment == PunishmentType.Delete ||
+                        directionPunishment == PunishmentType.DeleteWithoutRefund ||
                         directionPunishment == PunishmentType.Explode)
                         return false;
                 }
@@ -100,7 +101,9 @@ namespace ShipCoreFramework
                             : limitBasedPunish ? limit.PunishmentType : PunishmentType.Delete;
                         block.WhackABlock(punishmentType);
 
-                        if (punishmentType == PunishmentType.Delete || punishmentType == PunishmentType.Explode)
+                        if (punishmentType == PunishmentType.Delete ||
+                            punishmentType == PunishmentType.DeleteWithoutRefund ||
+                            punishmentType == PunishmentType.Explode)
                             return false;
                     }
                 }

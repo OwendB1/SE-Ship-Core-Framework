@@ -972,7 +972,8 @@ namespace ShipCoreFramework
         ShutOff,
         Damage,
         Delete,
-        Explode
+        Explode,
+        DeleteWithoutRefund
     }
 
     [XmlRoot("DirectionType")]

@@ -9,10 +9,19 @@ namespace ShipCoreFramework
     [MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation, 0)]
     public partial class Session : MySessionComponentBase
     {
+        private static bool _runtimeInitialized;
+        internal static bool RuntimeInitialized => _runtimeInitialized;
+
         public override void BeforeStart()
         {
             ModAPI.Initialize();
-            if (Config.SelectedNoCore == null) return;
+            TryInitializeRuntime();
+        }
+
+        internal static bool TryInitializeRuntime()
+        {
+            if (_runtimeInitialized || Config?.SelectedNoCore == null) return false;
+            _runtimeInitialized = true;
             MyAPIGateway.GridGroups.OnGridGroupCreated += GridGroupsOnOnGridGroupCreated;
             MyAPIGateway.GridGroups.OnGridGroupDestroyed += GridGroupsOnOnGridGroupDestroyed;
             
@@ -45,6 +54,7 @@ namespace ShipCoreFramework
 
             if (IsServer)
                 ModAPI.MarkRuntimeSnapshotReady();
+            return true;
         }
         
         public override void LoadData()
@@ -53,6 +63,7 @@ namespace ShipCoreFramework
             IsShuttingDown = false;
             _tick = 0;
             CurrentTick = 0;
+            _runtimeInitialized = false;
             MpActive = MyAPIGateway.Multiplayer.MultiplayerActive;
             IsServer = (MpActive && MyAPIGateway.Multiplayer.IsServer) || !MpActive;
             IsClient = (MpActive && !MyAPIGateway.Utilities.IsDedicated) || !MpActive;
@@ -65,7 +76,12 @@ namespace ShipCoreFramework
             loadedConfig.LoadConfig(IsServer);
             Config = loadedConfig;
             if (IsServer)
-                ModAPI.MarkConfigReady();
+            {
+                if (Config.SelectedNoCore != null)
+                    ModAPI.MarkConfigReady();
+                else
+                    ModAPI.MarkConfigUnavailable(Config.GetNoCoreConfigurationError());
+            }
             if (IsClient)
                 LoadClientData();
             if (IsServer)
@@ -107,18 +123,14 @@ namespace ShipCoreFramework
             }
             GroupComponent.ClearPendingMergeValidations();
             GroupDict.Clear();
+            _runtimeInitialized = false;
             GameThreadId = 0;
             Utils.Log("UnloadData: Ship Core Framework session unloaded.", 1);
         }
         
         public override void UpdateAfterSimulation()
         {
-            if (Config.SelectedNoCore == null)
-            {
-                if (IsServer)
-                    NotifyMissingNoCore();
-                return;
-            }
+            if (!_runtimeInitialized || Config?.SelectedNoCore == null) return;
 
             _tick++;
             CurrentTick = _tick;

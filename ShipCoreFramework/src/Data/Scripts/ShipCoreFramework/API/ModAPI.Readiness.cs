@@ -8,18 +8,28 @@ namespace ShipCoreFramework
     {
         private static bool _configReady;
         private static bool _runtimeSnapshotReady;
+        private static string _configurationError = string.Empty;
 
         internal static void ResetReadiness()
         {
             _configReady = false;
             _runtimeSnapshotReady = false;
+            _configurationError = string.Empty;
         }
 
         internal static void MarkConfigReady(bool runtimeSnapshotRequired = false)
         {
             _configReady = true;
+            _configurationError = string.Empty;
             if (runtimeSnapshotRequired)
                 _runtimeSnapshotReady = false;
+        }
+
+        internal static void MarkConfigUnavailable(string reason)
+        {
+            _configReady = false;
+            _runtimeSnapshotReady = false;
+            _configurationError = reason ?? string.Empty;
         }
 
         internal static void MarkRuntimeSnapshotReady(int sequence = 0, int snapshotRevision = 0)
@@ -52,7 +62,8 @@ namespace ShipCoreFramework
                 Role = role,
                 ProviderReady = _isInitialized,
                 ConfigReady = _configReady,
-                RuntimeSnapshotReady = _runtimeSnapshotReady
+                RuntimeSnapshotReady = _runtimeSnapshotReady,
+                ConfigurationError = _configurationError
             };
         }
 
@@ -86,6 +97,8 @@ namespace ShipCoreFramework
         private static object CheckConfigReady()
         {
             if (!_isInitialized) return Failure(ApiReadStatusData.ProviderNotReady);
+            if (!string.IsNullOrWhiteSpace(_configurationError))
+                return Failure(ApiReadStatusData.ConfigurationUnavailable);
             return _configReady ? null : Failure(ApiReadStatusData.ConfigPending);
         }
 

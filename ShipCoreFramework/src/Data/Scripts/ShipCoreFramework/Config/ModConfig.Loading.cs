@@ -50,7 +50,6 @@ namespace ShipCoreFramework
             Utils.Log($"UpgradeModules.Count = {UpgradeModules.Count}", 1, "Ship Core Config");
 
             NormalizeNoCoreConfigs();
-            ResolveBlockGroups(_defaultNoCore);
             ResolveBlockGroupsForCores(NoCoreConfigs);
             ResolveBlockGroupsForCores(ShipCores);
 
@@ -59,7 +58,7 @@ namespace ShipCoreFramework
                     hasSelectedNoCoreSetting);
             NormalizeIgnoredFactionTags(hasIgnoredFactionTagsSetting);
             EnsurePersistedWorldSettings();
-            ResolveSelectedNoCore();
+            ResolveSelectedNoCore(allowWorldStorageReadWrite);
         }
 
         internal void EnsurePersistedWorldSettings()
@@ -71,7 +70,7 @@ namespace ShipCoreFramework
                 SelectedNoCoreUniqueName = string.Empty;
         }
 
-        internal void ResolveSelectedNoCore()
+        internal bool ResolveSelectedNoCore(bool logFailure = true)
         {
             SelectedNoCore = null;
 
@@ -80,22 +79,32 @@ namespace ShipCoreFramework
                 SelectedNoCore = NoCoreConfigs.FirstOrDefault(core =>
                     !string.IsNullOrWhiteSpace(core?.UniqueName) &&
                     core.UniqueName.Equals(SelectedNoCoreUniqueName, StringComparison.OrdinalIgnoreCase));
-
-                if (SelectedNoCore == null)
-                    Utils.Log($"No-core config '{SelectedNoCoreUniqueName}' was not found. Falling back to default.", 2, "Config Validation");
             }
 
             if (SelectedNoCore == null)
-                SelectedNoCore = _defaultNoCore;
+            {
+                if (logFailure)
+                    Utils.Log(GetNoCoreConfigurationError(), 0, "Config Validation");
+                return false;
+            }
 
-            SelectedNoCoreUniqueName = SelectedNoCore?.UniqueName ?? string.Empty;
+            SelectedNoCoreUniqueName = SelectedNoCore.UniqueName ?? string.Empty;
             NormalizeAndResolveSelectedNoCore();
+            return true;
+        }
+
+        internal string GetNoCoreConfigurationError()
+        {
+            if (SelectedNoCore != null) return string.Empty;
+            if (NoCoreConfigs.Count == 0)
+                return "No content-pack no-core profiles were loaded. Ship Core Framework cannot start.";
+            if (string.IsNullOrWhiteSpace(SelectedNoCoreUniqueName))
+                return "No content-pack no-core profile is selected. Use /core listnocores and /core select <name>, then reload the world.";
+            return $"Selected no-core profile '{SelectedNoCoreUniqueName}' was not loaded. Restore its content pack or select another profile, then reload the world.";
         }
 
         private void NormalizeNoCoreConfigs()
         {
-            NormalizeShipCoreBlockLimits(_defaultNoCore, "BuiltIn", "DefaultNoCoreConfig");
-
             foreach (var core in NoCoreConfigs)
             {
                 if (core == null) continue;

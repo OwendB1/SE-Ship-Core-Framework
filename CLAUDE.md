@@ -125,7 +125,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **BlockLimit Enforcement**:
 - Each `BlockLimit` has a `MaxCount`, `PunishmentType`, and optional `AllowedDirections`
-- `PunishmentType`: ShutOff (default), Damage, Delete (with refund), Explode
+- `PunishmentType`: ShutOff (default), Damage, Delete (with refund), Explode, DeleteWithoutRefund
 - `AllowedDirections`: Restricts block placement direction relative to core orientation (e.g., "Forward" only for certain weapons)
 - Enforcement runs in `GroupComponent.EnforceGroupPunishment()`
 

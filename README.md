@@ -42,13 +42,18 @@ The framework reads configuration from several XML entry points.
 | `ShipCoreConfig_World.xml` | `<ModConfig>` | World settings, ignored factions, no-fly zones, selected no-core profile, world max speed. |
 | `Data/ShipCoreConfig_Groups.xml` | XML list of `BlockGroup` entries | Reusable block classifications for block limits. |
 | `Data/ShipCoreConfig_Manifest.xml` | `<CoreManifest>` | Lists core files, upgrade-module files, manifest groups, connector blacklist entries. |
-| `Data/ShipCoreConfig_No_Core.xml` | `<ShipCore>` | Default no-core profile loaded by a mod. |
+| `Data/ShipCoreConfig_No_Core.xml` | `<ShipCore>` | Required no-core profile supplied by a content pack. |
 | Per-core XML files from manifest | `<ShipCore>` | Actual ship-core definitions. |
 | Per-upgrade-module XML files from manifest | `<UpgradeModule>` | Upgrade-module definitions. |
 
 Load behavior:
 
 - `SelectedNoCoreUniqueName` picks one loaded no-core profile by `UniqueName`.
+- SCF has no built-in no-core fallback. If the selected profile is missing or invalid, runtime
+  initialization stays disabled while admin commands remain available to select a profile for the
+  next world load.
+- Worlds that still select the retired `DEFAULT-NO-CORE-ALL-GRID-TYPES` profile must use
+  `/core select <name>` to choose their content pack's profile, then reload the world.
 - Manifest groups are global across all loaded manifest files.
 - Duplicate core names, subtype IDs, manifest group names, and upgrade module `TypeId`/`SubtypeId` pairs are rejected during load.
 
@@ -80,7 +85,7 @@ Root tag: `<ModConfig>`
 | --- | --- | --- | --- |
 | `IgnoreAiFactions` | `bool` | Ignores NPC-spawned grids for core placement/enforcement. | Does not replace `IgnoredFactionTags`; it is a separate skip path. |
 | `IgnoredFactionTags` | `List<string>` | Faction tags to skip for enforcement and punishment. | Useful for admin, event, or NPC factions. |
-| `SelectedNoCoreUniqueName` | `string` | Chooses which loaded no-core profile becomes the active fallback profile. | Must match a loaded no-core `UniqueName`. |
+| `SelectedNoCoreUniqueName` | `string` | Chooses which loaded no-core profile governs coreless grids. | Required; must match a loaded content-pack no-core `UniqueName`. |
 | `DebugMode` | `bool` | Enables debug-oriented behavior. | Also changes some player-count checks to count identities more aggressively. |
 | `CombatLogging` | `bool` | Enables combat logging behavior exposed by the framework. | Runtime toggle also exists through commands. |
 | `CombatLoggingBroadcastRangeMeters` | `double` | Maximum distance from a combat-log event at which players receive its notification. | Default is `20000` (20 km). |
@@ -356,7 +361,7 @@ Each entry uses `<BlockLimit>`.
 | `PunishByNoFlyZone` | `bool` | Applies this limit's punishment inside no-fly zones. | Only used when the zone itself is not forcing everything off. |
 | `IsCriticalLimit` | `bool` | Exempts this limit from connector imports and total limited-block shutoff gates. | Minimum-block shutoff and both connector import paths skip this limit. Normal local overflow, directional checks, and no-fly-zone punishment still work normally. |
 | `IgnoredByNpc` | `bool` | Disables this limit while the active grid group is NPC-spawned. | Defaults to `false`. Counts remain tracked so enforcement becomes active when the grid is claimed, and projected merges involving a player group still evaluate the limit. |
-| `PunishmentType` | `ShutOff`, `Damage`, `Delete`, `Explode` | Punishment for blocks in this limit when the limit is violated. | Limited-block gate punishment always uses `ShutOff`, regardless of this setting. |
+| `PunishmentType` | `ShutOff`, `Damage`, `Delete`, `Explode`, `DeleteWithoutRefund` | Punishment for blocks in this limit when the limit is violated. | `Delete` refunds built components; `DeleteWithoutRefund` does not. Limited-block gate punishment always uses `ShutOff`, regardless of this setting. |
 | `AllowedDirections` | `List<DirectionType>` | Directional lock for this limit. | If set, mismatched blocks are punished even if count is under cap. Directions are relative to the main core and compare the matched `BlockType.PrimaryDirection` axis. Subgrid behavior is controlled by world setting `BlockDirectionalPlacementOnSubgrids`. |
 
 Reusable groups can be combined as set subtraction without changing their definitions. For example,

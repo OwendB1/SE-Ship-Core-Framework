@@ -9,6 +9,7 @@ namespace ShipCoreFramework
     {
         private static NexusAPI _myNexusApi;
         private bool _startedNexus;
+        private bool _serverRuntimeDataLoaded;
         private int _serverSimulationBatchRunning;
 
         internal static bool HasStarted;

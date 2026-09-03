@@ -1622,7 +1622,7 @@ function renderShipCores() {
             <label class="inline">IgnoredByNpc <input data-action="limit-ignore-npc" data-c="${coreIndex}" data-l="${limitIndex}" type="checkbox" ${limit.ignoredByNpc ? "checked" : ""}/></label>
             <label class="inline">Punishment Type
               <select data-action="limit-type" data-c="${coreIndex}" data-l="${limitIndex}" class="small">
-                ${["ShutOff", "Damage", "Delete", "Explode"].map((value) => `<option ${limit.punishmentType === value ? "selected" : ""}>${value}</option>`).join("")}
+                ${["ShutOff", "Damage", "Delete", "Explode", "DeleteWithoutRefund"].map((value) => `<option ${limit.punishmentType === value ? "selected" : ""}>${value}</option>`).join("")}
               </select>
             </label>
           </div>
