@@ -113,26 +113,7 @@ namespace ShipCoreFramework
             if (!MyAPIGateway.Multiplayer.IsServer) return;
 
             if (!Session.CanServeConfigRequest(SenderSteamId)) return;
-            KnownContentFingerprint = Cap(KnownContentFingerprint, 64);
-            Session.SendConfigTo(SenderSteamId, KnownRevision, KnownContentFingerprint);
-        }
-    }
-
-    internal partial class PacketConfigAck
-    {
-        partial void ReceiveOnServer()
-        {
-            IMyPlayer sender;
-            if (!TryGetSender(out sender)) return;
-            Error = Cap(Error, 512);
-            if (!Applied)
-            {
-                Utils.Log("Client '" + sender.DisplayName + "' rejected config revision " + Revision +
-                          ": " + Error, 1, "Config Sync");
-                return;
-            }
-            Utils.Log("Client '" + sender.DisplayName + "' applied config revision " + Revision + ".", 3,
-                "Config Sync");
+            Session.SendConfigTo(SenderSteamId);
         }
     }
 }

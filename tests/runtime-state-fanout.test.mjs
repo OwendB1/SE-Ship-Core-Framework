@@ -31,7 +31,7 @@ function methodBody(source, signature) {
 // Still used by the notification paths, where every recipient gets identical bytes.
 const fanout = methodBody(networking, 'internal void SendToPlayers(');
 
-const serializeAt = fanout.indexOf('SerializeToBinary');
+const serializeAt = fanout.indexOf('TrySerializePacket');
 const loopAt = fanout.indexOf('for (');
 assert.notEqual(serializeAt, -1, 'SendToPlayers must serialize the packet');
 assert.notEqual(loopAt, -1, 'SendToPlayers must loop over recipients');
@@ -40,7 +40,7 @@ assert.ok(
   'SendToPlayers must serialize BEFORE the recipient loop, not inside it',
 );
 assert.equal(
-  (fanout.match(/SerializeToBinary/g) || []).length,
+  (fanout.match(/TrySerializePacket/g) || []).length,
   1,
   'SendToPlayers must serialize exactly once per packet',
 );

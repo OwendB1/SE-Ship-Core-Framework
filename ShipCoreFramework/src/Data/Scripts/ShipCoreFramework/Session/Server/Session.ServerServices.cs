@@ -19,30 +19,23 @@ namespace ShipCoreFramework
             if (!IsServer || !MpActive)
                 return;
 
-            AdvanceConfigRevision();
+            ConfigRevision++;
             var players = new List<IMyPlayer>();
             MyAPIGateway.Players.GetPlayers(players);
             var localSteamId = LocalPlayer?.SteamUserId ?? 0UL;
             foreach (var p in players)
             {
                 if (p == null || p.SteamUserId == 0 || p.SteamUserId == localSteamId) continue;
-                SendConfigTo(p.SteamUserId, -1, string.Empty);
+                SendConfigTo(p.SteamUserId);
             }
         }
 
-        internal static void SendConfigTo(ulong steamId, long knownRevision, string knownContentFingerprint)
+        internal static void SendConfigTo(ulong steamId)
         {
             if (!IsServer || steamId == 0 || Networking == null) return;
+            if (Config != null && Config.SelectedNoCore != null && !RuntimeInitialized) return;
 
             var fingerprint = Config?.ContentFingerprint ?? string.Empty;
-            if (knownRevision == ConfigRevision &&
-                string.Equals(knownContentFingerprint, fingerprint, System.StringComparison.Ordinal))
-            {
-                Networking.SendToPlayer(new PacketSendConfig(null, ConfigRevision, fingerprint,
-                    RuntimeInitialized, unchanged: true), steamId);
-                return;
-            }
-
             string error = null;
             string xml = null;
             if (Config == null)
@@ -72,10 +65,10 @@ namespace ShipCoreFramework
             if (error != null && error.Length > 512)
                 error = error.Substring(0, 512);
 
-            var packet = new PacketSendConfig(xml, ConfigRevision, fingerprint, RuntimeInitialized, error);
+            var packet = new PacketSendConfig(xml, ConfigRevision, fingerprint, error);
             if (Networking.SendToPlayer(packet, steamId)) return;
 
-            var fallback = new PacketSendConfig(null, ConfigRevision, fingerprint, RuntimeInitialized,
+            var fallback = new PacketSendConfig(null, ConfigRevision, fingerprint,
                 "Server could not send the configuration payload because it was oversized or rejected by the transport.");
             Networking.SendToPlayer(fallback, steamId);
         }

@@ -94,11 +94,7 @@ namespace ShipCoreFramework
                     Reject("Config sync rejected: server sent an invalid revision.", true);
                     return;
                 }
-                if (Revision < Session.AppliedConfigRevision)
-                {
-                    Session.SendConfigAck(Revision, true);
-                    return;
-                }
+                if (Revision <= Session.AppliedConfigRevision) return;
                 if (!string.IsNullOrWhiteSpace(Error))
                 {
                     Reject("Config sync rejected by server: " + Error, false);
@@ -114,17 +110,6 @@ namespace ShipCoreFramework
                            (localFingerprint.Length == 0 ? "<missing>" : localFingerprint) +
                            ". Ensure the client and server use identical content-pack versions, then reconnect.",
                         false);
-                    return;
-                }
-
-                if (Unchanged)
-                {
-                    if (Revision != Session.AppliedConfigRevision || Session.Config?.SelectedNoCore == null)
-                    {
-                        Reject("Config sync status did not include the required configuration payload.", true);
-                        return;
-                    }
-                    Finish(false);
                     return;
                 }
 
@@ -162,7 +147,13 @@ namespace ShipCoreFramework
                 }
 
                 Session.ApplyConfigToDefinitions();
-                Finish(true);
+                ModAPI.MarkConfigReady(true);
+                var runtimeWasInitialized = Session.RuntimeInitialized;
+                if (!Session.TryInitializeRuntime() && runtimeWasInitialized)
+                    Session.RefreshGroupsAfterConfigChanged();
+                Session.RequestRuntimeState();
+                Session.CompleteConfigSync(Revision);
+                ModAPI.BroadcastConfigReceived();
             }
             catch (Exception exception)
             {
@@ -171,26 +162,9 @@ namespace ShipCoreFramework
             }
         }
 
-        private void Finish(bool configurationChanged)
-        {
-            if (configurationChanged || !Session.RuntimeInitialized)
-                ModAPI.MarkConfigReady(true);
-            if (ServerRuntimeReady)
-            {
-                var runtimeWasInitialized = Session.RuntimeInitialized;
-                if (!Session.TryInitializeRuntime() && runtimeWasInitialized && configurationChanged)
-                    Session.RefreshGroupsAfterConfigChanged();
-                Session.RequestRuntimeState();
-            }
-            Session.CompleteConfigSync(Revision);
-            Session.SendConfigAck(Revision, true);
-            if (configurationChanged) ModAPI.BroadcastConfigReceived();
-        }
-
         private void Reject(string error, bool retry)
         {
             Session.RejectConfigSync(Revision, error, retry);
-            Session.SendConfigAck(Revision, false, error);
         }
     }
 }

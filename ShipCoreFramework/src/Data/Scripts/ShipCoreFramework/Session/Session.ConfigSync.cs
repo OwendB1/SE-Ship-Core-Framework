@@ -5,9 +5,7 @@ namespace ShipCoreFramework
     public partial class Session
     {
         private const int ConfigSyncRetryIntervalTicks = 5 * 60;
-        private const int ConfigSyncPollIntervalTicks = 30 * 60;
         private static int _configSyncCountdown;
-        private static bool _configSyncRetrying;
         private static long _lastReportedConfigErrorRevision = long.MinValue;
         private static string _lastReportedConfigError = string.Empty;
 
@@ -20,28 +18,22 @@ namespace ShipCoreFramework
             ConfigRevision = 0;
             AppliedConfigRevision = -1;
             ConfigSyncReady = !IsClient || IsServer || !MpActive;
-            _configSyncCountdown = 0;
-            _configSyncRetrying = false;
+            _configSyncCountdown = -1;
             _lastReportedConfigErrorRevision = long.MinValue;
             _lastReportedConfigError = string.Empty;
-        }
-
-        internal static long AdvanceConfigRevision()
-        {
-            return ++ConfigRevision;
         }
 
         internal static void BeginConfigSync()
         {
             if (!IsClient || IsServer || !MpActive) return;
             ConfigSyncReady = false;
-            _configSyncRetrying = true;
             RequestConfigFromServer();
         }
 
         private static void RunConfigSyncTick()
         {
-            if (!IsClient || IsServer || !MpActive || Networking == null) return;
+            if (!IsClient || IsServer || !MpActive || Networking == null ||
+                ConfigSyncReady || _configSyncCountdown < 0) return;
             if (_configSyncCountdown > 0)
             {
                 _configSyncCountdown--;
@@ -52,21 +44,15 @@ namespace ShipCoreFramework
 
         private static void RequestConfigFromServer()
         {
-            var fingerprint = Config?.ContentFingerprint ?? string.Empty;
-            var sent = Networking != null && Networking.SendToServer(
-                new PacketRequestConfig(AppliedConfigRevision, fingerprint), true);
-            if (!sent) _configSyncRetrying = true;
-            _configSyncCountdown = _configSyncRetrying
-                ? ConfigSyncRetryIntervalTicks
-                : ConfigSyncPollIntervalTicks;
+            Networking?.SendToServer(new PacketRequestConfig(), true);
+            _configSyncCountdown = ConfigSyncRetryIntervalTicks;
         }
 
         internal static void CompleteConfigSync(long revision)
         {
             AppliedConfigRevision = revision;
             ConfigSyncReady = true;
-            _configSyncRetrying = false;
-            _configSyncCountdown = ConfigSyncPollIntervalTicks;
+            _configSyncCountdown = -1;
             _lastReportedConfigErrorRevision = long.MinValue;
             _lastReportedConfigError = string.Empty;
         }
@@ -76,8 +62,7 @@ namespace ShipCoreFramework
             error = string.IsNullOrWhiteSpace(error) ? "Configuration synchronization failed." : error;
             ConfigSyncReady = false;
             ModAPI.MarkConfigUnavailable(error);
-            _configSyncRetrying = retry;
-            _configSyncCountdown = retry ? ConfigSyncRetryIntervalTicks : ConfigSyncPollIntervalTicks;
+            _configSyncCountdown = retry ? ConfigSyncRetryIntervalTicks : -1;
 
             if (_lastReportedConfigErrorRevision == revision &&
                 string.Equals(_lastReportedConfigError, error, StringComparison.Ordinal)) return;
@@ -86,10 +71,5 @@ namespace ShipCoreFramework
             Utils.ShowChatMessage(error, "ShipCores: Config Sync:");
         }
 
-        internal static void SendConfigAck(long revision, bool applied, string error = null)
-        {
-            if (!IsClient || IsServer || Networking == null) return;
-            Networking.SendToServer(new PacketConfigAck(revision, applied, error), true);
-        }
     }
 }

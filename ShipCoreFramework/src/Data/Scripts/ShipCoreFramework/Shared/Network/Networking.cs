@@ -67,20 +67,7 @@ namespace ShipCoreFramework
             // Serialize as PacketBase so the ProtoInclude subtype header is emitted; the
             // receiver deserializes via SerializeFromBinary<PacketBase>.
             byte[] bytes;
-            try
-            {
-                bytes = MyAPIGateway.Utilities.SerializeToBinary<PacketBase>(packet);
-            }
-            catch (System.Exception exception)
-            {
-                Utils.Log("Packet serialization failed: " + exception.Message, 1, "Networking");
-                return false;
-            }
-            if (bytes == null || bytes.Length == 0 || bytes.Length > MaxPacketBytes)
-            {
-                Utils.Log("Packet send rejected: serialized payload was empty or oversized.", 1, "Networking");
-                return false;
-            }
+            if (!TrySerializePacket(packet, out bytes)) return false;
             try
             {
                 if (MyAPIGateway.Multiplayer.SendMessageTo(_channelId, bytes, steamId)) return true;
@@ -105,20 +92,7 @@ namespace ShipCoreFramework
             if (!MyAPIGateway.Multiplayer.IsServer || packet == null || steamIds == null ||
                 steamIds.Count == 0 || packet.Direction != PacketDirection.ServerToClient) return;
             byte[] bytes;
-            try
-            {
-                bytes = MyAPIGateway.Utilities.SerializeToBinary<PacketBase>(packet);
-            }
-            catch (System.Exception exception)
-            {
-                Utils.Log("Packet serialization failed: " + exception.Message, 1, "Networking");
-                return;
-            }
-            if (bytes == null || bytes.Length == 0 || bytes.Length > MaxPacketBytes)
-            {
-                Utils.Log("Packet send rejected: serialized payload was empty or oversized.", 1, "Networking");
-                return;
-            }
+            if (!TrySerializePacket(packet, out bytes)) return;
             for (var i = 0; i < steamIds.Count; i++)
             {
                 var steamId = steamIds[i];
@@ -159,20 +133,7 @@ namespace ShipCoreFramework
             }
 
             byte[] bytes;
-            try
-            {
-                bytes = MyAPIGateway.Utilities.SerializeToBinary<PacketBase>(packet);
-            }
-            catch (System.Exception exception)
-            {
-                Utils.Log("Packet serialization failed: " + exception.Message, 1, "Networking");
-                return false;
-            }
-            if (bytes == null || bytes.Length == 0 || bytes.Length > MaxPacketBytes)
-            {
-                Utils.Log("Packet send rejected: serialized payload was empty or oversized.", 1, "Networking");
-                return false;
-            }
+            if (!TrySerializePacket(packet, out bytes)) return false;
             try
             {
                 if (MyAPIGateway.Multiplayer.SendMessageToServer(_channelId, bytes)) return true;
@@ -184,6 +145,23 @@ namespace ShipCoreFramework
                 Utils.Log("Packet send to server failed: " + exception.Message, 1, "Networking");
                 return false;
             }
+        }
+
+        private static bool TrySerializePacket(PacketBase packet, out byte[] bytes)
+        {
+            try
+            {
+                bytes = MyAPIGateway.Utilities.SerializeToBinary<PacketBase>(packet);
+            }
+            catch (System.Exception exception)
+            {
+                bytes = null;
+                Utils.Log("Packet serialization failed: " + exception.Message, 1, "Networking");
+                return false;
+            }
+            if (bytes != null && bytes.Length > 0 && bytes.Length <= MaxPacketBytes) return true;
+            Utils.Log("Packet send rejected: serialized payload was empty or oversized.", 1, "Networking");
+            return false;
         }
     }
 }
