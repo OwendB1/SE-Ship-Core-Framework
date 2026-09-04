@@ -121,16 +121,13 @@ namespace ShipCoreFramework
 
         [ProtoMember(1)] internal string ConfigXml;
         [ProtoMember(2)] internal long Revision;
-        [ProtoMember(3)] internal string ContentFingerprint;
         [ProtoMember(4)] internal string Error;
 
         internal PacketSendConfig() { }
-        internal PacketSendConfig(string configXml, long revision, string contentFingerprint,
-            string error = null)
+        internal PacketSendConfig(string configXml, long revision, string error = null)
         {
             ConfigXml = configXml;
             Revision = revision;
-            ContentFingerprint = contentFingerprint;
             Error = error;
         }
 

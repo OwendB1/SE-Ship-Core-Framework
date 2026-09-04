@@ -55,9 +55,7 @@ Load behavior:
 - Worlds that still select the retired `DEFAULT-NO-CORE-ALL-GRID-TYPES` profile automatically
   migrate when exactly one content-pack profile is loaded. If several are loaded, use
   `/core select <name>` to choose one, then reload the world.
-- The server synchronizes world settings with a revision and a deterministic fingerprint of every
-  loaded SCF content XML file. Clients reject mismatched content-pack versions instead of running
-  different definitions silently.
+- The server synchronizes authoritative world settings with a revision.
 - Clients retry initial synchronization every five seconds until it succeeds. Configuration changes
   and `/core reloadconfig` broadcast a new revision immediately.
 - Manifest groups are global across all loaded manifest files.

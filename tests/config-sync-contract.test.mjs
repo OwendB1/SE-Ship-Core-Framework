@@ -7,10 +7,7 @@ const root = new URL(
 );
 const read = path => readFile(new URL(path, root), "utf8");
 
-const [fingerprint, loading, contracts, client, server, sessionRun, configSync, cooldown,
-  commands] = await Promise.all([
-  read("Config/ModConfig.ContentFingerprint.cs"),
-  read("Config/ModConfig.Loading.cs"),
+const [contracts, client, server, sessionRun, configSync, cooldown, commands] = await Promise.all([
   read("Shared/Network/DirectionalPacketContracts.cs"),
   read("Client/Network/PresentationPacketHandlers.cs"),
   read("Session/Server/Session.ServerServices.cs"),
@@ -20,18 +17,8 @@ const [fingerprint, loading, contracts, client, server, sessionRun, configSync, 
   read("Server/Commands/Commands.Administration.cs"),
 ]);
 
-assert.match(fingerprint, /_contentFingerprintInputs\.Sort\(StringComparer\.Ordinal\)/);
-assert.match(fingerprint, /14695981039346656037UL/);
-assert.match(fingerprint, /1099511628211UL/);
-assert.doesNotMatch(fingerprint, /PublishedServiceName|PublishedFileId|mod\.Name/);
-assert.match(loading, /FinalizeContentFingerprint\(\)/);
-assert.equal((loading.match(/TrackContentFile\(/g) || []).length, 5);
-
-assert.match(contracts, /class PacketSendConfig[\s\S]*ContentFingerprint/);
-
-const compare = client.indexOf("!string.Equals(ContentFingerprint, localFingerprint");
 const apply = client.indexOf("Session.Config.ApplyWorldSettingsFrom(import)");
-assert.ok(compare >= 0 && apply > compare, "fingerprint must be checked before applying server settings");
+assert.ok(apply >= 0, "client must apply authoritative server settings");
 assert.match(client, /ApplyWorldSettingsFrom\(import\)[\s\S]*ApplyConfigToDefinitions\(\)[\s\S]*RequestRuntimeState\(\)/);
 assert.match(client, /Revision <= Session\.AppliedConfigRevision/);
 

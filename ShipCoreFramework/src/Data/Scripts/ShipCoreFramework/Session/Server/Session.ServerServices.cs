@@ -35,7 +35,6 @@ namespace ShipCoreFramework
             if (!IsServer || steamId == 0 || Networking == null) return;
             if (Config != null && Config.SelectedNoCore != null && !RuntimeInitialized) return;
 
-            var fingerprint = Config?.ContentFingerprint ?? string.Empty;
             string error = null;
             string xml = null;
             if (Config == null)
@@ -65,10 +64,10 @@ namespace ShipCoreFramework
             if (error != null && error.Length > 512)
                 error = error.Substring(0, 512);
 
-            var packet = new PacketSendConfig(xml, ConfigRevision, fingerprint, error);
+            var packet = new PacketSendConfig(xml, ConfigRevision, error);
             if (Networking.SendToPlayer(packet, steamId)) return;
 
-            var fallback = new PacketSendConfig(null, ConfigRevision, fingerprint,
+            var fallback = new PacketSendConfig(null, ConfigRevision,
                 "Server could not send the configuration payload because it was oversized or rejected by the transport.");
             Networking.SendToPlayer(fallback, steamId);
         }

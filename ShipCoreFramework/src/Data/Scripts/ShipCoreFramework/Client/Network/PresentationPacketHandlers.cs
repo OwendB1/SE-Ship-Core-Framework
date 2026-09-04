@@ -87,7 +87,6 @@ namespace ShipCoreFramework
 
             try
             {
-                ContentFingerprint = Cap(ContentFingerprint, 64);
                 Error = Cap(Error, 512);
                 if (Revision < 0)
                 {
@@ -98,18 +97,6 @@ namespace ShipCoreFramework
                 if (!string.IsNullOrWhiteSpace(Error))
                 {
                     Reject("Config sync rejected by server: " + Error, false);
-                    return;
-                }
-
-                var localFingerprint = Session.Config?.ContentFingerprint ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(ContentFingerprint) ||
-                    !string.Equals(ContentFingerprint, localFingerprint, StringComparison.Ordinal))
-                {
-                    Reject("Ship Core content-pack mismatch. Server fingerprint " +
-                           (ContentFingerprint ?? "<missing>") + ", client fingerprint " +
-                           (localFingerprint.Length == 0 ? "<missing>" : localFingerprint) +
-                           ". Ensure the client and server use identical content-pack versions, then reconnect.",
-                        false);
                     return;
                 }
 
