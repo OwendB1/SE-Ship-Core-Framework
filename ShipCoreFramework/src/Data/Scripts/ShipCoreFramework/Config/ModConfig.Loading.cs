@@ -177,7 +177,7 @@ namespace ShipCoreFramework
 
             if (newBlockGroups == null)
                 throw new Exception($"Failed to load block groups from Mod: {mod.FriendlyName}");
-            TrackContentFile(mod, BlockGroupsFileName, text);
+            TrackContentFile(BlockGroupsFileName, text);
             NormalizeBlockGroups(newBlockGroups, mod.FriendlyName);
             foreach (var group in newBlockGroups.Where(group => group != null))
             {
@@ -198,7 +198,7 @@ namespace ShipCoreFramework
 
             if (newNoCore == null)
                 throw new Exception($"Failed to load no-core from Mod: {mod.FriendlyName}");
-            TrackContentFile(mod, DefaultNoCoreFileName, text);
+            TrackContentFile(DefaultNoCoreFileName, text);
             newNoCore.ConfigSource = mod.FriendlyName;
             newNoCore.ConfigFile = DefaultNoCoreFileName;
             NoCoreConfigs.Add(newNoCore);
@@ -214,7 +214,7 @@ namespace ShipCoreFramework
             var coreManifest = MyAPIGateway.Utilities.SerializeFromXML<CoreManifest>(text);
             if (coreManifest == null)
                 throw new Exception($"Failed to Load Classes from Mod: {mod.FriendlyName}");
-            TrackContentFile(mod, CoreManifestFileName, text);
+            TrackContentFile(CoreManifestFileName, text);
 
             NormalizeCoreManifest(coreManifest, mod.FriendlyName);
             RegisterManifestGroups(coreManifest.ManifestGroups, mod.FriendlyName, CoreManifestFileName);
@@ -242,7 +242,7 @@ namespace ShipCoreFramework
 
                 if (newUpgradeModule == null)
                     throw new Exception($"Failed to load upgrade module from file {upgradeModuleEntry.Filename} in Mod: {mod.FriendlyName}");
-                TrackContentFile(mod, upgradeModuleEntry.Filename, modText);
+                TrackContentFile(upgradeModuleEntry.Filename, modText);
 
                 NormalizeUpgradeModule(newUpgradeModule, mod.FriendlyName, upgradeModuleEntry.Filename);
                 newUpgradeModule.ConfigSource = mod.FriendlyName;
@@ -284,7 +284,7 @@ namespace ShipCoreFramework
 
             if (newShipCore == null)
                 throw new Exception($"Failed to load ship core from file {shipCoreFilename} in Mod: {mod.FriendlyName}");
-            TrackContentFile(mod, shipCoreFilename, modText);
+            TrackContentFile(shipCoreFilename, modText);
 
             NormalizeShipCoreBlockLimits(newShipCore, mod.FriendlyName, shipCoreFilename);
             AssignManifestGroupsToCore(newShipCore, manifestGroupNames, mod.FriendlyName, shipCoreFilename);

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Xml.Serialization;
-using VRage.Game;
 
 namespace ShipCoreFramework
 {
@@ -12,14 +11,10 @@ namespace ShipCoreFramework
         [XmlIgnore]
         internal string ContentFingerprint { get; private set; } = string.Empty;
 
-        private void TrackContentFile(MyObjectBuilder_Checkpoint.ModItem mod, string fileName, string text)
+        private void TrackContentFile(string fileName, string text)
         {
-            var modKey = (mod.PublishedServiceName ?? string.Empty) + ":" + mod.PublishedFileId;
-            if (mod.PublishedFileId == 0)
-                modKey += ":" + (mod.Name ?? string.Empty);
-
             var normalizedText = (text ?? string.Empty).Replace("\r\n", "\n").Replace('\r', '\n');
-            _contentFingerprintInputs.Add(modKey + "\n" + (fileName ?? string.Empty) + "\n" + normalizedText);
+            _contentFingerprintInputs.Add((fileName ?? string.Empty) + "\n" + normalizedText);
         }
 
         private void FinalizeContentFingerprint()
