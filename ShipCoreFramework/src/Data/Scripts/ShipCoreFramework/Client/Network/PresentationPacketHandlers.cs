@@ -81,22 +81,61 @@ namespace ShipCoreFramework
 
     internal partial class PacketSendConfig
     {
-        private const int MaxConfigCharacters = 1024 * 1024;
-
         partial void ReceiveOnClient()
         {
             if (Session.IsShuttingDown) return;
 
             try
             {
+                ContentFingerprint = Cap(ContentFingerprint, 64);
+                Error = Cap(Error, 512);
+                if (Revision < 0)
+                {
+                    Reject("Config sync rejected: server sent an invalid revision.", true);
+                    return;
+                }
+                if (Revision < Session.AppliedConfigRevision)
+                {
+                    Session.SendConfigAck(Revision, true);
+                    return;
+                }
+                if (!string.IsNullOrWhiteSpace(Error))
+                {
+                    Reject("Config sync rejected by server: " + Error, false);
+                    return;
+                }
+
+                var localFingerprint = Session.Config?.ContentFingerprint ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(ContentFingerprint) ||
+                    !string.Equals(ContentFingerprint, localFingerprint, StringComparison.Ordinal))
+                {
+                    Reject("Ship Core content-pack mismatch. Server fingerprint " +
+                           (ContentFingerprint ?? "<missing>") + ", client fingerprint " +
+                           (localFingerprint.Length == 0 ? "<missing>" : localFingerprint) +
+                           ". Ensure the client and server use identical content-pack versions, then reconnect.",
+                        false);
+                    return;
+                }
+
+                if (Unchanged)
+                {
+                    if (Revision != Session.AppliedConfigRevision || Session.Config?.SelectedNoCore == null)
+                    {
+                        Reject("Config sync status did not include the required configuration payload.", true);
+                        return;
+                    }
+                    Finish(false);
+                    return;
+                }
+
                 if (string.IsNullOrWhiteSpace(ConfigXml))
                 {
-                    Utils.Log("Config sync skipped: received empty config payload.", 2, "Config Sync");
+                    Reject("Config sync rejected: received an empty configuration payload.", true);
                     return;
                 }
                 if (ConfigXml.Length > MaxConfigCharacters)
                 {
-                    Utils.Log("Config sync skipped: config payload exceeded size limit.", 1, "Config Sync");
+                    Reject("Config sync rejected: configuration payload exceeded the size limit.", false);
                     return;
                 }
 
@@ -110,7 +149,7 @@ namespace ShipCoreFramework
                 ModConfig import = MyAPIGateway.Utilities.SerializeFromXML<ModConfig>(ConfigXml);
                 if (import == null)
                 {
-                    Utils.Log("Config sync skipped: payload could not be deserialized.", 1, "Config Sync");
+                    Reject("Config sync rejected: configuration payload could not be deserialized.", true);
                     return;
                 }
                 Session.Config.ApplyWorldSettingsFrom(import);
@@ -118,21 +157,40 @@ namespace ShipCoreFramework
                 Session.Config.EnsurePersistedWorldSettings();
                 if (!Session.Config.ResolveSelectedNoCore())
                 {
-                    ModAPI.MarkConfigUnavailable(Session.Config.GetNoCoreConfigurationError());
+                    Reject(Session.Config.GetNoCoreConfigurationError(), false);
                     return;
                 }
 
                 Session.ApplyConfigToDefinitions();
-                ModAPI.MarkConfigReady(true);
-                if (!Session.TryInitializeRuntime())
-                    Session.RefreshGroupsAfterConfigChanged();
-                ModAPI.BroadcastConfigReceived();
-                Session.RequestRuntimeState();
+                Finish(true);
             }
             catch (Exception exception)
             {
                 Utils.Log($"Config sync failed: {exception}", 2, "Config Sync");
+                Reject("Config sync failed while applying the server payload: " + exception.Message, true);
             }
+        }
+
+        private void Finish(bool configurationChanged)
+        {
+            if (configurationChanged || !Session.RuntimeInitialized)
+                ModAPI.MarkConfigReady(true);
+            if (ServerRuntimeReady)
+            {
+                var runtimeWasInitialized = Session.RuntimeInitialized;
+                if (!Session.TryInitializeRuntime() && runtimeWasInitialized && configurationChanged)
+                    Session.RefreshGroupsAfterConfigChanged();
+                Session.RequestRuntimeState();
+            }
+            Session.CompleteConfigSync(Revision);
+            Session.SendConfigAck(Revision, true);
+            if (configurationChanged) ModAPI.BroadcastConfigReceived();
+        }
+
+        private void Reject(string error, bool retry)
+        {
+            Session.RejectConfigSync(Revision, error, retry);
+            Session.SendConfigAck(Revision, false, error);
         }
     }
 }

@@ -37,7 +37,7 @@ namespace ShipCoreFramework
                 MyAPIGateway.Session.Factions.FactionEdited += FactionEdited;
             }
             Utils.Log("Ship Cores: Awaiting Commands From Clients", 1);
-            Config.SaveConfig();
+            Config.SaveConfig(broadcast: false);
         }
 
         private void UnloadServerData()
@@ -66,7 +66,7 @@ namespace ShipCoreFramework
             _myNexusApi = null;
             _startedNexus = false;
             _serverRuntimeDataLoaded = false;
-            Config.SaveConfig();
+            Config.SaveConfig(broadcast: false);
         }
     }
 }

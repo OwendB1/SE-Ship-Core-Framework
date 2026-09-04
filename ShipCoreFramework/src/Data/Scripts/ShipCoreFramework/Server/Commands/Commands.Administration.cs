@@ -35,6 +35,7 @@ namespace ShipCoreFramework
 
                 Session.ApplyConfigToDefinitions();
                 Session.RefreshGroupsAfterConfigChanged();
+                Session.BroadcastConfigToClients();
             }
             else
                 Session.Config = loadedConfig;
@@ -93,7 +94,7 @@ namespace ShipCoreFramework
             Session.Config.NoFlyZones.Add(newZone);
             Session.Config.SaveConfig();
             return "Created NoFlyZone with ID " + nextId +
-                   " at the chosen center (ForceOff=" + forceOff + "); please reconnect to resync from server config!";
+                   " at the chosen center (ForceOff=" + forceOff + ").";
         }
 
         private static string DeleteNoFlyZone(string[] args)
@@ -112,7 +113,7 @@ namespace ShipCoreFramework
 
             Session.Config.NoFlyZones.Remove(zone);
             Session.Config.SaveConfig();
-            return "Deleted NoFlyZone ID " + id + "; please reconnect to resync from server config!";
+            return "Deleted NoFlyZone ID " + id + ".";
         }
 
         private static string Debug(string[] args)
@@ -146,6 +147,7 @@ namespace ShipCoreFramework
             }
             var clVal = args[1].ToLower();
             Session.Config.CombatLogging = (clVal == "on");
+            Session.Config.SaveConfig(true);
             return $"Combat logging set to {(Session.Config.CombatLogging ? "ON" : "OFF")}";
         }
 
@@ -227,6 +229,9 @@ namespace ShipCoreFramework
             }
 
             Session.Config.MaxPossibleSpeedMetersPerSecond = newSpeed;
+            Session.ApplyConfigToDefinitions();
+            Session.RefreshGroupsAfterConfigChanged();
+            Session.BroadcastConfigToClients();
             return $"World speed limit set to {newSpeed} m/s (session config only).";
         }
 

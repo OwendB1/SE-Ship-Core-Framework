@@ -12,6 +12,7 @@ namespace ShipCoreFramework
         private const int RuntimeStatePacketTargetBytes = Networking.MaxPacketBytes - 64 * 1024;
         private const int RuntimeStateSyncIntervalTicks = 120;
         private const int RuntimeStateRequestCooldownTicks = 300;
+        private const long ConfigRequestCooldownTimeTicks = 5 * TimeSpan.TicksPerSecond;
         // Scanning every group for liveness is O(groups + grids); at 60Hz that is pure overhead.
         // 120 is a multiple of this, so the full-snapshot tick always includes a fresh scan.
         private const int RuntimeStateRemovalScanIntervalTicks = 30;
@@ -27,8 +28,8 @@ namespace ShipCoreFramework
             new ConcurrentDictionary<GroupComponent, RuntimeStateIdentity>();
         private static readonly Dictionary<ulong, int> RuntimeStateRequestTicks =
             new Dictionary<ulong, int>();
-        private static readonly Dictionary<ulong, int> ConfigRequestTicks =
-            new Dictionary<ulong, int>();
+        private static readonly Dictionary<ulong, long> ConfigRequestTimes =
+            new Dictionary<ulong, long>();
         // Reused scratch buffers. Everything here runs on the game thread, and the delta path
         // runs every tick, so per-tick allocation is worth avoiding.
         private static readonly List<IMyPlayer> RuntimeStatePlayerBuffer = new List<IMyPlayer>();
@@ -106,18 +107,19 @@ namespace ShipCoreFramework
         internal static bool CanServeConfigRequest(ulong steamId)
         {
             if (!IsServer || steamId == 0) return false;
-            int lastRequestTick;
-            if (ConfigRequestTicks.TryGetValue(steamId, out lastRequestTick) &&
-                CurrentTick - lastRequestTick < RuntimeStateRequestCooldownTicks)
+            var now = DateTime.UtcNow.Ticks;
+            long lastRequestTime;
+            if (ConfigRequestTimes.TryGetValue(steamId, out lastRequestTime) &&
+                now >= lastRequestTime && now - lastRequestTime < ConfigRequestCooldownTimeTicks)
                 return false;
-            ConfigRequestTicks[steamId] = CurrentTick;
+            ConfigRequestTimes[steamId] = now;
             return true;
         }
 
         internal static void ResetRuntimeStateSync()
         {
             RuntimeStateRequestTicks.Clear();
-            ConfigRequestTicks.Clear();
+            ConfigRequestTimes.Clear();
             RuntimeStateDirty.Clear();
             RuntimeStateKnown.Clear();
             _runtimeStateSequence = 0;

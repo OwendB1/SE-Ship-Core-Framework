@@ -24,6 +24,7 @@ namespace ShipCoreFramework
     [ProtoInclude(9000, typeof(PacketRuntimeState))]
     [ProtoInclude(10000, typeof(PacketRuntimeStateDelta))]
     [ProtoInclude(11000, typeof(PacketMissionScreen))]
+    [ProtoInclude(12000, typeof(PacketConfigAck))]
     [ProtoContract]
     internal class PacketBase
     {

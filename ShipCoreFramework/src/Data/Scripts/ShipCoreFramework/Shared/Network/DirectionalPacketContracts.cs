@@ -102,7 +102,15 @@ namespace ShipCoreFramework
     {
         internal override PacketDirection Direction => PacketDirection.ClientToServer;
 
+        [ProtoMember(1)] internal long KnownRevision = -1;
+        [ProtoMember(2)] internal string KnownContentFingerprint = string.Empty;
+
         internal PacketRequestConfig() { }
+        internal PacketRequestConfig(long knownRevision, string knownContentFingerprint)
+        {
+            KnownRevision = knownRevision;
+            KnownContentFingerprint = knownContentFingerprint;
+        }
 
         internal override void Received()
         {
@@ -117,13 +125,25 @@ namespace ShipCoreFramework
     {
         internal override PacketDirection Direction => PacketDirection.ServerToClient;
 
-        [ProtoMember(1)]
-        internal string ConfigXml;
+        internal const int MaxConfigCharacters = 1024 * 1024;
+
+        [ProtoMember(1)] internal string ConfigXml;
+        [ProtoMember(2)] internal long Revision;
+        [ProtoMember(3)] internal string ContentFingerprint;
+        [ProtoMember(4)] internal string Error;
+        [ProtoMember(5)] internal bool Unchanged;
+        [ProtoMember(6)] internal bool ServerRuntimeReady;
 
         internal PacketSendConfig() { }
-        internal PacketSendConfig(string configXml)
+        internal PacketSendConfig(string configXml, long revision, string contentFingerprint,
+            bool serverRuntimeReady, string error = null, bool unchanged = false)
         {
             ConfigXml = configXml;
+            Revision = revision;
+            ContentFingerprint = contentFingerprint;
+            ServerRuntimeReady = serverRuntimeReady;
+            Error = error;
+            Unchanged = unchanged;
         }
 
         internal override void Received()
@@ -132,6 +152,31 @@ namespace ShipCoreFramework
         }
 
         partial void ReceiveOnClient();
+    }
+
+    [ProtoContract]
+    internal partial class PacketConfigAck : PacketBase
+    {
+        internal override PacketDirection Direction => PacketDirection.ClientToServer;
+
+        [ProtoMember(1)] internal long Revision;
+        [ProtoMember(2)] internal bool Applied;
+        [ProtoMember(3)] internal string Error;
+
+        internal PacketConfigAck() { }
+        internal PacketConfigAck(long revision, bool applied, string error = null)
+        {
+            Revision = revision;
+            Applied = applied;
+            Error = error;
+        }
+
+        internal override void Received()
+        {
+            ReceiveOnServer();
+        }
+
+        partial void ReceiveOnServer();
     }
 
     [ProtoContract]

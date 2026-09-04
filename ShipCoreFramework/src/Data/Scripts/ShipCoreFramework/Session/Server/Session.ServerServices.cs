@@ -19,13 +19,65 @@ namespace ShipCoreFramework
             if (!IsServer || !MpActive)
                 return;
 
+            AdvanceConfigRevision();
             var players = new List<IMyPlayer>();
             MyAPIGateway.Players.GetPlayers(players);
-
-            var packet = new PacketSendConfig(MyAPIGateway.Utilities.SerializeToXML(Config));
-
+            var localSteamId = LocalPlayer?.SteamUserId ?? 0UL;
             foreach (var p in players)
-                Networking.SendToPlayer(packet, p.SteamUserId);
+            {
+                if (p == null || p.SteamUserId == 0 || p.SteamUserId == localSteamId) continue;
+                SendConfigTo(p.SteamUserId, -1, string.Empty);
+            }
+        }
+
+        internal static void SendConfigTo(ulong steamId, long knownRevision, string knownContentFingerprint)
+        {
+            if (!IsServer || steamId == 0 || Networking == null) return;
+
+            var fingerprint = Config?.ContentFingerprint ?? string.Empty;
+            if (knownRevision == ConfigRevision &&
+                string.Equals(knownContentFingerprint, fingerprint, System.StringComparison.Ordinal))
+            {
+                Networking.SendToPlayer(new PacketSendConfig(null, ConfigRevision, fingerprint,
+                    RuntimeInitialized, unchanged: true), steamId);
+                return;
+            }
+
+            string error = null;
+            string xml = null;
+            if (Config == null)
+                error = "Server configuration is not available.";
+            else if (Config.SelectedNoCore == null)
+                error = Config.GetNoCoreConfigurationError();
+            else
+            {
+                try
+                {
+                    xml = MyAPIGateway.Utilities.SerializeToXML(Config);
+                    if (string.IsNullOrWhiteSpace(xml))
+                        error = "Server configuration serialization produced an empty payload.";
+                    else if (xml.Length > PacketSendConfig.MaxConfigCharacters)
+                    {
+                        error = "Server configuration exceeds the synchronization size limit.";
+                        xml = null;
+                    }
+                }
+                catch (System.Exception exception)
+                {
+                    error = "Server configuration serialization failed: " + exception.Message;
+                    Utils.Log(error, 1, "Config Sync");
+                }
+            }
+
+            if (error != null && error.Length > 512)
+                error = error.Substring(0, 512);
+
+            var packet = new PacketSendConfig(xml, ConfigRevision, fingerprint, RuntimeInitialized, error);
+            if (Networking.SendToPlayer(packet, steamId)) return;
+
+            var fallback = new PacketSendConfig(null, ConfigRevision, fingerprint, RuntimeInitialized,
+                "Server could not send the configuration payload because it was oversized or rejected by the transport.");
+            Networking.SendToPlayer(fallback, steamId);
         }
     }
 }

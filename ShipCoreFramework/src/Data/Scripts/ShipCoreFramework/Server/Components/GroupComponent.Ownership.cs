@@ -11,9 +11,7 @@ namespace ShipCoreFramework
     {
         private bool IsNpcGroup()
         {
-            var mainGrid = MainCoreComponent?.CoreBlock?.CubeGrid;
-            return mainGrid?.IsNpcSpawnedGrid ??
-                   GridDictionary.Keys.Any(grid => grid != null && grid.IsNpcSpawnedGrid);
+            return GridDictionary.Keys.Any(grid => grid != null && grid.IsNpcSpawnedGrid);
         }
 
         private bool IsIgnoredNpcGroup()

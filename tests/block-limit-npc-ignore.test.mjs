@@ -31,7 +31,8 @@ const [models, ownership, sharedCache, serverCache, gridLimits, gridBlocks, grou
 
 assert.match(models, /XmlElement\("IgnoredByNpc"\)[\s\S]*public bool IgnoredByNpc;/);
 
-assert.match(ownership, /private bool IsNpcGroup\(\)[\s\S]*IsNpcSpawnedGrid/);
+assert.match(ownership, /private bool IsNpcGroup\(\)[\s\S]*return GridDictionary\.Keys\.Any\(grid => grid != null && grid\.IsNpcSpawnedGrid\);/);
+assert.doesNotMatch(ownership, /mainGrid\?\.IsNpcSpawnedGrid\s*\?\?/);
 assert.match(ownership, /return Session\.Config\.IgnoreAiFactions && IsNpcGroup\(\);/);
 assert.match(ownership, /return limit == null \|\| !limit\.IgnoredByNpc \|\| !IsNpcGroupThreadSafe\(\);/);
 assert.match(sharedCache, /private bool _cachedIsNpcGroup;/);

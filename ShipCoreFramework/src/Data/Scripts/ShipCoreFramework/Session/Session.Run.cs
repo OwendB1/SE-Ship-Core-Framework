@@ -53,7 +53,10 @@ namespace ShipCoreFramework
             }
 
             if (IsServer)
+            {
                 ModAPI.MarkRuntimeSnapshotReady();
+                BroadcastConfigToClients();
+            }
             return true;
         }
         
@@ -67,6 +70,7 @@ namespace ShipCoreFramework
             MpActive = MyAPIGateway.Multiplayer.MultiplayerActive;
             IsServer = (MpActive && MyAPIGateway.Multiplayer.IsServer) || !MpActive;
             IsClient = (MpActive && !MyAPIGateway.Utilities.IsDedicated) || !MpActive;
+            ResetConfigSyncState();
             ModAPI.ResetReadiness();
 
             if (Networking == null)
@@ -91,7 +95,7 @@ namespace ShipCoreFramework
                       ", IsClient=" + IsClient + ", Dedicated=" + MyAPIGateway.Utilities.IsDedicated + ".", 1);
             if (IsClient && !IsServer && MpActive)
             {
-                Networking.SendToServer(new PacketRequestConfig(), onlyToServer: true);
+                BeginConfigSync();
             }
         }
 
@@ -116,6 +120,7 @@ namespace ShipCoreFramework
             ModAPI.Close();
             Networking?.Unregister();
             Networking = null;
+            ResetConfigSyncState();
             
             foreach (var kvp in GroupDict)
             {
@@ -130,6 +135,8 @@ namespace ShipCoreFramework
         
         public override void UpdateAfterSimulation()
         {
+            RunConfigSyncTick();
+            if (!ConfigSyncReady) return;
             if (!_runtimeInitialized || Config?.SelectedNoCore == null) return;
 
             _tick++;
