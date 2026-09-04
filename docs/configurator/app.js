@@ -321,7 +321,9 @@ function textOf(parent, tag) {
 }
 
 function numberOf(parent, tag, fallback = 0) {
-  const value = Number(textOf(parent, tag));
+  const text = textOf(parent, tag);
+  if (!text) return fallback;
+  const value = Number(text);
   return Number.isFinite(value) ? value : fallback;
 }
 

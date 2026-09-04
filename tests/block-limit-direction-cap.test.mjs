@@ -27,6 +27,10 @@ const [models, validation, bucket, gridLimits, gridBlocks, groupLimits, merge, e
 ]);
 
 assert.match(models, /XmlElement\("MaxCountPerDirection"\)[\s\S]*= -1f/);
+assert.match(
+  configurator,
+  /function numberOf\(parent, tag, fallback = 0\) \{[\s\S]*if \(!text\) return fallback;[\s\S]*Number\(text\)/,
+);
 assert.match(validation, /MaxCountPerDirection[\s\S]*no valid direction in <AllowedDirections> or a BlockGroups Directions attribute/);
 assert.match(validation, /direction != DirectionType\.Any && Enum\.IsDefined/);
 assert.match(models, /enum LimitVisibility[\s\S]*Always = 0[\s\S]*NearLimit = 1[\s\S]*Hidden = 2/);
