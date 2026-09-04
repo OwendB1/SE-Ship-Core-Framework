@@ -52,8 +52,9 @@ Load behavior:
 - SCF has no built-in no-core fallback. If the selected profile is missing or invalid, runtime
   initialization stays disabled while admin commands remain available to select a profile for the
   next world load.
-- Worlds that still select the retired `DEFAULT-NO-CORE-ALL-GRID-TYPES` profile must use
-  `/core select <name>` to choose their content pack's profile, then reload the world.
+- Worlds that still select the retired `DEFAULT-NO-CORE-ALL-GRID-TYPES` profile automatically
+  migrate when exactly one content-pack profile is loaded. If several are loaded, use
+  `/core select <name>` to choose one, then reload the world.
 - Manifest groups are global across all loaded manifest files.
 - Duplicate core names, subtype IDs, manifest group names, and upgrade module `TypeId`/`SubtypeId` pairs are rejected during load.
 

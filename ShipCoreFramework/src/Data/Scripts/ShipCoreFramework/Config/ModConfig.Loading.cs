@@ -9,6 +9,8 @@ namespace ShipCoreFramework
 {
     public partial class ModConfig
     {
+        private const string RetiredDefaultNoCoreUniqueName = "DEFAULT-NO-CORE-ALL-GRID-TYPES";
+
         internal void LoadConfig()
         {
             LoadConfig(Session.IsServer);
@@ -81,6 +83,17 @@ namespace ShipCoreFramework
                     core.UniqueName.Equals(SelectedNoCoreUniqueName, StringComparison.OrdinalIgnoreCase));
             }
 
+            if (SelectedNoCore == null &&
+                string.Equals(SelectedNoCoreUniqueName, RetiredDefaultNoCoreUniqueName,
+                    StringComparison.OrdinalIgnoreCase) &&
+                NoCoreConfigs.Count == 1 &&
+                !string.IsNullOrWhiteSpace(NoCoreConfigs[0]?.UniqueName))
+            {
+                SelectedNoCore = NoCoreConfigs[0];
+                Utils.Log($"Migrated retired no-core selection to '{SelectedNoCore.UniqueName}'.", 1,
+                    "Config Validation");
+            }
+
             if (SelectedNoCore == null)
             {
                 if (logFailure)
@@ -100,6 +113,9 @@ namespace ShipCoreFramework
                 return "No content-pack no-core profiles were loaded. Ship Core Framework cannot start.";
             if (string.IsNullOrWhiteSpace(SelectedNoCoreUniqueName))
                 return "No content-pack no-core profile is selected. Use /core listnocores and /core select <name>, then reload the world.";
+            if (string.Equals(SelectedNoCoreUniqueName, RetiredDefaultNoCoreUniqueName,
+                    StringComparison.OrdinalIgnoreCase))
+                return "The retired built-in no-core profile is still selected. Use /core listnocores and /core select <name>, then reload the world.";
             return $"Selected no-core profile '{SelectedNoCoreUniqueName}' was not loaded. Restore its content pack or select another profile, then reload the world.";
         }
 
